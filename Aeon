@@ -87,6 +87,11 @@ install_python_packages() {
     pip3 install --break-system-packages --no-cache-dir -U setuptools uv
 }
 
+# Install Python packages from requirements.txt
+install_requirements() {
+    pip3 install --break-system-packages --no-cache-dir -r requirements.txt
+}
+
 # Clone and build MEGA SDK
 build_mega_sdk() {
     git clone https://github.com/meganz/sdk.git --depth=1 -b v4.8.0 /home/sdk
@@ -124,6 +129,7 @@ main() {
     install_rclone
     install_python_packages
     build_mega_sdk
+    install_requirements
     cleanup
 }
 
