@@ -1,4 +1,4 @@
-from bot import auth_chats, sudo_users, user_data
+from tghbot import auth_chats, sudo_users, user_data
 from pyrogram.filters import create
 
 from tghbot.core.config_manager import Config

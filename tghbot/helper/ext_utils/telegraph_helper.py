@@ -1,7 +1,7 @@
 from asyncio import sleep
 from secrets import token_hex
 
-from bot import LOGGER
+from tghbot import LOGGER
 from telegraph.aio import Telegraph
 from telegraph.exceptions import RetryAfterError
 

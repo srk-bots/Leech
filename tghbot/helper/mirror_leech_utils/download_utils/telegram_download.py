@@ -2,7 +2,7 @@ from asyncio import Lock, sleep
 from secrets import token_hex
 from time import time
 
-from bot import LOGGER, task_dict, task_dict_lock
+from tghbot import LOGGER, task_dict, task_dict_lock
 from pyrogram.errors import FloodPremiumWait, FloodWait
 
 from tghbot.core.aeon_client import TgClient

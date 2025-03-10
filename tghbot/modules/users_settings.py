@@ -7,7 +7,7 @@ from time import time
 
 from aiofiles.os import makedirs, remove
 from aiofiles.os import path as aiopath
-from bot import auth_chats, excluded_extensions, sudo_users, user_data
+from tghbot import auth_chats, excluded_extensions, sudo_users, user_data
 from pyrogram.filters import create
 from pyrogram.handlers import MessageHandler
 

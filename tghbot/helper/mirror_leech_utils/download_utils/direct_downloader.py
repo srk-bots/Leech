@@ -1,6 +1,6 @@
 from secrets import token_hex
 
-from bot import LOGGER, task_dict, task_dict_lock
+from tghbot import LOGGER, task_dict, task_dict_lock
 
 from tghbot.helper.ext_utils.task_manager import (
     check_running_tasks,

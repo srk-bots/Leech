@@ -8,7 +8,7 @@ from asyncio.subprocess import PIPE
 from concurrent.futures import ThreadPoolExecutor
 from functools import partial, wraps
 
-from bot import bot_loop, user_data
+from tghbot import tghbot_loop, user_data
 from httpx import AsyncClient
 
 from tghbot.core.config_manager import Config

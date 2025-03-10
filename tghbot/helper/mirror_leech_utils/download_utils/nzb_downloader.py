@@ -2,7 +2,7 @@ from asyncio import gather, sleep
 
 from aiofiles.os import path as aiopath
 from aiofiles.os import remove
-from bot import LOGGER, sabnzbd_client, task_dict, task_dict_lock
+from tghbot import LOGGER, sabnzbd_client, task_dict, task_dict_lock
 
 from sabnzbdapi.exception import LoginFailed, NotLoggedIn
 from tghbot.core.config_manager import Config

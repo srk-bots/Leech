@@ -1,4 +1,4 @@
-from bot import LOGGER, user_data
+from tghbot import LOGGER, user_data
 
 from tghbot.helper.ext_utils.bot_utils import (
     get_telegraph_list,

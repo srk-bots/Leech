@@ -6,7 +6,7 @@ from textwrap import indent
 from traceback import format_exc
 
 from aiofiles import open as aiopen
-from bot import LOGGER
+from tghbot import LOGGER
 
 from tghbot.core.aeon_client import TgClient
 from tghbot.helper.ext_utils.bot_utils import new_task, sync_to_async

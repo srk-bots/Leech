@@ -22,7 +22,7 @@ from aiofiles.os import (
     readlink as aioreadlink,
 )
 from aioshutil import rmtree as aiormtree
-from bot import DOWNLOAD_DIR, LOGGER
+from tghbot import DOWNLOAD_DIR, LOGGER
 from magic import Magic
 
 from tghbot.core.torrent_manager import TorrentManager

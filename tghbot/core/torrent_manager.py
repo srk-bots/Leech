@@ -6,7 +6,7 @@ from pathlib import Path
 from aioaria2 import Aria2WebsocketClient
 from aiohttp import ClientError
 from aioqbt.client import create_client
-from bot import LOGGER, aria2_options
+from tghbot import LOGGER, aria2_options
 from tenacity import (
     retry,
     retry_if_exception_type,

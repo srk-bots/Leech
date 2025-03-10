@@ -3,7 +3,7 @@ from time import time
 from uuid import uuid4
 
 from aiofiles import open as aiopen
-from bot import LOGGER, user_data
+from tghbot import LOGGER, user_data
 
 from tghbot.core.aeon_client import TgClient
 from tghbot.core.config_manager import Config

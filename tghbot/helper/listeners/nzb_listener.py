@@ -1,6 +1,6 @@
 from asyncio import gather, sleep
 
-from bot import LOGGER, intervals, nzb_jobs, nzb_listener_lock, sabnzbd_client
+from tghbot import LOGGER, intervals, nzb_jobs, nzb_listener_lock, sabnzbd_client
 
 from tghbot.helper.ext_utils.bot_utils import new_task
 from tghbot.helper.ext_utils.status_utils import get_task_by_gid

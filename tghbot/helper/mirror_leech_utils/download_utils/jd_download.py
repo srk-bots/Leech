@@ -7,7 +7,7 @@ from time import time
 from aiofiles import open as aiopen
 from aiofiles.os import path as aiopath
 from aiofiles.os import remove
-from bot import LOGGER, jd_downloads, jd_listener_lock, task_dict, task_dict_lock
+from tghbot import LOGGER, jd_downloads, jd_listener_lock, task_dict, task_dict_lock
 from pyrogram.filters import regex, user
 from pyrogram.handlers import CallbackQueryHandler
 

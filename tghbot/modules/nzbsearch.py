@@ -1,7 +1,7 @@
 import xml.etree.ElementTree as ET
 
 import aiohttp
-from bot import LOGGER
+from tghbot import LOGGER
 
 from tghbot.core.config_manager import Config
 from tghbot.helper.ext_utils.bot_utils import new_task

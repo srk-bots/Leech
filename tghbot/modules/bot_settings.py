@@ -13,7 +13,7 @@ from aiofiles import open as aiopen
 from aiofiles.os import path as aiopath
 from aiofiles.os import remove, rename
 from aioshutil import rmtree
-from bot import (
+from tghbot import (
     LOGGER,
     auth_chats,
     drives_ids,

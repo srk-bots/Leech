@@ -3,7 +3,7 @@ from json import loads
 from secrets import token_hex
 
 from aiofiles.os import remove
-from bot import LOGGER, bot_loop, task_dict, task_dict_lock
+from tghbot import LOGGER, bot_loop, task_dict, task_dict_lock
 
 from tghbot.helper.aeon_utils.access_check import error_check
 from tghbot.helper.ext_utils.bot_utils import (

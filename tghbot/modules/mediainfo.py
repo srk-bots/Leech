@@ -8,7 +8,7 @@ from aiofiles import open as aiopen
 from aiofiles.os import mkdir
 from aiofiles.os import path as aiopath
 from aiofiles.os import remove as aioremove
-from bot import LOGGER
+from tghbot import LOGGER
 
 from tghbot.core.aeon_client import TgClient
 from tghbot.helper.aeon_utils.access_check import token_check

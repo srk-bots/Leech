@@ -3,7 +3,7 @@ from random import choice
 from urllib.parse import quote
 
 from aiohttp import ClientSession
-from bot import shorteners_list
+from tghbot import shorteners_list
 from pyshorteners import Shortener
 
 

@@ -6,7 +6,7 @@ from re import IGNORECASE, compile
 from time import time
 
 from apscheduler.triggers.interval import IntervalTrigger
-from bot import LOGGER, rss_dict, scheduler
+from tghbot import LOGGER, rss_dict, scheduler
 from feedparser import parse as feed_parse
 from httpx import AsyncClient
 from pyrogram.filters import create

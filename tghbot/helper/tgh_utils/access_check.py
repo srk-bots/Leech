@@ -2,7 +2,7 @@ from re import IGNORECASE, escape, search
 from time import time
 from uuid import uuid4
 
-from bot import (
+from tghbot import (
     LOGGER,
     user_data,
 )

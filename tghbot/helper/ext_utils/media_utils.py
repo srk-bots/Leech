@@ -9,7 +9,7 @@ from time import time
 from aiofiles.os import makedirs, remove
 from aiofiles.os import path as aiopath
 from aioshutil import rmtree
-from bot import DOWNLOAD_DIR, LOGGER, cpu_no
+from tghbot import DOWNLOAD_DIR, LOGGER, cpu_no
 from PIL import Image
 
 from .bot_utils import cmd_exec, sync_to_async

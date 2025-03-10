@@ -5,7 +5,7 @@ from time import time
 from aiofiles.os import path as aiopath
 from aiofiles.os import remove
 from aiohttp.client_exceptions import ClientError
-from bot import (
+from tghbot import (
     LOGGER,
     intervals,
     qb_listener_lock,

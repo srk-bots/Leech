@@ -1,6 +1,6 @@
 from asyncio import Lock
 
-from bot import LOGGER
+from tghbot import LOGGER
 from pyrogram import Client, enums
 
 from .config_manager import Config

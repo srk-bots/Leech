@@ -1,6 +1,6 @@
 from time import time
 
-from bot import LOGGER
+from tghbot import LOGGER
 
 from tghbot.core.torrent_manager import TorrentManager, aria2_name
 from tghbot.helper.ext_utils.status_utils import (

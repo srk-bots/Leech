@@ -2,7 +2,7 @@ import contextlib
 
 from aiofiles.os import path as aiopath
 from aiofiles.os import remove
-from bot import LOGGER, sabnzbd_client, task_dict, task_dict_lock, user_data
+from tghbot import LOGGER, sabnzbd_client, task_dict, task_dict_lock, user_data
 
 from tghbot.core.config_manager import Config
 from tghbot.core.torrent_manager import TorrentManager

@@ -1,4 +1,4 @@
-from bot import LOGGER
+from tghbot import LOGGER
 from speedtest import Speedtest
 
 from tghbot.core.aeon_client import TgClient

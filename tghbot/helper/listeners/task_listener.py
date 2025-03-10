@@ -5,7 +5,7 @@ from html import escape
 from aiofiles.os import listdir, makedirs, remove
 from aiofiles.os import path as aiopath
 from aioshutil import move
-from bot import (
+from tghbot import (
     DOWNLOAD_DIR,
     LOGGER,
     intervals,

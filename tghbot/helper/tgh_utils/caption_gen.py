@@ -4,7 +4,7 @@ from contextlib import suppress
 from hashlib import md5
 
 from aiofiles.os import path as aiopath
-from bot import LOGGER
+from tghbot import LOGGER
 from langcodes import Language
 
 from tghbot.helper.ext_utils.bot_utils import cmd_exec

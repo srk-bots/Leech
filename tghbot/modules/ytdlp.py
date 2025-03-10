@@ -2,7 +2,7 @@ from asyncio import Event, create_task, wait_for
 from functools import partial
 from time import time
 
-from bot import DOWNLOAD_DIR, LOGGER, bot_loop, task_dict_lock
+from tghbot import DOWNLOAD_DIR, LOGGER, bot_loop, task_dict_lock
 from httpx import AsyncClient
 from pyrogram.filters import regex, user
 from pyrogram.handlers import CallbackQueryHandler

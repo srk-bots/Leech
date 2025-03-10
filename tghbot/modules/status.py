@@ -1,7 +1,7 @@
 from asyncio import gather, iscoroutinefunction
 from time import time
 
-from bot import (
+from tghbot import (
     DOWNLOAD_DIR,
     bot_start_time,
     intervals,

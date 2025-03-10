@@ -2,7 +2,7 @@ import json
 from asyncio import create_subprocess_exec
 from asyncio.subprocess import PIPE
 
-from bot import LOGGER, cpu_no
+from tghbot import LOGGER, cpu_no
 
 
 async def get_streams(file):

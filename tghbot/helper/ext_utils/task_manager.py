@@ -1,6 +1,6 @@
 from asyncio import Event
 
-from bot import (
+from tghbot import (
     LOGGER,
     non_queued_dl,
     non_queued_up,

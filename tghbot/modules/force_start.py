@@ -1,4 +1,4 @@
-from bot import (
+from tghbot import (
     queue_dict_lock,
     queued_dl,
     queued_up,

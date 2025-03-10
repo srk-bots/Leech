@@ -5,7 +5,7 @@ from aiofiles import open as aiopen
 from aiofiles.os import makedirs, remove
 from aiofiles.os import path as aiopath
 from aioshutil import rmtree
-from bot import (
+from tghbot import (
     LOGGER,
     aria2_options,
     auth_chats,

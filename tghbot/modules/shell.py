@@ -1,6 +1,6 @@
 from io import BytesIO
 
-from bot import LOGGER
+from tghbot import LOGGER
 
 from tghbot.helper.ext_utils.bot_utils import cmd_exec, new_task
 from tghbot.helper.telegram_helper.message_utils import send_file, send_message

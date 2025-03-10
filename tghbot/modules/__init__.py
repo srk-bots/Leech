@@ -31,7 +31,7 @@ from .search import initiate_search_tools, torrent_search, torrent_search_update
 from .services import aeon_callback, log, ping, start
 from .shell import run_shell
 from .speedtest import speedtest
-from .stats import bot_stats, get_packages_version
+from .stats import tghbot_stats, get_packages_version
 from .status import status_pages, task_status
 from .users_settings import (
     edit_user_settings,

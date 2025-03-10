@@ -25,7 +25,7 @@ ENV VIRTUAL_ENV=/usr/src/app/.venv
 
 # Install base Python packages
 RUN . $VIRTUAL_ENV/bin/activate && \
-    pip3 install --no-cache-dir \
+    pip3 install --break-system-packages --no-cache-dir \
     pymongo \
     motor \
     uvloop \
@@ -67,7 +67,6 @@ RUN ln -sf /usr/local/bin/xnox /usr/bin/xnox \
     && ln -sf $(which sabnzbdplus) /usr/bin/xnzb
 
 VOLUME /usr/src/app/downloads
-VOLUME /usr/src/app/config.py
 
 # Ensure virtual environment is always activated
 SHELL ["/bin/bash", "-c"]

@@ -10,7 +10,7 @@ from shlex import split
 from aiofiles.os import listdir, makedirs, remove
 from aiofiles.os import path as aiopath
 from aioshutil import move, rmtree
-from bot import (
+from tghbot import (
     DOWNLOAD_DIR,
     LOGGER,
     cpu_eater_lock,

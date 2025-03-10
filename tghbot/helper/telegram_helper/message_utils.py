@@ -2,7 +2,7 @@ from asyncio import gather, sleep
 from re import match as re_match
 from time import time
 
-from bot import (
+from tghbot import (
     LOGGER,
     intervals,
     status_dict,
