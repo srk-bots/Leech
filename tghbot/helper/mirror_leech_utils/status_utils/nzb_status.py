@@ -1,7 +1,6 @@
 from asyncio import gather
 
 from tghbot import LOGGER, nzb_jobs, nzb_listener_lock, sabnzbd_client
-
 from tghbot.helper.ext_utils.status_utils import (
     MirrorStatus,
     get_readable_file_size,

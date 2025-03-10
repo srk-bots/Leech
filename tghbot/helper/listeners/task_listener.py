@@ -5,6 +5,8 @@ from html import escape
 from aiofiles.os import listdir, makedirs, remove
 from aiofiles.os import path as aiopath
 from aioshutil import move
+from requests import utils as rutils
+
 from tghbot import (
     DOWNLOAD_DIR,
     LOGGER,
@@ -18,8 +20,6 @@ from tghbot import (
     task_dict,
     task_dict_lock,
 )
-from requests import utils as rutils
-
 from tghbot.core.config_manager import Config
 from tghbot.core.torrent_manager import TorrentManager
 from tghbot.helper.common import TaskConfig

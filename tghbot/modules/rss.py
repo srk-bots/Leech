@@ -6,12 +6,12 @@ from re import IGNORECASE, compile
 from time import time
 
 from apscheduler.triggers.interval import IntervalTrigger
-from tghbot import LOGGER, rss_dict, scheduler
 from feedparser import parse as feed_parse
 from httpx import AsyncClient
 from pyrogram.filters import create
 from pyrogram.handlers import MessageHandler
 
+from tghbot import LOGGER, rss_dict, scheduler
 from tghbot.core.config_manager import Config
 from tghbot.helper.ext_utils.bot_utils import arg_parser, get_size_bytes, new_task
 from tghbot.helper.ext_utils.db_handler import database

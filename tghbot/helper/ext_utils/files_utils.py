@@ -22,9 +22,9 @@ from aiofiles.os import (
     readlink as aioreadlink,
 )
 from aioshutil import rmtree as aiormtree
-from tghbot import DOWNLOAD_DIR, LOGGER
 from magic import Magic
 
+from tghbot import DOWNLOAD_DIR, LOGGER
 from tghbot.core.torrent_manager import TorrentManager
 
 from .bot_utils import cmd_exec, sync_to_async

@@ -3,8 +3,9 @@ from random import choice
 from urllib.parse import quote
 
 from aiohttp import ClientSession
-from tghbot import shorteners_list
 from pyshorteners import Shortener
+
+from tghbot import shorteners_list
 
 
 async def short(long_url):

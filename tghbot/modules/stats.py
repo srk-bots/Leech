@@ -3,7 +3,6 @@ from re import search as research
 from time import time
 
 from aiofiles.os import path as aiopath
-from tghbot import tghbot_start_time
 from psutil import (
     boot_time,
     cpu_count,

@@ -5,8 +5,8 @@ from aiofiles.os import path as aiopath
 from aiofiles.os import remove
 from aiohttp.client_exceptions import ClientError
 from aioqbt.api import AddFormBuilder
-from tghbot import LOGGER, qb_torrents, task_dict, task_dict_lock
 
+from tghbot import LOGGER, qb_torrents, task_dict, task_dict_lock
 from tghbot.core.config_manager import Config
 from tghbot.core.torrent_manager import TorrentManager
 from tghbot.helper.ext_utils.bot_utils import bt_selection_buttons
