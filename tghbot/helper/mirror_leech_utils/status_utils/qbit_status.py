@@ -1,7 +1,6 @@
 from asyncio import gather, sleep
 
 from tghbot import LOGGER, qb_listener_lock, qb_torrents
-
 from tghbot.core.torrent_manager import TorrentManager
 from tghbot.helper.ext_utils.status_utils import (
     MirrorStatus,

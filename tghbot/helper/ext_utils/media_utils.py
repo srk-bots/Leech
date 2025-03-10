@@ -9,8 +9,9 @@ from time import time
 from aiofiles.os import makedirs, remove
 from aiofiles.os import path as aiopath
 from aioshutil import rmtree
-from tghbot import DOWNLOAD_DIR, LOGGER, cpu_no
 from PIL import Image
+
+from tghbot import DOWNLOAD_DIR, LOGGER, cpu_no
 
 from .bot_utils import cmd_exec, sync_to_async
 from .files_utils import get_mime_type, is_archive, is_archive_split

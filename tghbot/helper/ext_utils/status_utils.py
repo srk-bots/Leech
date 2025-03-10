@@ -3,9 +3,15 @@ from asyncio import gather, iscoroutinefunction
 from html import escape
 from time import time
 
-from tghbot import DOWNLOAD_DIR, bot_start_time, status_dict, task_dict, task_dict_lock
 from psutil import cpu_percent, disk_usage, virtual_memory
 
+from tghbot import (
+    DOWNLOAD_DIR,
+    bot_start_time,
+    status_dict,
+    task_dict,
+    task_dict_lock,
+)
 from tghbot.helper.telegram_helper.button_build import ButtonMaker
 
 SIZE_UNITS = ["B", "KB", "MB", "GB", "TB", "PB"]

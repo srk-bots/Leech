@@ -1,8 +1,8 @@
 from asyncio import sleep
 
 from aiohttp.client_exceptions import ClientError
-from tghbot import LOGGER
 
+from tghbot import LOGGER
 from tghbot.core.torrent_manager import TorrentManager, aria2_name
 
 

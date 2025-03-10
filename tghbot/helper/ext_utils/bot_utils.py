@@ -8,9 +8,9 @@ from asyncio.subprocess import PIPE
 from concurrent.futures import ThreadPoolExecutor
 from functools import partial, wraps
 
-from tghbot import tghbot_loop, user_data
 from httpx import AsyncClient
 
+from tghbot import user_data
 from tghbot.core.config_manager import Config
 from tghbot.helper.telegram_helper.button_build import ButtonMaker
 
