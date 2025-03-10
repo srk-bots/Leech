@@ -5,7 +5,6 @@ from time import time
 from aiofiles.os import path as aiopath
 from aiofiles.os import remove
 from aiohttp.client_exceptions import ClientError
-
 from bot import (
     LOGGER,
     intervals,
@@ -14,13 +13,16 @@ from bot import (
     task_dict,
     task_dict_lock,
 )
+
 from tghbot.core.config_manager import Config
 from tghbot.core.torrent_manager import TorrentManager
 from tghbot.helper.ext_utils.bot_utils import new_task
 from tghbot.helper.ext_utils.files_utils import clean_unwanted
 from tghbot.helper.ext_utils.status_utils import get_readable_time, get_task_by_gid
 from tghbot.helper.ext_utils.task_manager import stop_duplicate_check
-from tghbot.helper.mirror_leech_utils.status_utils.qbit_status import QbittorrentStatus
+from tghbot.helper.mirror_leech_utils.status_utils.qbit_status import (
+    QbittorrentStatus,
+)
 from tghbot.helper.telegram_helper.message_utils import update_status_message
 
 

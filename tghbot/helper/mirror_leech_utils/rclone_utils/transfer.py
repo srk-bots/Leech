@@ -13,7 +13,10 @@ from aiofiles.os import path as aiopath
 
 from tghbot.core.config_manager import Config
 from tghbot.helper.ext_utils.bot_utils import cmd_exec, sync_to_async
-from tghbot.helper.ext_utils.files_utils import count_files_and_folders, get_mime_type
+from tghbot.helper.ext_utils.files_utils import (
+    count_files_and_folders,
+    get_mime_type,
+)
 
 LOGGER = getLogger(__name__)
 

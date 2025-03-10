@@ -6,8 +6,8 @@ from sys import executable
 from aiofiles import open as aiopen
 from aiofiles.os import path as aiopath
 from aiofiles.os import remove
-
 from bot import LOGGER, intervals, sabnzbd_client, scheduler
+
 from tghbot.core.aeon_client import TgClient
 from tghbot.core.config_manager import Config
 from tghbot.core.jdownloader_booter import jdownloader

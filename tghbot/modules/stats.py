@@ -3,6 +3,7 @@ from re import search as research
 from time import time
 
 from aiofiles.os import path as aiopath
+from bot import bot_start_time
 from psutil import (
     boot_time,
     cpu_count,
@@ -13,7 +14,6 @@ from psutil import (
     virtual_memory,
 )
 
-from bot import bot_start_time
 from tghbot.helper.ext_utils.bot_utils import cmd_exec, new_task
 from tghbot.helper.ext_utils.status_utils import (
     get_readable_file_size,

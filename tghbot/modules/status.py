@@ -1,8 +1,6 @@
 from asyncio import gather, iscoroutinefunction
 from time import time
 
-from psutil import cpu_percent, disk_usage, virtual_memory
-
 from bot import (
     DOWNLOAD_DIR,
     bot_start_time,
@@ -12,6 +10,8 @@ from bot import (
     task_dict,
     task_dict_lock,
 )
+from psutil import cpu_percent, disk_usage, virtual_memory
+
 from tghbot.core.jdownloader_booter import jdownloader
 from tghbot.core.torrent_manager import TorrentManager
 from tghbot.helper.ext_utils.bot_utils import new_task
