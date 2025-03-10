@@ -26,6 +26,7 @@ ENV VIRTUAL_ENV=/usr/src/app/.venv
 # Install base Python packages
 RUN . $VIRTUAL_ENV/bin/activate && \
     pip3 install --break-system-packages --no-cache-dir \
+    setuptools \
     pymongo \
     motor \
     uvloop \
@@ -39,6 +40,9 @@ RUN . $VIRTUAL_ENV/bin/activate && \
 
 # Copy the rest of the application
 COPY . .
+
+# Install the local package in development mode
+RUN . $VIRTUAL_ENV/bin/activate && pip install --break-system-packages -e .
 
 # Ensure bot directory is renamed to tghbot if not already
 RUN if [ -d "bot" ] && [ ! -d "tghbot" ]; then mv bot tghbot; fi

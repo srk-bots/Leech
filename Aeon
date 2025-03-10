@@ -1,106 +1,91 @@
 #!/bin/bash
 
-# Update and upgrade system packages
-update_system() {
-    apt-get update && apt-get upgrade -y
-}
+# Set variables for optimization
+export DEBIAN_FRONTEND=noninteractive
+NPROC=$(nproc --all)
 
-# Install Python 3.12 and essential dependencies
-install_python() {
-    apt-get install -y software-properties-common
+# Update and install all packages at once to avoid multiple apt-get update calls
+install_system_packages() {
+    apt-get update && apt-get upgrade -y
+    apt-get install -y --no-install-recommends \
+        software-properties-common apt-utils aria2 curl zstd git libmagic-dev \
+        locales mediainfo neofetch p7zip-full p7zip-rar tzdata wget autoconf automake \
+        build-essential cmake g++ gcc gettext gpg-agent intltool libtool make unzip zip \
+        libcurl4-openssl-dev libsodium-dev libssl-dev libcrypto++-dev libc-ares-dev \
+        libsqlite3-dev libfreeimage-dev swig libboost-all-dev libpthread-stubs0-dev zlib1g-dev
+
+    # Add Python PPA and install Python
     add-apt-repository -y ppa:deadsnakes/ppa
     apt-get update
     apt-get install -y python3.12 python3.12-dev python3.12-venv python3-pip libpython3.12 libpython3.12-dev
 }
 
-# Install additional system dependencies
-install_dependencies() {
-    apt-get install -y --no-install-recommends \
-        apt-utils aria2 curl zstd git libmagic-dev \
-        locales mediainfo neofetch p7zip-full \
-        p7zip-rar tzdata wget autoconf automake \
-        build-essential cmake g++ gcc gettext \
-        gpg-agent intltool libtool make unzip zip \
-        libcurl4-openssl-dev libsodium-dev libssl-dev \
-        libcrypto++-dev libc-ares-dev libsqlite3-dev \
-        libfreeimage-dev swig libboost-all-dev \
-        libpthread-stubs0-dev zlib1g-dev
-}
-
-# Download and install qbittorrent-nox based on system architecture
-install_qbittorrent() {
+# Parallel downloads function
+parallel_downloads() {
+    mkdir -p /usr/local/bin /Temp
     ARCH=$(uname -m)
-    mkdir -p /usr/local/bin
 
-    case "$ARCH" in
-        x86_64)
-            wget -qO /usr/local/bin/xnox https://github.com/userdocs/qbittorrent-nox-static/releases/latest/download/x86_64-qbittorrent-nox
-            ;;
-        aarch64)
-            wget -qO /usr/local/bin/xnox https://github.com/userdocs/qbittorrent-nox-static/releases/latest/download/aarch64-qbittorrent-nox
-            ;;
-        *)
-            echo "Unsupported architecture for qbittorrent-nox: $ARCH"
-            exit 1
-            ;;
-    esac
+    # Start downloads in parallel
+    if [ "$ARCH" = "x86_64" ]; then
+        aria2c --download-result=hide --console-log-level=warn -d /Temp -o ffmpeg.tar.xz https://github.com/5hojib/FFmpeg-Builds/releases/download/latest/ffmpeg-n7.1-latest-linux64-gpl-7.1.tar.xz &
+        aria2c --download-result=hide --console-log-level=warn -o /usr/local/bin/xnox https://github.com/userdocs/qbittorrent-nox-static/releases/latest/download/x86_64-qbittorrent-nox &
+    elif [ "$ARCH" = "aarch64" ]; then
+        aria2c --download-result=hide --console-log-level=warn -d /Temp -o ffmpeg.tar.xz https://github.com/5hojib/FFmpeg-Builds/releases/download/latest/ffmpeg-n7.1-latest-linuxarm64-gpl-7.1.tar.xz &
+        aria2c --download-result=hide --console-log-level=warn -o /usr/local/bin/xnox https://github.com/userdocs/qbittorrent-nox-static/releases/latest/download/aarch64-qbittorrent-nox &
+    else
+        echo "Unsupported architecture: $ARCH"
+        exit 1
+    fi
 
+    # Install rclone in parallel
+    curl https://rclone.org/install.sh | bash &
+
+    # Wait for all background jobs to finish
+    wait
+    
     chmod 700 /usr/local/bin/xnox
 }
 
-# Install FFmpeg based on system architecture
-install_ffmpeg() {
-    ARCH=$(uname -m)
-    mkdir -p /Temp
+# Process FFmpeg
+setup_ffmpeg() {
     cd /Temp
-
-    case "$ARCH" in
-        x86_64)
-            wget https://github.com/5hojib/FFmpeg-Builds/releases/download/latest/ffmpeg-n7.1-latest-linux64-gpl-7.1.tar.xz
-            ;;
-        aarch64)
-            wget https://github.com/5hojib/FFmpeg-Builds/releases/download/latest/ffmpeg-n7.1-latest-linuxarm64-gpl-7.1.tar.xz
-            ;;
-        *)
-            echo "Unsupported architecture for FFmpeg: $ARCH"
-            exit 1
-            ;;
-    esac
-
-    7z x ffmpeg-n7.1-latest-linux*-gpl-7.1.tar.xz
-    7z x ffmpeg-n7.1-latest-linux*-gpl-7.1.tar
+    7z x ffmpeg.tar.xz -y
+    7z x ffmpeg-n7.1-latest-linux*-gpl-7.1.tar -y
     mv /Temp/ffmpeg-n7.1-latest-linux*/bin/ffmpeg /usr/bin/xtra
     mv /Temp/ffmpeg-n7.1-latest-linux*/bin/ffprobe /usr/bin/ffprobe
     mv /Temp/ffmpeg-n7.1-latest-linux*/bin/ffplay /usr/bin/ffplay
     chmod +x /usr/bin/xtra /usr/bin/ffprobe /usr/bin/ffplay
 }
 
-# Install rclone and rename binaries
-install_rclone() {
-    curl https://rclone.org/install.sh | bash
+# Move rclone binaries
+setup_rclone() {
     mv /usr/bin/rclone /usr/bin/xone
     mv /usr/bin/aria2c /usr/bin/xria
 }
 
-# Install Python packages
-install_python_packages() {
+# Install Python packages - can be running in parallel with other tasks
+setup_python() {
     pip3 install --break-system-packages --no-cache-dir -U setuptools uv
+    if [ -f "requirements.txt" ]; then
+        pip3 install --break-system-packages --no-cache-dir -r requirements.txt
+    fi
 }
 
-# Install Python packages from requirements.txt
-install_requirements() {
-    pip3 install --break-system-packages --no-cache-dir -r requirements.txt
-}
-
-# Clone and build MEGA SDK
+# Clone and build MEGA SDK with optimized flags
 build_mega_sdk() {
     git clone https://github.com/meganz/sdk.git --depth=1 -b v4.8.0 /home/sdk
     cd /home/sdk
     rm -rf .git
-    autoupdate -fIv && ./autogen.sh
-    ./configure --disable-silent-rules --enable-python --with-sodium --disable-examples
-    make -j$(nproc --all)
-
+    autoupdate -fIv
+    ./autogen.sh
+    
+    # Optimized build configuration
+    ./configure --disable-silent-rules --enable-python --with-sodium --disable-examples \
+                --enable-shared --disable-static --with-zlib --disable-examples
+    
+    # Use all available cores with optimized compiler flags
+    make -j$NPROC CXXFLAGS="-O3 -pipe -fomit-frame-pointer -march=native"
+    
     cd bindings/python/
     python3.12 setup.py bdist_wheel
     pip3 install --break-system-packages --no-cache-dir dist/megasdk-4.8.0-*.whl
@@ -119,17 +104,25 @@ cleanup() {
     rm -rf /Temp Aeon Dockerfile
 }
 
-# Main script execution
+# Main script execution with parallelism
 main() {
-    update_system
-    install_python
-    install_dependencies
-    install_qbittorrent
-    install_ffmpeg
-    install_rclone
-    install_python_packages
+    install_system_packages
+    
+    # Run several tasks in parallel
+    parallel_downloads &
+    setup_python &
+    
+    # Wait for downloads to complete
+    wait
+    
+    # Process downloaded files
+    setup_ffmpeg
+    setup_rclone
+    
+    # Build MEGA SDK
     build_mega_sdk
-    install_requirements
+    
+    # Final cleanup
     cleanup
 }
 
