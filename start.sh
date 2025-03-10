@@ -1,3 +1,3 @@
-source .venv/bin/activate
+#!/bin/bash
 python3 update.py
-python3 -m bot
+python3 -m tghbot
