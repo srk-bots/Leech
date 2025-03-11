@@ -2,8 +2,11 @@ FROM ubuntu:24.10
 
 WORKDIR /usr/src/app
 ENV DEBIAN_FRONTEND=noninteractive
+# Initialize PYTHONPATH first, then append to it
+ENV PYTHONPATH="/usr/src/app"
 ENV PATH="/usr/src/app/.venv/bin:$PATH"
-ENV PYTHONPATH="/usr/src/app:$PYTHONPATH"
+# Disable git reset to preserve files
+ENV ENABLE_GIT_RESET="false"
 
 # Install system dependencies
 RUN apt-get update && apt-get install -y \
@@ -45,11 +48,35 @@ COPY . .
 RUN . $VIRTUAL_ENV/bin/activate && pip install --break-system-packages -e .
 
 # Ensure bot directory is renamed to tghbot if not already
-RUN if [ -d "bot" ] && [ ! -d "tghbot" ]; then mv bot tghbot; fi
-RUN if [ -d "tghbot/helper/aeon_utils" ]; then mv tghbot/helper/aeon_utils tghbot/helper/tgh_utils; fi
+RUN if [ -d "bot" ] && [ ! -d "tghbot" ]; then \
+    echo "Renaming bot to tghbot directory" && \
+    mv bot tghbot && \
+    # Create a symlink for backward compatibility
+    ln -sf /usr/src/app/tghbot /usr/src/app/bot; \
+fi
 
-# Update Python imports
-RUN find . -type f -name "*.py" -exec sed -i 's/from bot\./from tghbot./g; s/import bot\./import tghbot./g; s/from aeon_utils/from tgh_utils/g' {} +
+# Ensure helper utils are correctly named
+RUN if [ -d "tghbot/helper/aeon_utils" ]; then \
+    echo "Renaming aeon_utils to tgh_utils" && \
+    mv tghbot/helper/aeon_utils tghbot/helper/tgh_utils; \
+fi
+
+# Update Python imports (with more thorough search patterns)
+RUN find . -type f -name "*.py" -exec sed -i 's/from bot\./from tghbot./g; s/import bot\./import tghbot./g; s/ bot\./ tghbot./g; s/from aeon_utils/from tgh_utils/g' {} +
+
+# Verify the correct module structure
+RUN if [ -d "tghbot" ]; then \
+    echo "tghbot directory exists" && \
+    ls -la tghbot && \
+    echo "Checking for __main__.py" && \
+    if [ -f "tghbot/__main__.py" ]; then \
+        echo "tghbot/__main__.py exists"; \
+    else \
+        echo "tghbot/__main__.py does not exist!"; \
+    fi; \
+else \
+    echo "tghbot directory does not exist!"; \
+fi
 
 RUN chmod +x start.sh
 
