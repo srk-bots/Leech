@@ -5,7 +5,7 @@ from secrets import token_hex
 from aiofiles.os import remove
 
 from tghbot import LOGGER, bot_loop, task_dict, task_dict_lock
-from tghbot.helper.aeon_utils.access_check import error_check
+from tghbot.helper.tgh_utils.access_check import error_check
 from tghbot.helper.ext_utils.bot_utils import (
     COMMAND_USAGE,
     arg_parser,

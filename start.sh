@@ -74,10 +74,41 @@ if [ -f "run_bot.py" ]; then
     echo "Made run_bot.py executable"
 fi
 
-# Start the bot using the dedicated entry script
+# Start the bot using the dedicated entry script with timeout
 echo "Starting bot using run_bot.py..."
 if [ -f "run_bot.py" ]; then
-    if ! python3 run_bot.py 2> bot_error.log; then
+    # Create a timeout function to prevent indefinite hanging
+    (
+        echo "Bot startup timeout handler activated - will terminate if startup takes too long"
+        sleep 60  # Wait for 60 seconds
+        if ps -p $$ > /dev/null; then
+            echo "ERROR: Bot startup timed out after 60 seconds! Terminating process..."
+            echo "This may indicate:"
+            echo "- Network connectivity issues with Telegram API"
+            echo "- Incorrect API credentials or bot token"
+            echo "- A problem with JDownloader, Torrent, or other service initialization"
+            echo "- Missing dependencies or configuration"
+            echo "Check bot_error.log for more details"
+            
+            # Collect and show debugging information
+            echo "--- PROCESS STATUS ---"
+            ps aux | grep python
+            echo "--- NETWORK CONNECTIONS ---"
+            netstat -tuln || echo "netstat not available"
+            echo "--- BOT ERROR LOG ---"
+            cat bot_error.log
+            
+            # Kill the python process but don't exit the container
+            pkill -f "python.*run_bot.py" || true
+            echo "Process terminated. Container will remain running for debugging."
+        fi
+    ) &
+    TIMEOUT_PID=$!
+    
+    # Run the bot with tee to capture output in real time
+    if ! python3 run_bot.py 2>&1 | tee bot_error.log; then
+        # Kill the timeout watcher as we have an explicit error
+        kill $TIMEOUT_PID > /dev/null 2>&1 || true
         echo "Error running bot with run_bot.py:"
         cat bot_error.log
         echo "Trying alternative methods..."

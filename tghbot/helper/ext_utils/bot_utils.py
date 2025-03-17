@@ -10,7 +10,7 @@ from functools import partial, wraps
 
 from httpx import AsyncClient
 
-from tghbot import user_data
+from tghbot import user_data, bot_loop
 from tghbot.core.config_manager import Config
 from tghbot.helper.telegram_helper.button_build import ButtonMaker
 

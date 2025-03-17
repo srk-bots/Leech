@@ -42,12 +42,20 @@ class TorrentManager:
     @classmethod
     async def initiate(cls):
         cls.aria2 = await Aria2WebsocketClient.new("http://localhost:6800/jsonrpc")
-        cls.qbittorrent = await create_client("http://localhost:8090/api/v2/")
-        cls.qbittorrent = wrap_with_retry(cls.qbittorrent)
+        try:
+            cls.qbittorrent = await create_client("http://localhost:8090/api/v2/")
+            cls.qbittorrent = wrap_with_retry(cls.qbittorrent)
+        except Exception as e:
+            LOGGER.warning(f"Failed to connect to qBittorrent: {e}")
+            LOGGER.warning("qBittorrent functionality will be limited")
+            cls.qbittorrent = None
 
     @classmethod
     async def close_all(cls):
-        await gather(cls.aria2.close(), cls.qbittorrent.close())
+        tasks = [cls.aria2.close()]
+        if cls.qbittorrent is not None:
+            tasks.append(cls.qbittorrent.close())
+        await gather(*tasks)
 
     @classmethod
     async def aria2_remove(cls, download):
@@ -60,10 +68,10 @@ class TorrentManager:
     @classmethod
     async def remove_all(cls):
         await cls.pause_all()
-        await gather(
-            cls.qbittorrent.torrents.delete("all", True),
-            cls.aria2.purgeDownloadResult(),
-        )
+        tasks = [cls.aria2.purgeDownloadResult()]
+        if cls.qbittorrent is not None:
+            tasks.append(cls.qbittorrent.torrents.delete("all", True))
+        await gather(*tasks)
         downloads = []
         results = await gather(
             cls.aria2.tellActive(),
@@ -80,17 +88,26 @@ class TorrentManager:
 
     @classmethod
     async def overall_speed(cls):
-        s1, s2 = await gather(
-            cls.qbittorrent.transfer.info(),
-            cls.aria2.getGlobalStat(),
-        )
-        download_speed = s1.dl_info_speed + int(s2.get("downloadSpeed", "0"))
-        upload_speed = s1.up_info_speed + int(s2.get("uploadSpeed", "0"))
-        return download_speed, upload_speed
+        if cls.qbittorrent is not None:
+            s1, s2 = await gather(
+                cls.qbittorrent.transfer.info(),
+                cls.aria2.getGlobalStat(),
+            )
+            download_speed = s1.dl_info_speed + int(s2.get("downloadSpeed", "0"))
+            upload_speed = s1.up_info_speed + int(s2.get("uploadSpeed", "0"))
+            return download_speed, upload_speed
+        else:
+            s2 = await cls.aria2.getGlobalStat()
+            download_speed = int(s2.get("downloadSpeed", "0"))
+            upload_speed = int(s2.get("uploadSpeed", "0"))
+            return download_speed, upload_speed
 
     @classmethod
     async def pause_all(cls):
-        await gather(cls.aria2.forcePauseAll(), cls.qbittorrent.torrents.stop("all"))
+        tasks = [cls.aria2.forcePauseAll()]
+        if cls.qbittorrent is not None:
+            tasks.append(cls.qbittorrent.torrents.stop("all"))
+        await gather(*tasks)
 
     @classmethod
     async def change_aria2_option(cls, key, value):

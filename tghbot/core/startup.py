@@ -30,6 +30,10 @@ from .torrent_manager import TorrentManager
 
 
 async def update_qb_options():
+    if TorrentManager.qbittorrent is None:
+        LOGGER.warning("qBittorrent not available, skipping options update")
+        return
+        
     if not qbit_options:
         opt = await TorrentManager.qbittorrent.app.preferences()
         qbit_options.update(opt)

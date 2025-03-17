@@ -20,7 +20,12 @@ class DbManager:
     async def connect(self):
         try:
             if self._conn is not None:
-                await self._conn.close()
+                try:
+                    close_method = getattr(self._conn, "close", None)
+                    if close_method and callable(close_method):
+                        await self._conn.close()
+                except Exception as e:
+                    LOGGER.error(f"Error closing existing connection: {e}")
             self._conn = AsyncIOMotorClient(
                 Config.DATABASE_URL,
                 server_api=ServerApi("1"),
@@ -36,7 +41,10 @@ class DbManager:
     async def disconnect(self):
         self._return = True
         if self._conn is not None:
-            await self._conn.close()
+            try:
+                await self._conn.close()
+            except Exception as e:
+                LOGGER.error(f"Error disconnecting from DB: {e}")
         self._conn = None
 
     async def update_deploy_config(self):

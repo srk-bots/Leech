@@ -32,10 +32,17 @@ sabnzbd_client = SabnzbdClient(
 async def lifespan(_: FastAPI):
     global aria2, qbittorrent
     aria2 = Aria2HttpClient("http://localhost:6800/jsonrpc")
-    qbittorrent = await create_client("http://localhost:8090/api/v2/")
+    try:
+        qbittorrent = await create_client("http://localhost:8090/api/v2/")
+        LOGGER.info("Connected to qBittorrent successfully")
+    except Exception as e:
+        LOGGER.warning(f"Failed to connect to qBittorrent: {e}")
+        LOGGER.warning("qBittorrent functionality will be limited")
+        qbittorrent = None
     yield
     await aria2.close()
-    await qbittorrent.close()
+    if qbittorrent is not None:
+        await qbittorrent.close()
 
 
 app = FastAPI(lifespan=lifespan)
@@ -53,6 +60,10 @@ LOGGER = getLogger(__name__)
 
 
 async def re_verify(paused, resumed, hash_id):
+    if qbittorrent is None:
+        LOGGER.warning("qBittorrent not available, skipping verification")
+        return False
+        
     k = 0
     while True:
         res = await qbittorrent.torrents.files(hash_id)
@@ -185,8 +196,16 @@ async def handle_torrent(request: Request):
                 res = await sabnzbd_client.get_files(gid)
                 content = make_tree(res, "sabnzbd")
             elif len(gid) > 20:
-                res = await qbittorrent.torrents.files(gid)
-                content = make_tree(res, "qbittorrent")
+                if qbittorrent is None:
+                    content = {
+                        "files": [],
+                        "engine": "",
+                        "error": "qBittorrent unavailable",
+                        "message": "qBittorrent service is not available",
+                    }
+                else:
+                    res = await qbittorrent.torrents.files(gid)
+                    content = make_tree(res, "qbittorrent")
             else:
                 res = await aria2.getFiles(gid)
                 op = await aria2.getOption(gid)
@@ -204,6 +223,10 @@ async def handle_torrent(request: Request):
 
 
 async def handle_rename(gid, data):
+    if qbittorrent is None:
+        LOGGER.warning("qBittorrent not available, cannot rename files")
+        return
+        
     try:
         _type = data["type"]
         del data["type"]
@@ -221,6 +244,10 @@ async def set_sabnzbd(gid, unselected_files):
 
 
 async def set_qbittorrent(gid, selected_files, unselected_files):
+    if qbittorrent is None:
+        LOGGER.warning("qBittorrent not available, cannot set file priorities")
+        return
+        
     if unselected_files:
         try:
             await qbittorrent.torrents.file_prio(

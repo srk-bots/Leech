@@ -33,6 +33,10 @@ SEARCH_PLUGINS = [
 
 
 async def initiate_search_tools():
+    if TorrentManager.qbittorrent is None:
+        LOGGER.warning("qBittorrent is not available, skipping search plugins initialization")
+        return
+    
     qb_plugins = await TorrentManager.qbittorrent.search.plugins()
     if qb_plugins:
         names = [plugin.name for plugin in qb_plugins]
@@ -42,6 +46,13 @@ async def initiate_search_tools():
 
 
 async def search(key, site, message):
+    if TorrentManager.qbittorrent is None:
+        await edit_message(
+            message,
+            "qBittorrent is not available. Search functionality is disabled.",
+        )
+        return
+
     LOGGER.info(f"PLUGINS Searching: {key} from {site}")
     search = await TorrentManager.qbittorrent.search.start(
         pattern=key,
@@ -123,6 +134,11 @@ async def get_result(search_results, key, message):
 
 async def plugin_buttons(user_id):
     buttons = ButtonMaker()
+    if TorrentManager.qbittorrent is None:
+        buttons.data_button("qBittorrent Not Available", f"torser {user_id} cancel")
+        buttons.data_button("Cancel", f"torser {user_id} cancel")
+        return buttons.build_menu(1)
+        
     if not PLUGINS:
         pl = await TorrentManager.qbittorrent.search.plugins()
         for i in pl:
@@ -145,7 +161,10 @@ async def torrent_search(_, message):
         await send_message(message, "Send a search key along with command")
     else:
         button = await plugin_buttons(user_id)
-        await send_message(message, "Choose site to search | Plugins:", button)
+        if TorrentManager.qbittorrent is None:
+            await send_message(message, "qBittorrent is not available. Search functionality is disabled.", button)
+        else:
+            await send_message(message, "Choose site to search | Plugins:", button)
 
 
 @new_task
