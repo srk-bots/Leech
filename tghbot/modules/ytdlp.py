@@ -9,7 +9,6 @@ from yt_dlp import YoutubeDL
 
 from tghbot import DOWNLOAD_DIR, LOGGER, bot_loop, task_dict_lock
 from tghbot.core.config_manager import Config
-from tghbot.helper.tgh_utils.access_check import error_check
 from tghbot.helper.ext_utils.bot_utils import (
     COMMAND_USAGE,
     arg_parser,
@@ -33,6 +32,7 @@ from tghbot.helper.telegram_helper.message_utils import (
     edit_message,
     send_message,
 )
+from tghbot.helper.tgh_utils.access_check import error_check
 
 
 @new_task

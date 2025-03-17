@@ -26,7 +26,7 @@ def find_module_dir():
     potential_modules = ["tghbot", "bot"]
     for module in potential_modules:
         if os.path.isdir(module) and os.path.exists(
-            os.path.join(module, "__main__.py")
+            os.path.join(module, "__main__.py"),
         ):
             logger.info(f"Found module directory: {module}")
             return module
@@ -87,7 +87,7 @@ def run_bot():
             init_file = os.path.join(root, d, "__init__.py")
             if not os.path.exists(init_file):
                 logger.info(
-                    f"Creating missing __init__.py in {os.path.join(root, d)}"
+                    f"Creating missing __init__.py in {os.path.join(root, d)}",
                 )
                 with open(init_file, "w") as f:
                     pass  # Create empty file
@@ -119,10 +119,10 @@ def run_bot():
         logger.info("Running post-main initialization code")
         exec(f"from {module_dir}.core.handlers import add_handlers; add_handlers()")
         exec(
-            f"from {module_dir}.helper.ext_utils.bot_utils import create_help_buttons; create_help_buttons()"
+            f"from {module_dir}.helper.ext_utils.bot_utils import create_help_buttons; create_help_buttons()",
         )
         exec(
-            f"from {module_dir}.helper.listeners.aria2_listener import add_aria2_callbacks; add_aria2_callbacks()"
+            f"from {module_dir}.helper.listeners.aria2_listener import add_aria2_callbacks; add_aria2_callbacks()",
         )
 
         # Run the event loop forever as the original code does

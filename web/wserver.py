@@ -63,7 +63,7 @@ async def re_verify(paused, resumed, hash_id):
     if qbittorrent is None:
         LOGGER.warning("qBittorrent not available, skipping verification")
         return False
-        
+
     k = 0
     while True:
         res = await qbittorrent.torrents.files(hash_id)
@@ -226,7 +226,7 @@ async def handle_rename(gid, data):
     if qbittorrent is None:
         LOGGER.warning("qBittorrent not available, cannot rename files")
         return
-        
+
     try:
         _type = data["type"]
         del data["type"]
@@ -247,7 +247,7 @@ async def set_qbittorrent(gid, selected_files, unselected_files):
     if qbittorrent is None:
         LOGGER.warning("qBittorrent not available, cannot set file priorities")
         return
-        
+
     if unselected_files:
         try:
             await qbittorrent.torrents.file_prio(

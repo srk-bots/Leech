@@ -11,7 +11,6 @@ from aiofiles.os import remove as aioremove
 
 from tghbot import LOGGER
 from tghbot.core.aeon_client import TgClient
-from tghbot.helper.tgh_utils.access_check import token_check
 from tghbot.helper.ext_utils.bot_utils import cmd_exec
 from tghbot.helper.ext_utils.telegraph_helper import telegraph
 from tghbot.helper.telegram_helper.bot_commands import BotCommands
@@ -22,6 +21,7 @@ from tghbot.helper.telegram_helper.message_utils import (
     edit_message,
     send_message,
 )
+from tghbot.helper.tgh_utils.access_check import token_check
 
 section_dict = {"General", "Video", "Audio", "Text", "Image"}
 

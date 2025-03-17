@@ -7,7 +7,6 @@ from aiofiles.os import path as aiopath
 
 from tghbot import DOWNLOAD_DIR, LOGGER, bot_loop, task_dict_lock
 from tghbot.core.aeon_client import TgClient
-from tghbot.helper.tgh_utils.access_check import error_check
 from tghbot.helper.ext_utils.bot_utils import (
     COMMAND_USAGE,
     arg_parser,
@@ -55,6 +54,7 @@ from tghbot.helper.telegram_helper.message_utils import (
     get_tg_link_message,
     send_message,
 )
+from tghbot.helper.tgh_utils.access_check import error_check
 
 
 class Mirror(TaskListener):

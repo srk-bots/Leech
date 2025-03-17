@@ -96,11 +96,10 @@ class TorrentManager:
             download_speed = s1.dl_info_speed + int(s2.get("downloadSpeed", "0"))
             upload_speed = s1.up_info_speed + int(s2.get("uploadSpeed", "0"))
             return download_speed, upload_speed
-        else:
-            s2 = await cls.aria2.getGlobalStat()
-            download_speed = int(s2.get("downloadSpeed", "0"))
-            upload_speed = int(s2.get("uploadSpeed", "0"))
-            return download_speed, upload_speed
+        s2 = await cls.aria2.getGlobalStat()
+        download_speed = int(s2.get("downloadSpeed", "0"))
+        upload_speed = int(s2.get("uploadSpeed", "0"))
+        return download_speed, upload_speed
 
     @classmethod
     async def pause_all(cls):

@@ -33,7 +33,6 @@ from tenacity import (
 
 from tghbot.core.aeon_client import TgClient
 from tghbot.core.config_manager import Config
-from tghbot.helper.tgh_utils.caption_gen import generate_caption
 from tghbot.helper.ext_utils.bot_utils import sync_to_async
 from tghbot.helper.ext_utils.files_utils import (
     get_base_name,
@@ -47,6 +46,7 @@ from tghbot.helper.ext_utils.media_utils import (
     get_video_thumbnail,
 )
 from tghbot.helper.telegram_helper.message_utils import delete_message
+from tghbot.helper.tgh_utils.caption_gen import generate_caption
 
 LOGGER = getLogger(__name__)
 
