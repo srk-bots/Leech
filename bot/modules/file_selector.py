@@ -13,6 +13,7 @@ from bot.helper.telegram_helper.message_utils import (
     send_message,
     send_status_message,
 )
+from asyncio import iscoroutinefunction
 
 
 @new_task
@@ -47,6 +48,9 @@ async def select(_, message):
         user_id not in user_data or not user_data[user_id].get("SUDO")
     ):
         await send_message(message, "This task is not for you!")
+        return
+    if not iscoroutinefunction(task.status):
+        await send_message(message, "The task have finshed the download stage!")
         return
     if await task.status() not in [
         MirrorStatus.STATUS_DOWNLOAD,
