@@ -5,6 +5,7 @@ from time import time
 from aiofiles.os import path as aiopath
 from aiofiles.os import remove
 from aiohttp.client_exceptions import ClientError
+from aioqbt.exc import AQError
 
 from bot import (
     LOGGER,
@@ -22,7 +23,7 @@ from bot.helper.ext_utils.status_utils import get_readable_time, get_task_by_gid
 from bot.helper.ext_utils.task_manager import stop_duplicate_check
 from bot.helper.mirror_leech_utils.status_utils.qbit_status import QbittorrentStatus
 from bot.helper.telegram_helper.message_utils import update_status_message
-from aioqbt.exc import AQError
+
 
 async def _remove_torrent(hash_, tag):
     await TorrentManager.qbittorrent.torrents.delete([hash_], True)
@@ -48,7 +49,7 @@ async def _on_seed_finish(tor):
     ext_hash = tor.hash
     LOGGER.info(f"Cancelling Seed: {tor.name}")
     if task := await get_task_by_gid(ext_hash[:12]):
-        msg = f"Seeding stopped with Ratio: {round(tor.ratio, 3)} and Time: {get_readable_time(int(tor.seeding_time.total_seconds() or "0"))}"
+        msg = f"Seeding stopped with Ratio: {round(tor.ratio, 3)} and Time: {get_readable_time(int(tor.seeding_time.total_seconds() or '0'))}"
         await task.listener.on_upload_error(msg)
     await _remove_torrent(ext_hash, tor.tags[0])
 
@@ -178,10 +179,10 @@ async def _qb_listener():
                         and not qb_torrents[tag]["uploaded"]
                         and state
                         in [
-                             "queuedUP",
-                             "stalledUP",
-                             "uploading",
-                             "forcedUP",
+                            "queuedUP",
+                            "stalledUP",
+                            "uploading",
+                            "forcedUP",
                         ]
                     ):
                         qb_torrents[tag]["uploaded"] = True

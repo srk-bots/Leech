@@ -549,7 +549,7 @@ def pixeldrain(url):
     link_type = url.split("/")[-2]
     if link_type in ["u", "l", "d", "t"]:
         return f"https://pd.cybar.xyz/{file_id}"
- 
+
     raise DirectDownloadLinkException("ERROR: Invalid Pixeldrain URL type.")
 
 

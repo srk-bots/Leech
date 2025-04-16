@@ -239,14 +239,10 @@ async def get_readable_message(sid, is_user, page_no=1, status="All", page_step=
             msg += f"\n<b>Speed:</b> {task.speed()}"
             msg += f"\n<b>Estimated:</b> {task.eta()}"
             if (
-                tstatus == MirrorStatus.STATUS_DOWNLOAD
-                and task.listener.is_torrent
-                or task.listener.is_qbit
-            ):
-                try:
+                tstatus == MirrorStatus.STATUS_DOWNLOAD and task.listener.is_torrent
+            ) or task.listener.is_qbit:
+                with contextlib.suppress(Exception):
                     msg += f"\n<b>Seeders:</b> {task.seeders_num()} | <b>Leechers:</b> {task.leechers_num()}"
-                except:
-                    pass
         elif tstatus == MirrorStatus.STATUS_SEED:
             msg += f"\n<b>Size: </b>{task.size()}"
             msg += f"\n<b>Speed: </b>{task.seed_speed()}"

@@ -9,10 +9,11 @@ from logging import INFO, WARNING, FileHandler, StreamHandler, basicConfig, getL
 from aioaria2 import Aria2HttpClient
 from aiohttp.client_exceptions import ClientError
 from aioqbt.client import create_client
+from aioqbt.exc import AQError
 from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
-from aioqbt.exc import AQError
+
 from sabnzbdapi import SabnzbdClient
 from web.nodes import extract_file_ids, make_tree
 

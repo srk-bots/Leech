@@ -1,4 +1,5 @@
 import contextlib
+from asyncio import iscoroutinefunction
 
 from aiofiles.os import path as aiopath
 from aiofiles.os import remove
@@ -13,7 +14,6 @@ from bot.helper.telegram_helper.message_utils import (
     send_message,
     send_status_message,
 )
-from asyncio import iscoroutinefunction
 
 
 @new_task
