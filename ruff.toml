@@ -6,6 +6,10 @@ target-version = "py313"
 [lint.mccabe]
 max-complexity = 100
 
+[lint.per-file-ignores]
+"!myjd/**.py" = ["N"]
+"!sabnzbdapi/**.py" = ["N"]
+
 [lint]
 select = [
     "E",        # pycodestyle: error
