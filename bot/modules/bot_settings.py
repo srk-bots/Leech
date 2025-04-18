@@ -91,9 +91,7 @@ async def get_buttons(key=None, edit_type=None, page=0, user_id=None):
         msg = "Bot Settings:"
     elif edit_type is not None:
         if edit_type == "editvar" and (
-            key.startswith("WATERMARK_")
-            or key.startswith("MERGE_")
-            or key.startswith("METADATA_")
+            key.startswith(("WATERMARK_", "MERGE_", "METADATA_"))
             or key in ["CONCAT_DEMUXER_ENABLED", "FILTER_COMPLEX_ENABLED"]
         ):
             msg = ""
@@ -109,46 +107,46 @@ async def get_buttons(key=None, edit_type=None, page=0, user_id=None):
             buttons.data_button("Close", "botset close")
 
             # Get help text for settings
-            if (
-                key == "WATERMARK_ENABLED"
-                or key == "MERGE_ENABLED"
-                or key == "CONCAT_DEMUXER_ENABLED"
-                or key == "FILTER_COMPLEX_ENABLED"
-                or key == "MERGE_THREADING"
-                or key == "MERGE_REMOVE_ORIGINAL"
-                or key == "MERGE_VIDEO_FASTSTART"
-            ):
-                help_text = "Send 'true' to enable or 'false' to disable this feature."
-            elif key == "WATERMARK_KEY":
+            if key in {
+                "WATERMARK_ENABLED",
+                "MERGE_ENABLED",
+                "CONCAT_DEMUXER_ENABLED",
+                "FILTER_COMPLEX_ENABLED",
+                "MERGE_THREADING",
+                "MERGE_REMOVE_ORIGINAL",
+                "MERGE_VIDEO_FASTSTART",
+            }:
                 help_text = (
-                    "Send your text which will be added as watermark in all mkv videos."
+                    "Send 'true' to enable or 'false' to disable this feature."
                 )
+            elif key == "WATERMARK_KEY":
+                help_text = "Send your text which will be added as watermark in all mkv videos."
             elif key == "WATERMARK_POSITION":
                 help_text = "Send watermark position. Valid options: top_left, top_right, bottom_left, bottom_right, center."
-            elif (
-                key == "WATERMARK_SIZE"
-                or key == "WATERMARK_THREAD_NUMBER"
-                or key == "MERGE_THREAD_NUMBER"
-                or key == "MERGE_PRIORITY"
-                or key == "MERGE_VIDEO_CRF"
-                or key == "MERGE_IMAGE_COLUMNS"
-                or key == "MERGE_IMAGE_QUALITY"
-                or key == "MERGE_IMAGE_DPI"
-                or key == "MERGE_SUBTITLE_FONT_SIZE"
-                or key == "MERGE_DOCUMENT_MARGIN"
-                or key == "MERGE_AUDIO_CHANNELS"
-            ):
+            elif key in {
+                "WATERMARK_SIZE",
+                "WATERMARK_THREAD_NUMBER",
+                "MERGE_THREAD_NUMBER",
+                "MERGE_PRIORITY",
+                "MERGE_VIDEO_CRF",
+                "MERGE_IMAGE_COLUMNS",
+                "MERGE_IMAGE_QUALITY",
+                "MERGE_IMAGE_DPI",
+                "MERGE_SUBTITLE_FONT_SIZE",
+                "MERGE_DOCUMENT_MARGIN",
+                "MERGE_AUDIO_CHANNELS",
+            }:
                 help_text = "Send an integer value. Example: 4."
-            elif (
-                key == "WATERMARK_COLOR"
-                or key == "MERGE_VIDEO_PIXEL_FORMAT"
-                or key == "MERGE_VIDEO_TUNE"
-                or key == "MERGE_IMAGE_BACKGROUND"
-                or key == "MERGE_SUBTITLE_FONT_COLOR"
-                or key == "MERGE_SUBTITLE_BACKGROUND"
-            ):
+            elif key in {
+                "WATERMARK_COLOR",
+                "MERGE_VIDEO_PIXEL_FORMAT",
+                "MERGE_VIDEO_TUNE",
+                "MERGE_IMAGE_BACKGROUND",
+                "MERGE_SUBTITLE_FONT_COLOR",
+                "MERGE_SUBTITLE_BACKGROUND",
+            }:
                 help_text = "Send a color name. Example: white, black, red, green, blue, yellow."
-            elif key == "WATERMARK_FONT" or key == "MERGE_SUBTITLE_FONT":
+            elif key in {"WATERMARK_FONT", "MERGE_SUBTITLE_FONT"}:
                 help_text = "Send font file name. The font file should be available in the bot's directory. Example: Arial.ttf."
             elif key == "MERGE_OUTPUT_FORMAT_VIDEO":
                 help_text = "Send video output format. Example: mp4, mkv, avi, etc."
@@ -173,13 +171,15 @@ async def get_buttons(key=None, edit_type=None, page=0, user_id=None):
             elif key == "MERGE_AUDIO_SAMPLING":
                 help_text = "Send audio sampling rate. Example: 44100, 48000, etc."
             elif key == "MERGE_AUDIO_VOLUME":
-                help_text = "Send audio volume multiplier. Example: 1.0, 1.5, 0.5, etc."
-            elif key == "MERGE_IMAGE_MODE":
                 help_text = (
-                    "Send image mode. Example: auto, grid, horizontal, vertical, etc."
+                    "Send audio volume multiplier. Example: 1.0, 1.5, 0.5, etc."
                 )
+            elif key == "MERGE_IMAGE_MODE":
+                help_text = "Send image mode. Example: auto, grid, horizontal, vertical, etc."
             elif key == "MERGE_IMAGE_RESIZE":
-                help_text = "Send image resize option. Example: none, 1080p, 720p, etc."
+                help_text = (
+                    "Send image resize option. Example: none, 1080p, 720p, etc."
+                )
             elif key == "MERGE_SUBTITLE_ENCODING":
                 help_text = "Send subtitle encoding. Example: utf-8, ascii, etc."
             elif key == "MERGE_DOCUMENT_PAPER_SIZE":
@@ -188,14 +188,14 @@ async def get_buttons(key=None, edit_type=None, page=0, user_id=None):
                 help_text = (
                     "Send document orientation. Example: portrait, landscape, etc."
                 )
-            elif (
-                key == "MERGE_METADATA_TITLE"
-                or key == "MERGE_METADATA_AUTHOR"
-                or key == "MERGE_METADATA_COMMENT"
-                or key == "METADATA_TITLE"
-                or key == "METADATA_AUTHOR"
-                or key == "METADATA_COMMENT"
-            ):
+            elif key in {
+                "MERGE_METADATA_TITLE",
+                "MERGE_METADATA_AUTHOR",
+                "MERGE_METADATA_COMMENT",
+                "METADATA_TITLE",
+                "METADATA_AUTHOR",
+                "METADATA_COMMENT",
+            }:
                 help_text = "Send metadata text. Example: My Video, John Doe, etc."
             elif key == "METADATA_KEY":
                 help_text = "Send legacy metadata key for backward compatibility."
@@ -204,9 +204,7 @@ async def get_buttons(key=None, edit_type=None, page=0, user_id=None):
             else:
                 help_text = f"Send a valid value for {key}."
 
-            msg += (
-                f"{help_text}\n\nCurrent value is '{Config.get(key)}'. Timeout: 60 sec"
-            )
+            msg += f"{help_text}\n\nCurrent value is '{Config.get(key)}'. Timeout: 60 sec"
         elif edit_type == "botvar":
             msg = ""
             buttons.data_button("Back", "botset var")
@@ -240,7 +238,9 @@ async def get_buttons(key=None, edit_type=None, page=0, user_id=None):
                 msg += "Send 'true' to enable or 'false' to disable.\n\n"
                 msg += "Note: Changes will take effect after saving.\n\n"
             elif key == "AUTO_RESTART_INTERVAL":
-                msg += "Set the interval in hours between automatic bot restarts.\n\n"
+                msg += (
+                    "Set the interval in hours between automatic bot restarts.\n\n"
+                )
                 msg += "Example: 24 (for daily restart)\n\n"
                 msg += "Minimum value is 1 hour.\n\n"
 
@@ -283,9 +283,7 @@ async def get_buttons(key=None, edit_type=None, page=0, user_id=None):
             k
             for k in list(conf_dict.keys())
             if not (
-                k.startswith("WATERMARK_")
-                or k.startswith("MERGE_")
-                or k.startswith("METADATA_")
+                k.startswith(("WATERMARK_", "MERGE_", "METADATA_"))
                 or k in ["CONCAT_DEMUXER_ENABLED", "FILTER_COMPLEX_ENABLED"]
             )
         ]
@@ -430,9 +428,7 @@ Timeout: 60 sec"""
         buttons.data_button("Metadata Settings", "botset mediatools_metadata")
         buttons.data_button("Back", "botset back", "footer")
         buttons.data_button("Close", "botset close", "footer")
-        msg = (
-            "<b>Media Tools Settings</b>\n\nConfigure global settings for media tools."
-        )
+        msg = "<b>Media Tools Settings</b>\n\nConfigure global settings for media tools."
     elif key == "mediatools_watermark":
         # Add buttons for each watermark setting in a 2-column layout
         watermark_settings = [
@@ -447,7 +443,9 @@ Timeout: 60 sec"""
             "WATERMARK_THREAD_NUMBER",
         ]
         for setting in watermark_settings:
-            display_name = setting.replace("WATERMARK_", "").replace("_", " ").title()
+            display_name = (
+                setting.replace("WATERMARK_", "").replace("_", " ").title()
+            )
             buttons.data_button(display_name, f"botset editvar {setting}")
 
         if state == "view":
@@ -461,7 +459,9 @@ Timeout: 60 sec"""
         buttons.data_button("Close", "botset close", "footer")
 
         # Get current watermark settings
-        watermark_enabled = "✅ Enabled" if Config.WATERMARK_ENABLED else "❌ Disabled"
+        watermark_enabled = (
+            "✅ Enabled" if Config.WATERMARK_ENABLED else "❌ Disabled"
+        )
         watermark_text = Config.WATERMARK_KEY or "None"
         watermark_position = Config.WATERMARK_POSITION or "top_left (Default)"
         watermark_size = Config.WATERMARK_SIZE or "20 (Default)"
@@ -606,7 +606,7 @@ Configure global watermark settings that will be used when user settings are not
         # Add buttons for each setting on current page
         for setting in current_page_settings:
             display_name = setting.replace("MERGE_", "").replace("_", " ").title()
-            if setting.startswith("CONCAT") or setting.startswith("FILTER"):
+            if setting.startswith(("CONCAT", "FILTER")):
                 display_name = setting.replace("_ENABLED", "").title()
             buttons.data_button(display_name, f"botset editvar {setting}")
 
@@ -629,9 +629,13 @@ Configure global watermark settings that will be used when user settings are not
             for i in range(total_pages):
                 # Make the current page button different
                 if i == current_page:
-                    buttons.data_button(f"[{i + 1}]", f"botset start_merge {i}", "page")
+                    buttons.data_button(
+                        f"[{i + 1}]", f"botset start_merge {i}", "page"
+                    )
                 else:
-                    buttons.data_button(str(i + 1), f"botset start_merge {i}", "page")
+                    buttons.data_button(
+                        str(i + 1), f"botset start_merge {i}", "page"
+                    )
 
             # Add a debug log message
             LOGGER.debug(
@@ -662,21 +666,25 @@ Configure global watermark settings that will be used when user settings are not
         # Get the categories shown on the current page
         categories = []
         if any(
-            setting in general_settings for setting in merge_settings[start_idx:end_idx]
+            setting in general_settings
+            for setting in merge_settings[start_idx:end_idx]
         ):
             categories.append("General")
         if any(setting in formats for setting in merge_settings[start_idx:end_idx]):
             categories.append("Formats")
         if any(
-            setting in video_settings for setting in merge_settings[start_idx:end_idx]
+            setting in video_settings
+            for setting in merge_settings[start_idx:end_idx]
         ):
             categories.append("Video")
         if any(
-            setting in audio_settings for setting in merge_settings[start_idx:end_idx]
+            setting in audio_settings
+            for setting in merge_settings[start_idx:end_idx]
         ):
             categories.append("Audio")
         if any(
-            setting in image_settings for setting in merge_settings[start_idx:end_idx]
+            setting in image_settings
+            for setting in merge_settings[start_idx:end_idx]
         ):
             categories.append("Image")
         if any(
@@ -862,9 +870,13 @@ Configure global metadata settings that will be used when user settings are not 
 
         # Add action buttons in a separate row
         if state == "view":
-            buttons.data_button("Edit", "botset edit mediatools_merge_config", "footer")
+            buttons.data_button(
+                "Edit", "botset edit mediatools_merge_config", "footer"
+            )
         else:
-            buttons.data_button("View", "botset view mediatools_merge_config", "footer")
+            buttons.data_button(
+                "View", "botset view mediatools_merge_config", "footer"
+            )
 
         # Add Default button
         buttons.data_button("Default", "botset default_merge_config", "footer")
@@ -931,7 +943,9 @@ Configure global metadata settings that will be used when user settings are not 
 
         # Document settings
         document_paper_size = Config.MERGE_DOCUMENT_PAPER_SIZE or "a4 (Default)"
-        document_orientation = Config.MERGE_DOCUMENT_ORIENTATION or "portrait (Default)"
+        document_orientation = (
+            Config.MERGE_DOCUMENT_ORIENTATION or "portrait (Default)"
+        )
         document_margin = Config.MERGE_DOCUMENT_MARGIN or "50 (Default)"
 
         # Metadata settings
@@ -998,7 +1012,8 @@ Configure advanced merge settings that will be used when user settings are not a
         # Get the categories shown on the current page
         categories = []
         if any(
-            setting in formats for setting in merge_config_settings[start_idx:end_idx]
+            setting in formats
+            for setting in merge_config_settings[start_idx:end_idx]
         ):
             categories.append("Formats")
         if any(
@@ -1041,10 +1056,7 @@ Configure advanced merge settings that will be used when user settings are not a
 
     if key is None:
         button = buttons.build_menu(1)
-    elif key == "mediatools_merge":
-        # Build the menu with 2 columns for settings, 4 columns for action buttons, and 8 columns for pagination
-        button = buttons.build_menu(2, 8, 4, 8)
-    elif key == "mediatools_merge_config":
+    elif key in {"mediatools_merge", "mediatools_merge_config"}:
         # Build the menu with 2 columns for settings, 4 columns for action buttons, and 8 columns for pagination
         button = buttons.build_menu(2, 8, 4, 8)
     elif key == "mediatools_watermark":
@@ -1091,26 +1103,26 @@ async def edit_variable(_, message, pre_message, key):
     elif key == "LEECH_FILENAME":
         # No specific validation needed for LEECH_FILENAME
         pass
-    elif (
-        key == "WATERMARK_SIZE"
-        or key == "WATERMARK_THREAD_NUMBER"
-        or key == "MERGE_THREAD_NUMBER"
-        or key == "MERGE_PRIORITY"
-        or key == "MERGE_VIDEO_CRF"
-        or key == "MERGE_IMAGE_COLUMNS"
-        or key == "MERGE_IMAGE_QUALITY"
-        or key == "MERGE_IMAGE_DPI"
-        or key == "MERGE_SUBTITLE_FONT_SIZE"
-        or key == "MERGE_DOCUMENT_MARGIN"
-        or key == "MERGE_AUDIO_CHANNELS"
-    ):
+    elif key in {
+        "WATERMARK_SIZE",
+        "WATERMARK_THREAD_NUMBER",
+        "MERGE_THREAD_NUMBER",
+        "MERGE_PRIORITY",
+        "MERGE_VIDEO_CRF",
+        "MERGE_IMAGE_COLUMNS",
+        "MERGE_IMAGE_QUALITY",
+        "MERGE_IMAGE_DPI",
+        "MERGE_SUBTITLE_FONT_SIZE",
+        "MERGE_DOCUMENT_MARGIN",
+        "MERGE_AUDIO_CHANNELS",
+    }:
         try:
             value = int(value)
         except ValueError:
             # Use appropriate default values based on the key
             if key == "WATERMARK_SIZE":
                 value = 20
-            elif key == "WATERMARK_THREAD_NUMBER" or key == "MERGE_THREAD_NUMBER":
+            elif key in {"WATERMARK_THREAD_NUMBER", "MERGE_THREAD_NUMBER"}:
                 value = 4
             elif key == "MERGE_PRIORITY":
                 value = 1
@@ -1208,29 +1220,33 @@ async def edit_variable(_, message, pre_message, key):
     # Determine which menu to return to based on the key
     if key.startswith("WATERMARK_"):
         return_menu = "mediatools_watermark"
-        LOGGER.debug(f"edit_variable: Setting return_menu for {key} to {return_menu}")
+        LOGGER.debug(
+            f"edit_variable: Setting return_menu for {key} to {return_menu}"
+        )
     elif key.startswith("METADATA_"):
         return_menu = "mediatools_metadata"
-        LOGGER.debug(f"edit_variable: Setting return_menu for {key} to {return_menu}")
+        LOGGER.debug(
+            f"edit_variable: Setting return_menu for {key} to {return_menu}"
+        )
     elif key.startswith("MERGE_") or key in [
         "CONCAT_DEMUXER_ENABLED",
         "FILTER_COMPLEX_ENABLED",
     ]:
         # Check if we're in the merge_config menu
-        if pre_message.text and "Merge Configuration" in pre_message.text:
-            return_menu = "mediatools_merge_config"
-        # Check if it's a format or advanced setting (likely from merge_config)
-        elif key.startswith("MERGE_") and any(
-            x in key
-            for x in [
-                "OUTPUT_FORMAT",
-                "VIDEO_",
-                "AUDIO_",
-                "IMAGE_",
-                "SUBTITLE_",
-                "DOCUMENT_",
-                "METADATA_",
-            ]
+        if (pre_message.text and "Merge Configuration" in pre_message.text) or (
+            key.startswith("MERGE_")
+            and any(
+                x in key
+                for x in [
+                    "OUTPUT_FORMAT",
+                    "VIDEO_",
+                    "AUDIO_",
+                    "IMAGE_",
+                    "SUBTITLE_",
+                    "DOCUMENT_",
+                    "METADATA_",
+                ]
+            )
         ):
             return_menu = "mediatools_merge_config"
         # Check if we need to return to a specific page in mediatools_merge or mediatools_merge_config
@@ -1406,7 +1422,9 @@ async def update_private_file(_, message, pre_message):
         elif file_name in [".netrc", "netrc"]:
             await (await create_subprocess_exec("touch", ".netrc")).wait()
             await (await create_subprocess_exec("chmod", "600", ".netrc")).wait()
-            await (await create_subprocess_exec("cp", ".netrc", "/root/.netrc")).wait()
+            await (
+                await create_subprocess_exec("cp", ".netrc", "/root/.netrc")
+            ).wait()
         await delete_message(message)
     elif doc := message.document:
         file_name = doc.file_name
@@ -1455,7 +1473,9 @@ async def update_private_file(_, message, pre_message):
                 await rename("netrc", ".netrc")
                 file_name = ".netrc"
             await (await create_subprocess_exec("chmod", "600", ".netrc")).wait()
-            await (await create_subprocess_exec("cp", ".netrc", "/root/.netrc")).wait()
+            await (
+                await create_subprocess_exec("cp", ".netrc", "/root/.netrc")
+            ).wait()
         elif file_name == "config.py":
             await load_config()
         await delete_message(message)
@@ -1845,26 +1865,30 @@ async def edit_bot_settings(client, query):
                 "FILTER_COMPLEX_ENABLED",
             ]:
                 # Check if we're in the merge_config menu
-                if message.text and "Merge Configuration" in message.text:
-                    rfunc = partial(update_buttons, message, "mediatools_merge_config")
-                # Check if it's a format or advanced setting (likely from merge_config)
-                elif data[2].startswith("MERGE_") and any(
-                    x in data[2]
-                    for x in [
-                        "OUTPUT_FORMAT",
-                        "VIDEO_",
-                        "AUDIO_",
-                        "IMAGE_",
-                        "SUBTITLE_",
-                        "DOCUMENT_",
-                        "METADATA_",
-                    ]
+                if (message.text and "Merge Configuration" in message.text) or (
+                    data[2].startswith("MERGE_")
+                    and any(
+                        x in data[2]
+                        for x in [
+                            "OUTPUT_FORMAT",
+                            "VIDEO_",
+                            "AUDIO_",
+                            "IMAGE_",
+                            "SUBTITLE_",
+                            "DOCUMENT_",
+                            "METADATA_",
+                        ]
+                    )
                 ):
-                    rfunc = partial(update_buttons, message, "mediatools_merge_config")
+                    rfunc = partial(
+                        update_buttons, message, "mediatools_merge_config"
+                    )
                 # Check if we need to return to a specific page in mediatools_merge
                 elif message.text and "Page:" in message.text:
                     try:
-                        page_info = message.text.split("Page:")[1].strip().split("/")[0]
+                        page_info = (
+                            message.text.split("Page:")[1].strip().split("/")[0]
+                        )
                         page_no = int(page_info) - 1
                         # Set the global merge_page variable to ensure we return to the correct page
                         globals()["merge_page"] = page_no
@@ -2012,7 +2036,9 @@ async def edit_bot_settings(client, query):
         elif data[2] == "FFMPEG_DYNAMIC_THREADS":
             value = True  # Default to enabled
         elif data[2] == "BASE_URL":
-            await (await create_subprocess_exec("pkill", "-9", "-f", "gunicorn")).wait()
+            await (
+                await create_subprocess_exec("pkill", "-9", "-f", "gunicorn")
+            ).wait()
         elif data[2] == "BASE_URL_PORT":
             value = 80
             if Config.BASE_URL:

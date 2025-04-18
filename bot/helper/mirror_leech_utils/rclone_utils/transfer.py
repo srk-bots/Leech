@@ -130,7 +130,9 @@ class RcloneTransferHelper:
         if return_code != -9:
             error = stderr.decode().strip()
             if not error and remote_type == "drive" and self._use_service_accounts:
-                error = "Mostly your service accounts don't have access to this drive!"
+                error = (
+                    "Mostly your service accounts don't have access to this drive!"
+                )
             LOGGER.error(error)
 
             if (
@@ -202,7 +204,9 @@ class RcloneTransferHelper:
         await self._start_download(cmd, remote_type)
 
     async def _get_gdrive_link(self, config_path, destination, mime_type):
-        epath = destination.rsplit("/", 1)[0] if mime_type == "Folder" else destination
+        epath = (
+            destination.rsplit("/", 1)[0] if mime_type == "Folder" else destination
+        )
 
         cmd = [
             "xone",
@@ -440,7 +444,9 @@ class RcloneTransferHelper:
                     mime_type,
                 )
                 return (
-                    (None, None) if self._listener.is_cancelled else (link, destination)
+                    (None, None)
+                    if self._listener.is_cancelled
+                    else (link, destination)
                 )
             cmd = [
                 "xone",

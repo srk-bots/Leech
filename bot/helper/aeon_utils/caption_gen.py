@@ -71,7 +71,9 @@ async def generate_caption(filename, directory, caption_template):
                 temp_dir = tempfile.mkdtemp()
                 same_filesystem = False
 
-            safe_name = f"temp_mediainfo_{int(time())}{os.path.splitext(filename)[1]}"
+            safe_name = (
+                f"temp_mediainfo_{int(time())}{os.path.splitext(filename)[1]}"
+            )
             safe_path = os.path.join(temp_dir, safe_name)
             # We'll use the temp_dir variable for cleanup later
 
@@ -156,7 +158,9 @@ async def generate_caption(filename, directory, caption_template):
         (track for track in track_data if track["@type"] == "General"),
         {},
     )
-    video_metadata_list = [track for track in track_data if track["@type"] == "Video"]
+    video_metadata_list = [
+        track for track in track_data if track["@type"] == "Video"
+    ]
     video_metadata = next(iter(video_metadata_list), {})
     audio_metadata = [track for track in track_data if track["@type"] == "Audio"]
     subtitle_metadata = [track for track in track_data if track["@type"] == "Text"]
@@ -224,7 +228,9 @@ async def generate_caption(filename, directory, caption_template):
     for pattern in episode_patterns:
         episode_match = re.search(pattern, filename, re.IGNORECASE)
         if episode_match:
-            episode_num = episode_match.group(1).zfill(2)  # Add leading zero if needed
+            episode_num = episode_match.group(1).zfill(
+                2
+            )  # Add leading zero if needed
             break
 
     # Special case for anime titles with episode numbers at the end
@@ -337,7 +343,9 @@ async def generate_caption(filename, directory, caption_template):
     # Log the extracted metadata for debugging
     LOGGER.debug(f"Extracted metadata for {filename}:")
     LOGGER.debug(f"Season: {season_num}, Episode: {episode_num}, Year: {year}")
-    LOGGER.debug(f"Format: {file_format}, Framerate: {framerate}, Codec: {codec_str}")
+    LOGGER.debug(
+        f"Format: {file_format}, Framerate: {framerate}, Codec: {codec_str}"
+    )
     LOGGER.debug(
         f"Quality: {video_quality}, Audio tracks: {len(audio_metadata)}, Subtitle tracks: {len(subtitle_metadata)}"
     )
@@ -469,9 +477,7 @@ def clean_caption(caption):
     cleaned = cleaned.strip()
 
     # Remove lines that only contain whitespace
-    cleaned = re.sub(r"^\s*$\n", "", cleaned, flags=re.MULTILINE)
-
-    return cleaned
+    return re.sub(r"^\s*$\n", "", cleaned, flags=re.MULTILINE)
 
 
 def get_video_quality(height):

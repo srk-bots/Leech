@@ -1,11 +1,11 @@
-import os
-import aiohttp
 import asyncio
-from bot import LOGGER
 import json
+import os
 from time import time
 
-from bot import cpu_no
+import aiohttp
+
+from bot import LOGGER, cpu_no
 from bot.helper.ext_utils.bot_utils import cmd_exec
 
 
@@ -103,7 +103,7 @@ async def download_google_font(font_name):
                     LOGGER.info(f"Successfully downloaded Google Font: {font_name}")
                     return font_path
     except Exception as e:
-        LOGGER.error(f"Error downloading Google Font {font_name}: {str(e)}")
+        LOGGER.error(f"Error downloading Google Font {font_name}: {e!s}")
         return "default.otf"
 
 
@@ -123,10 +123,9 @@ async def get_watermark_cmd(
     Returns:
         tuple: FFmpeg command and temporary output file path, or None, None if not supported
     """
-    from bot.helper.ext_utils.resource_manager import get_optimal_thread_count
-
     # Import the function to determine media type
     from bot.helper.ext_utils.media_utils import get_media_type_for_watermark
+    from bot.helper.ext_utils.resource_manager import get_optimal_thread_count
 
     # Determine the media type
     media_type = await get_media_type_for_watermark(file)
@@ -145,7 +144,7 @@ async def get_watermark_cmd(
         temp_file = f"{file}.temp{file_ext}"
 
     # Check if font is a Google Font or a local file
-    if font.endswith(".ttf") or font.endswith(".otf"):
+    if font.endswith((".ttf", ".otf")):
         font_path = font
     else:
         # Assume it's a Google Font name and try to download it
@@ -575,10 +574,12 @@ async def get_merge_concat_demuxer_cmd(files, output_format="mkv", media_type=No
                     "json",
                     file_path,
                 ]
-                result = subprocess.run(cmd, capture_output=True, text=True)
+                result = subprocess.run(
+                    cmd, capture_output=True, text=True, check=False
+                )
                 if result.returncode == 0:
                     data = json.loads(result.stdout)
-                    if "streams" in data and data["streams"]:
+                    if data.get("streams"):
                         codecs.append(data["streams"][0].get("codec_name", ""))
                     else:
                         # If we can't determine codec, assume it's different
@@ -811,35 +812,34 @@ async def get_merge_concat_demuxer_cmd(files, output_format="mkv", media_type=No
             LOGGER.info(
                 f"Using direct stream copy for identical audio files with codec {audio_codec}"
             )
+        # Files have different audio codecs, we need to transcode
+        # Use high-quality settings for audio based on output format
+        elif output_format == "mp3":
+            cmd.extend(["-c:a", "libmp3lame", "-q:a", "0"])  # Highest quality MP3
+            LOGGER.info("Using MP3 encoding with highest quality")
+        elif output_format in {"aac", "m4a"}:
+            cmd.extend(["-c:a", "aac", "-b:a", "320k"])  # High bitrate AAC
+            LOGGER.info("Using AAC encoding with 320k bitrate")
+        elif output_format == "flac":
+            cmd.extend(["-c:a", "flac"])  # Lossless FLAC
+            LOGGER.info("Using lossless FLAC encoding")
+        elif output_format == "opus":
+            cmd.extend(["-c:a", "libopus", "-b:a", "256k"])  # High quality Opus
+            LOGGER.info("Using Opus encoding with 256k bitrate")
+        elif output_format == "ogg":
+            cmd.extend(["-c:a", "libvorbis", "-q:a", "10"])  # High quality Vorbis
+            LOGGER.info("Using Vorbis encoding with quality level 10")
         else:
-            # Files have different audio codecs, we need to transcode
-            # Use high-quality settings for audio based on output format
-            if output_format == "mp3":
-                cmd.extend(["-c:a", "libmp3lame", "-q:a", "0"])  # Highest quality MP3
-                LOGGER.info("Using MP3 encoding with highest quality")
-            elif output_format == "aac" or output_format == "m4a":
-                cmd.extend(["-c:a", "aac", "-b:a", "320k"])  # High bitrate AAC
-                LOGGER.info("Using AAC encoding with 320k bitrate")
-            elif output_format == "flac":
-                cmd.extend(["-c:a", "flac"])  # Lossless FLAC
-                LOGGER.info("Using lossless FLAC encoding")
-            elif output_format == "opus":
-                cmd.extend(["-c:a", "libopus", "-b:a", "256k"])  # High quality Opus
-                LOGGER.info("Using Opus encoding with 256k bitrate")
-            elif output_format == "ogg":
-                cmd.extend(["-c:a", "libvorbis", "-q:a", "10"])  # High quality Vorbis
-                LOGGER.info("Using Vorbis encoding with quality level 10")
-            else:
-                # Default to AAC for other formats
-                cmd.extend(["-c:a", "aac", "-b:a", "320k"])
-                LOGGER.info("Using default AAC encoding with 320k bitrate")
+            # Default to AAC for other formats
+            cmd.extend(["-c:a", "aac", "-b:a", "320k"])
+            LOGGER.info("Using default AAC encoding with 320k bitrate")
     elif media_type == "subtitle":
         # For subtitle files, we need to handle different formats
         # Check the output format and set appropriate codec
         if output_format == "srt":
             cmd.extend(["-c:s", "srt"])
             LOGGER.info("Using SRT subtitle format")
-        elif output_format == "ass" or output_format == "ssa":
+        elif output_format in {"ass", "ssa"}:
             cmd.extend(["-c:s", "ass"])
             LOGGER.info("Using ASS/SSA subtitle format")
         elif output_format == "vtt":
@@ -927,10 +927,12 @@ async def get_merge_filter_complex_cmd(files, media_type, output_format=None):
                     "json",
                     file_path,
                 ]
-                result = subprocess.run(cmd, capture_output=True, text=True)
+                result = subprocess.run(
+                    cmd, capture_output=True, text=True, check=False
+                )
                 if result.returncode == 0:
                     data = json.loads(result.stdout)
-                    if "streams" in data and data["streams"]:
+                    if data.get("streams"):
                         stream = data["streams"][0]
                         info["codec"] = stream.get("codec_name", "")
                         if media_type == "video":
@@ -1117,7 +1119,9 @@ async def get_merge_filter_complex_cmd(files, media_type, output_format=None):
                             if filter_complex and not filter_complex.endswith(";"):
                                 filter_complex += ";"
                             audio_filter = (
-                                "".join([f"[{i}:a:{idx}]" for i, idx in track_inputs])
+                                "".join(
+                                    [f"[{i}:a:{idx}]" for i, idx in track_inputs]
+                                )
                                 + f"concat=n={len(track_inputs)}:v=0:a=1[outa{track_pos}]"
                             )
                             filter_complex += audio_filter
@@ -1246,7 +1250,7 @@ async def get_merge_filter_complex_cmd(files, media_type, output_format=None):
         # Set audio codec based on output format
         if output_format == "mp3":
             map_args.extend(["-c:a", "libmp3lame", "-q:a", "0"])
-        elif output_format == "aac" or output_format == "m4a":
+        elif output_format in {"aac", "m4a"}:
             map_args.extend(["-c:a", "aac", "-b:a", "320k"])
         elif output_format == "flac":
             map_args.extend(["-c:a", "flac"])
@@ -1474,26 +1478,7 @@ if __name__ == '__main__':
             # Check if the output file was created
             if os.path.exists(output_file):
                 return ["echo", "Subtitle merge completed"], output_file
-            else:
-                # Fallback to copying the first subtitle file
-                cmd = [
-                    "xtra",
-                    "-hide_banner",
-                    "-loglevel",
-                    "error",
-                    "-progress",
-                    "pipe:1",
-                    "-i",
-                    files[0],
-                    "-c",
-                    "copy",
-                    "-threads",
-                    f"{max(1, cpu_no // 2)}",
-                    output_file,
-                ]
-                return cmd, output_file
-        else:
-            # For other subtitle formats, just copy the first file as a placeholder
+            # Fallback to copying the first subtitle file
             cmd = [
                 "xtra",
                 "-hide_banner",
@@ -1510,6 +1495,23 @@ if __name__ == '__main__':
                 output_file,
             ]
             return cmd, output_file
+        # For other subtitle formats, just copy the first file as a placeholder
+        cmd = [
+            "xtra",
+            "-hide_banner",
+            "-loglevel",
+            "error",
+            "-progress",
+            "pipe:1",
+            "-i",
+            files[0],
+            "-c",
+            "copy",
+            "-threads",
+            f"{max(1, cpu_no // 2)}",
+            output_file,
+        ]
+        return cmd, output_file
     else:
         return None, None
 
@@ -1544,6 +1546,7 @@ async def get_merge_mixed_cmd(
     # codec_groups parameter removed - will be added back when implemented
 ):
     import os
+
     from bot.helper.ext_utils.resource_manager import get_optimal_thread_count
 
     """Generate FFmpeg command for merging mixed media types.
@@ -1598,7 +1601,9 @@ async def get_merge_mixed_cmd(
                 f.write(f"file '{escaped_path}'\n")
 
         # Create a temporary merged video file
-        temp_video_output = os.path.join(base_dir, f"temp_merged_video.{output_format}")
+        temp_video_output = os.path.join(
+            base_dir, f"temp_merged_video.{output_format}"
+        )
         video_cmd = [
             "xtra",
             "-hide_banner",
@@ -1679,12 +1684,11 @@ async def get_merge_mixed_cmd(
             ]
 
             return cmd, output_file
-        else:
-            # Just return the merged video command
-            return video_cmd, temp_video_output
+        # Just return the merged video command
+        return video_cmd, temp_video_output
 
     # Approach 2: Single video file with multiple audio/subtitle tracks
-    elif len(video_files) == 1:
+    if len(video_files) == 1:
         # Use the video file as the base
         video_base = video_files[0]
 
@@ -1766,7 +1770,10 @@ async def get_merge_mixed_cmd(
                                         video_base,
                                     ]
                                     result = subprocess.run(
-                                        cmd, capture_output=True, text=True
+                                        cmd,
+                                        capture_output=True,
+                                        text=True,
+                                        check=False,
                                     )
                                     if result.returncode == 0:
                                         data = json.loads(result.stdout)
@@ -1778,7 +1785,9 @@ async def get_merge_mixed_cmd(
                                                 data["format"]["duration"]
                                             )
                                 except Exception as e:
-                                    LOGGER.warning(f"Error getting video duration: {e}")
+                                    LOGGER.warning(
+                                        f"Error getting video duration: {e}"
+                                    )
 
                     # If we have video duration, create a temporary subtitle file with correct duration
                     if video_duration:
@@ -1787,9 +1796,9 @@ async def get_merge_mixed_cmd(
                         )
                         # Create a temporary subtitle file with adjusted timestamps
                         try:
-                            import tempfile
-                            import re
                             import os
+                            import re
+                            import tempfile
 
                             # Create a temporary file for the adjusted subtitle
                             temp_sub_file = tempfile.NamedTemporaryFile(
@@ -1799,7 +1808,7 @@ async def get_merge_mixed_cmd(
                             temp_sub_file.close()
 
                             # Read the original subtitle file
-                            with open(sub_file, "r", encoding="utf-8") as f:
+                            with open(sub_file, encoding="utf-8") as f:
                                 content = f.read()
 
                             # Find the last timestamp in the subtitle file
@@ -1869,7 +1878,9 @@ async def get_merge_mixed_cmd(
                                         f"Created adjusted subtitle file with scale factor {scale_factor}"
                                     )
                         except Exception as e:
-                            LOGGER.warning(f"Error adjusting subtitle timestamps: {e}")
+                            LOGGER.warning(
+                                f"Error adjusting subtitle timestamps: {e}"
+                            )
 
                         # Add input with the adjusted subtitle file
                         input_args.extend(["-i", sub_file])
@@ -1933,7 +1944,7 @@ async def get_merge_mixed_cmd(
         return cmd, output_file
 
     # Approach 3: Audio files only
-    elif audio_files:
+    if audio_files:
         # For audio-only merge, use filter_complex
         filter_complex = ""
         for i, _ in enumerate(audio_files):
@@ -1949,7 +1960,7 @@ async def get_merge_mixed_cmd(
         codec_args = []
         if output_format == "mp3":
             codec_args = ["-c:a", "libmp3lame", "-q:a", "0"]
-        elif output_format == "aac" or output_format == "m4a":
+        elif output_format in {"aac", "m4a"}:
             codec_args = ["-c:a", "aac", "-b:a", "320k"]
         elif output_format == "flac":
             codec_args = ["-c:a", "flac"]
@@ -2026,7 +2037,9 @@ async def get_merge_mixed_cmd(
                             "json",
                             video_files[0],
                         ]
-                        result = subprocess.run(cmd, capture_output=True, text=True)
+                        result = subprocess.run(
+                            cmd, capture_output=True, text=True, check=False
+                        )
                         if result.returncode == 0:
                             data = json.loads(result.stdout)
                             if "format" in data and "duration" in data["format"]:
@@ -2040,7 +2053,7 @@ async def get_merge_mixed_cmd(
                 # Create a temporary subtitle file with adjusted timestamps
                 try:
                     # Read the original subtitle file
-                    with open(sub_file, "r", encoding="utf-8") as f:
+                    with open(sub_file, encoding="utf-8") as f:
                         content = f.read()
 
                     # Find the last timestamp in the subtitle file
@@ -2079,9 +2092,7 @@ async def get_merge_mixed_cmd(
                                 new_s = int(total_seconds % 60)
                                 new_ms = int((total_seconds * 1000) % 1000)
 
-                                return (
-                                    f"{new_h:02d}:{new_m:02d}:{new_s:02d},{new_ms:03d}"
-                                )
+                                return f"{new_h:02d}:{new_m:02d}:{new_s:02d},{new_ms:03d}"
 
                             # Adjust all timestamps in the subtitle file
                             adjusted_content = re.sub(
@@ -2229,7 +2240,16 @@ async def analyze_media_for_merge(files):
         ext = os.path.splitext(file_path)[1].lower()
 
         # Categorize images by extension
-        if ext in [".jpg", ".jpeg", ".png", ".gif", ".bmp", ".webp", ".tiff", ".tif"]:
+        if ext in [
+            ".jpg",
+            ".jpeg",
+            ".png",
+            ".gif",
+            ".bmp",
+            ".webp",
+            ".tiff",
+            ".tif",
+        ]:
             image_files.append(file_path)
             image_info.append(
                 {
@@ -2463,23 +2483,20 @@ async def analyze_media_for_merge(files):
         # All documents - use PDF merging
         recommended_approach = "document_merge"
         LOGGER.info("Found document files - using PDF merging")
+    # Mixed media types - need to use filter_complex or mixed approach
+    elif len(video_files) > 0 and (len(audio_files) > 0 or len(subtitle_files) > 0):
+        recommended_approach = "mixed"
+        LOGGER.info(
+            "Found mixed media types (video, audio, subtitles) - using mixed approach"
+        )
+    elif len(video_files) > 0 and len(image_files) > 0:
+        # Video and images - can create a slideshow
+        recommended_approach = "slideshow"
+        LOGGER.info("Found video and image files - can create a slideshow")
     else:
-        # Mixed media types - need to use filter_complex or mixed approach
-        if len(video_files) > 0 and (len(audio_files) > 0 or len(subtitle_files) > 0):
-            recommended_approach = "mixed"
-            LOGGER.info(
-                "Found mixed media types (video, audio, subtitles) - using mixed approach"
-            )
-        elif len(video_files) > 0 and len(image_files) > 0:
-            # Video and images - can create a slideshow
-            recommended_approach = "slideshow"
-            LOGGER.info("Found video and image files - can create a slideshow")
-        else:
-            # Other combinations - use separate merges
-            recommended_approach = "separate"
-            LOGGER.info(
-                "Found incompatible media types - will merge separately by type"
-            )
+        # Other combinations - use separate merges
+        recommended_approach = "separate"
+        LOGGER.info("Found incompatible media types - will merge separately by type")
 
     return {
         "video_files": video_files,

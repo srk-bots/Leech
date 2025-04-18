@@ -1,3 +1,4 @@
+import contextlib
 from asyncio import gather, sleep
 from re import match as re_match
 from time import time as get_time
@@ -60,11 +61,11 @@ async def send_message(
     # Handle None message object
     if message is None:
         LOGGER.debug("Received None message object in send_message")
-        return f"Cannot send message: message object is None"
+        return "Cannot send message: message object is None"
 
     try:
         # Handle case where message is a chat_id (int or string)
-        if isinstance(message, (int, str)):
+        if isinstance(message, int | str):
             # If it's a string, try to convert to int if it's numeric
             if isinstance(message, str) and message.isdigit():
                 message = int(message)
@@ -192,13 +193,11 @@ async def edit_message(
                 f"Message too long: {error_str}. Consider using expandable blockquotes for long content."
             )
             # Try to send a notification about using expandable blockquotes
-            try:
+            with contextlib.suppress(Exception):
                 await message.reply(
                     "The message is too long for Telegram. Please use expandable blockquotes for long content sections.",
                     quote=True,
                 )
-            except:
-                pass
         # Only log at debug level for common Telegram API errors
         elif (
             "MESSAGE_ID_INVALID" in error_str
@@ -256,9 +255,7 @@ async def send_rss(text, chat_id, thread_id):
         LOGGER.error("Telegram says: Message is empty")
         # Try with a simplified message as a fallback
         try:
-            simplified_text = (
-                "RSS Update: Unable to display full content due to formatting issues."
-            )
+            simplified_text = "RSS Update: Unable to display full content due to formatting issues."
             return await app.send_message(
                 chat_id=chat_id,
                 text=simplified_text,
@@ -274,7 +271,7 @@ async def send_rss(text, chat_id, thread_id):
         await sleep(f.value * 1.2)
         return await send_rss(text, chat_id, thread_id)
     except Exception as e:
-        LOGGER.error(f"Error sending RSS message: {str(e)}")
+        LOGGER.error(f"Error sending RSS message: {e!s}")
         # Try with a simplified message as a fallback if it seems to be a formatting issue
         if "MESSAGE_EMPTY" in str(e) or "400" in str(e):
             try:

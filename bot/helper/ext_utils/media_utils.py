@@ -306,7 +306,9 @@ async def get_audio_thumbnail(audio_file, user_id=None):
             if "thread_count" not in locals():
                 from .resource_manager import get_optimal_thread_count
 
-                thread_count = await get_optimal_thread_count() or max(1, cpu_no // 2)
+                thread_count = await get_optimal_thread_count() or max(
+                    1, cpu_no // 2
+                )
 
             cmd = [
                 "xtra",
@@ -372,11 +374,15 @@ async def get_audio_thumbnail(audio_file, user_id=None):
                         result = f"thumbnails/{user_id}.jpg"
                     # Then try owner thumbnail
                     elif await aiopath.exists(f"thumbnails/{Config.OWNER_ID}.jpg"):
-                        LOGGER.debug(f"Using owner thumbnail for audio: {audio_file}")
+                        LOGGER.debug(
+                            f"Using owner thumbnail for audio: {audio_file}"
+                        )
                         result = f"thumbnails/{Config.OWNER_ID}.jpg"
                     # Finally use default thumbnail
                     else:
-                        LOGGER.debug(f"Using default thumbnail for audio: {audio_file}")
+                        LOGGER.debug(
+                            f"Using default thumbnail for audio: {audio_file}"
+                        )
                         result = default_thumb
 
                     # Clean up temporary symlink if created
@@ -434,7 +440,7 @@ async def create_default_audio_thumbnail(output_dir, user_id=None):
         LOGGER.debug("Using user thumbnail for audio file")
         return f"thumbnails/{user_id}.jpg"
     # Then try owner thumbnail
-    elif await aiopath.exists(f"thumbnails/{Config.OWNER_ID}.jpg"):
+    if await aiopath.exists(f"thumbnails/{Config.OWNER_ID}.jpg"):
         LOGGER.debug("Using owner thumbnail for audio file")
         return f"thumbnails/{Config.OWNER_ID}.jpg"
 
@@ -468,7 +474,10 @@ async def create_default_audio_thumbnail(output_dir, user_id=None):
 
         # Execute the command with resource limits
         _, err, code = await cmd_exec(
-            cmd, apply_limits=True, process_id=process_id, task_type="Default Thumbnail"
+            cmd,
+            apply_limits=True,
+            process_id=process_id,
+            task_type="Default Thumbnail",
         )
 
         if code != 0 or not await aiopath.exists(default_thumb):
@@ -525,7 +534,9 @@ async def create_default_audio_thumbnail(output_dir, user_id=None):
 
                         img = Image.new("RGB", (32, 32), color=(0, 0, 255))
                         img.save(default_thumb)
-                        LOGGER.debug("Created tiny default audio thumbnail using PIL")
+                        LOGGER.debug(
+                            "Created tiny default audio thumbnail using PIL"
+                        )
                     except Exception as e2:
                         LOGGER.debug(f"All thumbnail creation methods failed: {e2}")
                         return None
@@ -554,12 +565,11 @@ async def get_video_thumbnail(video_file, duration, user_id=None):
             LOGGER.debug(f"Using user thumbnail for missing video: {video_file}")
             return f"thumbnails/{user_id}.jpg"
         # Then try owner thumbnail
-        elif await aiopath.exists(f"thumbnails/{Config.OWNER_ID}.jpg"):
+        if await aiopath.exists(f"thumbnails/{Config.OWNER_ID}.jpg"):
             LOGGER.debug(f"Using owner thumbnail for missing video: {video_file}")
             return f"thumbnails/{Config.OWNER_ID}.jpg"
         # Finally use default thumbnail
-        else:
-            return await create_default_text_thumbnail(output_dir)
+        return await create_default_text_thumbnail(output_dir)
 
     # Check if the file is a text file or other non-video format
     file_ext = ospath.splitext(video_file)[1].lower()
@@ -692,45 +702,41 @@ async def get_video_thumbnail(video_file, duration, user_id=None):
                         )
                         return f"thumbnails/{user_id}.jpg"
                     # Then try owner thumbnail
-                    elif await aiopath.exists(f"thumbnails/{Config.OWNER_ID}.jpg"):
+                    if await aiopath.exists(f"thumbnails/{Config.OWNER_ID}.jpg"):
                         LOGGER.debug(
                             f"Using owner thumbnail for video with extraction failure: {video_file}"
                         )
                         return f"thumbnails/{Config.OWNER_ID}.jpg"
                     # Finally use appropriate default thumbnail based on file type
-                    else:
-                        if file_ext.lower() in [".cr3", ".cr2", ".arw", ".nef", ".dng"]:
-                            LOGGER.warning(
-                                f"Detected camera RAW format {file_ext}. Using default image thumbnail."
-                            )
-                            return await create_default_image_thumbnail(
-                                output_dir, user_id
-                            )
-                        elif file_ext.lower() in [
-                            ".mp3",
-                            ".m4a",
-                            ".flac",
-                            ".wav",
-                            ".ogg",
-                            ".opus",
-                        ]:
-                            return await create_default_audio_thumbnail(
-                                output_dir, user_id
-                            )
-                        elif file_ext.lower() in [
-                            ".mp4",
-                            ".mkv",
-                            ".avi",
-                            ".mov",
-                            ".webm",
-                        ]:
-                            return await create_default_video_thumbnail(
-                                output_dir, user_id
-                            )
-                        else:
-                            return await create_default_text_thumbnail(
-                                output_dir, user_id
-                            )
+                    if file_ext.lower() in [".cr3", ".cr2", ".arw", ".nef", ".dng"]:
+                        LOGGER.warning(
+                            f"Detected camera RAW format {file_ext}. Using default image thumbnail."
+                        )
+                        return await create_default_image_thumbnail(
+                            output_dir, user_id
+                        )
+                    if file_ext.lower() in [
+                        ".mp3",
+                        ".m4a",
+                        ".flac",
+                        ".wav",
+                        ".ogg",
+                        ".opus",
+                    ]:
+                        return await create_default_audio_thumbnail(
+                            output_dir, user_id
+                        )
+                    if file_ext.lower() in [
+                        ".mp4",
+                        ".mkv",
+                        ".avi",
+                        ".mov",
+                        ".webm",
+                    ]:
+                        return await create_default_video_thumbnail(
+                            output_dir, user_id
+                        )
+                    return await create_default_text_thumbnail(output_dir, user_id)
     except Exception as e:
         LOGGER.error(
             f"Error while extracting thumbnail from video. Name: {video_file}. Error: {e!s}",
@@ -742,14 +748,13 @@ async def get_video_thumbnail(video_file, duration, user_id=None):
             )
             return f"thumbnails/{user_id}.jpg"
         # Then try owner thumbnail
-        elif await aiopath.exists(f"thumbnails/{Config.OWNER_ID}.jpg"):
+        if await aiopath.exists(f"thumbnails/{Config.OWNER_ID}.jpg"):
             LOGGER.debug(
                 f"Using owner thumbnail for video after exception: {video_file}"
             )
             return f"thumbnails/{Config.OWNER_ID}.jpg"
         # Finally use default thumbnail
-        else:
-            return await create_default_text_thumbnail(output_dir, user_id)
+        return await create_default_text_thumbnail(output_dir, user_id)
     return output
 
 
@@ -759,7 +764,7 @@ async def create_default_text_thumbnail(output_dir, user_id=None):
         LOGGER.debug("Using user thumbnail for text file")
         return f"thumbnails/{user_id}.jpg"
     # Then try owner thumbnail
-    elif await aiopath.exists(f"thumbnails/{Config.OWNER_ID}.jpg"):
+    if await aiopath.exists(f"thumbnails/{Config.OWNER_ID}.jpg"):
         LOGGER.debug("Using owner thumbnail for text file")
         return f"thumbnails/{Config.OWNER_ID}.jpg"
 
@@ -790,7 +795,9 @@ async def create_default_text_thumbnail(output_dir, user_id=None):
                 img.save(default_thumb)
                 LOGGER.debug("Created default text thumbnail using PIL")
             except Exception as e:
-                LOGGER.debug(f"Failed to create default text thumbnail with PIL: {e}")
+                LOGGER.debug(
+                    f"Failed to create default text thumbnail with PIL: {e}"
+                )
                 return None
 
     if await aiopath.exists(default_thumb):
@@ -804,7 +811,7 @@ async def create_default_video_thumbnail(output_dir, user_id=None):
         LOGGER.debug("Using user thumbnail for video file")
         return f"thumbnails/{user_id}.jpg"
     # Then try owner thumbnail
-    elif await aiopath.exists(f"thumbnails/{Config.OWNER_ID}.jpg"):
+    if await aiopath.exists(f"thumbnails/{Config.OWNER_ID}.jpg"):
         LOGGER.debug("Using owner thumbnail for video file")
         return f"thumbnails/{Config.OWNER_ID}.jpg"
 
@@ -837,7 +844,9 @@ async def create_default_video_thumbnail(output_dir, user_id=None):
                 img.save(default_thumb)
                 LOGGER.debug("Created default video thumbnail using PIL")
             except Exception as e:
-                LOGGER.debug(f"Failed to create default video thumbnail with PIL: {e}")
+                LOGGER.debug(
+                    f"Failed to create default video thumbnail with PIL: {e}"
+                )
                 return None
 
     if await aiopath.exists(default_thumb):
@@ -851,7 +860,7 @@ async def create_default_image_thumbnail(output_dir, user_id=None):
         LOGGER.debug("Using user thumbnail for image file")
         return f"thumbnails/{user_id}.jpg"
     # Then try owner thumbnail
-    elif await aiopath.exists(f"thumbnails/{Config.OWNER_ID}.jpg"):
+    if await aiopath.exists(f"thumbnails/{Config.OWNER_ID}.jpg"):
         LOGGER.debug("Using owner thumbnail for image file")
         return f"thumbnails/{Config.OWNER_ID}.jpg"
 
@@ -884,7 +893,9 @@ async def create_default_image_thumbnail(output_dir, user_id=None):
                 img.save(default_thumb)
                 LOGGER.debug("Created default image thumbnail using PIL")
             except Exception as e:
-                LOGGER.debug(f"Failed to create default image thumbnail with PIL: {e}")
+                LOGGER.debug(
+                    f"Failed to create default image thumbnail with PIL: {e}"
+                )
                 return None
 
     if await aiopath.exists(default_thumb):
@@ -906,14 +917,13 @@ async def get_multiple_frames_thumbnail(
             )
             return f"thumbnails/{user_id}.jpg"
         # Then try owner thumbnail
-        elif await aiopath.exists(f"thumbnails/{Config.OWNER_ID}.jpg"):
+        if await aiopath.exists(f"thumbnails/{Config.OWNER_ID}.jpg"):
             LOGGER.debug(
                 f"Using owner thumbnail for multiple frames failure: {video_file}"
             )
             return f"thumbnails/{Config.OWNER_ID}.jpg"
         # Finally return None
-        else:
-            return None
+        return None
     output_dir = f"{DOWNLOAD_DIR}thumbnails"
     await makedirs(output_dir, exist_ok=True)
     output = ospath.join(output_dir, f"{time()}.jpg")
@@ -984,14 +994,13 @@ async def get_multiple_frames_thumbnail(
                     )
                     return f"thumbnails/{user_id}.jpg"
                 # Then try owner thumbnail
-                elif await aiopath.exists(f"thumbnails/{Config.OWNER_ID}.jpg"):
+                if await aiopath.exists(f"thumbnails/{Config.OWNER_ID}.jpg"):
                     LOGGER.debug(
                         f"Using owner thumbnail for multiple frames combination failure: {video_file}"
                     )
                     return f"thumbnails/{Config.OWNER_ID}.jpg"
                 # Finally return None
-                else:
-                    return None
+                return None
     except Exception as e:
         LOGGER.error(
             f"Error while combining thumbnails from video. Name: {video_file}. Error: {e!s}",
@@ -1003,14 +1012,13 @@ async def get_multiple_frames_thumbnail(
             )
             return f"thumbnails/{user_id}.jpg"
         # Then try owner thumbnail
-        elif await aiopath.exists(f"thumbnails/{Config.OWNER_ID}.jpg"):
+        if await aiopath.exists(f"thumbnails/{Config.OWNER_ID}.jpg"):
             LOGGER.debug(
                 f"Using owner thumbnail for multiple frames exception: {video_file}"
             )
             return f"thumbnails/{Config.OWNER_ID}.jpg"
         # Finally return None
-        else:
-            return None
+        return None
     finally:
         if not keep_screenshots:
             await rmtree(dirpath, ignore_errors=True)
@@ -1065,7 +1073,9 @@ def is_mkv(file):
 
     # Check if the file has a supported extension
     file_lower = file.lower()
-    return any(file_lower.endswith(ext) for ext in video_extensions + image_extensions)
+    return any(
+        file_lower.endswith(ext) for ext in video_extensions + image_extensions
+    )
 
 
 async def get_media_type_for_watermark(file):
@@ -1129,14 +1139,15 @@ async def get_media_type_for_watermark(file):
     # First try to determine type by extension
     if any(file_lower.endswith(ext) for ext in video_extensions):
         return "video"
-    elif any(file_lower.endswith(ext) for ext in image_extensions):
+    if any(file_lower.endswith(ext) for ext in image_extensions):
         return "image"
-    elif any(file_lower.endswith(ext) for ext in animated_extensions):
+    if any(file_lower.endswith(ext) for ext in animated_extensions):
         return "animated_image"
 
     # If extension doesn't match, try to determine by file content using ffprobe
     try:
         import json
+
         from .bot_utils import cmd_exec
 
         # Use ffprobe to get file information
@@ -1163,7 +1174,7 @@ async def get_media_type_for_watermark(file):
 
         if code == 0:
             data = json.loads(stdout)
-            if "streams" in data and data["streams"]:
+            if data.get("streams"):
                 stream = data["streams"][0]
                 codec_type = stream.get("codec_type")
                 codec_name = stream.get("codec_name")
@@ -1174,12 +1185,11 @@ async def get_media_type_for_watermark(file):
                     if codec_name in ["gif", "apng"]:
                         return "animated_image"
                     # Check if it's a single frame (likely an image)
-                    elif avg_frame_rate == "0/0" or avg_frame_rate == "1/1":
+                    if avg_frame_rate in {"0/0", "1/1"}:
                         return "image"
-                    else:
-                        return "video"
+                    return "video"
     except Exception as e:
-        LOGGER.warning(f"Error determining media type for {file}: {str(e)}")
+        LOGGER.warning(f"Error determining media type for {file}: {e!s}")
 
     # If all else fails, return None
     LOGGER.warning(f"Could not determine media type for watermarking: {file}")
@@ -1244,7 +1254,9 @@ class FFMpeg:
                 key, value = line.split("=", 1)
                 if value != "N/A":
                     if key == "total_size":
-                        self._processed_bytes = int(value) + self._last_processed_bytes
+                        self._processed_bytes = (
+                            int(value) + self._last_processed_bytes
+                        )
                         self._speed_raw = self._processed_bytes / (
                             time() - self._start_time
                         )

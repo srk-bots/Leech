@@ -101,12 +101,11 @@ def get_restart_time_remaining():
 
     if time_diff.days > 0:
         return f"{time_diff.days}d {hours}h {minutes}m"
-    elif hours > 0:
+    if hours > 0:
         return f"{hours}h {minutes}m {seconds}s"
-    elif minutes > 0:
+    if minutes > 0:
         return f"{minutes}m {seconds}s"
-    else:
-        return f"{seconds}s"
+    return f"{seconds}s"
 
 
 # Initialize the auto-restart scheduler

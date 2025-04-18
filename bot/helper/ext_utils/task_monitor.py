@@ -1,10 +1,9 @@
 #!/usr/bin/env python3
 import asyncio
-import time
 import gc
+import time
 from asyncio import create_task
 from collections import defaultdict, deque
-from typing import Dict, List, Set, Tuple, Deque
 
 try:
     import psutil
@@ -16,19 +15,22 @@ except ImportError:
 
 from bot import (
     LOGGER,
-    task_dict,
-    task_dict_lock,
+    non_queued_dl,
+    non_queued_up,
     queue_dict_lock,
     queued_dl,
     queued_up,
-    non_queued_dl,
-    non_queued_up,
+    task_dict,
+    task_dict_lock,
 )
 from bot.helper.ext_utils.status_utils import (
     MirrorStatus,
     speed_string_to_bytes,
 )
-from bot.helper.telegram_helper.message_utils import send_message, auto_delete_message
+from bot.helper.telegram_helper.message_utils import (
+    auto_delete_message,
+    send_message,
+)
 
 # Constants for monitoring
 CHECK_INTERVAL = 60  # Check every 60 seconds
@@ -44,15 +46,15 @@ MEMORY_HIGH_THRESHOLD = 75  # 75% memory usage
 MEMORY_LOW_THRESHOLD = 60  # 60% memory usage
 
 # Store monitoring data
-task_speeds: Dict[str, Deque[int]] = defaultdict(
+task_speeds: dict[str, deque[int]] = defaultdict(
     lambda: deque(maxlen=CONSECUTIVE_CHECKS)
 )
-task_warnings: Dict[str, Dict] = {}
-cpu_usage_history: Deque[float] = deque(maxlen=CONSECUTIVE_CHECKS)
-memory_usage_history: Deque[float] = deque(maxlen=CONSECUTIVE_CHECKS)
-queued_by_monitor: Set[int] = set()  # Store tasks queued by the monitor
-cpu_intensive_tasks: List[Tuple[int, str]] = []  # [(mid, task_type), ...]
-memory_intensive_tasks: List[Tuple[int, str]] = []  # [(mid, task_type), ...]
+task_warnings: dict[str, dict] = {}
+cpu_usage_history: deque[float] = deque(maxlen=CONSECUTIVE_CHECKS)
+memory_usage_history: deque[float] = deque(maxlen=CONSECUTIVE_CHECKS)
+queued_by_monitor: set[int] = set()  # Store tasks queued by the monitor
+cpu_intensive_tasks: list[tuple[int, str]] = []  # [(mid, task_type), ...]
+memory_intensive_tasks: list[tuple[int, str]] = []  # [(mid, task_type), ...]
 
 
 async def get_task_speed(task) -> int:
@@ -133,9 +135,8 @@ async def estimate_completion_time(task) -> int:
 
         # Calculate remaining time
         remaining_bytes = size - processed
-        eta_seconds = remaining_bytes / speed if speed > 0 else float("inf")
+        return remaining_bytes / speed if speed > 0 else float("inf")
 
-        return eta_seconds
     except Exception as e:
         LOGGER.debug(f"Error estimating completion time: {e}")
         return float("inf")
@@ -163,14 +164,13 @@ async def is_task_slow(task, gid: str) -> bool:
     task_speeds[gid].append(speed)
 
     # Check if we have enough data points and all are below threshold
-    if len(task_speeds[gid]) >= CONSECUTIVE_CHECKS and all(
-        s <= SPEED_THRESHOLD for s in task_speeds[gid]
-    ):
-        return True
-    return False
+    return bool(
+        len(task_speeds[gid]) >= CONSECUTIVE_CHECKS
+        and all(s <= SPEED_THRESHOLD for s in task_speeds[gid])
+    )
 
 
-async def should_cancel_task(task, gid: str) -> Tuple[bool, str]:
+async def should_cancel_task(task, gid: str) -> tuple[bool, str]:
     """Determine if a task should be cancelled based on monitoring criteria."""
     try:
         if not hasattr(task, "status") or not callable(task.status):
@@ -218,7 +218,10 @@ async def should_cancel_task(task, gid: str) -> Tuple[bool, str]:
             return False, task_warnings[gid]["reason"]
 
         # Check if 10 minutes have passed since warning
-        if time.time() - task_warnings[gid]["warning_time"] > WAIT_TIME_BEFORE_CANCEL:
+        if (
+            time.time() - task_warnings[gid]["warning_time"]
+            > WAIT_TIME_BEFORE_CANCEL
+        ):
             return (
                 True,
                 f"Task was warned 10 minutes ago but not cancelled manually. {task_warnings[gid]['reason']}",
@@ -247,7 +250,7 @@ async def should_cancel_task(task, gid: str) -> Tuple[bool, str]:
     return False, ""
 
 
-async def should_queue_task(task_type: str) -> Tuple[bool, str]:
+async def should_queue_task(task_type: str) -> tuple[bool, str]:
     """Determine if a task should be queued based on system resource usage."""
     # Check CPU usage
     if task_type == "cpu" and all(
@@ -264,7 +267,7 @@ async def should_queue_task(task_type: str) -> Tuple[bool, str]:
     return False, ""
 
 
-async def can_resume_queued_tasks() -> Tuple[bool, str]:
+async def can_resume_queued_tasks() -> tuple[bool, str]:
     """Check if queued tasks can be resumed based on system resources."""
     # Check CPU usage for resuming CPU-intensive tasks
     if all(usage <= CPU_LOW_THRESHOLD for usage in cpu_usage_history):
@@ -311,16 +314,20 @@ async def identify_resource_intensive_tasks():
                     else task.status()
                 )
 
-                if status in [MirrorStatus.STATUS_FFMPEG, MirrorStatus.STATUS_CONVERT]:
-                    cpu_intensive_tasks.append((mid, "cpu"))
-                elif status in [
+                if status in [
+                    MirrorStatus.STATUS_FFMPEG,
+                    MirrorStatus.STATUS_CONVERT,
+                ] or status in [
                     MirrorStatus.STATUS_ARCHIVE,
                     MirrorStatus.STATUS_EXTRACT,
                 ]:
                     cpu_intensive_tasks.append((mid, "cpu"))
 
                 # Identify memory-intensive tasks (large downloads, uploads)
-                if status in [MirrorStatus.STATUS_DOWNLOAD, MirrorStatus.STATUS_UPLOAD]:
+                if status in [
+                    MirrorStatus.STATUS_DOWNLOAD,
+                    MirrorStatus.STATUS_UPLOAD,
+                ]:
                     # Check if task has size method
                     if not hasattr(task, "size") or not callable(task.size):
                         continue
@@ -371,11 +378,15 @@ async def queue_task(mid: int, reason: str):
                 if mid in non_queued_dl:
                     non_queued_dl.remove(mid)
                     queued_dl[mid] = asyncio.Event()
-                    LOGGER.info(f"Queued download task {listener.name} due to {reason}")
+                    LOGGER.info(
+                        f"Queued download task {listener.name} due to {reason}"
+                    )
                 elif mid in non_queued_up:
                     non_queued_up.remove(mid)
                     queued_up[mid] = asyncio.Event()
-                    LOGGER.info(f"Queued upload task {listener.name} due to {reason}")
+                    LOGGER.info(
+                        f"Queued upload task {listener.name} due to {reason}"
+                    )
                 else:
                     # Task is not in any queue, can't queue it
                     queued_by_monitor.discard(mid)
@@ -456,7 +467,8 @@ async def cancel_task(task, gid: str, reason: str):
         # Get user tag for notifications
         user_tag = (
             f"@{task.listener.user.username}"
-            if hasattr(task.listener.user, "username") and task.listener.user.username
+            if hasattr(task.listener.user, "username")
+            and task.listener.user.username
             else f"<a href='tg://user?id={task.listener.user_id}'>{task.listener.user_id}</a>"
         )
 
@@ -485,8 +497,7 @@ async def cancel_task(task, gid: str, reason: str):
             )
 
         # Clean up task_warnings to prevent memory leaks
-        if gid in task_warnings:
-            del task_warnings[gid]
+        task_warnings.pop(gid, None)
 
     except Exception as e:
         LOGGER.error(f"Error cancelling task: {e}")
@@ -591,7 +602,9 @@ async def monitor_tasks():
                 for task_info in cpu_intensive_tasks + memory_intensive_tasks:
                     mid, task_type = task_info
                     if mid == task.listener.mid:
-                        should_queue, queue_reason = await should_queue_task(task_type)
+                        should_queue, queue_reason = await should_queue_task(
+                            task_type
+                        )
                         if should_queue:
                             # Verify task is still in task_dict before queuing
                             async with task_dict_lock:

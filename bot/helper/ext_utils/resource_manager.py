@@ -1,6 +1,8 @@
-import logging
-import psutil
 import asyncio
+import logging
+
+import psutil
+
 from bot.core.config_manager import Config
 
 LOGGER = logging.getLogger(__name__)
@@ -130,7 +132,7 @@ async def apply_resource_limits(cmd, process_id=None, task_type="FFmpeg"):
     if cpu_affinity:
         # Use taskset to set CPU affinity
         affinity_str = ",".join(map(str, cpu_affinity))
-        cmd = ["taskset", "-c", affinity_str] + cmd
+        cmd = ["taskset", "-c", affinity_str, *cmd]
         LOGGER.debug(f"Applied CPU affinity {affinity_str} to {task_type} process")
 
     # Apply thread count if dynamic threading is enabled
@@ -178,8 +180,7 @@ async def execute_with_resource_limits(cmd, process_id=None, task_type="FFmpeg")
 
 def cleanup_process(process_id):
     """Remove a process from tracking."""
-    if process_id in active_ffmpeg_processes:
-        del active_ffmpeg_processes[process_id]
+    active_ffmpeg_processes.pop(process_id, None)
 
 
 # Start the system resource monitor

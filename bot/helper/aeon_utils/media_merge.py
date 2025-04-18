@@ -1,9 +1,11 @@
-import os
 import logging
+import os
 import resource
+from pathlib import Path
+
 from PIL import Image, ImageDraw, ImageFont
 from PyPDF2 import PdfMerger, PdfReader, PdfWriter
-from pathlib import Path
+
 from bot.core.config_manager import Config
 
 LOGGER = logging.getLogger(__name__)
@@ -108,7 +110,9 @@ async def merge_images(
                     if img.width != max_width:
                         # Calculate new height maintaining aspect ratio
                         new_height = int(img.height * (max_width / img.width))
-                        resized_img = img.resize((max_width, new_height), Image.LANCZOS)
+                        resized_img = img.resize(
+                            (max_width, new_height), Image.LANCZOS
+                        )
                         resized_images.append(resized_img)
                     else:
                         resized_images.append(img)
@@ -140,7 +144,9 @@ async def merge_images(
                     if img.height != max_height:
                         # Calculate new width maintaining aspect ratio
                         new_width = int(img.width * (max_height / img.height))
-                        resized_img = img.resize((new_width, max_height), Image.LANCZOS)
+                        resized_img = img.resize(
+                            (new_width, max_height), Image.LANCZOS
+                        )
                         resized_images.append(resized_img)
                     else:
                         resized_images.append(img)
@@ -211,7 +217,9 @@ async def merge_images(
             images = resized_images
 
             # Create a new image with the calculated dimensions
-            merged_image = Image.new("RGB", (cell_width * columns, cell_height * rows))
+            merged_image = Image.new(
+                "RGB", (cell_width * columns, cell_height * rows)
+            )
 
             # Paste images in a grid
             for i, img in enumerate(images):
@@ -448,7 +456,9 @@ async def merge_documents(files, output_format="pdf"):
             if img.mode == "RGBA":
                 # Create white background for transparent images
                 background = Image.new("RGB", img.size, (255, 255, 255))
-                background.paste(img, mask=img.split()[3])  # Use alpha channel as mask
+                background.paste(
+                    img, mask=img.split()[3]
+                )  # Use alpha channel as mask
                 img = background
             elif img.mode != "RGB":
                 img = img.convert("RGB")
@@ -490,7 +500,9 @@ async def merge_documents(files, output_format="pdf"):
         return None
 
 
-async def create_pdf_from_images(image_files, output_file="merged.pdf", page_size=None):
+async def create_pdf_from_images(
+    image_files, output_file="merged.pdf", page_size=None
+):
     """
     Create a PDF from multiple image files.
 
@@ -654,9 +666,7 @@ async def add_text_to_image(
         draw.text(position, text, fill=color, font=font)
 
         # Save the image
-        output_path = (
-            f"{os.path.splitext(image_path)[0]}_text{os.path.splitext(image_path)[1]}"
-        )
+        output_path = f"{os.path.splitext(image_path)[0]}_text{os.path.splitext(image_path)[1]}"
         img.save(output_path)
 
         LOGGER.info(f"Successfully added text to image: {output_path}")

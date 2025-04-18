@@ -221,8 +221,9 @@ async def cmd_exec(
     Returns:
         tuple: (stdout, stderr, return_code)
     """
-    from .resource_manager import apply_resource_limits
     import shlex
+
+    from .resource_manager import apply_resource_limits
 
     # Check for special characters in command arguments if using shell with apply_limits
     if apply_limits and shell and isinstance(cmd, str):

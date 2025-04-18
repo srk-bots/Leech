@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 import os
-import aiohttp
 from logging import getLogger
+
+import aiohttp
 
 LOGGER = getLogger(__name__)
 
@@ -610,7 +611,7 @@ async def download_google_font(font_name):
                     LOGGER.info(f"Successfully downloaded Google Font: {font_name}")
                     return font_path
     except Exception as e:
-        LOGGER.error(f"Error downloading Google Font {font_name}: {str(e)}")
+        LOGGER.error(f"Error downloading Google Font {font_name}: {e!s}")
         return None
 
 
@@ -629,7 +630,7 @@ async def is_google_font(font_name):
         font_name = font_name.split(":", 1)[0]
 
     # If it's already a file path, it's not a Google Font name
-    if font_name.endswith(".ttf") or font_name.endswith(".otf"):
+    if font_name.endswith((".ttf", ".otf")):
         return False
 
     # If it's in the FONT_STYLES dictionary, it's not a Google Font
@@ -662,15 +663,16 @@ async def apply_google_font_style(text, font_name):
     # Check if the font exists
     font_exists = await is_google_font(font_name)
     if not font_exists:
-        LOGGER.warning(f"Google Font '{font_name}' not found. Using default styling.")
+        LOGGER.warning(
+            f"Google Font '{font_name}' not found. Using default styling."
+        )
         return f"<code>{text}</code>"
 
     # Apply the font using HTML (this is just for visual indication in the caption)
     # Note: Telegram doesn't actually render custom fonts, but this shows the user what font was applied
     if font_weight:
         return f"<span style='font-family: \"{font_name}\"; font-weight: {font_weight};'>{text}</span>"
-    else:
-        return f"<span style='font-family: \"{font_name}\";'>{text}</span>"
+    return f"<span style='font-family: \"{font_name}\";'>{text}</span>"
 
 
 def get_available_fonts():
@@ -691,7 +693,7 @@ async def list_google_fonts():
         list: List of popular Google Font names
     """
     # List of popular Google Fonts
-    popular_fonts = [
+    return [
         "Roboto",
         "Open Sans",
         "Lato",
@@ -713,4 +715,3 @@ async def list_google_fonts():
         "Work Sans",
         "Fira Sans",
     ]
-    return popular_fonts

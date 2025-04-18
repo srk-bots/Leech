@@ -128,7 +128,9 @@ class TaskListener(TaskConfig):
                                 des_id = next(
                                     iter(self.same_dir[self.folder_name]["tasks"]),
                                 )
-                                des_path = f"{DOWNLOAD_DIR}{des_id}{self.folder_name}"
+                                des_path = (
+                                    f"{DOWNLOAD_DIR}{des_id}{self.folder_name}"
+                                )
                                 await makedirs(des_path, exist_ok=True)
                                 LOGGER.info(
                                     f"Moving files from {self.mid} to {des_id}",
@@ -136,7 +138,9 @@ class TaskListener(TaskConfig):
                                 for item in await listdir(spath):
                                     if item.strip().endswith((".aria2", ".!qB")):
                                         continue
-                                    item_path = f"{self.dir}{self.folder_name}/{item}"
+                                    item_path = (
+                                        f"{self.dir}{self.folder_name}/{item}"
+                                    )
                                     if item in await listdir(des_path):
                                         await move(
                                             item_path,

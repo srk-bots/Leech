@@ -279,8 +279,9 @@ async def join_files(opath):
 
 
 async def split_file(f_path, split_size, listener):
-    from .resource_manager import apply_resource_limits, cleanup_process
     from time import time
+
+    from .resource_manager import apply_resource_limits, cleanup_process
 
     out_path = f"{f_path}."
     if listener.is_cancelled:
@@ -386,8 +387,9 @@ class SevenZ:
         self._percentage = "0%"
 
     async def extract(self, f_path, t_path, pswd):
-        from .resource_manager import apply_resource_limits, cleanup_process
         from time import time
+
+        from .resource_manager import apply_resource_limits, cleanup_process
 
         cmd = [
             "7z",
@@ -439,8 +441,9 @@ class SevenZ:
         return code
 
     async def zip(self, dl_path, up_path, pswd):
-        from .resource_manager import apply_resource_limits, cleanup_process
         from time import time
+
+        from .resource_manager import apply_resource_limits, cleanup_process
 
         size = await get_path_size(dl_path)
         split_size = self._listener.split_size

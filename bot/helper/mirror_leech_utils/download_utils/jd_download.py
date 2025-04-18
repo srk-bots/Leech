@@ -34,7 +34,7 @@ from myjd.exception import MYJDException
 
 
 @new_task
-async def configureDownload(_, query, obj):  # noqa: N802
+async def configureDownload(_, query, obj):
     data = query.data.split()
     message = query.message
     await query.answer()
@@ -90,7 +90,9 @@ async def get_online_packages(path, state="grabbing"):
         queued_downloads = await jdownloader.device.linkgrabber.query_packages(
             [{"saveTo": True}],
         )
-        return [qd["uuid"] for qd in queued_downloads if qd["saveTo"].startswith(path)]
+        return [
+            qd["uuid"] for qd in queued_downloads if qd["saveTo"].startswith(path)
+        ]
     download_packages = await jdownloader.device.downloads.query_packages(
         [{"saveTo": True}],
     )
@@ -180,17 +182,19 @@ async def add_jd_download(listener, path):
             name = ""
             error = ""
             while (time() - start_time) < 60:
-                queued_downloads = await jdownloader.device.linkgrabber.query_packages(
-                    [
-                        {
-                            "bytesTotal": True,
-                            "saveTo": True,
-                            "availableOnlineCount": True,
-                            "availableOfflineCount": True,
-                            "availableTempUnknownCount": True,
-                            "availableUnknownCount": True,
-                        },
-                    ],
+                queued_downloads = (
+                    await jdownloader.device.linkgrabber.query_packages(
+                        [
+                            {
+                                "bytesTotal": True,
+                                "saveTo": True,
+                                "availableOnlineCount": True,
+                                "availableOfflineCount": True,
+                                "availableTempUnknownCount": True,
+                                "availableUnknownCount": True,
+                            },
+                        ],
+                    )
                 )
 
                 if not online_packages and corrupted_packages and error:
@@ -232,7 +236,9 @@ async def add_jd_download(listener, path):
                                 1,
                             )[0]
                         else:
-                            name = save_to.replace(f"{path}/", "", 1).split("/", 1)[0]
+                            name = save_to.replace(f"{path}/", "", 1).split("/", 1)[
+                                0
+                            ]
                         name = name[:255]
 
                     if (

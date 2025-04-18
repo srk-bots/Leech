@@ -57,9 +57,9 @@ async def get_media_tools_settings(from_user, stype="main", page_no=0):
 
         if user_has_text:
             watermark_text = f"{user_dict['WATERMARK_KEY']} (User)"
-        elif user_watermark_enabled and owner_has_text:
-            watermark_text = f"{Config.WATERMARK_KEY} (Global)"
-        elif owner_watermark_enabled and owner_has_text:
+        elif (user_watermark_enabled and owner_has_text) or (
+            owner_watermark_enabled and owner_has_text
+        ):
             watermark_text = f"{Config.WATERMARK_KEY} (Global)"
         else:
             watermark_text = "None"
@@ -107,9 +107,9 @@ async def get_media_tools_settings(from_user, stype="main", page_no=0):
 
         if user_has_text:
             watermark_text = f"{user_dict['WATERMARK_KEY']} (User)"
-        elif watermark_enabled and owner_has_text:
-            watermark_text = f"{Config.WATERMARK_KEY} (Global)"
-        elif Config.WATERMARK_ENABLED and owner_has_text:
+        elif (watermark_enabled and owner_has_text) or (
+            Config.WATERMARK_ENABLED and owner_has_text
+        ):
             watermark_text = f"{Config.WATERMARK_KEY} (Global)"
         else:
             watermark_text = "None"
@@ -122,9 +122,9 @@ async def get_media_tools_settings(from_user, stype="main", page_no=0):
 
         if user_has_position:
             watermark_position = f"{user_dict['WATERMARK_POSITION']} (User)"
-        elif watermark_enabled and owner_has_position:
-            watermark_position = f"{Config.WATERMARK_POSITION} (Global)"
-        elif Config.WATERMARK_ENABLED and owner_has_position:
+        elif (watermark_enabled and owner_has_position) or (
+            Config.WATERMARK_ENABLED and owner_has_position
+        ):
             watermark_position = f"{Config.WATERMARK_POSITION} (Global)"
         else:
             watermark_position = "top_left (Default)"
@@ -135,22 +135,24 @@ async def get_media_tools_settings(from_user, stype="main", page_no=0):
 
         if user_has_size:
             watermark_size = f"{user_dict['WATERMARK_SIZE']} (User)"
-        elif watermark_enabled and owner_has_size:
-            watermark_size = f"{Config.WATERMARK_SIZE} (Global)"
-        elif Config.WATERMARK_ENABLED and owner_has_size:
+        elif (watermark_enabled and owner_has_size) or (
+            Config.WATERMARK_ENABLED and owner_has_size
+        ):
             watermark_size = f"{Config.WATERMARK_SIZE} (Global)"
         else:
             watermark_size = "20 (Default)"
 
         # Get watermark color based on priority
-        user_has_color = "WATERMARK_COLOR" in user_dict and user_dict["WATERMARK_COLOR"]
+        user_has_color = (
+            "WATERMARK_COLOR" in user_dict and user_dict["WATERMARK_COLOR"]
+        )
         owner_has_color = Config.WATERMARK_COLOR
 
         if user_has_color:
             watermark_color = f"{user_dict['WATERMARK_COLOR']} (User)"
-        elif watermark_enabled and owner_has_color:
-            watermark_color = f"{Config.WATERMARK_COLOR} (Global)"
-        elif Config.WATERMARK_ENABLED and owner_has_color:
+        elif (watermark_enabled and owner_has_color) or (
+            Config.WATERMARK_ENABLED and owner_has_color
+        ):
             watermark_color = f"{Config.WATERMARK_COLOR} (Global)"
         else:
             watermark_color = "white (Default)"
@@ -161,9 +163,9 @@ async def get_media_tools_settings(from_user, stype="main", page_no=0):
 
         if user_has_font:
             watermark_font = f"{user_dict['WATERMARK_FONT']} (User)"
-        elif watermark_enabled and owner_has_font:
-            watermark_font = f"{Config.WATERMARK_FONT} (Global)"
-        elif Config.WATERMARK_ENABLED and owner_has_font:
+        elif (watermark_enabled and owner_has_font) or (
+            Config.WATERMARK_ENABLED and owner_has_font
+        ):
             watermark_font = f"{Config.WATERMARK_FONT} (Global)"
         else:
             watermark_font = "default.otf (Default)"
@@ -212,7 +214,9 @@ async def get_media_tools_settings(from_user, stype="main", page_no=0):
             "Set Position", f"mediatools {user_id} menu WATERMARK_POSITION"
         )
         buttons.data_button("Set Size", f"mediatools {user_id} menu WATERMARK_SIZE")
-        buttons.data_button("Set Color", f"mediatools {user_id} menu WATERMARK_COLOR")
+        buttons.data_button(
+            "Set Color", f"mediatools {user_id} menu WATERMARK_COLOR"
+        )
         buttons.data_button("Set Font", f"mediatools {user_id} menu WATERMARK_FONT")
         buttons.data_button("Back", f"mediatools {user_id} watermark", "footer")
         buttons.data_button("Close", f"mediatools {user_id} close", "footer")
@@ -225,9 +229,9 @@ async def get_media_tools_settings(from_user, stype="main", page_no=0):
 
         if user_has_text:
             watermark_text = f"{user_dict['WATERMARK_KEY']} (User)"
-        elif watermark_enabled and owner_has_text:
-            watermark_text = f"{Config.WATERMARK_KEY} (Global)"
-        elif Config.WATERMARK_ENABLED and owner_has_text:
+        elif (watermark_enabled and owner_has_text) or (
+            Config.WATERMARK_ENABLED and owner_has_text
+        ):
             watermark_text = f"{Config.WATERMARK_KEY} (Global)"
         else:
             watermark_text = "None"
@@ -240,9 +244,9 @@ async def get_media_tools_settings(from_user, stype="main", page_no=0):
 
         if user_has_position:
             watermark_position = f"{user_dict['WATERMARK_POSITION']} (User)"
-        elif watermark_enabled and owner_has_position:
-            watermark_position = f"{Config.WATERMARK_POSITION} (Global)"
-        elif Config.WATERMARK_ENABLED and owner_has_position:
+        elif (watermark_enabled and owner_has_position) or (
+            Config.WATERMARK_ENABLED and owner_has_position
+        ):
             watermark_position = f"{Config.WATERMARK_POSITION} (Global)"
         else:
             watermark_position = "top_left (Default)"
@@ -253,22 +257,24 @@ async def get_media_tools_settings(from_user, stype="main", page_no=0):
 
         if user_has_size:
             watermark_size = f"{user_dict['WATERMARK_SIZE']} (User)"
-        elif watermark_enabled and owner_has_size:
-            watermark_size = f"{Config.WATERMARK_SIZE} (Global)"
-        elif Config.WATERMARK_ENABLED and owner_has_size:
+        elif (watermark_enabled and owner_has_size) or (
+            Config.WATERMARK_ENABLED and owner_has_size
+        ):
             watermark_size = f"{Config.WATERMARK_SIZE} (Global)"
         else:
             watermark_size = "20 (Default)"
 
         # Get watermark color based on priority
-        user_has_color = "WATERMARK_COLOR" in user_dict and user_dict["WATERMARK_COLOR"]
+        user_has_color = (
+            "WATERMARK_COLOR" in user_dict and user_dict["WATERMARK_COLOR"]
+        )
         owner_has_color = Config.WATERMARK_COLOR
 
         if user_has_color:
             watermark_color = f"{user_dict['WATERMARK_COLOR']} (User)"
-        elif watermark_enabled and owner_has_color:
-            watermark_color = f"{Config.WATERMARK_COLOR} (Global)"
-        elif Config.WATERMARK_ENABLED and owner_has_color:
+        elif (watermark_enabled and owner_has_color) or (
+            Config.WATERMARK_ENABLED and owner_has_color
+        ):
             watermark_color = f"{Config.WATERMARK_COLOR} (Global)"
         else:
             watermark_color = "white (Default)"
@@ -279,9 +285,9 @@ async def get_media_tools_settings(from_user, stype="main", page_no=0):
 
         if user_has_font:
             watermark_font = f"{user_dict['WATERMARK_FONT']} (User)"
-        elif watermark_enabled and owner_has_font:
-            watermark_font = f"{Config.WATERMARK_FONT} (Global)"
-        elif Config.WATERMARK_ENABLED and owner_has_font:
+        elif (watermark_enabled and owner_has_font) or (
+            Config.WATERMARK_ENABLED and owner_has_font
+        ):
             watermark_font = f"{Config.WATERMARK_FONT} (Global)"
         else:
             watermark_font = "default.otf (Default)"
@@ -361,7 +367,9 @@ async def get_media_tools_settings(from_user, stype="main", page_no=0):
             )
 
         buttons.data_button("Configure", f"mediatools {user_id} merge_config")
-        buttons.data_button("Set Priority", f"mediatools {user_id} menu MERGE_PRIORITY")
+        buttons.data_button(
+            "Set Priority", f"mediatools {user_id} menu MERGE_PRIORITY"
+        )
         buttons.data_button(
             "Remove Original", f"mediatools {user_id} menu MERGE_REMOVE_ORIGINAL"
         )
@@ -593,7 +601,9 @@ async def get_media_tools_settings(from_user, stype="main", page_no=0):
                     )
                     # Make sure the page number is passed as a separate parameter
                     buttons.data_button(
-                        f"[{i + 1}]", f"mediatools {user_id} merge_config {i}", "page"
+                        f"[{i + 1}]",
+                        f"mediatools {user_id} merge_config {i}",
+                        "page",
                     )
                 else:
                     LOGGER.debug(
@@ -686,15 +696,18 @@ async def get_media_tools_settings(from_user, stype="main", page_no=0):
         if any(setting in formats for setting in merge_settings[start_idx:end_idx]):
             categories.append("Formats")
         if any(
-            setting in video_settings for setting in merge_settings[start_idx:end_idx]
+            setting in video_settings
+            for setting in merge_settings[start_idx:end_idx]
         ):
             categories.append("Video")
         if any(
-            setting in audio_settings for setting in merge_settings[start_idx:end_idx]
+            setting in audio_settings
+            for setting in merge_settings[start_idx:end_idx]
         ):
             categories.append("Audio")
         if any(
-            setting in image_settings for setting in merge_settings[start_idx:end_idx]
+            setting in image_settings
+            for setting in merge_settings[start_idx:end_idx]
         ):
             categories.append("Image")
         if any(
@@ -1151,7 +1164,9 @@ async def update_media_tools_settings(query, stype="main"):
     elif stype == "merge_config":
         # Use the global variable for merge_config
         page_no = merge_config_page
-        LOGGER.debug(f"Using global merge_config_page: {page_no} for merge_config menu")
+        LOGGER.debug(
+            f"Using global merge_config_page: {page_no} for merge_config menu"
+        )
 
     LOGGER.debug(
         f"Calling get_media_tools_settings with stype: {stype}, page_no: {page_no}"
@@ -1234,101 +1249,96 @@ async def get_menu(option, message, user_id):
         current_value = user_dict[option]
     elif hasattr(Config, option) and getattr(Config, option):
         current_value = f"{getattr(Config, option)} (Global)"
+    elif option == "WATERMARK_POSITION":
+        current_value = "top_left (Default)"
+    elif option == "WATERMARK_SIZE":
+        current_value = "20 (Default)"
+    elif option == "WATERMARK_COLOR":
+        current_value = "white (Default)"
+    elif option == "WATERMARK_FONT":
+        current_value = "default.otf (Default)"
+    elif option == "WATERMARK_PRIORITY":
+        current_value = "2 (Default)"
+    elif option == "WATERMARK_THREADING":
+        current_value = "True (Default)"
+    elif option == "MERGE_PRIORITY":
+        current_value = "1 (Default)"
+    elif (
+        option in {"MERGE_THREADING", "CONCAT_DEMUXER_ENABLED"}
+        or option == "FILTER_COMPLEX_ENABLED"
+    ):
+        current_value = "True (Default)"
+    elif option == "MERGE_OUTPUT_FORMAT_VIDEO":
+        current_value = "mkv (Default)"
+    elif option == "MERGE_OUTPUT_FORMAT_AUDIO":
+        current_value = "mp3 (Default)"
+    elif option == "MERGE_OUTPUT_FORMAT_IMAGE":
+        current_value = "jpg (Default)"
+    elif option == "MERGE_OUTPUT_FORMAT_DOCUMENT":
+        current_value = "pdf (Default)"
+    elif option == "MERGE_OUTPUT_FORMAT_SUBTITLE":
+        current_value = "srt (Default)"
+    elif option == "MERGE_IMAGE_MODE":
+        current_value = "auto (Default)"
+    elif option == "MERGE_IMAGE_COLUMNS":
+        current_value = "2 (Default)"
+    elif option == "MERGE_IMAGE_QUALITY":
+        current_value = "90 (Default)"
+    elif option == "MERGE_IMAGE_DPI":
+        current_value = "300 (Default)"
+    elif option == "MERGE_IMAGE_RESIZE":
+        current_value = "none (Default)"
+    elif option == "MERGE_IMAGE_BACKGROUND":
+        current_value = "white (Default)"
+    elif option == "MERGE_VIDEO_CODEC":
+        current_value = "copy (Default)"
+    elif option in {"MERGE_VIDEO_QUALITY", "MERGE_VIDEO_PRESET"}:
+        current_value = "medium (Default)"
+    elif option == "MERGE_VIDEO_CRF":
+        current_value = "23 (Default)"
+    elif option == "MERGE_VIDEO_PIXEL_FORMAT":
+        current_value = "yuv420p (Default)"
+    elif option == "MERGE_VIDEO_TUNE":
+        current_value = "film (Default)"
+    elif option == "MERGE_VIDEO_FASTSTART":
+        current_value = "True (Default)"
+    elif option == "MERGE_AUDIO_CODEC":
+        current_value = "copy (Default)"
+    elif option == "MERGE_AUDIO_BITRATE":
+        current_value = "192k (Default)"
+    elif option == "MERGE_AUDIO_CHANNELS":
+        current_value = "2 (Default)"
+    elif option == "MERGE_AUDIO_SAMPLING":
+        current_value = "44100 (Default)"
+    elif option == "MERGE_AUDIO_VOLUME":
+        current_value = "1.0 (Default)"
+    elif option == "MERGE_SUBTITLE_ENCODING":
+        current_value = "utf-8 (Default)"
+    elif option == "MERGE_SUBTITLE_FONT":
+        current_value = "Arial (Default)"
+    elif option == "MERGE_SUBTITLE_FONT_SIZE":
+        current_value = "24 (Default)"
+    elif option == "MERGE_SUBTITLE_FONT_COLOR":
+        current_value = "white (Default)"
+    elif option == "MERGE_SUBTITLE_BACKGROUND":
+        current_value = "black (Default)"
+    elif option == "MERGE_DOCUMENT_PAPER_SIZE":
+        current_value = "a4 (Default)"
+    elif option == "MERGE_DOCUMENT_ORIENTATION":
+        current_value = "portrait (Default)"
+    elif option == "MERGE_DOCUMENT_MARGIN":
+        current_value = "50 (Default)"
+    elif (
+        option in {"MERGE_METADATA_TITLE", "MERGE_METADATA_AUTHOR"}
+        or option == "MERGE_METADATA_COMMENT"
+    ):
+        current_value = "(Default: empty)"
+    elif option == "MERGE_REMOVE_ORIGINAL":
+        current_value = "True (Default)"
+    elif option == "MEDIA_TOOLS_PRIORITY":
+        current_value = "Default Order"
     else:
-        if option == "WATERMARK_POSITION":
-            current_value = "top_left (Default)"
-        elif option == "WATERMARK_SIZE":
-            current_value = "20 (Default)"
-        elif option == "WATERMARK_COLOR":
-            current_value = "white (Default)"
-        elif option == "WATERMARK_FONT":
-            current_value = "default.otf (Default)"
-        elif option == "WATERMARK_PRIORITY":
-            current_value = "2 (Default)"
-        elif option == "WATERMARK_THREADING":
-            current_value = "True (Default)"
-        elif option == "MERGE_PRIORITY":
-            current_value = "1 (Default)"
-        elif option == "MERGE_THREADING":
-            current_value = "True (Default)"
-        elif option == "CONCAT_DEMUXER_ENABLED":
-            current_value = "True (Default)"
-        elif option == "FILTER_COMPLEX_ENABLED":
-            current_value = "True (Default)"
-        elif option == "MERGE_OUTPUT_FORMAT_VIDEO":
-            current_value = "mkv (Default)"
-        elif option == "MERGE_OUTPUT_FORMAT_AUDIO":
-            current_value = "mp3 (Default)"
-        elif option == "MERGE_OUTPUT_FORMAT_IMAGE":
-            current_value = "jpg (Default)"
-        elif option == "MERGE_OUTPUT_FORMAT_DOCUMENT":
-            current_value = "pdf (Default)"
-        elif option == "MERGE_OUTPUT_FORMAT_SUBTITLE":
-            current_value = "srt (Default)"
-        elif option == "MERGE_IMAGE_MODE":
-            current_value = "auto (Default)"
-        elif option == "MERGE_IMAGE_COLUMNS":
-            current_value = "2 (Default)"
-        elif option == "MERGE_IMAGE_QUALITY":
-            current_value = "90 (Default)"
-        elif option == "MERGE_IMAGE_DPI":
-            current_value = "300 (Default)"
-        elif option == "MERGE_IMAGE_RESIZE":
-            current_value = "none (Default)"
-        elif option == "MERGE_IMAGE_BACKGROUND":
-            current_value = "white (Default)"
-        elif option == "MERGE_VIDEO_CODEC":
-            current_value = "copy (Default)"
-        elif option == "MERGE_VIDEO_QUALITY":
-            current_value = "medium (Default)"
-        elif option == "MERGE_VIDEO_PRESET":
-            current_value = "medium (Default)"
-        elif option == "MERGE_VIDEO_CRF":
-            current_value = "23 (Default)"
-        elif option == "MERGE_VIDEO_PIXEL_FORMAT":
-            current_value = "yuv420p (Default)"
-        elif option == "MERGE_VIDEO_TUNE":
-            current_value = "film (Default)"
-        elif option == "MERGE_VIDEO_FASTSTART":
-            current_value = "True (Default)"
-        elif option == "MERGE_AUDIO_CODEC":
-            current_value = "copy (Default)"
-        elif option == "MERGE_AUDIO_BITRATE":
-            current_value = "192k (Default)"
-        elif option == "MERGE_AUDIO_CHANNELS":
-            current_value = "2 (Default)"
-        elif option == "MERGE_AUDIO_SAMPLING":
-            current_value = "44100 (Default)"
-        elif option == "MERGE_AUDIO_VOLUME":
-            current_value = "1.0 (Default)"
-        elif option == "MERGE_SUBTITLE_ENCODING":
-            current_value = "utf-8 (Default)"
-        elif option == "MERGE_SUBTITLE_FONT":
-            current_value = "Arial (Default)"
-        elif option == "MERGE_SUBTITLE_FONT_SIZE":
-            current_value = "24 (Default)"
-        elif option == "MERGE_SUBTITLE_FONT_COLOR":
-            current_value = "white (Default)"
-        elif option == "MERGE_SUBTITLE_BACKGROUND":
-            current_value = "black (Default)"
-        elif option == "MERGE_DOCUMENT_PAPER_SIZE":
-            current_value = "a4 (Default)"
-        elif option == "MERGE_DOCUMENT_ORIENTATION":
-            current_value = "portrait (Default)"
-        elif option == "MERGE_DOCUMENT_MARGIN":
-            current_value = "50 (Default)"
-        elif option == "MERGE_METADATA_TITLE":
-            current_value = "(Default: empty)"
-        elif option == "MERGE_METADATA_AUTHOR":
-            current_value = "(Default: empty)"
-        elif option == "MERGE_METADATA_COMMENT":
-            current_value = "(Default: empty)"
-        elif option == "MERGE_REMOVE_ORIGINAL":
-            current_value = "True (Default)"
-        elif option == "MEDIA_TOOLS_PRIORITY":
-            current_value = "Default Order"
-        else:
-            current_value = "None"
+        current_value = "None"
 
     text = f"<b>Option:</b> {option}\n<b>Current Value:</b> <code>{current_value}</code>\n\n{media_tools_text.get(option, 'Set a value for this option.')}"
 
@@ -1341,11 +1351,7 @@ async def set_option(_, message, option, rfunc):
     value = message.text
     # Set handler_dict to False to signal that we've received input
 
-    if (
-        option == "WATERMARK_SIZE"
-        or option == "MERGE_IMAGE_COLUMNS"
-        or option == "MERGE_THREAD_NUMBER"
-    ):
+    if option in {"WATERMARK_SIZE", "MERGE_IMAGE_COLUMNS", "MERGE_THREAD_NUMBER"}:
         try:
             value = int(value)
             if value <= 0:
@@ -1589,7 +1595,8 @@ async def set_option(_, message, option, rfunc):
             return
     elif option == "MERGE_IMAGE_RESIZE":
         if value != "none" and not (
-            value.count("x") == 1 and all(part.isdigit() for part in value.split("x"))
+            value.count("x") == 1
+            and all(part.isdigit() for part in value.split("x"))
         ):
             error_msg = await send_message(
                 message,
@@ -1651,7 +1658,7 @@ async def set_option(_, message, option, rfunc):
             )
             await auto_delete_message(error_msg, time=300)
             return
-    elif option == "MERGE_SUBTITLE_FONT_COLOR" or option == "MERGE_SUBTITLE_BACKGROUND":
+    elif option in {"MERGE_SUBTITLE_FONT_COLOR", "MERGE_SUBTITLE_BACKGROUND"}:
         valid_colors = [
             "white",
             "black",
@@ -1769,11 +1776,10 @@ async def event_handler(client, query, pfunc, rfunc, photo=False, document=False
                     return False
                 if photo and (not hasattr(update, "photo") or update.photo is None):
                     return False
-                if document and (
-                    not hasattr(update, "document") or update.document is None
-                ):
-                    return False
-                return True
+                return not (
+                    document
+                    and (not hasattr(update, "document") or update.document is None)
+                )
 
         # Create the filter using the method from our class
         custom_filter = create(CustomFilter().event_filter_func)

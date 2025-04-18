@@ -38,7 +38,7 @@ async def handle_command(_, message):
     try:
         await message.delete()
     except Exception as e:
-        LOGGER.error(f"Error deleting command message: {str(e)}")
+        LOGGER.error(f"Error deleting command message: {e!s}")
 
     await gen_session(_, message=message)
 
@@ -53,7 +53,7 @@ async def handle_group_gensession(_, message):
     try:
         await message.delete()
     except Exception as e:
-        LOGGER.error(f"Error deleting command message: {str(e)}")
+        LOGGER.error(f"Error deleting command message: {e!s}")
         # If we can't delete, we'll auto-delete it after 5 minutes
         create_task(auto_delete_message(message, time=300))
 
@@ -94,7 +94,7 @@ async def handle_session_input(_, message):
         await message.delete()
         LOGGER.debug(f"Deleted user credential message for user {user_id}")
     except Exception as e:
-        LOGGER.error(f"Error deleting user credential message: {str(e)}")
+        LOGGER.error(f"Error deleting user credential message: {e!s}")
 
     # We'll handle /cancel in the dedicated handler now
     # This is kept for backward compatibility with older versions
@@ -105,7 +105,7 @@ async def handle_session_input(_, message):
             return
 
         # Mark as processed to prevent duplicate handling
-        setattr(message, "_cancel_processed", True)
+        message._cancel_processed = True
         await cancel_session_generation(_, message, user_id)
         return
 
@@ -125,10 +125,10 @@ async def handle_session_input(_, message):
         elif current_step == "2fa_password":
             await handle_2fa_password(_, message, user_id)
     except Exception as e:
-        LOGGER.error(f"Error in session generation: {str(e)}")
+        LOGGER.error(f"Error in session generation: {e!s}")
         error_msg = await send_message(
             message.chat.id,
-            f"❌ <b>Error:</b> {str(e)}\n\n"
+            f"❌ <b>Error:</b> {e!s}\n\n"
             "<b>Session generation process has been cancelled.</b>\n\n"
             "You can use /gensession or /gs command again when you're ready to generate a session.",
         )
@@ -167,7 +167,9 @@ async def handle_api_id(_, message, user_id):
             "❌ <b>Error:</b> Invalid API ID. Please enter a valid numeric value.\n\n"
             "<i>Send /cancel to cancel the process</i>",
         )
-        create_task(auto_delete_message(error_msg, time=300))  # Delete after 5 minutes
+        create_task(
+            auto_delete_message(error_msg, time=300)
+        )  # Delete after 5 minutes
 
 
 async def handle_api_hash(_, message, user_id):
@@ -296,7 +298,7 @@ async def handle_phone_or_bot(_, message, user_id):
             except (ApiIdInvalid, PhoneNumberInvalid) as e:
                 error_msg = await send_message(
                     message.chat.id,
-                    f"❌ <b>Error:</b> {str(e)}\n\n"
+                    f"❌ <b>Error:</b> {e!s}\n\n"
                     "<b>Session generation process has been cancelled.</b>\n\n"
                     "You can use /gensession or /gs command again when you're ready to generate a session.",
                 )
@@ -306,7 +308,7 @@ async def handle_phone_or_bot(_, message, user_id):
     except Exception as e:
         error_msg = await send_message(
             message.chat.id,
-            f"❌ <b>Error:</b> {str(e)}\n\n"
+            f"❌ <b>Error:</b> {e!s}\n\n"
             "<b>Session generation process has been cancelled.</b>\n\n"
             "You can use /gensession or /gs command again when you're ready to generate a session.",
         )
@@ -405,7 +407,7 @@ async def handle_verification_code(_, message, user_id):
         await status_msg.delete()
         error_msg = await send_message(
             message.chat.id,
-            f"❌ <b>Error:</b> {str(e)}\n\n"
+            f"❌ <b>Error:</b> {e!s}\n\n"
             "<b>Session generation process has been cancelled.</b>\n\n"
             "You can use /gensession or /gs command again when you're ready to generate a session.",
         )
@@ -454,7 +456,7 @@ async def handle_2fa_password(_, message, user_id):
         await status_msg.delete()
         error_msg = await send_message(
             message.chat.id,
-            f"❌ <b>Error:</b> {str(e)}\n\n"
+            f"❌ <b>Error:</b> {e!s}\n\n"
             "<b>Session generation process has been cancelled.</b>\n\n"
             "You can use /gensession or /gs command again when you're ready to generate a session.",
         )
@@ -488,7 +490,7 @@ async def generate_session_string(_, status_msg, user_id):
             )
             saved_msg_sent = True
         except Exception as e:
-            LOGGER.error(f"Failed to send to Saved Messages: {str(e)}")
+            LOGGER.error(f"Failed to send to Saved Messages: {e!s}")
             saved_msg_sent = False
 
         # Update status message
@@ -532,7 +534,7 @@ async def generate_session_string(_, status_msg, user_id):
     except Exception as e:
         error_msg = await send_message(
             status_msg.chat.id,
-            f"❌ <b>Error:</b> {str(e)}\n\n"
+            f"❌ <b>Error:</b> {e!s}\n\n"
             "<b>Session generation process has been cancelled.</b>\n\n"
             "You can use /gensession or /gs command again when you're ready to generate a session.",
         )
@@ -546,7 +548,7 @@ async def cancel_session_generation(_, message, user_id):
     try:
         await message.delete()
     except Exception as e:
-        LOGGER.error(f"Error deleting cancel message: {str(e)}")
+        LOGGER.error(f"Error deleting cancel message: {e!s}")
 
     # Send cancellation message
     cancel_msg = await send_message(
@@ -569,7 +571,7 @@ async def handle_cancel_command(_, message):
     user_id = message.from_user.id
 
     # Mark the message as processed to prevent duplicate handling
-    setattr(message, "_cancel_processed", True)
+    message._cancel_processed = True
 
     # Check if user is in session generation process
     if user_id in session_state:
@@ -579,7 +581,7 @@ async def handle_cancel_command(_, message):
         try:
             await message.delete()
         except Exception as e:
-            LOGGER.error(f"Error deleting cancel message: {str(e)}")
+            LOGGER.error(f"Error deleting cancel message: {e!s}")
 
         # Send message that there's no active session to cancel
         msg = await send_message(
@@ -599,7 +601,7 @@ async def cleanup_session(user_id):
                 if client_instance.is_connected:
                     await client_instance.disconnect()
             except Exception as e:
-                LOGGER.error(f"Error disconnecting client: {str(e)}")
+                LOGGER.error(f"Error disconnecting client: {e!s}")
 
         # Securely clear sensitive data before removing
         sensitive_fields = [

@@ -2,14 +2,15 @@
 from asyncio import create_task
 from logging import getLogger
 
+from bot.helper.telegram_helper.button_build import ButtonMaker
+
 # No need to import help_messages as we've included the content directly
 from bot.helper.telegram_helper.message_utils import (
     auto_delete_message,
     delete_message,
-    send_message,
     edit_message,
+    send_message,
 )
-from bot.helper.telegram_helper.button_build import ButtonMaker
 
 LOGGER = getLogger(__name__)
 
@@ -43,17 +44,15 @@ def get_merge_intro_page():
     msg += "<b>Merge Flags</b>: -merge-video -merge-audio -merge-subtitle -merge-image -merge-pdf -merge-all\n\n"
 
     msg += '<blockquote expandable="expandable"><b>Multi-Link Usage (reply to first link or file)</b>:\n'
-    msg += (
-        "<code>/cmd link -m folder_name -merge-video</code> (merge only video files)\n"
-    )
-    msg += (
-        "<code>/cmd link -m folder_name -merge-audio</code> (merge only audio files)\n"
-    )
+    msg += "<code>/cmd link -m folder_name -merge-video</code> (merge only video files)\n"
+    msg += "<code>/cmd link -m folder_name -merge-audio</code> (merge only audio files)\n"
     msg += "<code>/cmd -b -m folder_name -merge-subtitle</code>\n\n"
 
     msg += "or\n\n"
 
-    msg += "<b>Bulk Usage (reply to text file with links or message with links)</b>:\n"
+    msg += (
+        "<b>Bulk Usage (reply to text file with links or message with links)</b>:\n"
+    )
     msg += "<code>/cmd -b -m folder_name -merge-image</code>\n"
     msg += "<code>/cmd -b -m folder_name -merge-pdf</code>\n"
     msg += "<code>/cmd -b -m folder_name -merge-all</code>\n\n"
@@ -72,9 +71,7 @@ def get_merge_intro_page():
 
     msg += "<b>Supported Merge Types:</b>\n"
     msg += "• Video + Video + Video + ... (creates a single video file)\n"
-    msg += (
-        "  - Use <code>-merge-video</code> to preserve all video and subtitle tracks\n"
-    )
+    msg += "  - Use <code>-merge-video</code> to preserve all video and subtitle tracks\n"
     msg += "• Audio + Audio + Audio + ... (creates a single audio file)\n"
     msg += "• Subtitle + Subtitle + ... (creates a single subtitle file)\n"
     msg += "• Video + Audio + Subtitle (adds audio and subtitle tracks to video)\n"
@@ -83,7 +80,9 @@ def get_merge_intro_page():
     msg += "  - Use <code>-merge-all</code> to preserve all video, audio, and subtitle tracks\n\n"
 
     msg += '<blockquote expandable="expandable"><b>File Order Preservation</b>:\n'
-    msg += "• All files are merged in the same order as they are provided by the user\n"
+    msg += (
+        "• All files are merged in the same order as they are provided by the user\n"
+    )
     msg += "• This applies to all file types: videos, audios, subtitles, images, and documents\n"
     msg += "• The order is especially important for sequential content like video episodes or chapters</blockquote>\n\n"
 
@@ -110,7 +109,9 @@ def get_merge_video_page():
     msg += "• Use MKV container for best compatibility with different codecs\n"
     msg += "• The 'copy' codec is fastest and preserves quality but requires similar source files\n"
     msg += "• Use -merge-video flag to preserve all video and subtitle tracks\n"
-    msg += "• For files with different codecs or formats, use filter complex method\n"
+    msg += (
+        "• For files with different codecs or formats, use filter complex method\n"
+    )
     msg += "• Set video quality in Media Tools settings for transcoding operations\n"
     msg += "• Higher CRF values mean lower quality but smaller file size\n"
     msg += "• Recommended CRF values: 18-23 for high quality, 23-28 for medium quality</blockquote>\n\n"
@@ -137,9 +138,7 @@ def get_merge_audio_page():
     msg += "• MP3 format is widely compatible but lossy\n"
     msg += "• FLAC format preserves audio quality but results in larger files\n"
     msg += "• AAC offers good quality-to-size ratio for most content\n"
-    msg += (
-        "• Volume normalization helps balance audio levels across different sources\n"
-    )
+    msg += "• Volume normalization helps balance audio levels across different sources\n"
     msg += "• For audiobooks or podcasts, consider mono audio (1 channel) to reduce file size\n"
     msg += "• 192kbps is a good balance between quality and file size for most content</blockquote>\n\n"
 
@@ -162,7 +161,9 @@ def get_merge_subtitle_page():
 
     msg += '<blockquote expandable="expandable"><b>Subtitle Merging Tips:</b>\n'
     msg += "• SRT format is most widely compatible but lacks styling options\n"
-    msg += "• ASS/SSA formats support advanced styling (colors, positioning, fonts)\n"
+    msg += (
+        "• ASS/SSA formats support advanced styling (colors, positioning, fonts)\n"
+    )
     msg += "• When merging subtitles with different timings, they will be concatenated sequentially\n"
     msg += "• For multi-language subtitles, use language codes in filenames (movie.en.srt, movie.es.srt)\n"
     msg += "• Subtitle encoding can be configured in Media Tools settings (UTF-8 recommended)\n"
@@ -174,25 +175,25 @@ def get_merge_subtitle_page():
 def get_merge_image_page():
     msg = "<b>Image Merging (5/13)</b>\n\n"
     msg += "<b>Image Merging Modes:</b>\n"
-    msg += "• <b>Collage Mode</b> - Creates a grid of images (default for 3+ images)\n"
     msg += (
-        "• <b>Horizontal Mode</b> - Places images side by side (default for 2 images)\n"
+        "• <b>Collage Mode</b> - Creates a grid of images (default for 3+ images)\n"
     )
+    msg += "• <b>Horizontal Mode</b> - Places images side by side (default for 2 images)\n"
     msg += "• <b>Vertical Mode</b> - Stacks images on top of each other\n\n"
 
     msg += "<b>Supported Image Formats:</b>\n"
     msg += "• Input: JPG, JPEG, PNG, GIF, BMP, WebP, TIFF, HEIC\n"
     msg += "• Output: JPG (default), PNG, WebP, TIFF\n"
-    msg += (
-        "• Features: Resolution preservation, quality settings, metadata handling\n\n"
-    )
+    msg += "• Features: Resolution preservation, quality settings, metadata handling\n\n"
 
     msg += '<blockquote expandable="expandable"><b>Image Merging Tips:</b>\n'
     msg += "• JPG format offers good compression but is lossy (quality loss)\n"
     msg += "• PNG format preserves quality but results in larger files\n"
     msg += "• WebP offers good balance between quality and file size\n"
     msg += "• For collage mode, you can configure the number of columns in Media Tools settings\n"
-    msg += "• Background color for image merging can be customized (default: white)\n"
+    msg += (
+        "• Background color for image merging can be customized (default: white)\n"
+    )
     msg += "• Images can be resized to a uniform size before merging for better appearance</blockquote>\n\n"
 
     return msg
@@ -209,9 +210,7 @@ def get_merge_document_page():
     msg += "<b>Supported Document Formats:</b>\n"
     msg += "• Input: PDF\n"
     msg += "• Output: PDF\n"
-    msg += (
-        "• Features: Page order preservation, metadata retention, bookmark handling\n\n"
-    )
+    msg += "• Features: Page order preservation, metadata retention, bookmark handling\n\n"
 
     msg += '<blockquote expandable="expandable"><b>Document Merging Tips:</b>\n'
     msg += "• PDF merging works best with similar document types\n"
@@ -219,9 +218,7 @@ def get_merge_document_page():
     msg += "• Document properties like title and author can be configured in Media Tools settings\n"
     msg += "• Bookmarks from original PDFs are preserved in the merged document\n"
     msg += "• Password-protected PDFs may not merge correctly\n"
-    msg += (
-        "• Future updates may add support for other document formats</blockquote>\n\n"
-    )
+    msg += "• Future updates may add support for other document formats</blockquote>\n\n"
 
     return msg
 
@@ -232,15 +229,11 @@ def get_merge_mixed_page():
     msg += "• <b>Video + Audio</b>: Adds audio tracks to video files\n"
     msg += "• <b>Video + Subtitle</b>: Embeds subtitle tracks in video files\n"
     msg += "• <b>Video + Audio + Subtitle</b>: Creates complete media package with all tracks\n"
-    msg += (
-        "• <b>Multiple Audio Tracks</b>: Adds multiple language/quality audio options\n"
-    )
+    msg += "• <b>Multiple Audio Tracks</b>: Adds multiple language/quality audio options\n"
     msg += "• <b>Multiple Subtitle Tracks</b>: Embeds multiple language subtitle options\n\n"
 
     msg += "<b>Mixed Merging Guide:</b>\n"
-    msg += (
-        "1. Place all files in the same directory using <code>-m folder_name</code>\n"
-    )
+    msg += "1. Place all files in the same directory using <code>-m folder_name</code>\n"
     msg += "2. Use <code>-merge-all</code> to automatically detect and merge compatible files\n"
     msg += "3. File naming is important for proper track matching:\n"
     msg += "   • Use similar base names (video.mp4, video.srt, video.mp3)\n"
@@ -264,17 +257,13 @@ def get_merge_notes_page():
     msg = "<b>Merge Notes & Advanced Features (8/13)</b>\n\n"
 
     msg += "<b>Important Considerations:</b>\n"
-    msg += (
-        "• File order is preserved during merging (important for sequential content)\n"
-    )
+    msg += "• File order is preserved during merging (important for sequential content)\n"
     msg += "• Both <code>-merge-video</code> and <code>-merge-all</code> flags preserve all tracks\n"
     msg += "• Mixed media merging works best with MKV container format\n"
     msg += "• Some combinations may require transcoding which affects quality\n"
     msg += "• Large files may require more processing time and resources\n"
     msg += "• Certain format combinations may have compatibility limitations\n"
-    msg += (
-        "• Original files can be preserved or removed after merging (configurable)\n\n"
-    )
+    msg += "• Original files can be preserved or removed after merging (configurable)\n\n"
 
     msg += '<blockquote expandable="expandable"><b>Best Practices:</b>\n'
     msg += "• Use MKV container for most versatile track support\n"
@@ -290,22 +279,18 @@ def get_merge_notes_page():
 
     msg += '<blockquote expandable="expandable"><b>Advanced Features</b>:\n'
     msg += "• <b>Concat Demuxer</b>: Fast merging for files with identical codecs\n"
-    msg += "• <b>Filter Complex</b>: Advanced merging for files with different codecs\n"
+    msg += (
+        "• <b>Filter Complex</b>: Advanced merging for files with different codecs\n"
+    )
     msg += "• <b>Output Format</b>: Choose the format for merged files (mkv, mp4, mp3, etc.)\n"
     msg += "• <b>Threading</b>: Process multiple files simultaneously\n"
-    msg += (
-        "• <b>Thread Number</b>: Control parallel processing threads</blockquote>\n\n"
-    )
+    msg += "• <b>Thread Number</b>: Control parallel processing threads</blockquote>\n\n"
 
     msg += "<b>Important Notes:</b>\n"
-    msg += (
-        "• For best results, use the -m flag to place all files in the same directory\n"
-    )
+    msg += "• For best results, use the -m flag to place all files in the same directory\n"
     msg += "• The rename flag (-n) will not work with merge operations\n"
     msg += "• Files with identical filenames may cause issues during merging\n"
-    msg += (
-        "• Original files are removed after successful merge if enabled in settings\n"
-    )
+    msg += "• Original files are removed after successful merge if enabled in settings\n"
     msg += "• User settings take priority over owner settings\n"
     msg += "• Default settings are used if no others are specified\n"
 
@@ -372,9 +357,7 @@ def get_watermark_settings_page():
     msg += "• <b>Default</b>: System default sans-serif font\n"
     msg += "• <b>Google Fonts</b>: Any Google Font name (e.g., Roboto, Open Sans)\n"
     msg += "• <b>Custom Fonts</b>: Path to .ttf or .otf file\n"
-    msg += (
-        "• <b>Recommended</b>: Sans-serif fonts for better readability</blockquote>\n\n"
-    )
+    msg += "• <b>Recommended</b>: Sans-serif fonts for better readability</blockquote>\n\n"
 
     msg += '<blockquote expandable="expandable"><b>Advanced Settings</b>:\n'
     msg += "• <b>Opacity</b>: Transparency level of the watermark\n"
@@ -382,9 +365,7 @@ def get_watermark_settings_page():
     msg += "• <b>Shadow</b>: Enable/disable text shadow\n"
     msg += "• <b>Outline</b>: Enable/disable text outline\n"
     msg += "• <b>Threading</b>: Process multiple files simultaneously\n"
-    msg += (
-        "• <b>Thread Number</b>: Number of parallel processing threads</blockquote>\n\n"
-    )
+    msg += "• <b>Thread Number</b>: Number of parallel processing threads</blockquote>\n\n"
 
     return msg
 
@@ -435,9 +416,7 @@ def get_metadata_guide_page():
     msg += "• <code>/leech https://example.com/video.mp4 -metadata-all 'Apply to all fields'</code>\n\n"
 
     msg += "<b>Metadata Types</b>:\n"
-    msg += (
-        "• <b>Title</b>: The title of the media (shown in players and file managers)\n"
-    )
+    msg += "• <b>Title</b>: The title of the media (shown in players and file managers)\n"
     msg += "• <b>Author</b>: Creator or artist information\n"
     msg += "• <b>Comment</b>: Additional notes or information\n"
     msg += "• <b>All</b>: Single value applied to all metadata fields\n\n"
@@ -460,11 +439,11 @@ def get_metadata_guide_page():
     msg += "• Use quotes around metadata values with spaces\n"
     msg += "• Keep metadata concise for better compatibility\n"
     msg += "• Use -metadata-all for quick application to all fields\n"
-    msg += (
-        "• Individual field settings (-metadata-title, etc.) override -metadata-all\n"
-    )
+    msg += "• Individual field settings (-metadata-title, etc.) override -metadata-all\n"
     msg += "• Some players and devices may only display certain metadata fields\n"
-    msg += "• Metadata is preserved during file transfers and uploads</blockquote>\n\n"
+    msg += (
+        "• Metadata is preserved during file transfers and uploads</blockquote>\n\n"
+    )
 
     msg += '<blockquote expandable="expandable"><b>Examples</b>:\n'
     msg += "• <code>/leech https://example.com/music.zip -metadata-title 'Album Name'</code>\n"
@@ -496,9 +475,7 @@ def get_usage_examples_page():
     msg += "• <code>/mirror https://example.com/music.zip -merge-audio</code>\n"
     msg += "  Combines all audio files into a single audio file\n\n"
     msg += "• <code>/leech https://example.com/files.zip -m folder_name -merge-all</code>\n"
-    msg += (
-        "  Merges all files by type in a custom folder while preserving all tracks\n\n"
-    )
+    msg += "  Merges all files by type in a custom folder while preserving all tracks\n\n"
 
     msg += "<b>Watermark Examples:</b>\n"
     msg += '• <code>/leech https://example.com/video.mp4 -wm "My Watermark"</code>\n'
@@ -512,7 +489,9 @@ def get_usage_examples_page():
     msg += '• <code>/leech https://example.com/videos.zip -merge-video -wm "My Channel"</code>\n'
     msg += "  Merges videos first, then adds watermark (default priority)\n\n"
     msg += '• <code>/mirror https://example.com/files.zip -m folder -merge-all -wm "© 2023"</code>\n'
-    msg += "  Merges files by type while preserving all tracks, then adds watermark\n\n"
+    msg += (
+        "  Merges files by type while preserving all tracks, then adds watermark\n\n"
+    )
 
     msg += "<b>Note:</b> Use /mediatools command to configure advanced settings"
 
@@ -600,7 +579,7 @@ async def media_tools_help_callback(_, callback_query):
             await edit_message(message, content, buttons)
             await callback_query.answer(f"Page {page_num}")
         except Exception as e:
-            LOGGER.error(f"Error in media_tools_help_callback: {str(e)}")
+            LOGGER.error(f"Error in media_tools_help_callback: {e!s}")
             await callback_query.answer("Error processing request")
 
 

@@ -5,8 +5,6 @@ from re import search as re_search
 from shlex import split as ssplit
 from time import time
 
-from bot.helper.ext_utils.links_utils import is_url
-
 import aiohttp
 from aiofiles import open as aiopen
 from aiofiles.os import mkdir
@@ -17,6 +15,7 @@ from bot import LOGGER
 from bot.core.aeon_client import TgClient
 from bot.helper.aeon_utils.access_check import token_check
 from bot.helper.ext_utils.bot_utils import cmd_exec
+from bot.helper.ext_utils.links_utils import is_url
 from bot.helper.ext_utils.telegraph_helper import telegraph
 from bot.helper.telegram_helper.bot_commands import BotCommands
 from bot.helper.telegram_helper.button_build import ButtonMaker
@@ -34,9 +33,7 @@ section_dict = {"General", "Video", "Audio", "Text", "Image"}
 def parseinfo(out, file_size):
     tc = ""
     skip = False
-    file_size_line = (
-        f"File size                              : {file_size / (1024 * 1024):.2f} MiB"
-    )
+    file_size_line = f"File size                              : {file_size / (1024 * 1024):.2f} MiB"
 
     for line in out.split("\n"):
         if line.startswith("Menu"):
@@ -114,7 +111,9 @@ async def gen_mediainfo(message, link=None, media=None, reply=None):
 
     # Only create telegraph page if tc has content
     if tc:
-        link_id = (await telegraph.create_page(title="MediaInfo", content=tc))["path"]
+        link_id = (await telegraph.create_page(title="MediaInfo", content=tc))[
+            "path"
+        ]
 
         # Get user tag
         tag = message.from_user.mention

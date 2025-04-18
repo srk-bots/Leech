@@ -1,5 +1,4 @@
-from bot.helper.ext_utils.bot_utils import new_task
-from bot.helper.ext_utils.bot_utils import COMMAND_USAGE
+from bot.helper.ext_utils.bot_utils import COMMAND_USAGE, new_task
 from bot.helper.ext_utils.help_messages import (
     CLONE_HELP_DICT,
     MIRROR_HELP_DICT,
@@ -34,10 +33,9 @@ async def arg_usage(_, query):
         and message.reply_to_message
         and hasattr(message.reply_to_message, "from_user")
         and message.reply_to_message.from_user
-    ):
-        if user_id != message.reply_to_message.from_user.id:
-            await query.answer("Not Yours!", show_alert=True)
-            return
+    ) and user_id != message.reply_to_message.from_user.id:
+        await query.answer("Not Yours!", show_alert=True)
+        return
 
     buttons = ButtonMaker()
     buttons.data_button("Close", "help close")

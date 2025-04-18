@@ -367,7 +367,8 @@ class YoutubeDLHelper:
             self.opts["postprocessors"].append(
                 {
                     "already_have_thumbnail": bool(
-                        self._listener.is_leech and not self._listener.thumbnail_layout,
+                        self._listener.is_leech
+                        and not self._listener.thumbnail_layout,
                     ),
                     "key": "EmbedThumbnail",
                 },

@@ -39,7 +39,7 @@ from bot.helper.ext_utils.files_utils import (
     get_base_name,
     is_archive,
 )
-from bot.helper.ext_utils.font_utils import apply_font_style, FONT_STYLES
+from bot.helper.ext_utils.font_utils import FONT_STYLES, apply_font_style
 from bot.helper.ext_utils.media_utils import (
     get_audio_thumbnail,
     get_document_type,
@@ -179,7 +179,9 @@ class TelegramUploader:
                 name, ext = ospath.splitext(file_)
 
                 # Generate new filename using template
-                new_filename = await generate_caption(file_, dirpath, self._lfilename)
+                new_filename = await generate_caption(
+                    file_, dirpath, self._lfilename
+                )
 
                 # Make sure the extension is preserved
                 if not new_filename.endswith(ext):
@@ -197,7 +199,9 @@ class TelegramUploader:
                 # Update the listener's name property to show in status and completion messages
                 self._listener.name = new_filename
 
-                LOGGER.info(f"Applied filename template. New filename: {new_filename}")
+                LOGGER.info(
+                    f"Applied filename template. New filename: {new_filename}"
+                )
             except Exception as e:
                 LOGGER.error(f"Error applying filename template: {e}")
 
@@ -312,7 +316,9 @@ class TelegramUploader:
             # Update the listener's name property to show in status and completion messages
             self._listener.name = new_filename
 
-            LOGGER.info(f"Applied filename length limit. New filename: {new_filename}")
+            LOGGER.info(
+                f"Applied filename length limit. New filename: {new_filename}"
+            )
 
         return cap_mono
 
@@ -405,12 +411,16 @@ class TelegramUploader:
                         return
                     cap_mono = await self._prepare_file(file_, dirpath)
                     if self._last_msg_in_group:
-                        group_lists = [x for v in self._media_dict.values() for x in v]
+                        group_lists = [
+                            x for v in self._media_dict.values() for x in v
+                        ]
                         match = re_match(
                             r".+(?=\.0*\d+$)|.+(?=\.part\d+\..+$)",
                             f_path,
                         )
-                        if not match or (match and match.group(0) not in group_lists):
+                        if not match or (
+                            match and match.group(0) not in group_lists
+                        ):
                             for key, value in list(self._media_dict.items()):
                                 for subkey, msgs in list(value.items()):
                                     if len(msgs) > 1:
@@ -419,7 +429,10 @@ class TelegramUploader:
                                             key,
                                             msgs,
                                         )
-                    if self._listener.hybrid_leech and self._listener.user_transmission:
+                    if (
+                        self._listener.hybrid_leech
+                        and self._listener.user_transmission
+                    ):
                         self._user_session = f_size > 2097152000
                         if self._user_session:
                             self._sent_msg = await TgClient.user.get_messages(
@@ -427,9 +440,11 @@ class TelegramUploader:
                                 message_ids=self._sent_msg.id,
                             )
                         else:
-                            self._sent_msg = await self._listener.client.get_messages(
-                                chat_id=self._sent_msg.chat.id,
-                                message_ids=self._sent_msg.id,
+                            self._sent_msg = (
+                                await self._listener.client.get_messages(
+                                    chat_id=self._sent_msg.chat.id,
+                                    message_ids=self._sent_msg.id,
+                                )
                             )
                     self._last_msg_in_group = False
                     self._last_uploaded = 0
@@ -614,12 +629,16 @@ class TelegramUploader:
                 and self._sent_msg.chat
                 and (
                     (hasattr(self._sent_msg, "video") and self._sent_msg.video)
-                    or (hasattr(self._sent_msg, "document") and self._sent_msg.document)
+                    or (
+                        hasattr(self._sent_msg, "document")
+                        and self._sent_msg.document
+                    )
                 )
             ):
                 key = (
                     "documents"
-                    if hasattr(self._sent_msg, "document") and self._sent_msg.document
+                    if hasattr(self._sent_msg, "document")
+                    and self._sent_msg.document
                     else "videos"
                 )
                 if match := re_match(r".+(?=\.0*\d+$)|.+(?=\.part\d+\..+$)", o_path):

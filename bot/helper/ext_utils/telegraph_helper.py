@@ -53,17 +53,13 @@ class TelegraphHelper:
 
                     if len(parts) > 1:
                         # Create first page with first half
-                        result = await self.create_page(title, parts[0])
-                        return result
-                    else:
-                        LOGGER.error(f"Cannot split content: {e}")
-                        raise
-                else:
-                    LOGGER.error(f"Content is not a string, cannot split: {e}")
+                        return await self.create_page(title, parts[0])
+                    LOGGER.error(f"Cannot split content: {e}")
                     raise
-            else:
-                LOGGER.error(f"Telegraph error: {e}")
+                LOGGER.error(f"Content is not a string, cannot split: {e}")
                 raise
+            LOGGER.error(f"Telegraph error: {e}")
+            raise
 
     async def edit_page(self, path, title, content):
         try:

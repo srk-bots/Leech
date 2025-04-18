@@ -75,7 +75,9 @@ async def get_user_settings(from_user, stype="main"):
         )
         if user_dict.get("LEECH_FILENAME_PREFIX", False):
             lprefix = user_dict["LEECH_FILENAME_PREFIX"]
-        elif "LEECH_FILENAME_PREFIX" not in user_dict and Config.LEECH_FILENAME_PREFIX:
+        elif (
+            "LEECH_FILENAME_PREFIX" not in user_dict and Config.LEECH_FILENAME_PREFIX
+        ):
             lprefix = Config.LEECH_FILENAME_PREFIX
         else:
             lprefix = "None"
@@ -119,7 +121,8 @@ async def get_user_settings(from_user, stype="main"):
         if user_dict.get("LEECH_FILENAME_CAPTION", False):
             lcap = user_dict["LEECH_FILENAME_CAPTION"]
         elif (
-            "LEECH_FILENAME_CAPTION" not in user_dict and Config.LEECH_FILENAME_CAPTION
+            "LEECH_FILENAME_CAPTION" not in user_dict
+            and Config.LEECH_FILENAME_CAPTION
         ):
             lcap = Config.LEECH_FILENAME_CAPTION
         else:
@@ -248,7 +251,9 @@ async def get_user_settings(from_user, stype="main"):
             gdrive_id = GDID
         else:
             gdrive_id = "None"
-        index = user_dict["INDEX_URL"] if user_dict.get("INDEX_URL", False) else "None"
+        index = (
+            user_dict["INDEX_URL"] if user_dict.get("INDEX_URL", False) else "None"
+        )
         text = f"""<u><b>Gdrive API Settings for {name}</b></u>
 -> Gdrive Token: <b>{tokenmsg}</b>
 -> Gdrive ID: <code>{gdrive_id}</code>
@@ -256,7 +261,9 @@ async def get_user_settings(from_user, stype="main"):
 -> Stop Duplicate: <b>{sd_msg}</b>"""
     elif stype == "metadata":
         buttons.data_button("Metadata All", f"userset {user_id} menu METADATA_ALL")
-        buttons.data_button("Metadata Title", f"userset {user_id} menu METADATA_TITLE")
+        buttons.data_button(
+            "Metadata Title", f"userset {user_id} menu METADATA_TITLE"
+        )
         buttons.data_button(
             "Metadata Author", f"userset {user_id} menu METADATA_AUTHOR"
         )
@@ -294,7 +301,11 @@ async def get_user_settings(from_user, stype="main"):
         buttons.data_button("Gdrive API", f"userset {user_id} gdrive")
 
         upload_paths = user_dict.get("UPLOAD_PATHS", {})
-        if not upload_paths and "UPLOAD_PATHS" not in user_dict and Config.UPLOAD_PATHS:
+        if (
+            not upload_paths
+            and "UPLOAD_PATHS" not in user_dict
+            and Config.UPLOAD_PATHS
+        ):
             upload_paths = Config.UPLOAD_PATHS
         else:
             upload_paths = "None"
@@ -530,7 +541,9 @@ async def get_menu(option, message, user_id):
         back_to = "back"
     buttons.data_button("Back", f"userset {user_id} {back_to}")
     buttons.data_button("Close", f"userset {user_id} close")
-    text = f"Edit menu for: {option}\n\nUse /help1, /help2, /help3... for more details."
+    text = (
+        f"Edit menu for: {option}\n\nUse /help1, /help2, /help3... for more details."
+    )
     await edit_message(message, text, buttons.build_menu(2))
 
 

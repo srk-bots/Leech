@@ -28,13 +28,13 @@ from bot import (
 from bot.core.aeon_client import TgClient
 from bot.core.config_manager import Config
 from bot.helper.aeon_utils.command_gen import (
-    get_embed_thumb_cmd,
-    get_metadata_cmd,
-    get_watermark_cmd,
     analyze_media_for_merge,
+    get_embed_thumb_cmd,
     get_merge_concat_demuxer_cmd,
     get_merge_filter_complex_cmd,
     get_merge_mixed_cmd,
+    get_metadata_cmd,
+    get_watermark_cmd,
 )
 
 from .ext_utils.bot_utils import get_size_bytes, new_task, sync_to_async
@@ -172,7 +172,9 @@ class TaskConfig:
 
     def get_config_path(self, dest):
         return (
-            f"rclone/{self.user_id}.conf" if dest.startswith("mrcc:") else "rclone.conf"
+            f"rclone/{self.user_id}.conf"
+            if dest.startswith("mrcc:")
+            else "rclone.conf"
         )
 
     async def is_token_exists(self, path, status):
@@ -220,7 +222,11 @@ class TaskConfig:
         self.metadata_title = (
             self.metadata_title
             or self.user_dict.get("METADATA_TITLE", False)
-            or (Config.METADATA_TITLE if "METADATA_TITLE" not in self.user_dict else "")
+            or (
+                Config.METADATA_TITLE
+                if "METADATA_TITLE" not in self.user_dict
+                else ""
+            )
         )
 
         self.metadata_author = (
@@ -265,7 +271,9 @@ class TaskConfig:
                 # User has disabled watermark - check owner settings
                 self.watermark_enabled = owner_watermark_enabled
                 if self.watermark_enabled:
-                    LOGGER.debug("Watermark enabled by owner settings (user disabled)")
+                    LOGGER.debug(
+                        "Watermark enabled by owner settings (user disabled)"
+                    )
                 else:
                     LOGGER.debug("Watermark disabled (both user and owner disabled)")
         else:
@@ -441,7 +449,9 @@ class TaskConfig:
             and "MERGE_OUTPUT_FORMAT_VIDEO" in self.user_dict
             and self.user_dict["MERGE_OUTPUT_FORMAT_VIDEO"]
         ):
-            self.merge_output_format_video = self.user_dict["MERGE_OUTPUT_FORMAT_VIDEO"]
+            self.merge_output_format_video = self.user_dict[
+                "MERGE_OUTPUT_FORMAT_VIDEO"
+            ]
         elif self.merge_enabled and Config.MERGE_OUTPUT_FORMAT_VIDEO:
             self.merge_output_format_video = Config.MERGE_OUTPUT_FORMAT_VIDEO
         else:
@@ -453,7 +463,9 @@ class TaskConfig:
             and "MERGE_OUTPUT_FORMAT_AUDIO" in self.user_dict
             and self.user_dict["MERGE_OUTPUT_FORMAT_AUDIO"]
         ):
-            self.merge_output_format_audio = self.user_dict["MERGE_OUTPUT_FORMAT_AUDIO"]
+            self.merge_output_format_audio = self.user_dict[
+                "MERGE_OUTPUT_FORMAT_AUDIO"
+            ]
         elif self.merge_enabled and Config.MERGE_OUTPUT_FORMAT_AUDIO:
             self.merge_output_format_audio = Config.MERGE_OUTPUT_FORMAT_AUDIO
         else:
@@ -517,7 +529,10 @@ class TaskConfig:
 
         self.user_transmission = TgClient.IS_PREMIUM_USER and (
             self.user_dict.get("USER_TRANSMISSION")
-            or (Config.USER_TRANSMISSION and "USER_TRANSMISSION" not in self.user_dict)
+            or (
+                Config.USER_TRANSMISSION
+                and "USER_TRANSMISSION" not in self.user_dict
+            )
         )
 
         if self.user_dict.get("UPLOAD_PATHS", False):
@@ -557,8 +572,12 @@ class TaskConfig:
                 self.user_dict.get("DEFAULT_UPLOAD", "") or Config.DEFAULT_UPLOAD
             )
             if (not self.up_dest and default_upload == "rc") or self.up_dest == "rc":
-                self.up_dest = self.user_dict.get("RCLONE_PATH") or Config.RCLONE_PATH
-            elif (not self.up_dest and default_upload == "gd") or self.up_dest == "gd":
+                self.up_dest = (
+                    self.user_dict.get("RCLONE_PATH") or Config.RCLONE_PATH
+                )
+            elif (
+                not self.up_dest and default_upload == "gd"
+            ) or self.up_dest == "gd":
                 self.up_dest = self.user_dict.get("GDRIVE_ID") or Config.GDRIVE_ID
             if not self.up_dest:
                 raise ValueError("No Upload Destination!")
@@ -738,7 +757,10 @@ class TaskConfig:
                     if self.as_med
                     else (
                         self.user_dict.get("AS_DOCUMENT", False)
-                        or (Config.AS_DOCUMENT and "AS_DOCUMENT" not in self.user_dict)
+                        or (
+                            Config.AS_DOCUMENT
+                            and "AS_DOCUMENT" not in self.user_dict
+                        )
                     )
                 )
 
@@ -960,7 +982,8 @@ class TaskConfig:
             ):
                 for file_ in files:
                     if is_first_archive_split(file_) or (
-                        is_archive(file_) and not file_.strip().lower().endswith(".rar")
+                        is_archive(file_)
+                        and not file_.strip().lower().endswith(".rar")
                     ):
                         f_path = ospath.join(dirpath, file_)
                         self.files_to_proceed.append(f_path)
@@ -1025,7 +1048,9 @@ class TaskConfig:
                     try:
                         # Try again with the fixed command
                         parts = [
-                            part.strip() for part in split(fixed_item) if part.strip()
+                            part.strip()
+                            for part in split(fixed_item)
+                            if part.strip()
                         ]
                         cmds.append(parts)
                         LOGGER.debug(
@@ -1049,7 +1074,9 @@ class TaskConfig:
             ffmpeg = FFMpeg(self)
             for ffmpeg_cmd in cmds:
                 self.proceed_count = 0
-                from bot.helper.ext_utils.resource_manager import apply_resource_limits
+                from bot.helper.ext_utils.resource_manager import (
+                    apply_resource_limits,
+                )
 
                 # Create the base command
                 cmd = [
@@ -1086,7 +1113,9 @@ class TaskConfig:
                     ext = ospath.splitext(input_file)[-1].lower()
                 if await aiopath.isfile(dl_path):
                     is_video, is_audio, _ = await get_document_type(dl_path)
-                    if (not is_video and not is_audio) or (is_video and ext == "audio"):
+                    if (not is_video and not is_audio) or (
+                        is_video and ext == "audio"
+                    ):
                         break
                     if (is_audio and not is_video and ext == "video") or (
                         ext
@@ -1410,7 +1439,10 @@ class TaskConfig:
                 and vext
                 and not f_path.strip().lower().endswith(f".{vext}")
                 and (
-                    (vstatus == "+" and f_path.strip().lower().endswith(tuple(fvext)))
+                    (
+                        vstatus == "+"
+                        and f_path.strip().lower().endswith(tuple(fvext))
+                    )
                     or (
                         vstatus == "-"
                         and not f_path.strip().lower().endswith(tuple(fvext))
@@ -1425,7 +1457,10 @@ class TaskConfig:
                 and not is_video
                 and not f_path.strip().lower().endswith(f".{aext}")
                 and (
-                    (astatus == "+" and f_path.strip().lower().endswith(tuple(faext)))
+                    (
+                        astatus == "+"
+                        and f_path.strip().lower().endswith(tuple(faext))
+                    )
                     or (
                         astatus == "-"
                         and not f_path.strip().lower().endswith(tuple(faext))
@@ -1467,7 +1502,9 @@ class TaskConfig:
 
     async def generate_sample_video(self, dl_path, gid):
         data = (
-            self.sample_video.split(":") if isinstance(self.sample_video, str) else ""
+            self.sample_video.split(":")
+            if isinstance(self.sample_video, str)
+            else ""
         )
         if data:
             sample_duration = int(data[0]) if data[0] else 60
@@ -1522,7 +1559,9 @@ class TaskConfig:
                         except FileExistsError:
                             LOGGER.warning(f"Folder already exists: {new_folder}")
                             # Try with a different folder name
-                            new_folder = f"{ospath.splitext(f_path)[0]}_{int(time())}"
+                            new_folder = (
+                                f"{ospath.splitext(f_path)[0]}_{int(time())}"
+                            )
                             await makedirs(new_folder, exist_ok=True)
                             await gather(
                                 move(f_path, f"{new_folder}/{file_}"),
@@ -1730,11 +1769,10 @@ class TaskConfig:
             # If it's a single file, we can't merge it
             LOGGER.info("Merge not applied: single file cannot be merged")
             return dl_path
-        else:
-            for dirpath, _, files in await sync_to_async(walk, dl_path, topdown=False):
-                for file_ in files:
-                    f_path = ospath.join(dirpath, file_)
-                    all_files.append(f_path)
+        for dirpath, _, files in await sync_to_async(walk, dl_path, topdown=False):
+            for file_ in files:
+                f_path = ospath.join(dirpath, file_)
+                all_files.append(f_path)
 
         if not all_files:
             LOGGER.info("Merge not applied: no files found")
@@ -1766,7 +1804,9 @@ class TaskConfig:
 
         # Filter files based on merge flags
         if merge_video_only:
-            LOGGER.info("Merge flag: -merge-video detected, only merging video files")
+            LOGGER.info(
+                "Merge flag: -merge-video detected, only merging video files"
+            )
             if not analysis["video_files"]:
                 LOGGER.info("Merge not applied: no video files found")
                 return dl_path
@@ -1792,7 +1832,9 @@ class TaskConfig:
                     "Single video codec group detected. Using concat_demuxer approach."
                 )
         elif merge_audio_only:
-            LOGGER.info("Merge flag: -merge-audio detected, only merging audio files")
+            LOGGER.info(
+                "Merge flag: -merge-audio detected, only merging audio files"
+            )
             if not analysis["audio_files"]:
                 LOGGER.info("Merge not applied: no audio files found")
                 return dl_path
@@ -1846,7 +1888,9 @@ class TaskConfig:
                     "Single subtitle format group detected. Using concat_demuxer approach."
                 )
         elif merge_image_only:
-            LOGGER.info("Merge flag: -merge-image detected, only merging image files")
+            LOGGER.info(
+                "Merge flag: -merge-image detected, only merging image files"
+            )
             if not analysis["image_files"]:
                 LOGGER.info("Merge not applied: no image files found")
                 return dl_path
@@ -1895,7 +1939,9 @@ class TaskConfig:
                 return dl_path
             # Set approach to mixed to preserve all video and audio tracks
             analysis["recommended_approach"] = "mixed"
-            LOGGER.info("Using mixed approach to preserve all video and audio tracks")
+            LOGGER.info(
+                "Using mixed approach to preserve all video and audio tracks"
+            )
 
         # Determine which approach to use based on settings and analysis
         approach = analysis["recommended_approach"]
@@ -1961,20 +2007,22 @@ class TaskConfig:
                             if self.merge_remove_original:
                                 for f in all_files:
                                     try:
-                                        if await aiopath.exists(f) and f != output_file:
+                                        if (
+                                            await aiopath.exists(f)
+                                            and f != output_file
+                                        ):
                                             LOGGER.debug(
                                                 f"Removing original file after merge: {f}"
                                             )
                                             await remove(f)
                                     except Exception as e:
                                         LOGGER.error(
-                                            f"Error removing original file {f}: {str(e)}"
+                                            f"Error removing original file {f}: {e!s}"
                                         )
                             return output_file
-                        else:
-                            LOGGER.warning(
-                                "Concat demuxer approach failed, trying filter complex"
-                            )
+                        LOGGER.warning(
+                            "Concat demuxer approach failed, trying filter complex"
+                        )
 
                 # If concat demuxer failed or is not enabled, try filter complex
                 if self.filter_complex_enabled:
@@ -2000,25 +2048,27 @@ class TaskConfig:
                             if self.merge_remove_original:
                                 for f in all_files:
                                     try:
-                                        if await aiopath.exists(f) and f != output_file:
+                                        if (
+                                            await aiopath.exists(f)
+                                            and f != output_file
+                                        ):
                                             LOGGER.debug(
                                                 f"Removing original file after merge: {f}"
                                             )
                                             await remove(f)
                                     except Exception as e:
                                         LOGGER.error(
-                                            f"Error removing original file {f}: {str(e)}"
+                                            f"Error removing original file {f}: {e!s}"
                                         )
                             return output_file
-                        else:
-                            LOGGER.warning("Filter complex approach failed")
+                        LOGGER.warning("Filter complex approach failed")
 
                 # If both approaches failed, return original path
                 LOGGER.info("Video merge failed: all approaches failed")
                 return dl_path
 
             # Special Flag Merge Workflow for -merge-image
-            elif self.merge_image:
+            if self.merge_image:
                 LOGGER.info("Special Flag Workflow: -merge-image")
 
                 # For image files, use PIL to merge images
@@ -2036,9 +2086,9 @@ class TaskConfig:
                         columns = 3
 
                     # Get output format from first image or default to jpg
-                    first_ext = os.path.splitext(analysis["image_files"][0])[1].lower()[
-                        1:
-                    ]
+                    first_ext = os.path.splitext(analysis["image_files"][0])[
+                        1
+                    ].lower()[1:]
                     output_format = (
                         first_ext if first_ext in ["jpg", "jpeg", "png"] else "jpg"
                     )
@@ -2065,18 +2115,16 @@ class TaskConfig:
                                     await remove(f)
                             except Exception as e:
                                 LOGGER.error(
-                                    f"Error removing original file {f}: {str(e)}"
+                                    f"Error removing original file {f}: {e!s}"
                                 )
                         return output_file
-                    else:
-                        LOGGER.warning("Image merge failed")
-                        return dl_path
-                else:
-                    LOGGER.info("No image files found for merging")
+                    LOGGER.warning("Image merge failed")
                     return dl_path
+                LOGGER.info("No image files found for merging")
+                return dl_path
 
             # Special Flag Merge Workflow for -merge-pdf
-            elif self.merge_pdf:
+            if self.merge_pdf:
                 LOGGER.info("Special Flag Workflow: -merge-pdf")
 
                 # For PDF files, use PyPDF2 to merge PDFs
@@ -2084,7 +2132,9 @@ class TaskConfig:
 
                 # Check if we have PDF files
                 pdf_files = [
-                    f for f in analysis["document_files"] if f.lower().endswith(".pdf")
+                    f
+                    for f in analysis["document_files"]
+                    if f.lower().endswith(".pdf")
                 ]
 
                 if pdf_files:
@@ -2103,18 +2153,16 @@ class TaskConfig:
                                     await remove(f)
                             except Exception as e:
                                 LOGGER.error(
-                                    f"Error removing original file {f}: {str(e)}"
+                                    f"Error removing original file {f}: {e!s}"
                                 )
                         return output_file
-                    else:
-                        LOGGER.warning("Document merge failed")
-                        return dl_path
-                else:
-                    LOGGER.info("No PDF files found for merging")
+                    LOGGER.warning("Document merge failed")
                     return dl_path
+                LOGGER.info("No PDF files found for merging")
+                return dl_path
 
             # Special Flag Merge Workflow for -merge-audio, -merge-subtitle, or -merge-all
-            elif self.merge_audio or self.merge_subtitle or self.merge_all:
+            if self.merge_audio or self.merge_subtitle or self.merge_all:
                 LOGGER.info(
                     f"Special Flag Workflow: {'-merge-audio' if self.merge_audio else '-merge-subtitle' if self.merge_subtitle else '-merge-all'}"
                 )
@@ -2177,17 +2225,18 @@ class TaskConfig:
                                         await remove(f)
                                 except Exception as e:
                                     LOGGER.error(
-                                        f"Error removing original file {f}: {str(e)}"
+                                        f"Error removing original file {f}: {e!s}"
                                     )
                             return output_file
-                        else:
-                            LOGGER.warning(
-                                "Filter complex approach failed, trying concat demuxer"
-                            )
+                        LOGGER.warning(
+                            "Filter complex approach failed, trying concat demuxer"
+                        )
 
                 # If filter complex failed or is not enabled, try concat demuxer
                 if self.concat_demuxer_enabled:
-                    LOGGER.info("Trying concat demuxer approach (user/owner setting)")
+                    LOGGER.info(
+                        "Trying concat demuxer approach (user/owner setting)"
+                    )
 
                     if self.merge_audio and analysis["audio_files"]:
                         LOGGER.info("Using concat demuxer for audio files")
@@ -2225,13 +2274,12 @@ class TaskConfig:
                                         await remove(f)
                                 except Exception as e:
                                     LOGGER.error(
-                                        f"Error removing original file {f}: {str(e)}"
+                                        f"Error removing original file {f}: {e!s}"
                                     )
                             return output_file
-                        else:
-                            LOGGER.warning(
-                                "Concat demuxer approach failed, trying fallback approach"
-                            )
+                        LOGGER.warning(
+                            "Concat demuxer approach failed, trying fallback approach"
+                        )
 
             # Standard Merge Workflow (no special flags)
             else:
@@ -2240,7 +2288,9 @@ class TaskConfig:
                 # For same file types, try concat demuxer first if enabled
                 if approach == "concat_demuxer" and self.concat_demuxer_enabled:
                     # All files are of the same type, use concat demuxer
-                    LOGGER.info("Trying concat demuxer approach (user/owner setting)")
+                    LOGGER.info(
+                        "Trying concat demuxer approach (user/owner setting)"
+                    )
                     if analysis["video_files"]:
                         LOGGER.info("Using concat demuxer for video files")
                         cmd, output_file = await get_merge_concat_demuxer_cmd(
@@ -2284,13 +2334,12 @@ class TaskConfig:
                                         await remove(f)
                                 except Exception as e:
                                     LOGGER.error(
-                                        f"Error removing original file {f}: {str(e)}"
+                                        f"Error removing original file {f}: {e!s}"
                                     )
                             return output_file
-                        else:
-                            LOGGER.warning(
-                                "Concat demuxer approach failed, trying filter complex approach"
-                            )
+                        LOGGER.warning(
+                            "Concat demuxer approach failed, trying filter complex approach"
+                        )
 
                 # If concat demuxer failed or is disabled, try filter complex
                 if self.filter_complex_enabled:
@@ -2329,7 +2378,9 @@ class TaskConfig:
                             1
                         ].lower()[1:]
                         output_format = (
-                            first_ext if first_ext in ["jpg", "jpeg", "png"] else "jpg"
+                            first_ext
+                            if first_ext in ["jpg", "jpeg", "png"]
+                            else "jpg"
                         )
 
                         LOGGER.info(
@@ -2345,9 +2396,8 @@ class TaskConfig:
                         if output_file and await aiopath.exists(output_file):
                             LOGGER.info(f"Image merge successful: {output_file}")
                             return output_file
-                        else:
-                            LOGGER.warning("Image merge failed")
-                            return dl_path
+                        LOGGER.warning("Image merge failed")
+                        return dl_path
 
                     elif approach == "document_merge" and analysis["document_files"]:
                         # For document files, use PyPDF2 to merge PDFs
@@ -2365,37 +2415,36 @@ class TaskConfig:
                             output_file = await merge_documents(pdf_files)
 
                             if output_file and await aiopath.exists(output_file):
-                                LOGGER.info(f"Document merge successful: {output_file}")
+                                LOGGER.info(
+                                    f"Document merge successful: {output_file}"
+                                )
                                 return output_file
-                            else:
-                                LOGGER.warning("Document merge failed")
-                                return dl_path
-                        else:
-                            LOGGER.info("No PDF files found for merging")
+                            LOGGER.warning("Document merge failed")
                             return dl_path
+                        LOGGER.info("No PDF files found for merging")
+                        return dl_path
+                    # Try filter complex for same media types
+                    elif analysis["video_files"]:
+                        LOGGER.info("Using filter complex for video files")
+                        cmd, output_file = await get_merge_filter_complex_cmd(
+                            analysis["video_files"],
+                            "video",
+                            self.merge_output_format_video,
+                        )
+                    elif analysis["audio_files"]:
+                        LOGGER.info("Using filter complex for audio files")
+                        cmd, output_file = await get_merge_filter_complex_cmd(
+                            analysis["audio_files"],
+                            "audio",
+                            self.merge_output_format_audio,
+                        )
+                    elif analysis["subtitle_files"]:
+                        LOGGER.info("Using filter complex for subtitle files")
+                        cmd, output_file = await get_merge_filter_complex_cmd(
+                            analysis["subtitle_files"], "subtitle", "srt"
+                        )
                     else:
-                        # Try filter complex for same media types
-                        if analysis["video_files"]:
-                            LOGGER.info("Using filter complex for video files")
-                            cmd, output_file = await get_merge_filter_complex_cmd(
-                                analysis["video_files"],
-                                "video",
-                                self.merge_output_format_video,
-                            )
-                        elif analysis["audio_files"]:
-                            LOGGER.info("Using filter complex for audio files")
-                            cmd, output_file = await get_merge_filter_complex_cmd(
-                                analysis["audio_files"],
-                                "audio",
-                                self.merge_output_format_audio,
-                            )
-                        elif analysis["subtitle_files"]:
-                            LOGGER.info("Using filter complex for subtitle files")
-                            cmd, output_file = await get_merge_filter_complex_cmd(
-                                analysis["subtitle_files"], "subtitle", "srt"
-                            )
-                        else:
-                            cmd, output_file = None, None
+                        cmd, output_file = None, None
 
                     if cmd:
                         # Calculate total size by summing individual file sizes
@@ -2418,13 +2467,12 @@ class TaskConfig:
                                         await remove(f)
                                 except Exception as e:
                                     LOGGER.error(
-                                        f"Error removing original file {f}: {str(e)}"
+                                        f"Error removing original file {f}: {e!s}"
                                     )
                             return output_file
-                        else:
-                            LOGGER.warning(
-                                "Filter complex approach failed, trying fallback approach"
-                            )
+                        LOGGER.warning(
+                            "Filter complex approach failed, trying fallback approach"
+                        )
 
             # If all approaches failed, try a fallback approach for video files
             if analysis["video_files"] and len(analysis["video_files"]) > 1:
@@ -2484,10 +2532,12 @@ class TaskConfig:
                     for f in analysis["video_files"]:
                         try:
                             if await aiopath.exists(f) and f != output_file:
-                                LOGGER.debug(f"Removing original file after merge: {f}")
+                                LOGGER.debug(
+                                    f"Removing original file after merge: {f}"
+                                )
                                 await remove(f)
                         except Exception as e:
-                            LOGGER.error(f"Error removing original file {f}: {str(e)}")
+                            LOGGER.error(f"Error removing original file {f}: {e!s}")
                     return output_file
 
             # If all approaches failed, return original path
@@ -2524,20 +2574,19 @@ class TaskConfig:
         # Determine the source of the settings for detailed logging
         settings_source = {
             "text": "user"
-            if "WATERMARK_KEY" in self.user_dict and self.user_dict["WATERMARK_KEY"]
+            if self.user_dict.get("WATERMARK_KEY")
             else ("owner" if Config.WATERMARK_KEY else "default"),
             "position": "user"
-            if "WATERMARK_POSITION" in self.user_dict
-            and self.user_dict["WATERMARK_POSITION"]
+            if self.user_dict.get("WATERMARK_POSITION")
             else ("owner" if Config.WATERMARK_POSITION else "default"),
             "size": "user"
-            if "WATERMARK_SIZE" in self.user_dict and self.user_dict["WATERMARK_SIZE"]
+            if self.user_dict.get("WATERMARK_SIZE")
             else ("owner" if Config.WATERMARK_SIZE else "default"),
             "color": "user"
-            if "WATERMARK_COLOR" in self.user_dict and self.user_dict["WATERMARK_COLOR"]
+            if self.user_dict.get("WATERMARK_COLOR")
             else ("owner" if Config.WATERMARK_COLOR else "default"),
             "font": "user"
-            if "WATERMARK_FONT" in self.user_dict and self.user_dict["WATERMARK_FONT"]
+            if self.user_dict.get("WATERMARK_FONT")
             else ("owner" if Config.WATERMARK_FONT else "default"),
         }
 

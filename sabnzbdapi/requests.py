@@ -27,9 +27,9 @@ class SabnzbdClient(JobFunctions):
         host: str,
         api_key: str,
         port: str = "8070",
-        VERIFY_CERTIFICATE: bool = False,  # noqa: N803
-        RETRIES: int = 10,  # noqa: N803
-        HTTPX_REQUETS_ARGS: dict | None = None,  # noqa: N803
+        VERIFY_CERTIFICATE: bool = False,
+        RETRIES: int = 10,
+        HTTPX_REQUETS_ARGS: dict | None = None,
     ):
         if HTTPX_REQUETS_ARGS is None:
             HTTPX_REQUETS_ARGS = {}

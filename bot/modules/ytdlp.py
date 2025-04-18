@@ -138,7 +138,9 @@ class YtSelection:
         if "entries" in result:
             self._is_playlist = True
             for i in ["144", "240", "360", "480", "720", "1080", "1440", "2160"]:
-                video_format = f"bv*[height<=?{i}][ext=mp4]+ba[ext=m4a]/b[height<=?{i}]"
+                video_format = (
+                    f"bv*[height<=?{i}][ext=mp4]+ba[ext=m4a]/b[height<=?{i}]"
+                )
                 b_data = f"{i}|mp4"
                 self.formats[b_data] = video_format
                 buttons.data_button(f"{i}-mp4", f"ytq {b_data}")
@@ -173,7 +175,9 @@ class YtSelection:
                         ):
                             if item.get("audio_ext") == "m4a":
                                 self._is_m4a = True
-                            b_name = f"{item.get('acodec') or format_id}-{item['ext']}"
+                            b_name = (
+                                f"{item.get('acodec') or format_id}-{item['ext']}"
+                            )
                             v_format = format_id
                         elif item.get("height"):
                             height = item["height"]
@@ -195,7 +199,9 @@ class YtSelection:
                 for b_name, tbr_dict in self.formats.items():
                     if len(tbr_dict) == 1:
                         tbr, v_list = next(iter(tbr_dict.items()))
-                        buttonName = f"{b_name} ({get_readable_file_size(v_list[0])})"
+                        buttonName = (
+                            f"{b_name} ({get_readable_file_size(v_list[0])})"
+                        )
                         buttons.data_button(buttonName, f"ytq sub {b_name} {tbr}")
                     else:
                         buttons.data_button(b_name, f"ytq dict {b_name}")
@@ -309,7 +315,7 @@ class YtDlp(TaskListener):
         # Extract parameters from kwargs with defaults
         same_dir = kwargs.get("same_dir", {})
         bulk = kwargs.get("bulk", [])
-        multi_tag = kwargs.get("multi_tag", None)
+        multi_tag = kwargs.get("multi_tag")
         options = kwargs.get("options", "")
         if same_dir is None:
             same_dir = {}
@@ -423,7 +429,9 @@ class YtDlp(TaskListener):
         self.metadata_author = args["-metadata-author"]
         self.metadata_comment = args["-metadata-comment"]
         self.metadata_all = args["-metadata-all"]
-        self.folder_name = f"/{args['-m']}".rstrip("/") if len(args["-m"]) > 0 else ""
+        self.folder_name = (
+            f"/{args['-m']}".rstrip("/") if len(args["-m"]) > 0 else ""
+        )
         self.bot_trans = args["-bt"]
         self.user_trans = args["-ut"]
         self.merge_video = args["-merge-video"]

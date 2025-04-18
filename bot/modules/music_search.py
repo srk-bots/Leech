@@ -1,7 +1,6 @@
-from asyncio import create_task, gather, sleep, CancelledError
-from typing import List, Optional, Tuple
 import hashlib
 import time
+from asyncio import CancelledError, create_task, gather, sleep
 
 from pyrogram.errors import PeerIdInvalid
 from pyrogram.types import Message
@@ -290,7 +289,7 @@ async def search_music_in_chat(
     offset: int = 0,
     limit: int = 20,
     client_type: str = "user",
-) -> Tuple[List[Message], bool, Optional[Exception]]:
+) -> tuple[list[Message], bool, Exception | None]:
     """Search for music in a specific chat using the provided client.
 
     Note: This function should primarily be used with the user client, as bots cannot search messages.
@@ -301,21 +300,29 @@ async def search_music_in_chat(
         MUSIC_LOGGER.debug(
             f"Bots cannot search messages in chat {chat_id}, need user client"
         )
-        return [], False, Exception("BOT_METHOD_INVALID: Bots cannot search messages")
+        return (
+            [],
+            False,
+            Exception("BOT_METHOD_INVALID: Bots cannot search messages"),
+        )
 
     # Validate if the chat is accessible
     if not await validate_chat_id(client, chat_id, client_type):
         return (
             [],
             False,
-            PeerIdInvalid(f"Chat {chat_id} is not accessible by {client_type} client"),
+            PeerIdInvalid(
+                f"Chat {chat_id} is not accessible by {client_type} client"
+            ),
         )
 
     # Check cache for existing results
     cache_key = generate_search_key(chat_id, query, client_type)
     cached_result = SEARCH_RESULTS_CACHE.get(cache_key)
     if cached_result is not None:
-        MUSIC_LOGGER.debug(f"Using cached search results for {query} in chat {chat_id}")
+        MUSIC_LOGGER.debug(
+            f"Using cached search results for {query} in chat {chat_id}"
+        )
         return cached_result
 
     try:
@@ -429,8 +436,12 @@ async def search_music_in_chat(
                             # Get audio metadata
                             audio = msg.audio
                             title = (getattr(audio, "title", "") or "").lower()
-                            performer = (getattr(audio, "performer", "") or "").lower()
-                            file_name = (getattr(audio, "file_name", "") or "").lower()
+                            performer = (
+                                getattr(audio, "performer", "") or ""
+                            ).lower()
+                            file_name = (
+                                getattr(audio, "file_name", "") or ""
+                            ).lower()
 
                             # Check if query is in title, performer or filename with improved partial matching
                             query_lower = query.lower()
@@ -578,7 +589,9 @@ async def music_search(_, message: Message):
         results = []
         try:
             # Generate a cache key for this specific search task
-            task_cache_key = f"task_{generate_search_key(chat_id, query, client_type)}"
+            task_cache_key = (
+                f"task_{generate_search_key(chat_id, query, client_type)}"
+            )
             cached_results = SEARCH_RESULTS_CACHE.get(task_cache_key)
             if cached_results is not None:
                 MUSIC_LOGGER.debug(
@@ -613,7 +626,7 @@ async def music_search(_, message: Message):
                     f"Error searching in chat {chat_id} with {client_type} client: {error}"
                 )
                 if client_type == "bot":
-                    bot_errors.append(f"Chat {chat_id}: {str(error)}")
+                    bot_errors.append(f"Chat {chat_id}: {error!s}")
                 # Cache negative result
                 SEARCH_RESULTS_CACHE.put(task_cache_key, results)
                 return results
@@ -656,11 +669,15 @@ async def music_search(_, message: Message):
                 # Check for word boundary matches (medium priority)
                 # This helps find "King of Contradiction" when searching for "contradiction"
                 for word in title_lower.split():
-                    if normalized_query in word or any(q in word for q in query_words):
+                    if normalized_query in word or any(
+                        q in word for q in query_words
+                    ):
                         relevance += 5
 
                 for word in performer_lower.split():
-                    if normalized_query in word or any(q in word for q in query_words):
+                    if normalized_query in word or any(
+                        q in word for q in query_words
+                    ):
                         relevance += 4
 
                 # Check for substring matches (lower priority)
@@ -711,7 +728,9 @@ async def music_search(_, message: Message):
             f"Searching in {len(music_channels)} channels using user client"
         )
         for chat_id in music_channels:
-            search_tasks.append(process_search_results(TgClient.user, chat_id, "user"))
+            search_tasks.append(
+                process_search_results(TgClient.user, chat_id, "user")
+            )
     elif TgClient.bot:
         # Only use bot client if user client is not available (will likely fail for searching)
         MUSIC_LOGGER.debug(
@@ -890,7 +909,9 @@ async def music_search(_, message: Message):
     # When search results are found, delete command and reply messages immediately
     try:
         await cmd_message.delete()
-        MUSIC_LOGGER.debug("Command message deleted immediately after showing results")
+        MUSIC_LOGGER.debug(
+            "Command message deleted immediately after showing results"
+        )
     except Exception as e:
         MUSIC_LOGGER.error(f"Error deleting command message: {e}")
         # Fallback: Auto-delete after 5 minutes if immediate deletion fails
@@ -1060,7 +1081,9 @@ async def music_get_callback(_, query):
                         f"Message found but no audio with {client_type} client"
                     )
                 else:
-                    MUSIC_LOGGER.warning(f"No message found with {client_type} client")
+                    MUSIC_LOGGER.warning(
+                        f"No message found with {client_type} client"
+                    )
             except Exception as msg_error:
                 MUSIC_LOGGER.warning(
                     f"Error getting message with {client_type} client: {msg_error}"
@@ -1125,7 +1148,9 @@ async def music_get_callback(_, query):
                             message = fallback_messages
 
                         if message and getattr(message, "audio", None):
-                            MUSIC_LOGGER.debug("Retrieved audio with fallback client")
+                            MUSIC_LOGGER.debug(
+                                "Retrieved audio with fallback client"
+                            )
                             client = fallback_client
                             client_type = fallback_client_type
                         elif message:
@@ -1254,7 +1279,9 @@ async def music_get_callback(_, query):
                         )
                         # get_messages returns a list when message_ids is a list
                         if isinstance(messages, list) and len(messages) > 0:
-                            message = messages[0]  # Get the first message from the list
+                            message = messages[
+                                0
+                            ]  # Get the first message from the list
                         else:
                             message = messages
 
@@ -1277,8 +1304,10 @@ async def music_get_callback(_, query):
                             except Exception as e2:
                                 LOGGER.error(f"Error deleting messages: {e2}")
                             return
-                        elif message:
-                            LOGGER.debug("Fallback client found message but no audio")
+                        if message:
+                            LOGGER.debug(
+                                "Fallback client found message but no audio"
+                            )
                         else:
                             LOGGER.debug("Fallback client found no message")
                     except Exception as msg_error:
@@ -1353,7 +1382,11 @@ async def music_cancel_callback(_, query):
     # Delete the reply message immediately if it exists
     if reply_message_id != 0:
         try:
-            await TgClient.bot.delete_messages(query.message.chat.id, reply_message_id)
-            MUSIC_LOGGER.debug(f"Reply message {reply_message_id} deleted after cancel")
+            await TgClient.bot.delete_messages(
+                query.message.chat.id, reply_message_id
+            )
+            MUSIC_LOGGER.debug(
+                f"Reply message {reply_message_id} deleted after cancel"
+            )
         except Exception as e:
             MUSIC_LOGGER.error(f"Error deleting reply message: {e}")

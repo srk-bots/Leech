@@ -5,16 +5,16 @@ Movie Websites Domain Utility
 This module provides utilities to get the current domains for movie websites and generate RSS feeds.
 """
 
-import random
-import time
 import asyncio
+import random
 import re
+import time
 import urllib.parse
 from datetime import datetime
-from urllib.parse import urlparse, urljoin, unquote
+from urllib.parse import unquote, urljoin, urlparse
 
-from httpx import AsyncClient
 from bs4 import BeautifulSoup
+from httpx import AsyncClient
 
 from bot import LOGGER
 
@@ -92,7 +92,9 @@ async def get_current_domain(official_domain, current_domain):
         ) as client:
             response = await client.get(url)
             if response.status_code == 200:
-                LOGGER.info(f"Current domain {current_domain} is accessible, using it")
+                LOGGER.info(
+                    f"Current domain {current_domain} is accessible, using it"
+                )
                 return current_domain
     except Exception as e:
         LOGGER.warning(f"Current domain {current_domain} is not accessible: {e}")
@@ -146,7 +148,9 @@ async def get_current_domain(official_domain, current_domain):
 async def fetch_website_content(url, retries=0):
     """Fetch the content of the website with proper headers and retry logic."""
     if retries >= MAX_RETRIES:
-        LOGGER.warning(f"Maximum retries ({MAX_RETRIES}) reached for {url}. Giving up.")
+        LOGGER.warning(
+            f"Maximum retries ({MAX_RETRIES}) reached for {url}. Giving up."
+        )
         return None
 
     # Skip fetching for magnet links - just return the link itself
@@ -158,10 +162,7 @@ async def fetch_website_content(url, retries=0):
     if not url.startswith("http://") and not url.startswith("https://"):
         LOGGER.warning(f"URL is missing http:// or https:// protocol: {url}")
         # Try to fix the URL by adding https://
-        if not url.startswith("//"):
-            url = "https://" + url
-        else:
-            url = "https:" + url
+        url = "https://" + url if not url.startswith("//") else "https:" + url
         LOGGER.info(f"Attempting with fixed URL: {url}")
 
     headers = {
@@ -264,9 +265,7 @@ async def extract_movie_info(html_content, base_url, title_selector):
                 LOGGER.debug(f"Error formatting size: {e}")
 
         # Add magnet link
-        description += (
-            f"<p><strong>Magnet Link:</strong> <a href='{magnet_link}'>Download</a></p>"
-        )
+        description += f"<p><strong>Magnet Link:</strong> <a href='{magnet_link}'>Download</a></p>"
 
         # Determine site name from the title or base_url
         site_name = "Unknown"
@@ -386,7 +385,9 @@ async def extract_movie_info(html_content, base_url, title_selector):
                         elif any(unit in size_unit for unit in ["kb", "kib", "k"]):
                             size = int(size_value * 1024)
                 except Exception as e:
-                    LOGGER.debug(f"Could not parse size from title: {size_str} - {e}")
+                    LOGGER.debug(
+                        f"Could not parse size from title: {size_str} - {e}"
+                    )
 
             # Create a description
             description = f"<h3>{title}</h3>"
@@ -410,9 +411,7 @@ async def extract_movie_info(html_content, base_url, title_selector):
                 description += f"<p><strong>Magnet Link:</strong> <a href='{magnet_link}'>Download</a></p>"
 
             # Add movie page link
-            description += (
-                f"<p><strong>Source:</strong> <a href='{base_url}'>Visit Page</a></p>"
-            )
+            description += f"<p><strong>Source:</strong> <a href='{base_url}'>Visit Page</a></p>"
 
             # Add site name
             description += "<p><strong>Site:</strong> TamilBlasters</p>"
@@ -442,7 +441,9 @@ async def extract_movie_info(html_content, base_url, title_selector):
                 return movies
 
     # Special case for TamilMV and TamilBlasters
-    is_tamil_site = "tamilmv" in base_url.lower() or "tamilblasters" in base_url.lower()
+    is_tamil_site = (
+        "tamilmv" in base_url.lower() or "tamilblasters" in base_url.lower()
+    )
 
     # For TamilMV and TamilBlasters, we need to navigate to movie pages
     if is_tamil_site:
@@ -461,7 +462,9 @@ async def extract_movie_info(html_content, base_url, title_selector):
             ]
         elif "tamilblasters" in base_url.lower():
             movie_category_urls = [
-                urljoin(base_url, "/index.php?/forums/forum/6-download-tamil-movies/"),
+                urljoin(
+                    base_url, "/index.php?/forums/forum/6-download-tamil-movies/"
+                ),
                 urljoin(
                     base_url, "/index.php?/forums/forum/71-download-telugu-movies/"
                 ),
@@ -554,14 +557,18 @@ async def extract_movie_info(html_content, base_url, title_selector):
 
                                     # Method 2: Text containing magnet links
                                     if not magnet_link:
-                                        for string in movie_page_soup.stripped_strings:
+                                        for (
+                                            string
+                                        ) in movie_page_soup.stripped_strings:
                                             if "magnet:?xt=urn:btih:" in string:
                                                 magnet_match = re.search(
                                                     r'(magnet:\?xt=urn:btih:[^"\s]+)',
                                                     string,
                                                 )
                                                 if magnet_match:
-                                                    magnet_link = magnet_match.group(1)
+                                                    magnet_link = magnet_match.group(
+                                                        1
+                                                    )
                                                     LOGGER.info(
                                                         f"Found magnet link in text for {topic_title}"
                                                     )
@@ -595,13 +602,18 @@ async def extract_movie_info(html_content, base_url, title_selector):
                                                     for unit in ["gb", "gib", "g"]
                                                 ):
                                                     size = int(
-                                                        size_value * 1024 * 1024 * 1024
+                                                        size_value
+                                                        * 1024
+                                                        * 1024
+                                                        * 1024
                                                     )
                                                 elif any(
                                                     unit in size_unit
                                                     for unit in ["mb", "mib", "m"]
                                                 ):
-                                                    size = int(size_value * 1024 * 1024)
+                                                    size = int(
+                                                        size_value * 1024 * 1024
+                                                    )
                                                 elif any(
                                                     unit in size_unit
                                                     for unit in ["kb", "kib", "k"]
@@ -629,7 +641,9 @@ async def extract_movie_info(html_content, base_url, title_selector):
                                                 size_str = f"{size / 1024:.2f} KB"
                                             description += f"<p><strong>Size:</strong> {size_str}</p>"
                                         except Exception as e:
-                                            LOGGER.debug(f"Error formatting size: {e}")
+                                            LOGGER.debug(
+                                                f"Error formatting size: {e}"
+                                            )
 
                                     # Add magnet link if available
                                     if magnet_link:
@@ -682,7 +696,9 @@ async def extract_movie_info(html_content, base_url, title_selector):
                         if movies:
                             return movies
             except Exception as e:
-                LOGGER.error(f"Error fetching movie category page {category_url}: {e}")
+                LOGGER.error(
+                    f"Error fetching movie category page {category_url}: {e}"
+                )
 
     # Try to find movie entries using the provided selector
     movie_entries = soup.select(title_selector)
@@ -804,8 +820,8 @@ async def extract_movie_info(html_content, base_url, title_selector):
                                     LOGGER.info(
                                         f"Following download link: {download_url}"
                                     )
-                                    download_page_content = await fetch_website_content(
-                                        download_url
+                                    download_page_content = (
+                                        await fetch_website_content(download_url)
                                     )
                                     if download_page_content:
                                         download_page_soup = BeautifulSoup(
@@ -873,7 +889,8 @@ async def extract_movie_info(html_content, base_url, title_selector):
                     for string in movie_page_soup.stripped_strings:
                         hash_match = hash_pattern.search(string)
                         if hash_match and not any(
-                            word in string.lower() for word in ["sha1", "sha-1", "hash"]
+                            word in string.lower()
+                            for word in ["sha1", "sha-1", "hash"]
                         ):
                             torrent_hash = hash_match.group(0)
                             # Construct a basic magnet link
@@ -908,9 +925,13 @@ async def extract_movie_info(html_content, base_url, title_selector):
                             size_value = float(size_value)
                             if any(unit in size_unit for unit in ["gb", "gib", "g"]):
                                 size = int(size_value * 1024 * 1024 * 1024)
-                            elif any(unit in size_unit for unit in ["mb", "mib", "m"]):
+                            elif any(
+                                unit in size_unit for unit in ["mb", "mib", "m"]
+                            ):
                                 size = int(size_value * 1024 * 1024)
-                            elif any(unit in size_unit for unit in ["kb", "kib", "k"]):
+                            elif any(
+                                unit in size_unit for unit in ["kb", "kib", "k"]
+                            ):
                                 size = int(size_value * 1024)
                     except Exception as e:
                         LOGGER.debug(
@@ -959,15 +980,18 @@ async def extract_movie_info(html_content, base_url, title_selector):
                                             continue
 
                                     if any(
-                                        unit in size_unit for unit in ["gb", "gib", "g"]
+                                        unit in size_unit
+                                        for unit in ["gb", "gib", "g"]
                                     ):
                                         size = int(size_value * 1024 * 1024 * 1024)
                                     elif any(
-                                        unit in size_unit for unit in ["mb", "mib", "m"]
+                                        unit in size_unit
+                                        for unit in ["mb", "mib", "m"]
                                     ):
                                         size = int(size_value * 1024 * 1024)
                                     elif any(
-                                        unit in size_unit for unit in ["kb", "kib", "k"]
+                                        unit in size_unit
+                                        for unit in ["kb", "kib", "k"]
                                     ):
                                         size = int(size_value * 1024)
                                 except Exception as e:
@@ -1159,6 +1183,7 @@ async def get_tamil_site_rss(site_key):
     """
     # Add memory management
     import gc
+
     import psutil
 
     # Force garbage collection before starting
@@ -1251,17 +1276,22 @@ async def get_tamil_site_rss(site_key):
                     "/index.php?/forums/topic/128452-tamil-dubbed-movies-collection/",
                 ),
                 # Then try the category pages
-                urljoin(base_url, "/index.php?/forums/forum/6-download-tamil-movies/"),
+                urljoin(
+                    base_url, "/index.php?/forums/forum/6-download-tamil-movies/"
+                ),
                 urljoin(
                     base_url, "/index.php?/forums/forum/71-download-telugu-movies/"
                 ),
                 urljoin(
-                    base_url, "/index.php?/forums/forum/70-download-malayalam-movies/"
+                    base_url,
+                    "/index.php?/forums/forum/70-download-malayalam-movies/",
                 ),
                 urljoin(
                     base_url, "/index.php?/forums/forum/72-download-kannada-movies/"
                 ),
-                urljoin(base_url, "/index.php?/forums/forum/73-download-hindi-movies/"),
+                urljoin(
+                    base_url, "/index.php?/forums/forum/73-download-hindi-movies/"
+                ),
                 urljoin(
                     base_url, "/index.php?/forums/forum/74-download-english-movies/"
                 ),
@@ -1339,7 +1369,9 @@ async def get_tamil_site_rss(site_key):
                         LOGGER.debug(f"Fetching movie page: {topic_url}")
                         movie_page_content = await fetch_website_content(topic_url)
                         if not movie_page_content:
-                            LOGGER.warning(f"Failed to fetch content from {topic_url}")
+                            LOGGER.warning(
+                                f"Failed to fetch content from {topic_url}"
+                            )
                             continue
 
                         movie_page_soup = BeautifulSoup(
@@ -1368,7 +1400,8 @@ async def get_tamil_site_rss(site_key):
                                     onclick = button.get("onclick", "")
                                     if "magnet:" in onclick:
                                         magnet_match = re.search(
-                                            r'(magnet:\?xt=urn:btih:[^"\s]+)', onclick
+                                            r'(magnet:\?xt=urn:btih:[^"\s]+)',
+                                            onclick,
                                         )
                                         if magnet_match:
                                             magnet_link = magnet_match.group(1)
@@ -1383,7 +1416,9 @@ async def get_tamil_site_rss(site_key):
                                     "[data-clipboard-text]"
                                 )
                                 for element in elements_with_data:
-                                    data_text = element.get("data-clipboard-text", "")
+                                    data_text = element.get(
+                                        "data-clipboard-text", ""
+                                    )
                                     if "magnet:" in data_text:
                                         magnet_link = data_text
                                         LOGGER.debug(
@@ -1561,15 +1596,18 @@ async def get_tamil_site_rss(site_key):
                                     size_value, size_unit = size_parts
                                     size_value = float(size_value)
                                     if any(
-                                        unit in size_unit for unit in ["gb", "gib", "g"]
+                                        unit in size_unit
+                                        for unit in ["gb", "gib", "g"]
                                     ):
                                         size = int(size_value * 1024 * 1024 * 1024)
                                     elif any(
-                                        unit in size_unit for unit in ["mb", "mib", "m"]
+                                        unit in size_unit
+                                        for unit in ["mb", "mib", "m"]
                                     ):
                                         size = int(size_value * 1024 * 1024)
                                     elif any(
-                                        unit in size_unit for unit in ["kb", "kib", "k"]
+                                        unit in size_unit
+                                        for unit in ["kb", "kib", "k"]
                                     ):
                                         size = int(size_value * 1024)
                             except Exception as e:
@@ -1585,7 +1623,9 @@ async def get_tamil_site_rss(site_key):
                             try:
                                 # Format size in a human-readable format
                                 if size >= 1024 * 1024 * 1024:
-                                    size_str = f"{size / (1024 * 1024 * 1024):.2f} GB"
+                                    size_str = (
+                                        f"{size / (1024 * 1024 * 1024):.2f} GB"
+                                    )
                                 elif size >= 1024 * 1024:
                                     size_str = f"{size / (1024 * 1024):.2f} MB"
                                 else:
@@ -1635,7 +1675,9 @@ async def get_tamil_site_rss(site_key):
                 if len(movies) >= MAX_ITEMS:
                     break
             except Exception as e:
-                LOGGER.error(f"Error fetching movie category page {category_url}: {e}")
+                LOGGER.error(
+                    f"Error fetching movie category page {category_url}: {e}"
+                )
 
         # If we found movies, generate the RSS feed
         if movies:
@@ -1657,9 +1699,8 @@ async def get_tamil_site_rss(site_key):
             )
 
             return rss_content
-        else:
-            LOGGER.warning(f"No movies found for {site_key}")
-            return None
+        LOGGER.warning(f"No movies found for {site_key}")
+        return None
     except Exception as e:
         LOGGER.error(f"Error generating RSS feed for {site_key}: {e}")
         return None
@@ -1672,6 +1713,7 @@ async def get_movie_site_rss(site_key, force_refresh=False):
     """
     # Add memory management
     import gc
+
     import psutil
 
     # Force garbage collection before starting
@@ -1714,8 +1756,7 @@ async def get_movie_site_rss(site_key, force_refresh=False):
                 f"Cached RSS feed for {site_key} doesn't have proper movie entries, regenerating"
             )
             # Clear the cache for this site
-            if site_key in RSS_CACHE:
-                del RSS_CACHE[site_key]
+            RSS_CACHE.pop(site_key, None)
 
     if site_key not in MOVIE_WEBSITES:
         LOGGER.warning(f"Unknown movie website: {site_key}")
@@ -1755,7 +1796,10 @@ async def get_movie_site_rss(site_key, force_refresh=False):
         # Generate RSS feed
         LOGGER.debug(f"Generating RSS feed for {site_key} with {len(movies)} movies")
         rss_content = generate_rss_feed(
-            movies, site_config["feed_title"], site_config["feed_description"], base_url
+            movies,
+            site_config["feed_title"],
+            site_config["feed_description"],
+            base_url,
         )
 
         # Cache the RSS feed
