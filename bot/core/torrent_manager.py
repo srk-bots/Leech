@@ -101,17 +101,19 @@ class TorrentManager:
         )
         for res in results:
             downloads.extend(res)
-            tasks = []
-        for download in downloads:
-            if download.get("status", "") != "complete":
-                tasks.append(
-                    cls.aria2.changeOption(download.get("gid"), {key: value}),
-                )
+    
+        tasks = [
+            cls.aria2.changeOption(download.get("gid"), {key: value})
+            for download in downloads
+            if download.get("status", "") != "complete"
+        ]
+    
         if tasks:
             try:
                 await gather(*tasks)
             except Exception as e:
                 LOGGER.error(e)
+    
         if key not in ["checksum", "index-out", "out", "pause", "select-file"]:
             await cls.aria2.changeGlobalOption({key: value})
             aria2_options[key] = value

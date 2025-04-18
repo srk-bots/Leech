@@ -233,9 +233,8 @@ class TaskConfig:
         if self.user_dict.get("UPLOAD_PATHS", False):
             if self.up_dest in self.user_dict["UPLOAD_PATHS"]:
                 self.up_dest = self.user_dict["UPLOAD_PATHS"][self.up_dest]
-        elif "UPLOAD_PATHS" not in self.user_dict and Config.UPLOAD_PATHS:
-            if self.up_dest in Config.UPLOAD_PATHS:
-                self.up_dest = Config.UPLOAD_PATHS[self.up_dest]
+        elif "UPLOAD_PATHS" not in self.user_dict and Config.UPLOAD_PATHS and self.up_dest in Config.UPLOAD_PATHS:
+            self.up_dest = Config.UPLOAD_PATHS[self.up_dest]
 
         if self.ffmpeg_cmds and not isinstance(self.ffmpeg_cmds, list):
             if self.user_dict.get("FFMPEG_CMDS", None):

@@ -11,7 +11,7 @@ from bot.helper.telegram_helper.message_utils import edit_message, send_message
 
 
 @new_task
-async def hydra_search(client, message):
+async def hydra_search(_, message):
     key = message.text.split()
 
     if len(key) == 1:
