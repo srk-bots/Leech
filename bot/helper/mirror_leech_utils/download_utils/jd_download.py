@@ -4,6 +4,7 @@ from functools import partial
 from secrets import token_hex
 from time import time
 
+import psutil
 from aiofiles import open as aiopen
 from aiofiles.os import path as aiopath
 from aiofiles.os import remove
@@ -33,7 +34,7 @@ from myjd.exception import MYJDException
 
 
 @new_task
-async def configureDownload(_, query, obj):
+async def configureDownload(_, query, obj):  # noqa: N802
     data = query.data.split()
     message = query.message
     await query.answer()
@@ -89,9 +90,7 @@ async def get_online_packages(path, state="grabbing"):
         queued_downloads = await jdownloader.device.linkgrabber.query_packages(
             [{"saveTo": True}],
         )
-        return [
-            qd["uuid"] for qd in queued_downloads if qd["saveTo"].startswith(path)
-        ]
+        return [qd["uuid"] for qd in queued_downloads if qd["saveTo"].startswith(path)]
     download_packages = await jdownloader.device.downloads.query_packages(
         [{"saveTo": True}],
     )
@@ -120,6 +119,13 @@ async def get_jd_download_directory():
 
 async def add_jd_download(listener, path):
     try:
+        # Add memory check before starting download
+        memory_percent = psutil.virtual_memory().percent
+        if memory_percent > 85:
+            raise MYJDException(
+                "System memory usage too high (>85%). Try again later.",
+            )
+
         async with jd_listener_lock:
             gid = token_hex(4)
             if not jdownloader.is_connected:
@@ -151,7 +157,7 @@ async def add_jd_download(listener, path):
                 content = b64encode(content)
                 await jdownloader.device.linkgrabber.add_container(
                     "DLC",
-                    f"data:;base64,{content.decode()}",
+                    f";base64,{content.decode()}",
                 )
             else:
                 await jdownloader.device.linkgrabber.add_links(
@@ -173,20 +179,18 @@ async def add_jd_download(listener, path):
             remove_unknown = False
             name = ""
             error = ""
-            while (time() - start_time) < 90:
-                queued_downloads = (
-                    await jdownloader.device.linkgrabber.query_packages(
-                        [
-                            {
-                                "bytesTotal": True,
-                                "saveTo": True,
-                                "availableOnlineCount": True,
-                                "availableOfflineCount": True,
-                                "availableTempUnknownCount": True,
-                                "availableUnknownCount": True,
-                            },
-                        ],
-                    )
+            while (time() - start_time) < 60:
+                queued_downloads = await jdownloader.device.linkgrabber.query_packages(
+                    [
+                        {
+                            "bytesTotal": True,
+                            "saveTo": True,
+                            "availableOnlineCount": True,
+                            "availableOfflineCount": True,
+                            "availableTempUnknownCount": True,
+                            "availableUnknownCount": True,
+                        },
+                    ],
                 )
 
                 if not online_packages and corrupted_packages and error:
@@ -195,10 +199,29 @@ async def add_jd_download(listener, path):
                     )
                     raise MYJDException(error)
 
+                # Common web elements that should be ignored
+                web_elements = [
+                    "oydisk",
+                    "filepreviewer",
+                    "js",
+                    "translations",
+                    "non_account_download_all_as_zip",
+                    "html5shiv",
+                    "respond.min",
+                    "css",
+                    "img",
+                    "fonts",
+                    "assets",
+                ]
+
                 for pack in queued_downloads:
                     if pack.get("onlineCount", 1) == 0:
-                        error = f"{pack.get('name', '')}"
-                        LOGGER.error(error)
+                        pack_name = pack.get("name", "")
+                        # Only log at debug level for common web elements
+                        if any(element == pack_name for element in web_elements):
+                            LOGGER.debug(f"Ignoring web element: {pack_name}")
+                        else:
+                            LOGGER.error(f"Package has no online links: {pack_name}")
                         corrupted_packages.append(pack["uuid"])
                         continue
                     save_to = pack["saveTo"]
@@ -209,9 +232,7 @@ async def add_jd_download(listener, path):
                                 1,
                             )[0]
                         else:
-                            name = save_to.replace(f"{path}/", "", 1).split("/", 1)[
-                                0
-                            ]
+                            name = save_to.replace(f"{path}/", "", 1).split("/", 1)[0]
                         name = name[:255]
 
                     if (

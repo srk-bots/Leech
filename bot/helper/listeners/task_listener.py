@@ -20,10 +20,11 @@ from bot import (
     task_dict,
     task_dict_lock,
 )
+from bot.core.aeon_client import TgClient
 from bot.core.config_manager import Config
 from bot.core.torrent_manager import TorrentManager
 from bot.helper.common import TaskConfig
-from bot.helper.ext_utils.bot_utils import sync_to_async
+from bot.helper.ext_utils.bot_utils import encode_slink, sync_to_async
 from bot.helper.ext_utils.db_handler import database
 from bot.helper.ext_utils.files_utils import (
     clean_download,
@@ -48,6 +49,7 @@ from bot.helper.mirror_leech_utils.telegram_uploader import TelegramUploader
 from bot.helper.telegram_helper.button_build import ButtonMaker
 from bot.helper.telegram_helper.message_utils import (
     auto_delete_message,
+    delete_links,
     delete_message,
     delete_status,
     send_message,
@@ -126,9 +128,7 @@ class TaskListener(TaskConfig):
                                 des_id = next(
                                     iter(self.same_dir[self.folder_name]["tasks"]),
                                 )
-                                des_path = (
-                                    f"{DOWNLOAD_DIR}{des_id}{self.folder_name}"
-                                )
+                                des_path = f"{DOWNLOAD_DIR}{des_id}{self.folder_name}"
                                 await makedirs(des_path, exist_ok=True)
                                 LOGGER.info(
                                     f"Moving files from {self.mid} to {des_id}",
@@ -136,9 +136,7 @@ class TaskListener(TaskConfig):
                                 for item in await listdir(spath):
                                     if item.strip().endswith((".aria2", ".!qB")):
                                         continue
-                                    item_path = (
-                                        f"{self.dir}{self.folder_name}/{item}"
-                                    )
+                                    item_path = f"{self.dir}{self.folder_name}/{item}"
                                     if item in await listdir(des_path):
                                         await move(
                                             item_path,
@@ -217,11 +215,25 @@ class TaskListener(TaskConfig):
             self.clear()
             await remove_excluded_files(up_dir, self.excluded_extensions)
 
-        if self.watermark:
-            up_path = await self.proceed_watermark(
-                up_path,
-                gid,
+        # Determine which media tool to run first based on priority
+        media_tools = []
+
+        if self.merge_enabled:
+            media_tools.append((self.merge_priority, "merge", self.proceed_merge))
+
+        # Check if watermark is enabled or watermark text is available
+        if self.watermark_enabled or self.watermark:
+            media_tools.append(
+                (self.watermark_priority, "watermark", self.proceed_watermark)
             )
+
+        # Sort media tools by priority (lower number = higher priority)
+        media_tools.sort(key=lambda x: x[0])
+
+        # Run media tools in priority order
+        for _, tool_name, tool_func in media_tools:
+            LOGGER.info(f"Running {tool_name} with priority {_}")
+            up_path = await tool_func(up_path, gid)
             if self.is_cancelled:
                 return
             self.is_file = await aiopath.isfile(up_path)
@@ -229,7 +241,14 @@ class TaskListener(TaskConfig):
             self.size = await get_path_size(up_dir)
             self.clear()
 
-        if self.metadata:
+        # Check if any metadata settings are provided (legacy or new)
+        if (
+            self.metadata
+            or self.metadata_title
+            or self.metadata_author
+            or self.metadata_comment
+            or self.metadata_all
+        ):
             up_path = await self.proceed_metadata(
                 up_path,
                 gid,
@@ -381,20 +400,41 @@ class TaskListener(TaskConfig):
             and Config.DATABASE_URL
         ):
             await database.rm_complete_task(self.message.link)
-        msg = f"<b>Name: </b><code>{escape(self.name)}</code>\n\n<b>Size: </b>{get_readable_file_size(self.size)}"
-        done_msg = f"{self.tag}\nYour task is complete\nPlease check your inbox."
-        LOGGER.info(f"Task Done: {self.name}")
+        # Use the most up-to-date name (which may have been modified by leech filename template)
+        current_name = self.name
+        msg = f"<b>Name: </b><code>{escape(current_name)}</code>\n\n<blockquote><b>Size: </b>{get_readable_file_size(self.size)}"
+        done_msg = f"<b><blockquote>Hey, {self.tag}</blockquote>\nYour task is complete\nPlease check your inbox.</b>"
+        LOGGER.info(f"Task Done: {current_name}")
         if self.is_leech:
             msg += f"\n<b>Total Files: </b>{folders}"
             if mime_type != 0:
                 msg += f"\n<b>Corrupted Files: </b>{mime_type}"
-            msg += f"\n<b>cc: </b>{self.tag}\n\n"
+            msg += f"\n<b>cc: </b>{self.tag}"
+
+            # Add media store links inside blockquote if enabled and there's only one file
+            if Config.MEDIA_STORE and files and len(files) == 1:
+                url = next(iter(files.keys()))
+                chat_id, msg_id = url.split("/")[-2:]
+                if chat_id.isdigit():
+                    chat_id = f"-100{chat_id}"
+                store_link = f"https://t.me/{TgClient.NAME}?start={encode_slink('file' + chat_id + '&&' + msg_id)}"
+                msg += f"\n\n<b>Media Links:</b>\n┖ <a href='{store_link}'>Store Link</a> | <a href='https://t.me/share/url?url={store_link}'>Share Link</a>"
+
+            msg += "</blockquote>\n\n"
+
             if not files:
                 await send_message(self.message, msg)
             else:
                 fmsg = ""
                 for index, (url, name) in enumerate(files.items(), start=1):
-                    fmsg += f"{index}. <a href='{url}'>{name}</a>\n"
+                    fmsg += f"{index}. <a href='{url}'>{name}</a>"
+                    if Config.MEDIA_STORE:
+                        chat_id, msg_id = url.split("/")[-2:]
+                        if chat_id.isdigit():
+                            chat_id = f"-100{chat_id}"
+                        store_link = f"https://t.me/{TgClient.NAME}?start={encode_slink('file' + chat_id + '&&' + msg_id)}"
+                        fmsg += f"\n┖ <b>Get Media</b> → <a href='{store_link}'>Store Link</a> | <a href='https://t.me/share/url?url={store_link}'>Share Link</a>"
+                    fmsg += "\n"
                     if len(fmsg.encode() + msg.encode()) > 4000:
                         await send_message(
                             self.user_id,
@@ -454,7 +494,7 @@ class TaskListener(TaskConfig):
             else:
                 msg += f"\n\nPath: <code>{rclone_path}</code>"
                 button = None
-            msg += f"\n\n<b>cc: </b>{self.tag}"
+            msg += f"\n\n<b>cc: </b>{self.tag}</blockquote>"
             await send_message(self.user_id, msg, button)
             if Config.LOG_CHAT_ID:
                 await send_message(int(Config.LOG_CHAT_ID), msg, button)
@@ -488,9 +528,17 @@ class TaskListener(TaskConfig):
                 del task_dict[self.mid]
             count = len(task_dict)
         await self.remove_from_same_dir()
+
+        # Delete command message and any replied message for all tasks
+        await delete_links(self.message)
+
+        # Send and auto-delete error message
         msg = f"{self.tag} Download: {escape(str(error))}"
-        x = await send_message(self.message, msg, button)
-        create_task(auto_delete_message(x, time=300))
+        error_msg = await send_message(self.message, msg, button)
+        create_task(
+            auto_delete_message(error_msg, time=300),
+        )  # noqa: RUF006, RUF100
+
         if count == 0:
             await self.clean()
         else:
@@ -529,7 +577,7 @@ class TaskListener(TaskConfig):
                 del task_dict[self.mid]
             count = len(task_dict)
         x = await send_message(self.message, f"{self.tag} {escape(str(error))}")
-        create_task(auto_delete_message(x, time=300))
+        create_task(auto_delete_message(x, time=300))  # noqa: RUF006, RUF100
         if count == 0:
             await self.clean()
         else:

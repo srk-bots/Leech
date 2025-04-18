@@ -19,6 +19,7 @@ from bot.helper.ext_utils.links_utils import (
     is_gdrive_id,
     is_gdrive_link,
     is_magnet,
+    is_mega_link,
     is_rclone_path,
     is_telegram_link,
     is_url,
@@ -107,11 +108,18 @@ class Mirror(TaskListener):
             "-hl": False,
             "-bt": False,
             "-ut": False,
+            "-merge-video": False,
+            "-merge-audio": False,
+            "-merge-subtitle": False,
+            "-merge-all": False,
+            "-merge-image": False,
+            "-merge-pdf": False,
             "-i": 0,
             "-sp": 0,
             "link": "",
             "-n": "",
             "-m": "",
+            "-watermark": "",
             "-up": "",
             "-rcf": "",
             "-au": "",
@@ -122,6 +130,10 @@ class Mirror(TaskListener):
             "-cv": "",
             "-ns": "",
             "-md": "",
+            "-metadata-title": "",
+            "-metadata-author": "",
+            "-metadata-comment": "",
+            "-metadata-all": "",
             "-tl": "",
             "-ff": set(),
         }
@@ -152,11 +164,20 @@ class Mirror(TaskListener):
         self.as_doc = args["-doc"]
         self.as_med = args["-med"]
         self.metadata = args["-md"]
-        self.folder_name = (
-            f"/{args['-m']}".rstrip("/") if len(args["-m"]) > 0 else ""
-        )
+        self.metadata_title = args["-metadata-title"]
+        self.metadata_author = args["-metadata-author"]
+        self.metadata_comment = args["-metadata-comment"]
+        self.metadata_all = args["-metadata-all"]
+        self.folder_name = f"/{args['-m']}".rstrip("/") if len(args["-m"]) > 0 else ""
         self.bot_trans = args["-bt"]
         self.user_trans = args["-ut"]
+        self.merge_video = args["-merge-video"]
+        self.merge_audio = args["-merge-audio"]
+        self.merge_subtitle = args["-merge-subtitle"]
+        self.merge_all = args["-merge-all"]
+        self.merge_image = args["-merge-image"]
+        self.merge_pdf = args["-merge-pdf"]
+        self.watermark_text = args["-watermark"]
 
         headers = args["-h"]
         is_bulk = args["-b"]
@@ -309,11 +330,8 @@ class Mirror(TaskListener):
 
         try:
             if (
-                self.link
-                and (is_magnet(self.link) or self.link.endswith(".torrent"))
-            ) or (
-                file_ and file_.file_name and file_.file_name.endswith(".torrent")
-            ):
+                self.link and (is_magnet(self.link) or self.link.endswith(".torrent"))
+            ) or (file_ and file_.file_name and file_.file_name.endswith(".torrent")):
                 self.is_qbit = True
         except Exception:
             pass
@@ -329,6 +347,7 @@ class Mirror(TaskListener):
                 and not is_rclone_path(self.link)
                 and not is_gdrive_id(self.link)
                 and not is_gdrive_link(self.link)
+                and not is_mega_link(self.link)
             )
         ):
             x = await send_message(
@@ -341,7 +360,17 @@ class Mirror(TaskListener):
             return await auto_delete_message(x, time=300)
 
         if len(self.link) > 0:
-            LOGGER.info(self.link)
+            LOGGER.debug(self.link)
+
+        # Check if it's a Mega link but not using jdleech or jdmirror command
+        if is_mega_link(self.link) and not self.is_jd:
+            error_msg = (
+                "⚠️ For Mega links, please use /jdleech or /jdmirror command instead."
+            )
+            x = await send_message(self.message, error_msg)
+            await self.remove_from_same_dir()
+            await delete_links(self.message)
+            return await auto_delete_message(x, time=300)
 
         try:
             await self.before_start()
@@ -361,6 +390,7 @@ class Mirror(TaskListener):
             and not self.link.endswith(".torrent")
             and file_ is None
             and not is_gdrive_id(self.link)
+            and not is_mega_link(self.link)
         ):
             content_type = await get_content_type(self.link)
             if content_type is None or re_match(
@@ -413,7 +443,9 @@ class Mirror(TaskListener):
             pssw = args["-ap"]
             if ussr or pssw:
                 auth = f"{ussr}:{pssw}"
-                headers += f" authorization: Basic {b64encode(auth.encode()).decode('ascii')}"
+                headers += (
+                    f" authorization: Basic {b64encode(auth.encode()).decode('ascii')}"
+                )
             create_task(add_aria2_download(self, path, headers, ratio, seed_time))
         await delete_links(self.message)
         return None

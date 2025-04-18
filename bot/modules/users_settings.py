@@ -1,4 +1,4 @@
-from asyncio import sleep
+from asyncio import create_task, sleep
 from functools import partial
 from html import escape
 from io import BytesIO
@@ -23,6 +23,7 @@ from bot.helper.ext_utils.help_messages import user_settings_text
 from bot.helper.ext_utils.media_utils import create_thumb
 from bot.helper.telegram_helper.button_build import ButtonMaker
 from bot.helper.telegram_helper.message_utils import (
+    auto_delete_message,
     delete_message,
     edit_message,
     send_file,
@@ -30,17 +31,27 @@ from bot.helper.telegram_helper.message_utils import (
 )
 
 handler_dict = {}
-no_thumb = "https://graph.org/file/73ae908d18c6b38038071.jpg"
+no_thumb = "https://graph.org/file/80b7fb095063a18f9e232.jpg"
 
 leech_options = [
     "THUMBNAIL",
     "LEECH_SPLIT_SIZE",
     # "LEECH_DUMP_CHAT",
     "LEECH_FILENAME_PREFIX",
+    "LEECH_SUFFIX",
+    "LEECH_FONT",
+    "LEECH_FILENAME",
     "LEECH_FILENAME_CAPTION",
     "THUMBNAIL_LAYOUT",
     "USER_DUMP",
     "USER_SESSION",
+]
+metadata_options = [
+    "METADATA_ALL",
+    "METADATA_TITLE",
+    "METADATA_AUTHOR",
+    "METADATA_COMMENT",
+    "METADATA_KEY",
 ]
 rclone_options = ["RCLONE_CONFIG", "RCLONE_PATH", "RCLONE_FLAGS"]
 gdrive_options = ["TOKEN_PICKLE", "GDRIVE_ID", "INDEX_URL"]
@@ -57,19 +68,50 @@ async def get_user_settings(from_user, stype="main"):
     thumbnail = thumbpath if await aiopath.exists(thumbpath) else no_thumb
 
     if stype == "leech":
-        buttons.data_button("thumbnail", f"userset {user_id} menu THUMBNAIL")
+        buttons.data_button("Thumbnail", f"userset {user_id} menu THUMBNAIL")
         buttons.data_button(
             "Leech Prefix",
             f"userset {user_id} menu LEECH_FILENAME_PREFIX",
         )
         if user_dict.get("LEECH_FILENAME_PREFIX", False):
             lprefix = user_dict["LEECH_FILENAME_PREFIX"]
-        elif (
-            "LEECH_FILENAME_PREFIX" not in user_dict and Config.LEECH_FILENAME_PREFIX
-        ):
+        elif "LEECH_FILENAME_PREFIX" not in user_dict and Config.LEECH_FILENAME_PREFIX:
             lprefix = Config.LEECH_FILENAME_PREFIX
         else:
             lprefix = "None"
+        buttons.data_button(
+            "Leech Suffix",
+            f"userset {user_id} menu LEECH_SUFFIX",
+        )
+        if user_dict.get("LEECH_SUFFIX", False):
+            lsuffix = user_dict["LEECH_SUFFIX"]
+        elif "LEECH_SUFFIX" not in user_dict and Config.LEECH_SUFFIX:
+            lsuffix = Config.LEECH_SUFFIX
+        else:
+            lsuffix = "None"
+
+        buttons.data_button(
+            "Leech Font",
+            f"userset {user_id} menu LEECH_FONT",
+        )
+        if user_dict.get("LEECH_FONT", False):
+            lfont = user_dict["LEECH_FONT"]
+        elif "LEECH_FONT" not in user_dict and Config.LEECH_FONT:
+            lfont = Config.LEECH_FONT
+        else:
+            lfont = "None"
+
+        buttons.data_button(
+            "Leech Filename",
+            f"userset {user_id} menu LEECH_FILENAME",
+        )
+        if user_dict.get("LEECH_FILENAME", False):
+            lfilename = user_dict["LEECH_FILENAME"]
+        elif "LEECH_FILENAME" not in user_dict and Config.LEECH_FILENAME:
+            lfilename = Config.LEECH_FILENAME
+        else:
+            lfilename = "None"
+
         buttons.data_button(
             "Leech Caption",
             f"userset {user_id} menu LEECH_FILENAME_CAPTION",
@@ -77,8 +119,7 @@ async def get_user_settings(from_user, stype="main"):
         if user_dict.get("LEECH_FILENAME_CAPTION", False):
             lcap = user_dict["LEECH_FILENAME_CAPTION"]
         elif (
-            "LEECH_FILENAME_CAPTION" not in user_dict
-            and Config.LEECH_FILENAME_CAPTION
+            "LEECH_FILENAME_CAPTION" not in user_dict and Config.LEECH_FILENAME_CAPTION
         ):
             lcap = Config.LEECH_FILENAME_CAPTION
         else:
@@ -138,14 +179,17 @@ async def get_user_settings(from_user, stype="main"):
         buttons.data_button("Back", f"userset {user_id} back")
         buttons.data_button("Close", f"userset {user_id} close")
 
-        text = f"""<u>Leech Settings for {name}</u>
-Leech Type is <b>{ltype}</b>
-Media Group is <b>{media_group}</b>
-Leech Prefix is <code>{escape(lprefix)}</code>
-Leech Caption is <code>{escape(lcap)}</code>
-User session id {usess}
-User dump <code>{udump}</code>
-Thumbnail Layout is <b>{thumb_layout}</b>
+        text = f"""<u><b>Leech Settings for {name}</b></u>
+-> Leech Type: <b>{ltype}</b>
+-> Media Group: <b>{media_group}</b>
+-> Leech Prefix: <code>{escape(lprefix)}</code>
+-> Leech Suffix: <code>{escape(lsuffix)}</code>
+-> Leech Font: <code>{escape(lfont)}</code>
+-> Leech Filename: <code>{escape(lfilename)}</code>
+-> Leech Caption: <code>{escape(lcap)}</code>
+-> User Session id: {usess}
+-> User Dump: <code>{udump}</code>
+-> Thumbnail Layout: <b>{thumb_layout}</b>
 """
     elif stype == "rclone":
         buttons.data_button("Rclone Config", f"userset {user_id} menu RCLONE_CONFIG")
@@ -169,10 +213,14 @@ Thumbnail Layout is <b>{thumb_layout}</b>
             rcflags = Config.RCLONE_FLAGS
         else:
             rcflags = "None"
-        text = f"""<u>Rclone Settings for {name}</u>
-Rclone Config <b>{rccmsg}</b>
-Rclone Path is <code>{rccpath}</code>
-Rclone Flags is <code>{rcflags}</code>"""
+        text = f"""<u><b>Rclone Settings for {name}</b></u>
+-> Rclone Config : <b>{rccmsg}</b>
+-> Rclone Path     : <code>{rccpath}</code>
+-> Rclone Flags   : <code>{rcflags}</code>
+
+<blockquote>Dont understand? Then follow this <a href='https://t.me/aimupdate/215'>quide</a></blockquote>
+
+"""
     elif stype == "gdrive":
         buttons.data_button("token.pickle", f"userset {user_id} menu TOKEN_PICKLE")
         buttons.data_button("Default Gdrive ID", f"userset {user_id} menu GDRIVE_ID")
@@ -200,25 +248,53 @@ Rclone Flags is <code>{rcflags}</code>"""
             gdrive_id = GDID
         else:
             gdrive_id = "None"
-        index = (
-            user_dict["INDEX_URL"] if user_dict.get("INDEX_URL", False) else "None"
+        index = user_dict["INDEX_URL"] if user_dict.get("INDEX_URL", False) else "None"
+        text = f"""<u><b>Gdrive API Settings for {name}</b></u>
+-> Gdrive Token: <b>{tokenmsg}</b>
+-> Gdrive ID: <code>{gdrive_id}</code>
+-> Index URL: <code>{index}</code>
+-> Stop Duplicate: <b>{sd_msg}</b>"""
+    elif stype == "metadata":
+        buttons.data_button("Metadata All", f"userset {user_id} menu METADATA_ALL")
+        buttons.data_button("Metadata Title", f"userset {user_id} menu METADATA_TITLE")
+        buttons.data_button(
+            "Metadata Author", f"userset {user_id} menu METADATA_AUTHOR"
         )
-        text = f"""<u>Gdrive API Settings for {name}</u>
-Gdrive Token <b>{tokenmsg}</b>
-Gdrive ID is <code>{gdrive_id}</code>
-Index URL is <code>{index}</code>
-Stop Duplicate is <b>{sd_msg}</b>"""
+        buttons.data_button(
+            "Metadata Comment", f"userset {user_id} menu METADATA_COMMENT"
+        )
+        buttons.data_button(
+            "Legacy Metadata Key", f"userset {user_id} menu METADATA_KEY"
+        )
+        buttons.data_button(
+            "Reset All Metadata", f"userset {user_id} reset metadata_all"
+        )
+        buttons.data_button("Back", f"userset {user_id} back")
+        buttons.data_button("Close", f"userset {user_id} close")
+
+        # Get metadata values
+        metadata_all = user_dict.get("METADATA_ALL", "None")
+        metadata_title = user_dict.get("METADATA_TITLE", "None")
+        metadata_author = user_dict.get("METADATA_AUTHOR", "None")
+        metadata_comment = user_dict.get("METADATA_COMMENT", "None")
+        metadata_key = user_dict.get("METADATA_KEY", "None")
+
+        text = f"""<u><b>Metadata Settings for {name}</b></u>
+-> Metadata All: <code>{metadata_all}</code>
+-> Metadata Title: <code>{metadata_title}</code>
+-> Metadata Author: <code>{metadata_author}</code>
+-> Metadata Comment: <code>{metadata_comment}</code>
+-> Legacy Metadata Key: <code>{metadata_key}</code>
+
+<b>Note:</b> 'Metadata All' takes priority over individual settings when set."""
+
     else:
         buttons.data_button("Leech", f"userset {user_id} leech")
         buttons.data_button("Rclone", f"userset {user_id} rclone")
         buttons.data_button("Gdrive API", f"userset {user_id} gdrive")
 
         upload_paths = user_dict.get("UPLOAD_PATHS", {})
-        if (
-            not upload_paths
-            and "UPLOAD_PATHS" not in user_dict
-            and Config.UPLOAD_PATHS
-        ):
+        if not upload_paths and "UPLOAD_PATHS" not in user_dict and Config.UPLOAD_PATHS:
             upload_paths = Config.UPLOAD_PATHS
         else:
             upload_paths = "None"
@@ -240,7 +316,7 @@ Stop Duplicate is <b>{sd_msg}</b>"""
         tr = "MY" if user_tokens else "OWNER"
         trr = "OWNER" if user_tokens else "MY"
         buttons.data_button(
-            f"Use {trr} token/config",
+            f"{trr} Token/Config",
             f"userset {user_id} tog USER_TOKENS {'f' if user_tokens else 't'}",
         )
 
@@ -266,29 +342,25 @@ Stop Duplicate is <b>{sd_msg}</b>"""
             f"userset {user_id} menu YT_DLP_OPTIONS",
         )
         if user_dict.get("YT_DLP_OPTIONS", False):
-            ytopt = user_dict["YT_DLP_OPTIONS"]
+            ytopt = "Added by User"
         elif "YT_DLP_OPTIONS" not in user_dict and Config.YT_DLP_OPTIONS:
-            ytopt = Config.YT_DLP_OPTIONS
+            ytopt = "Added by Owner"
         else:
             ytopt = "None"
 
+        buttons.data_button("Metadata", f"userset {user_id} metadata")
+
         buttons.data_button("FFmpeg Cmds", f"userset {user_id} menu FFMPEG_CMDS")
         if user_dict.get("FFMPEG_CMDS", False):
-            ffc = "Added by user"
+            ffc = "Added by User"
         elif "FFMPEG_CMDS" not in user_dict and Config.FFMPEG_CMDS:
-            ffc = "Added by owner"
+            ffc = "Added by Owner"
         else:
             ffc = "None"
 
-        buttons.data_button("Watermark", f"userset {user_id} menu WATERMARK_KEY")
-        if user_dict.get("WATERMARK_KEY", False):
-            wmt = user_dict["WATERMARK_KEY"]
-        elif "WATERMARK_KEY" not in user_dict and Config.WATERMARK_KEY:
-            wmt = Config.WATERMARK_KEY
-        else:
-            wmt = "None"
+        # Watermark moved to Media Tools
 
-        buttons.data_button("Metadata", f"userset {user_id} menu METADATA_KEY")
+        # Get metadata value for display
         if user_dict.get("METADATA_KEY", False):
             mdt = user_dict["METADATA_KEY"]
         elif "METADATA_KEY" not in user_dict and Config.METADATA_KEY:
@@ -300,17 +372,16 @@ Stop Duplicate is <b>{sd_msg}</b>"""
 
         buttons.data_button("Close", f"userset {user_id} close")
 
-        text = f"""<u>Settings for {name}</u>
-Default Package is <b>{du}</b>
-Use <b>{tr}</b> token/config
-Upload Paths is <code>{upload_paths}</code>
+        text = f"""<u><b>Settings for {name}</B></u>
+-> Default Package: <b>{du}</b>
+-> Upload Paths: <code><b>{upload_paths}</b></code>
+-> Using <b>{tr}</b> Token/Config
 
-Name substitution is <code>{ns_msg}</code>
-Excluded Extensions is <code>{ex_ex}</code>
-YT-DLP Options is <code>{ytopt}</code>
-FFMPEG Commands is <code>{ffc}</code>
-Metadata is <code>{mdt}</code>
-Watermark text is <code>{wmt}</code>"""
+-> Name Substitution: <code>{ns_msg}</code>
+-> Excluded Extensions: <code>{ex_ex}</code>
+-> YT-DLP Options: <code>{ytopt}</code>
+-> FFMPEG Commands: <code>{ffc}</code>
+-> Metadata Text: <code>{mdt}</code>"""
 
     return text, buttons.build_menu(2), thumbnail
 
@@ -326,7 +397,10 @@ async def send_user_settings(_, message):
     from_user = message.from_user
     handler_dict[from_user.id] = False
     msg, button, t = await get_user_settings(from_user)
-    await send_message(message, msg, button, t)
+    await delete_message(message)  # Delete the command message instantly
+    settings_msg = await send_message(message, msg, button, t)
+    # Auto delete settings after 5 minutes
+    create_task(auto_delete_message(settings_msg, time=300))  # noqa: RUF006
 
 
 @new_task
@@ -401,6 +475,16 @@ async def set_option(_, message, option):
         for x in fx:
             x = x.lstrip(".")
             value.append(x.strip().lower())
+    elif option == "LEECH_FILENAME_CAPTION":
+        # Check if caption exceeds Telegram's limit (1024 characters)
+        if len(value) > 1024:
+            error_msg = await send_message(
+                message,
+                "❌ Error: Caption exceeds Telegram's limit of 1024 characters. Please use a shorter caption.",
+            )
+            # Auto-delete error message after 5 minutes
+            create_task(auto_delete_message(error_msg, time=300))  # noqa: RUF006
+            return
     elif option in ["UPLOAD_PATHS", "FFMPEG_CMDS", "YT_DLP_OPTIONS"]:
         if value.startswith("{") and value.endswith("}"):
             try:
@@ -440,11 +524,13 @@ async def get_menu(option, message, user_id):
         back_to = "rclone"
     elif option in gdrive_options:
         back_to = "gdrive"
+    elif option in metadata_options:
+        back_to = "metadata"
     else:
         back_to = "back"
     buttons.data_button("Back", f"userset {user_id} {back_to}")
     buttons.data_button("Close", f"userset {user_id} close")
-    text = f"Edit menu for: {option}"
+    text = f"Edit menu for: {option}\n\nUse /help1, /help2, /help3... for more details."
     await edit_message(message, text, buttons.build_menu(2))
 
 
@@ -461,6 +547,11 @@ async def event_handler(client, query, pfunc, photo=False, document=False):
         else:
             mtype = event.text
         user = event.from_user or event.sender_chat
+
+        # Check if user is None before accessing id
+        if user is None:
+            return False
+
         return bool(
             user.id == user_id and event.chat.id == query.message.chat.id and mtype,
         )
@@ -491,9 +582,10 @@ async def edit_user_settings(client, query):
     user_dict = user_data.get(user_id, {})
     if user_id != int(data[1]):
         await query.answer("Not Yours!", show_alert=True)
-    elif data[2] == "setevent":
+        return
+    if data[2] == "setevent":
         await query.answer()
-    elif data[2] in ["leech", "gdrive", "rclone"]:
+    elif data[2] in ["leech", "gdrive", "rclone", "metadata"]:
         await query.answer()
         await update_user_settings(query, data[2])
     elif data[2] == "menu":
@@ -545,7 +637,10 @@ async def edit_user_settings(client, query):
             func = remove_one
         buttons.data_button("Back", f"userset {user_id} setevent")
         buttons.data_button("Close", f"userset {user_id} close")
-        await edit_message(message, text, buttons.build_menu(1))
+        edit_msg = await edit_message(message, text, buttons.build_menu(1))
+        create_task(  # noqa: RUF006
+            auto_delete_message(edit_msg, time=300),
+        )  # Auto delete edit stage after 5 minutes
         pfunc = partial(func, option=data[3])
         await event_handler(client, query, pfunc)
         await get_menu(data[3], message, user_id)
@@ -567,7 +662,13 @@ async def edit_user_settings(client, query):
             await database.update_user_data(user_id)
     elif data[2] == "reset":
         await query.answer("Reseted!", show_alert=True)
-        if data[3] in user_dict:
+        if data[3] == "metadata_all":
+            # Reset all metadata settings
+            for key in metadata_options:
+                if key in user_dict:
+                    user_dict.pop(key, None)
+            await update_user_settings(query, "metadata")
+        elif data[3] in user_dict:
             user_dict.pop(data[3], None)
         else:
             for k in list(user_dict.keys()):
@@ -583,7 +684,11 @@ async def edit_user_settings(client, query):
         await database.update_user_data(user_id)
     elif data[2] == "view":
         await query.answer()
-        await send_file(message, thumb_path, name)
+        msg = await send_file(message, thumb_path, name)
+        # Auto delete thumbnail after viewing
+        create_task(  # noqa: RUF006
+            auto_delete_message(msg, time=30),
+        )  # Delete after 30 seconds
     elif data[2] in ["gd", "rc"]:
         await query.answer()
         du = "rc" if data[2] == "gd" else "gd"
@@ -597,6 +702,11 @@ async def edit_user_settings(client, query):
         await query.answer()
         await delete_message(message.reply_to_message)
         await delete_message(message)
+    # Add auto-delete for all edited messages
+    if message and not message.empty:
+        create_task(  # noqa: RUF006
+            auto_delete_message(message, time=300),
+        )  # 5 minutes
 
 
 @new_task

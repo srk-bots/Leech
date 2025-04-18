@@ -1,5 +1,6 @@
 # ruff: noqa: ARG005, B023
 import contextlib
+from asyncio import create_task
 from logging import getLogger
 from os import listdir
 from os import path as ospath
@@ -16,7 +17,11 @@ from bot.helper.ext_utils.task_manager import (
 )
 from bot.helper.mirror_leech_utils.status_utils.queue_status import QueueStatus
 from bot.helper.mirror_leech_utils.status_utils.yt_dlp_status import YtDlpStatus
-from bot.helper.telegram_helper.message_utils import send_status_message
+from bot.helper.telegram_helper.message_utils import (
+    auto_delete_message,
+    send_message,
+    send_status_message,
+)
 
 LOGGER = getLogger(__name__)
 
@@ -47,7 +52,11 @@ class MyLogger:
     @staticmethod
     def error(msg):
         if msg != "ERROR: Cancelling...":
-            LOGGER.error(msg)
+            # Don't log postprocessing errors related to output files
+            if "Postprocessing: Error opening output files" in msg:
+                LOGGER.debug(f"Suppressed error: {msg}")
+            else:
+                LOGGER.error(msg)
 
 
 class YoutubeDLHelper:
@@ -73,7 +82,7 @@ class YoutubeDLHelper:
             "overwrites": True,
             "writethumbnail": True,
             "trim_file_name": 220,
-            "ffmpeg_location": "/bin/xtra",
+            "ffmpeg_location": "/usr/bin/xtra",
             "fragment_retries": 10,
             "retries": 10,
             "retry_sleep_functions": {
@@ -111,18 +120,18 @@ class YoutubeDLHelper:
             if self.is_playlist:
                 self._last_downloaded = 0
         elif d["status"] == "downloading":
-            self._download_speed = d["speed"] or 0
+            self._download_speed = d["speed"]
             if self.is_playlist:
-                downloadedBytes = d["downloaded_bytes"] or 0
+                downloadedBytes = d["downloaded_bytes"]
                 chunk_size = downloadedBytes - self._last_downloaded
                 self._last_downloaded = downloadedBytes
                 self._downloaded_bytes += chunk_size
             else:
                 if d.get("total_bytes"):
-                    self._listener.size = d["total_bytes"] or 0
+                    self._listener.size = d["total_bytes"]
                 elif d.get("total_bytes_estimate"):
-                    self._listener.size = d["total_bytes_estimate"] or 0
-                self._downloaded_bytes = d["downloaded_bytes"] or 0
+                    self._listener.size = d["total_bytes_estimate"]
+                self._downloaded_bytes = d["downloaded_bytes"]
                 self._eta = d.get("eta", "-") or "-"
             with contextlib.suppress(Exception):
                 self._progress = (self._downloaded_bytes / self._listener.size) * 100
@@ -141,16 +150,56 @@ class YoutubeDLHelper:
 
     def _on_download_error(self, error):
         self._listener.is_cancelled = True
-        async_to_sync(self._listener.on_download_error, error)
+        try:
+            async_to_sync(self._listener.on_download_error, error)
+        except Exception as e:
+            LOGGER.error(f"Failed to handle error through listener: {e!s}")
+            # Fallback error handling
+            error_msg = async_to_sync(
+                send_message,
+                self._listener.message,
+                f"{self._listener.tag} {error}",
+            )
+            create_task(auto_delete_message(error_msg, time=300))  # noqa: RUF006
 
     def _extract_meta_data(self):
+        # Configure external downloader for specific protocols
         if self._listener.link.startswith(("rtmp", "mms", "rstp", "rtmps")):
             self.opts["external_downloader"] = "xtra"
+
+        # Check for HLS streams and configure appropriately
+        if ".m3u8" in self._listener.link or "hls" in self._listener.link.lower():
+            LOGGER.info("HLS stream detected, configuring appropriate options")
+            # Add HLS-specific options
+            self.opts["external_downloader"] = "xtra"
+            self.opts["hls_prefer_native"] = False
+            self.opts["hls_use_mpegts"] = True
+
+            # For live streams
+            if "live" in self._listener.link.lower():
+                LOGGER.info("Live HLS stream detected, adding live stream options")
+                self.opts["live_from_start"] = True
+                self.opts["wait_for_video"] = (
+                    5,
+                    60,
+                )  # Wait between 5-60 seconds for video
+
         with YoutubeDL(self.opts) as ydl:
             try:
                 result = ydl.extract_info(self._listener.link, download=False)
                 if result is None:
                     raise ValueError("Info result is None")
+
+                # Check if it's a live stream and configure accordingly
+                if result.get("is_live"):
+                    LOGGER.info(
+                        "Live stream detected from metadata, configuring appropriate options",
+                    )
+                    self.opts["external_downloader"] = "xtra"
+                    self.opts["hls_prefer_native"] = False
+                    self.opts["hls_use_mpegts"] = True
+                    self.opts["live_from_start"] = True
+
             except Exception as e:
                 return self._on_download_error(str(e))
             if "entries" in result:
@@ -158,9 +207,9 @@ class YoutubeDLHelper:
                     if not entry:
                         continue
                     if "filesize_approx" in entry:
-                        self._listener.size += entry.get("filesize_approx", 0) or 0
+                        self._listener.size += entry.get("filesize_approx", 0)
                     elif "filesize" in entry:
-                        self._listener.size += entry.get("filesize", 0) or 0
+                        self._listener.size += entry.get("filesize", 0)
                     if not self._listener.name:
                         outtmpl_ = "%(series,playlist_title,channel)s%(season_number& |)s%(season_number&S|)s%(season_number|)02d.%(ext)s"
                         self._listener.name, ext = ospath.splitext(
@@ -318,8 +367,7 @@ class YoutubeDLHelper:
             self.opts["postprocessors"].append(
                 {
                     "already_have_thumbnail": bool(
-                        self._listener.is_leech
-                        and not self._listener.thumbnail_layout,
+                        self._listener.is_leech and not self._listener.thumbnail_layout,
                     ),
                     "key": "EmbedThumbnail",
                 },

@@ -1,4 +1,4 @@
-import contextlib
+import re
 from asyncio import sleep
 from logging import getLogger
 from os import path as ospath
@@ -39,6 +39,7 @@ from bot.helper.ext_utils.files_utils import (
     get_base_name,
     is_archive,
 )
+from bot.helper.ext_utils.font_utils import apply_font_style, FONT_STYLES
 from bot.helper.ext_utils.media_utils import (
     get_audio_thumbnail,
     get_document_type,
@@ -68,8 +69,11 @@ class TelegramUploader:
         self._last_msg_in_group = False
         self._up_path = ""
         self._lprefix = ""
+        self._lsuffix = ""
+        self._lfont = ""
         self._user_dump = ""
         self._lcaption = ""
+        self._lfilename = ""
         self._media_group = False
         self._is_private = False
         self._sent_msg = None
@@ -96,6 +100,19 @@ class TelegramUploader:
         self._lprefix = self._listener.user_dict.get("LEECH_FILENAME_PREFIX") or (
             Config.LEECH_FILENAME_PREFIX
             if "LEECH_FILENAME_PREFIX" not in self._listener.user_dict
+            else ""
+        )
+        self._lsuffix = self._listener.user_dict.get("LEECH_SUFFIX") or (
+            Config.LEECH_SUFFIX
+            if "LEECH_SUFFIX" not in self._listener.user_dict
+            else ""
+        )
+        self._lfont = self._listener.user_dict.get("LEECH_FONT") or (
+            Config.LEECH_FONT if "LEECH_FONT" not in self._listener.user_dict else ""
+        )
+        self._lfilename = self._listener.user_dict.get("LEECH_FILENAME") or (
+            Config.LEECH_FILENAME
+            if "LEECH_FILENAME" not in self._listener.user_dict
             else ""
         )
         self._user_dump = self._listener.user_dict.get("USER_DUMP")
@@ -149,19 +166,125 @@ class TelegramUploader:
         return True
 
     async def _prepare_file(self, file_, dirpath):
+        part_match = re.search(r"\.part(\d+)", file_)
+        part_number = f"[Part {int(part_match.group(1))}]" if part_match else ""
+
+        # Initialize file and caption variables
+        cap_file_ = file_
+
+        # Process leech filename if set (applies to the actual filename)
+        if self._lfilename:
+            try:
+                # Get file extension
+                name, ext = ospath.splitext(file_)
+
+                # Generate new filename using template
+                new_filename = await generate_caption(file_, dirpath, self._lfilename)
+
+                # Make sure the extension is preserved
+                if not new_filename.endswith(ext):
+                    new_filename += ext
+
+                # Rename the file
+                new_path = ospath.join(dirpath, new_filename)
+                await rename(self._up_path, new_path)
+                self._up_path = new_path
+
+                # Update file_ and cap_file_ for further processing
+                file_ = new_filename
+                cap_file_ = new_filename
+
+                # Update the listener's name property to show in status and completion messages
+                self._listener.name = new_filename
+
+                LOGGER.info(f"Applied filename template. New filename: {new_filename}")
+            except Exception as e:
+                LOGGER.error(f"Error applying filename template: {e}")
+
+        # Process leech caption first (highest priority)
         if self._lcaption:
             cap_mono = await generate_caption(file_, dirpath, self._lcaption)
+            if part_number:
+                cap_mono = f"{part_number} {cap_mono}"
+            return cap_mono
+
+        # Apply prefix to both filename and caption
         if self._lprefix:
-            if not self._lcaption:
-                cap_mono = f"{self._lprefix} {file_}"
-            self._lprefix = re_sub("<.*?>", "", self._lprefix)
-            new_path = ospath.join(dirpath, f"{self._lprefix} {file_}")
-            LOGGER.info(self._up_path)
+            # For caption
+            cap_file_ = self._lprefix.replace(r"\s", " ") + " " + file_
+
+            # For filename (remove HTML tags)
+            clean_prefix = re_sub(r"<.*?>", "", self._lprefix).replace(r"\s", " ")
+            file_ = f"{clean_prefix} {file_}"
+            new_path = ospath.join(dirpath, file_)
             await rename(self._up_path, new_path)
             self._up_path = new_path
-            LOGGER.info(self._up_path)
-        if not self._lcaption and not self._lprefix:
-            cap_mono = f"<code>{file_}</code>"
+
+            # Update the listener's name property to show in status and completion messages
+            self._listener.name = file_
+
+            LOGGER.info(f"Applied prefix: {clean_prefix} to file: {file_}")
+
+        # Apply suffix to both filename and caption
+        if self._lsuffix:
+            # For caption
+            name, ext = ospath.splitext(cap_file_)
+            cap_file_ = name + " " + self._lsuffix.replace(r"\s", " ") + ext
+
+            # For filename (remove HTML tags)
+            name, ext = ospath.splitext(file_)
+            clean_suffix = re_sub(r"<.*?>", "", self._lsuffix).replace(r"\s", " ")
+            file_ = f"{name} {clean_suffix}{ext}"
+            new_path = ospath.join(dirpath, file_)
+            await rename(self._up_path, new_path)
+            self._up_path = new_path
+
+            # Update the listener's name property to show in status and completion messages
+            self._listener.name = file_
+
+            LOGGER.info(f"Applied suffix: {clean_suffix} to file: {file_}")
+
+        # Create caption with font styling if needed
+        if self._lfont:
+            # Apply font style to caption (including prefix and suffix if present)
+            try:
+                LOGGER.info(
+                    f"Applying font style {self._lfont} to caption: {cap_file_}",
+                )
+                # Use the async version of apply_font_style
+                styled_cap = await apply_font_style(cap_file_, self._lfont)
+
+                # Log the font style being applied
+                if self._lfont.lower() == "spoiler":
+                    LOGGER.info("Using spoiler style with HTML syntax")
+                elif (
+                    self._lfont.lower() not in FONT_STYLES
+                    and "font-family" in styled_cap
+                ):
+                    LOGGER.info(f"Using Google Font: {self._lfont}")
+
+                # Handle part number separately to avoid styling issues
+                if part_number:
+                    cap_mono = f"<b>{part_number}</b> {styled_cap}"
+                else:
+                    cap_mono = styled_cap
+
+                LOGGER.info(f"Styled caption: {cap_mono}")
+            except Exception as e:
+                LOGGER.error(f"Error applying font style: {e}")
+                # Fallback to regular caption
+                if part_number:
+                    cap_mono = f"<code><b>{part_number}</b> {cap_file_}</code>"
+                else:
+                    cap_mono = f"<code>{cap_file_}</code>"
+        elif part_number:
+            # No font styling, with part number
+            cap_mono = f"<code><b>{part_number}</b> {cap_file_}</code>"
+        else:
+            # No font styling, no part number
+            cap_mono = f"<code>{cap_file_}</code>"
+
+        # Handle filename length limit
         if len(file_) > 60:
             if is_archive(file_):
                 name = get_base_name(file_)
@@ -181,9 +304,16 @@ class TelegramUploader:
             extn = len(ext)
             remain = 60 - extn
             name = name[:remain]
-            new_path = ospath.join(dirpath, f"{name}{ext}")
+            new_filename = f"{name}{ext}"
+            new_path = ospath.join(dirpath, new_filename)
             await rename(self._up_path, new_path)
             self._up_path = new_path
+
+            # Update the listener's name property to show in status and completion messages
+            self._listener.name = new_filename
+
+            LOGGER.info(f"Applied filename length limit. New filename: {new_filename}")
+
         return cap_mono
 
     def _get_input_media(self, subkey, key):
@@ -260,7 +390,7 @@ class TelegramUploader:
                 self._error = ""
                 self._up_path = f_path = ospath.join(dirpath, file_)
                 if not await aiopath.exists(self._up_path):
-                    LOGGER.error(f"{self._up_path} not exists! Continue uploading!")
+                    LOGGER.debug(f"{self._up_path} not exists! Continue uploading!")
                     continue
                 try:
                     f_size = await aiopath.getsize(self._up_path)
@@ -275,16 +405,12 @@ class TelegramUploader:
                         return
                     cap_mono = await self._prepare_file(file_, dirpath)
                     if self._last_msg_in_group:
-                        group_lists = [
-                            x for v in self._media_dict.values() for x in v
-                        ]
+                        group_lists = [x for v in self._media_dict.values() for x in v]
                         match = re_match(
                             r".+(?=\.0*\d+$)|.+(?=\.part\d+\..+$)",
                             f_path,
                         )
-                        if not match or (
-                            match and match.group(0) not in group_lists
-                        ):
+                        if not match or (match and match.group(0) not in group_lists):
                             for key, value in list(self._media_dict.items()):
                                 for subkey, msgs in list(value.items()):
                                     if len(msgs) > 1:
@@ -293,10 +419,7 @@ class TelegramUploader:
                                             key,
                                             msgs,
                                         )
-                    if (
-                        self._listener.hybrid_leech
-                        and self._listener.user_transmission
-                    ):
+                    if self._listener.hybrid_leech and self._listener.user_transmission:
                         self._user_session = f_size > 2097152000
                         if self._user_session:
                             self._sent_msg = await TgClient.user.get_messages(
@@ -304,11 +427,9 @@ class TelegramUploader:
                                 message_ids=self._sent_msg.id,
                             )
                         else:
-                            self._sent_msg = (
-                                await self._listener.client.get_messages(
-                                    chat_id=self._sent_msg.chat.id,
-                                    message_ids=self._sent_msg.id,
-                                )
+                            self._sent_msg = await self._listener.client.get_messages(
+                                chat_id=self._sent_msg.chat.id,
+                                message_ids=self._sent_msg.id,
                             )
                     self._last_msg_in_group = False
                     self._last_uploaded = 0
@@ -381,6 +502,9 @@ class TelegramUploader:
             self._thumb = None
         thumb = self._thumb
         self._is_corrupted = False
+
+        # Don't specify parse_mode parameter
+        # Let Pyrogram use the default parse_mode
         try:
             is_video, is_audio, is_image = await get_document_type(self._up_path)
 
@@ -390,7 +514,7 @@ class TelegramUploader:
                 if await aiopath.isfile(thumb_path):
                     thumb = thumb_path
                 elif is_audio and not is_video:
-                    thumb = await get_audio_thumbnail(self._up_path)
+                    thumb = await get_audio_thumbnail(self._up_path, self._user_id)
 
             if (
                 self._listener.as_doc
@@ -399,7 +523,9 @@ class TelegramUploader:
             ):
                 key = "documents"
                 if is_video and thumb is None:
-                    thumb = await get_video_thumbnail(self._up_path, None)
+                    thumb = await get_video_thumbnail(
+                        self._up_path, None, self._user_id
+                    )
 
                 if self._listener.is_cancelled:
                     return None
@@ -422,9 +548,12 @@ class TelegramUploader:
                         self._up_path,
                         self._listener.thumbnail_layout,
                         self._listener.screen_shots,
+                        self._user_id,
                     )
                 if thumb is None:
-                    thumb = await get_video_thumbnail(self._up_path, duration)
+                    thumb = await get_video_thumbnail(
+                        self._up_path, duration, self._user_id
+                    )
                 if thumb is not None and thumb != "none":
                     with Image.open(thumb) as img:
                         width, height = img.size
@@ -480,9 +609,19 @@ class TelegramUploader:
             if (
                 not self._listener.is_cancelled
                 and self._media_group
-                and (self._sent_msg.video or self._sent_msg.document)
+                and self._sent_msg
+                and hasattr(self._sent_msg, "chat")
+                and self._sent_msg.chat
+                and (
+                    (hasattr(self._sent_msg, "video") and self._sent_msg.video)
+                    or (hasattr(self._sent_msg, "document") and self._sent_msg.document)
+                )
             ):
-                key = "documents" if self._sent_msg.document else "videos"
+                key = (
+                    "documents"
+                    if hasattr(self._sent_msg, "document") and self._sent_msg.document
+                    else "videos"
+                )
                 if match := re_match(r".+(?=\.0*\d+$)|.+(?=\.part\d+\..+$)", o_path):
                     pname = match.group(0)
                     if pname in self._media_dict[key]:
@@ -533,27 +672,55 @@ class TelegramUploader:
         await sleep(1)
 
         async def _copy(target, retries=3):
+            # Validate target channel ID first
+            try:
+                # Try to get basic info about the target channel/chat
+                await TgClient.bot.get_chat(target)
+            except Exception as e:
+                LOGGER.error(f"Invalid target chat/channel ID {target}: {e!s}")
+                return False
+
             for attempt in range(retries):
                 try:
+                    # Get the message to copy
                     msg = await TgClient.bot.get_messages(
                         self._sent_msg.chat.id,
                         self._sent_msg.id,
                     )
-                    await msg.copy(target)
-                    return
-                except Exception as e:
-                    LOGGER.error(f"Attempt {attempt + 1} failed: {e} {msg.id}")
-                    if attempt < retries - 1:
-                        await sleep(0.5)
-            LOGGER.error(f"Failed to copy message after {retries} attempts")
+                    if not msg:
+                        LOGGER.error(
+                            f"Source message not found: {self._sent_msg.id}",
+                        )
+                        return False
 
-        # TODO if self.dm_mode:
-        if self._sent_msg.chat.id != self._user_id:
+                    # Let Pyrogram use the default parse_mode
+                    await msg.copy(target)
+                    return True
+                except Exception as e:
+                    LOGGER.error(
+                        f"Attempt {attempt + 1} failed: {e!s} for message {self._sent_msg.id}",
+                    )
+                    if attempt < retries - 1:
+                        await sleep(1)  # Longer delay between retries
+            LOGGER.error(f"Failed to copy message after {retries} attempts")
+            return False
+
+        # Copy to user's private chat
+        if (
+            self._sent_msg
+            and hasattr(self._sent_msg, "chat")
+            and self._sent_msg.chat
+            and self._sent_msg.chat.id != self._user_id
+        ):
             await _copy(self._user_id)
 
+        # Copy to user's dump channel if configured
         if self._user_dump:
-            with contextlib.suppress(Exception):
-                await _copy(int(self._user_dump))
+            try:
+                dump_id = int(self._user_dump)
+                await _copy(dump_id)
+            except ValueError:
+                LOGGER.error(f"Invalid user dump ID: {self._user_dump}")
 
     @property
     def speed(self):

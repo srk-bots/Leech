@@ -12,7 +12,7 @@ from aiofiles.os import listdir, makedirs
 from aiofiles.os import path as aiopath
 
 from bot.core.config_manager import Config
-from bot.helper.ext_utils.bot_utils import cmd_exec, sync_to_async
+from bot.helper.ext_utils.bot_utils import cmd_exec
 from bot.helper.ext_utils.files_utils import count_files_and_folders, get_mime_type
 
 LOGGER = getLogger(__name__)
@@ -130,9 +130,7 @@ class RcloneTransferHelper:
         if return_code != -9:
             error = stderr.decode().strip()
             if not error and remote_type == "drive" and self._use_service_accounts:
-                error = (
-                    "Mostly your service accounts don't have access to this drive!"
-                )
+                error = "Mostly your service accounts don't have access to this drive!"
             LOGGER.error(error)
 
             if (
@@ -204,9 +202,7 @@ class RcloneTransferHelper:
         await self._start_download(cmd, remote_type)
 
     async def _get_gdrive_link(self, config_path, destination, mime_type):
-        epath = (
-            destination.rsplit("/", 1)[0] if mime_type == "Folder" else destination
-        )
+        epath = destination.rsplit("/", 1)[0] if mime_type == "Folder" else destination
 
         cmd = [
             "xone",
@@ -290,7 +286,7 @@ class RcloneTransferHelper:
             folders, files = await count_files_and_folders(path)
             rc_path += f"/{self._listener.name}" if rc_path else self._listener.name
         else:
-            mime_type = await sync_to_async(get_mime_type, path)
+            mime_type = await get_mime_type(path)
             folders = 0
             files = 1
 
@@ -444,9 +440,7 @@ class RcloneTransferHelper:
                     mime_type,
                 )
                 return (
-                    (None, None)
-                    if self._listener.is_cancelled
-                    else (link, destination)
+                    (None, None) if self._listener.is_cancelled else (link, destination)
                 )
             cmd = [
                 "xone",
@@ -506,6 +500,8 @@ class RcloneTransferHelper:
             "-M",
             "-v",
             "--log-systemd",
+            "--buffer-size",
+            "100M",
         ]
         if self._rclone_select:
             cmd.extend(("--files-from", self._listener.link))

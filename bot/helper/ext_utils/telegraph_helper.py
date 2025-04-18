@@ -2,7 +2,7 @@ from asyncio import sleep
 from secrets import token_hex
 
 from telegraph.aio import Telegraph
-from telegraph.exceptions import RetryAfterError
+from telegraph.exceptions import RetryAfterError, TelegraphException
 
 from bot import LOGGER
 
@@ -38,6 +38,32 @@ class TelegraphHelper:
             )
             await sleep(st.retry_after)
             return await self.create_page(title, content)
+        except TelegraphException as e:
+            if str(e) == "CONTENT_TOO_BIG":
+                LOGGER.warning("Content too big for Telegraph, splitting content...")
+                # Split the content in half and try again
+                if isinstance(content, str):
+                    # If it's a string, split it by paragraphs or lines
+                    if "<br>" in content:
+                        parts = content.split("<br>", 1)
+                    else:
+                        # Split roughly in the middle
+                        mid = len(content) // 2
+                        parts = [content[:mid], content[mid:]]
+
+                    if len(parts) > 1:
+                        # Create first page with first half
+                        result = await self.create_page(title, parts[0])
+                        return result
+                    else:
+                        LOGGER.error(f"Cannot split content: {e}")
+                        raise
+                else:
+                    LOGGER.error(f"Content is not a string, cannot split: {e}")
+                    raise
+            else:
+                LOGGER.error(f"Telegraph error: {e}")
+                raise
 
     async def edit_page(self, path, title, content):
         try:
@@ -83,5 +109,3 @@ telegraph = TelegraphHelper(
     "Mirror-Leech-Telegram-Bot",
     "https://github.com/anasty17/mirror-leech-telegram-bot",
 )
-
-print(__name__)
