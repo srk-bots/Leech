@@ -139,8 +139,11 @@ async def clean_download(path):
 
 async def clean_all():
     await TorrentManager.remove_all()
-    LOGGER.info("Cleaning Download Directory")
-    await (await create_subprocess_exec("rm", "-rf", DOWNLOAD_DIR)).wait()
+    try:
+        LOGGER.info("Cleaning Download Directory")
+        await aiormtree(DOWNLOAD_DIR, ignore_errors=True)
+    except Exception:
+        pass
     await aiomakedirs(DOWNLOAD_DIR, exist_ok=True)
 
 
@@ -208,7 +211,16 @@ async def create_recursive_symlink(source, destination):
             LOGGER.error(f"Error creating shortcut for {source}: {e}")
 
 
-def get_mime_type(file_path):
+async def get_mime_type(file_path):
+    if ospath.islink(file_path):
+        file_path = readlink(file_path)
+    mime = Magic(mime=True)
+    mime_type = mime.from_file(file_path)
+    return mime_type or "text/plain"
+
+
+# Non-async version for backward compatibility
+def get_mime_type_sync(file_path):
     if ospath.islink(file_path):
         file_path = readlink(file_path)
     mime = Magic(mime=True)
@@ -224,19 +236,31 @@ async def remove_excluded_files(fpath, ee):
 
 
 async def join_files(opath):
+    from time import time
+
     files = await listdir(opath)
     results = []
     exists = False
     for file_ in files:
-        if re_search(r"\.0+2$", file_) and await sync_to_async(
-            get_mime_type,
-            f"{opath}/{file_}",
+        if re_search(r"\.0+2$", file_) and await get_mime_type(
+            f"{opath}/{file_}"
         ) not in ["application/x-7z-compressed", "application/zip"]:
             exists = True
             final_name = file_.rsplit(".", 1)[0]
             fpath = f"{opath}/{final_name}"
+
+            # Generate a unique process ID for tracking
+            process_id = f"join_files_{time()}"
+
+            # Execute the command with resource limits
             cmd = f'cat "{fpath}."* > "{fpath}"'
-            _, stderr, code = await cmd_exec(cmd, True)
+            _, stderr, code = await cmd_exec(
+                cmd,
+                shell=True,
+                apply_limits=True,
+                process_id=process_id,
+                task_type="Join Files",
+            )
             if code != 0:
                 LOGGER.error(f"Failed to join {final_name}, stderr: {stderr}")
                 if await aiopath.isfile(fpath):
@@ -255,20 +279,42 @@ async def join_files(opath):
 
 
 async def split_file(f_path, split_size, listener):
+    from time import time
+
+    from .resource_manager import apply_resource_limits, cleanup_process
+
     out_path = f"{f_path}."
     if listener.is_cancelled:
         return False
-    listener.subproc = await create_subprocess_exec(
+
+    # Create the command
+    cmd = [
         "split",
         "--numeric-suffixes=1",
         "--suffix-length=3",
         f"--bytes={split_size}",
         f_path,
         out_path,
+    ]
+
+    # Generate a unique process ID for tracking
+    process_id = f"split_file_{listener.mid}_{time()}"
+
+    # Apply resource limits to the command
+    limited_cmd = await apply_resource_limits(cmd, process_id, "Split File")
+
+    # Execute the command with resource limits
+    listener.subproc = await create_subprocess_exec(
+        *limited_cmd,
         stderr=PIPE,
     )
+
     _, stderr = await listener.subproc.communicate()
     code = listener.subproc.returncode
+
+    # Clean up process tracking
+    cleanup_process(process_id)
+
     if listener.is_cancelled:
         return False
     if code == -9:
@@ -341,6 +387,10 @@ class SevenZ:
         self._percentage = "0%"
 
     async def extract(self, f_path, t_path, pswd):
+        from time import time
+
+        from .resource_manager import apply_resource_limits, cleanup_process
+
         cmd = [
             "7z",
             "x",
@@ -357,14 +407,26 @@ class SevenZ:
             del cmd[2]
         if self._listener.is_cancelled:
             return False
+
+        # Generate a unique process ID for tracking
+        process_id = f"7z_extract_{self._listener.mid}_{time()}"
+
+        # Apply resource limits to the command
+        limited_cmd = await apply_resource_limits(cmd, process_id, "7z Extract")
+
+        # Execute the command with resource limits
         self._listener.subproc = await create_subprocess_exec(
-            *cmd,
+            *limited_cmd,
             stdout=PIPE,
             stderr=PIPE,
         )
         await self._sevenz_progress()
         _, stderr = await self._listener.subproc.communicate()
         code = self._listener.subproc.returncode
+
+        # Clean up process tracking
+        cleanup_process(process_id)
+
         if self._listener.is_cancelled:
             return False
         if code == -9:
@@ -379,6 +441,10 @@ class SevenZ:
         return code
 
     async def zip(self, dl_path, up_path, pswd):
+        from time import time
+
+        from .resource_manager import apply_resource_limits, cleanup_process
+
         size = await get_path_size(dl_path)
         split_size = self._listener.split_size
         cmd = [
@@ -404,14 +470,26 @@ class SevenZ:
             LOGGER.info(f"Zip: orig_path: {dl_path}, zip_path: {up_path}")
         if self._listener.is_cancelled:
             return False
+
+        # Generate a unique process ID for tracking
+        process_id = f"7z_{self._listener.mid}_{time()}"
+
+        # Apply resource limits to the command
+        limited_cmd = await apply_resource_limits(cmd, process_id, "7z")
+
+        # Execute the command with resource limits
         self._listener.subproc = await create_subprocess_exec(
-            *cmd,
+            *limited_cmd,
             stdout=PIPE,
             stderr=PIPE,
         )
         await self._sevenz_progress()
         _, stderr = await self._listener.subproc.communicate()
         code = self._listener.subproc.returncode
+
+        # Clean up process tracking
+        cleanup_process(process_id)
+
         if self._listener.is_cancelled:
             return False
         if code == -9:

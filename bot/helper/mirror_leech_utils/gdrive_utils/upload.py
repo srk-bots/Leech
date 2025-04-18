@@ -2,6 +2,7 @@ import contextlib
 from logging import getLogger
 from os import listdir, remove
 from os import path as ospath
+from time import sleep
 
 from googleapiclient.errors import HttpError
 from googleapiclient.http import MediaFileUpload
@@ -15,7 +16,7 @@ from tenacity import (
 
 from bot.core.config_manager import Config
 from bot.helper.ext_utils.bot_utils import SetInterval, async_to_sync
-from bot.helper.ext_utils.files_utils import get_mime_type
+from bot.helper.ext_utils.files_utils import get_mime_type_sync as get_mime_type
 from bot.helper.mirror_leech_utils.gdrive_utils.helper import GoogleDriveHelper
 
 LOGGER = getLogger(__name__)
@@ -142,8 +143,8 @@ class GoogleDriveUpload(GoogleDriveHelper):
         return new_id
 
     @retry(
-        wait=wait_exponential(multiplier=2, min=3, max=6),
-        stop=stop_after_attempt(3),
+        wait=wait_exponential(multiplier=2, min=5, max=30),
+        stop=stop_after_attempt(5),
         retry=retry_if_exception_type(Exception),
     )
     def _upload_file(
@@ -206,6 +207,10 @@ class GoogleDriveUpload(GoogleDriveHelper):
             except HttpError as err:
                 if err.resp.status in [500, 502, 503, 504, 429] and retries < 10:
                     retries += 1
+                    # Add exponential backoff for server errors
+                    sleep_time = 2**retries
+                    LOGGER.info(f"Server error, retrying in {sleep_time} seconds...")
+                    sleep(sleep_time)
                     continue
                 if err.resp.get("content-type", "").startswith("application/json"):
                     reason = (
@@ -216,16 +221,30 @@ class GoogleDriveUpload(GoogleDriveHelper):
                         "dailyLimitExceeded",
                     ]:
                         raise err
+
+                    # Handle rate limit errors with better backoff strategy
+                    LOGGER.warning(f"Rate limit exceeded: {reason}")
+
                     if self.use_sa:
                         if self.sa_count >= self.sa_number:
                             LOGGER.info(
                                 f"Reached maximum number of service accounts switching, which is {self.sa_count}",
                             )
+                            # Add a longer sleep before giving up
+                            LOGGER.info(
+                                "Sleeping for 60 seconds before final retry...",
+                            )
+                            sleep(60)
                             raise err
                         if self.listener.is_cancelled:
                             return None
+
+                        # Switch service account and add a delay
                         self.switch_service_account()
-                        LOGGER.info(f"Got: {reason}, Trying Again...")
+                        LOGGER.info(
+                            f"Switched service account due to {reason}, waiting 10 seconds before retrying...",
+                        )
+                        sleep(10)
                         return self._upload_file(
                             file_path,
                             file_name,
@@ -233,8 +252,19 @@ class GoogleDriveUpload(GoogleDriveHelper):
                             dest_id,
                             in_dir,
                         )
-                    LOGGER.error(f"Got: {reason}")
-                    raise err
+                    # If not using service accounts, add a longer sleep
+                    LOGGER.warning(
+                        f"Got rate limit error: {reason}. Sleeping for 30 seconds before retrying...",
+                    )
+                    sleep(30)
+                    # Try again with the same account after sleeping
+                    return self._upload_file(
+                        file_path,
+                        file_name,
+                        mime_type,
+                        dest_id,
+                        in_dir,
+                    )
         if self.listener.is_cancelled:
             return None
         with contextlib.suppress(Exception):

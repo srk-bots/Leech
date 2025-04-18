@@ -5,6 +5,7 @@ from asyncio import (
     sleep,
 )
 from asyncio.subprocess import PIPE
+from base64 import urlsafe_b64decode, urlsafe_b64encode
 from concurrent.futures import ThreadPoolExecutor
 from functools import partial, wraps
 
@@ -195,11 +196,50 @@ def update_user_ldata(id_, key, value):
     user_data[id_][key] = value
 
 
-async def cmd_exec(cmd, shell=False):
+def encode_slink(string):
+    return (urlsafe_b64encode(string.encode("ascii")).decode("ascii")).strip("=")
+
+
+def decode_slink(b64_str):
+    return urlsafe_b64decode(
+        (b64_str.strip("=") + "=" * (-len(b64_str.strip("=")) % 4)).encode("ascii"),
+    ).decode("ascii")
+
+
+async def cmd_exec(
+    cmd, shell=False, apply_limits=False, process_id=None, task_type="FFmpeg"
+):
+    """Execute a command and return its output.
+
+    Args:
+        cmd: Command to execute (list or string)
+        shell: Whether to use shell execution
+        apply_limits: Whether to apply resource limits (for FFmpeg commands)
+        process_id: Unique identifier for the process (for tracking)
+        task_type: Type of task (e.g., "FFmpeg", "Watermark", "Merge")
+
+    Returns:
+        tuple: (stdout, stderr, return_code)
+    """
+    import shlex
+
+    from .resource_manager import apply_resource_limits
+
+    # Check for special characters in command arguments if using shell with apply_limits
+    if apply_limits and shell and isinstance(cmd, str):
+        # Use shlex.quote to properly escape the command for shell execution
+        cmd_parts = shlex.split(cmd)
+        cmd = " ".join(shlex.quote(part) for part in cmd_parts)
+
+    if apply_limits and not shell:
+        # Apply resource limits for FFmpeg commands
+        cmd = await apply_resource_limits(cmd, process_id, task_type)
+
     if shell:
         proc = await create_subprocess_shell(cmd, stdout=PIPE, stderr=PIPE)
     else:
         proc = await create_subprocess_exec(*cmd, stdout=PIPE, stderr=PIPE)
+
     stdout, stderr = await proc.communicate()
     try:
         stdout = stdout.decode().strip()
@@ -209,6 +249,13 @@ async def cmd_exec(cmd, shell=False):
         stderr = stderr.decode().strip()
     except Exception:
         stderr = "Unable to decode the error!"
+
+    # Clean up process tracking if needed
+    if apply_limits and process_id:
+        from .resource_manager import cleanup_process
+
+        cleanup_process(process_id)
+
     return stdout, stderr, proc.returncode
 
 

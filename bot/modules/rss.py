@@ -17,6 +17,11 @@ from bot.helper.ext_utils.bot_utils import arg_parser, get_size_bytes, new_task
 from bot.helper.ext_utils.db_handler import database
 from bot.helper.ext_utils.exceptions import RssShutdownException
 from bot.helper.ext_utils.help_messages import RSS_HELP_MESSAGE
+from bot.helper.ext_utils.movie_sites import (
+    MOVIE_WEBSITES,
+    get_movie_site_rss,
+    get_movie_site_url,
+)
 from bot.helper.ext_utils.status_utils import get_readable_file_size
 from bot.helper.telegram_helper.button_build import ButtonMaker
 from bot.helper.telegram_helper.filters import CustomFilters
@@ -42,14 +47,18 @@ headers = {
 async def rss_menu(event):
     user_id = event.from_user.id
     buttons = ButtonMaker()
-    buttons.data_button("Subscribe", f"rss sub {user_id}")
-    buttons.data_button("Subscriptions", f"rss list {user_id} 0")
-    buttons.data_button("Get Items", f"rss get {user_id}")
-    buttons.data_button("Edit", f"rss edit {user_id}")
-    buttons.data_button("Pause", f"rss pause {user_id}")
-    buttons.data_button("Resume", f"rss resume {user_id}")
-    buttons.data_button("Unsubscribe", f"rss unsubscribe {user_id}")
-    if await CustomFilters.sudo("", event):
+
+    # Check if user is owner
+    is_owner = await CustomFilters.owner("", event)
+
+    if is_owner:
+        buttons.data_button("Subscribe", f"rss sub {user_id}")
+        buttons.data_button("Subscriptions", f"rss list {user_id} 0")
+        buttons.data_button("Get Items", f"rss get {user_id}")
+        buttons.data_button("Edit", f"rss edit {user_id}")
+        buttons.data_button("Pause", f"rss pause {user_id}")
+        buttons.data_button("Resume", f"rss resume {user_id}")
+        buttons.data_button("Unsubscribe", f"rss unsubscribe {user_id}")
         buttons.data_button("All Subscriptions", f"rss listall {user_id} 0")
         buttons.data_button("Pause All", f"rss allpause {user_id}")
         buttons.data_button("Resume All", f"rss allresume {user_id}")
@@ -59,9 +68,14 @@ async def rss_menu(event):
             buttons.data_button("Shutdown Rss", f"rss shutdown {user_id}")
         else:
             buttons.data_button("Start Rss", f"rss start {user_id}")
-    buttons.data_button("Close", f"rss close {user_id}")
-    button = buttons.build_menu(2)
-    msg = f"Rss Menu | Users: {len(rss_dict)} | Running: {scheduler.running}"
+        buttons.data_button("Close", f"rss close {user_id}")
+        button = buttons.build_menu(2)
+        msg = f"Rss Menu | Users: {len(rss_dict)} | Running: {scheduler.running}"
+    else:
+        buttons.data_button("Close", f"rss close {user_id}")
+        button = buttons.build_menu(1)
+        msg = "RSS functionality is restricted to the bot owner only."
+
     return msg, button
 
 
@@ -84,24 +98,195 @@ async def rss_sub(_, message, pre_event):
         tag = f"@{username}"
     else:
         tag = message.from_user.mention
+    # Initialize variables
     msg = ""
     items = message.text.split("\n")
+    success_count = 0
+    error_count = 0
+
+    # Process each feed subscription
     for index, item in enumerate(items, start=1):
-        args = item.split()
-        if len(args) < 2:
-            await send_message(
-                message,
-                f"{item}. Wrong Input format. Read help message before adding new subcription!",
-            )
+        # Skip empty lines
+        if not item.strip():
             continue
-        title = args[0].strip()
+
+        # Log the item being processed
+        LOGGER.debug(f"Processing RSS subscription item {index}: {item}")
+        args = item.split()
+
+        # Check if this is a movie website key (with or without additional arguments)
+        if args and args[0].strip().lower() in MOVIE_WEBSITES:
+            site_key = args[0].strip().lower()
+            title = site_key
+
+            # Extract any additional arguments
+            item_args = item.replace(args[0], "", 1).strip()
+
+            # Generate RSS feed for the movie website
+            rss_content = await get_movie_site_rss(site_key)
+            if not rss_content:
+                await send_message(
+                    message,
+                    f"Could not generate RSS feed for {site_key}. Please try again later.",
+                )
+                continue
+
+            # Get the URL for the movie website (for display purposes)
+            feed_link = await get_movie_site_url(site_key)
+            if not feed_link:
+                await send_message(
+                    message,
+                    f"Could not get current URL for {site_key}. Please try again later.",
+                )
+                continue
+
+            # Create a virtual feed URL that will be recognized by our system
+            # Use a proper URL format to avoid validation errors
+            virtual_feed_url = f"https://movie.site/{site_key}"
+
+            # Parse any additional arguments for the movie website
+            cmd = None
+            inf = None
+            exf = None
+            stv = False
+            inf_lists = []
+            exf_lists = []
+
+            if item_args:
+                args_dict = arg_parser(item_args)
+                cmd = args_dict.get("c")
+                inf = args_dict.get("inf")
+                exf = args_dict.get("exf")
+                stv = args_dict.get("stv")
+
+                if stv is not None:
+                    stv = stv.lower() == "true"
+                if inf is not None:
+                    filters_list = inf.split("|")
+                    for x in filters_list:
+                        y = x.split(" or ")
+                        inf_lists.append(y)
+                if exf is not None:
+                    filters_list = exf.split("|")
+                    for x in filters_list:
+                        y = x.split(" or ")
+                        exf_lists.append(y)
+
+                LOGGER.debug(
+                    f"Using generated RSS feed for {site_key} with args: {args_dict}"
+                )
+
+            # For TamilMV and TamilBlasters, we need to navigate directly to movie category pages
+            if site_key in ["tamilmv", "tamilblasters"]:
+                LOGGER.debug(
+                    f"Special handling for {site_key}: will navigate directly to movie category pages"
+                )
+                # Generate a test feed to verify it works
+                from bot.helper.ext_utils.movie_sites import get_tamil_site_rss
+
+                test_feed = await get_tamil_site_rss(site_key)
+                if test_feed:
+                    LOGGER.debug(f"Successfully generated test feed for {site_key}")
+                else:
+                    LOGGER.warning(
+                        f"Failed to generate test feed for {site_key}, will try again later"
+                    )
+
+            # Process the RSS feed content
+            try:
+                rss_d = feed_parse(rss_content)
+                last_title = (
+                    rss_d.entries[0]["title"]
+                    if rss_d.entries
+                    else "No entries found"
+                )
+                last_link = rss_d.entries[0]["link"] if rss_d.entries else feed_link
+                size = 0
+
+                # Build a concise message for this feed
+                feed_msg = "<b>Subscribed!</b>"
+                feed_msg += f"\n<b>Title: </b><code>{title}</code>\n<b>Feed Url: </b>{feed_link}"
+                feed_msg += f"\n<b>Latest record for </b>{rss_d.feed.title}:"
+                feed_msg += f"\nName: <code>{last_title.replace('>', '').replace('<', '')}</code>"
+                feed_msg += f"\n<b>Link: </b><code>{last_link}</code>"
+                feed_msg += f"\n<b>Command: </b><code>{cmd}</code>"
+                feed_msg += f"\n<b>Filters:-</b>\ninf: <code>{inf}</code>\nexf: <code>{exf}</code>\n<b>Sensitive: </b>{stv}"
+                feed_msg += f"\n<b>Site: </b><code>{site_key}</code>"
+
+                # Add a separator between feeds
+                if msg:
+                    msg += "\n\n" + "-" * 30 + "\n\n"
+                msg += feed_msg
+
+                # Save to RSS dictionary
+                async with rss_dict_lock:
+                    if rss_dict.get(user_id, False):
+                        rss_dict[user_id][title] = {
+                            "link": virtual_feed_url,  # Use virtual URL for internal tracking
+                            "last_feed": last_link,
+                            "last_title": last_title,
+                            "inf": inf_lists,
+                            "exf": exf_lists,
+                            "paused": False,
+                            "command": cmd,
+                            "sensitive": stv,
+                            "tag": tag,
+                            "is_movie_site": True,  # Mark as movie site for special handling
+                            "site_key": site_key,  # Store the site key for later use
+                            "site_name": site_key,  # Store the site name for display
+                        }
+                    else:
+                        rss_dict[user_id] = {
+                            title: {
+                                "link": virtual_feed_url,  # Use virtual URL for internal tracking
+                                "last_feed": last_link,
+                                "last_title": last_title,
+                                "inf": inf_lists,
+                                "exf": exf_lists,
+                                "paused": False,
+                                "command": cmd,
+                                "sensitive": stv,
+                                "tag": tag,
+                                "is_movie_site": True,  # Mark as movie site for special handling
+                                "site_key": site_key,  # Store the site key for later use
+                                "site_name": site_key,  # Store the site name for display
+                            },
+                        }
+                LOGGER.info(
+                    f"Movie Site RSS Feed Added: {title} - site: {site_key}",
+                )
+                LOGGER.debug(
+                    f"Full details - id: {user_id} - title: {title} - site: {site_key} - c: {cmd} - inf: {inf} - exf: {exf} - stv {stv}"
+                )
+                continue  # Skip the rest of the loop for this item
+            except Exception as e:
+                LOGGER.error(f"Error parsing generated RSS feed for {site_key}: {e}")
+                await send_message(
+                    message, f"Error parsing generated RSS feed for {site_key}: {e}"
+                )
+                continue
+        else:
+            title = args[0].strip()
+            feed_link = args[1].strip()
+
+            # Check if the title is a movie website key
+            if title.lower() in MOVIE_WEBSITES:
+                site_key = title.lower()
+                # Get the current URL for the movie website
+                auto_feed_link = await get_movie_site_url(site_key)
+                if auto_feed_link:
+                    # Use the auto-detected URL instead of the provided one
+                    feed_link = auto_feed_link
+                    LOGGER.info(
+                        f"Using auto-detected URL for {site_key}: {feed_link}"
+                    )
+
         if (user_feeds := rss_dict.get(user_id, False)) and title in user_feeds:
             await send_message(
                 message,
                 f"This title {title} already subscribed! Choose another title!",
             )
             continue
-        feed_link = args[1].strip()
         if feed_link.startswith(("-inf", "-exf", "-c")):
             await send_message(
                 message,
@@ -154,21 +339,47 @@ async def rss_sub(_, message, pre_event):
                 size = get_size_bytes(sizes[0])
             else:
                 size = 0
-            msg += "<b>Subscribed!</b>"
-            msg += (
+            # Build a concise message for this feed
+            feed_msg = "<b>Subscribed!</b>"
+            feed_msg += (
                 f"\n<b>Title: </b><code>{title}</code>\n<b>Feed Url: </b>{feed_link}"
             )
-            msg += f"\n<b>latest record for </b>{rss_d.feed.title}:"
-            msg += f"\nName: <code>{last_title.replace('>', '').replace('<', '')}</code>"
+            feed_msg += f"\n<b>Latest record for </b>{rss_d.feed.title}:"
+            feed_msg += f"\nName: <code>{last_title.replace('>', '').replace('<', '')}</code>"
             try:
                 last_link = rss_d.entries[0]["links"][1]["href"]
             except IndexError:
                 last_link = rss_d.entries[0]["link"]
-            msg += f"\n<b>Link: </b><code>{last_link}</code>"
+            feed_msg += f"\n<b>Link: </b><code>{last_link}</code>"
             if size:
-                msg += f"\nSize: {get_readable_file_size(size)}"
-            msg += f"\n<b>Command: </b><code>{cmd}</code>"
-            msg += f"\n<b>Filters:-</b>\ninf: <code>{inf}</code>\nexf: <code>{exf}</code>\n<b>sensitive: </b>{stv}"
+                feed_msg += f"\nSize: {get_readable_file_size(size)}"
+            feed_msg += f"\n<b>Command: </b><code>{cmd}</code>"
+            feed_msg += f"\n<b>Filters:-</b>\ninf: <code>{inf}</code>\nexf: <code>{exf}</code>\n<b>Sensitive: </b>{stv}"
+
+            # Add site name
+            try:
+                from urllib.parse import urlparse
+
+                parsed_url = urlparse(feed_link)
+                site_name = parsed_url.netloc.replace("www.", "")
+                feed_msg += f"\n<b>Site: </b><code>{site_name}</code>"
+            except Exception as e:
+                LOGGER.debug(f"Error extracting site name from URL: {e}")
+
+            # Add a separator between feeds
+            if msg:
+                msg += "\n\n" + "-" * 30 + "\n\n"
+            msg += feed_msg
+            # Get site name from the URL
+            try:
+                from urllib.parse import urlparse
+
+                parsed_url = urlparse(feed_link)
+                site_name = parsed_url.netloc.replace("www.", "")
+            except Exception as e:
+                LOGGER.debug(f"Error extracting site name from URL: {e}")
+                site_name = "Unknown"
+
             async with rss_dict_lock:
                 if rss_dict.get(user_id, False):
                     rss_dict[user_id][title] = {
@@ -181,6 +392,7 @@ async def rss_sub(_, message, pre_event):
                         "command": cmd,
                         "sensitive": stv,
                         "tag": tag,
+                        "site_name": site_name,
                     }
                 else:
                     rss_dict[user_id] = {
@@ -194,25 +406,73 @@ async def rss_sub(_, message, pre_event):
                             "command": cmd,
                             "sensitive": stv,
                             "tag": tag,
+                            "site_name": site_name,
                         },
                     }
             LOGGER.info(
-                f"Rss Feed Added: id: {user_id} - title: {title} - link: {feed_link} - c: {cmd} - inf: {inf} - exf: {exf} - stv {stv}",
+                f"RSS Feed Added: {title}",
             )
+            LOGGER.debug(
+                f"Full details - id: {user_id} - title: {title} - link: {feed_link} - c: {cmd} - inf: {inf} - exf: {exf} - stv {stv}"
+            )
+            success_count += 1
         except (IndexError, AttributeError) as e:
-            emsg = f"The link: {feed_link} doesn't seem to be a RSS feed or it's region-blocked!"
-            await send_message(message, emsg + "\nError: " + str(e))
+            error_msg = f"The link: {feed_link} doesn't seem to be a RSS feed or it's region-blocked!"
+            LOGGER.error(f"Error adding RSS feed {title}: {error_msg} - {e}")
+            error_count += 1
+            # Don't send individual error messages for each feed to avoid flooding
+            # Just add to the error count
         except Exception as e:
-            await send_message(message, str(e))
+            LOGGER.error(f"Unexpected error adding RSS feed {title}: {e}")
+            error_count += 1
+            # Don't send individual error messages for each feed to avoid flooding
+            # Just add to the error count
+
+    # Send a summary message
+    summary = ""
+    if success_count > 0:
+        summary += f"✅ Successfully added {success_count} RSS feed(s)\n"
+    if error_count > 0:
+        summary += (
+            f"❌ Failed to add {error_count} RSS feed(s). Check logs for details.\n"
+        )
+
     if msg:
+        # If we have detailed messages for some feeds, include them
+        # But limit the message size to avoid Telegram API errors
+        if len(msg) > 3800:  # Leave some room for the summary
+            msg = msg[:3800] + "...\n(message truncated due to length)"
+
+        # Combine summary and detailed messages
+        final_msg = summary + "\n" + msg
+
+        # Update the database
         await database.rss_update(user_id)
-        await send_message(message, msg)
+
+        # Send the message with proper error handling
+        try:
+            await send_message(message, final_msg)
+        except Exception as e:
+            LOGGER.error(f"Error sending RSS subscription summary: {e}")
+            # Try with just the summary as a fallback
+            try:
+                await send_message(message, summary)
+            except Exception as e2:
+                LOGGER.error(f"Error sending simplified summary too: {e2}")
+
+        # Handle scheduler
         is_sudo = await CustomFilters.sudo("", message)
         if scheduler.state == 2:
             scheduler.resume()
         elif is_sudo and not scheduler.running:
             add_job()
             scheduler.start()
+    elif success_count > 0 or error_count > 0:
+        # If we have no detailed messages but some feeds were processed, send the summary
+        try:
+            await send_message(message, summary)
+        except Exception as e:
+            LOGGER.error(f"Error sending RSS subscription summary: {e}")
     await update_rss_menu(pre_event)
 
 
@@ -221,8 +481,8 @@ async def get_user_id(title):
         return next(
             (
                 (True, user_id)
-                for user_id, feed in rss_dict.items()
-                if feed["title"] == title
+                for user_id, feeds in rss_dict.items()
+                if title in feeds
             ),
             (False, False),
         )
@@ -271,10 +531,11 @@ async def rss_update(_, message, pre_event, state):
             if not rss_dict:
                 await database.trunc_table("rss")
     if updated:
-        LOGGER.info(f"Rss link with Title(s): {updated} has been {state}d!")
+        LOGGER.info(f"RSS link(s) {state}d: {len(updated)}")
+        LOGGER.debug(f"RSS link with Title(s): {updated} has been {state}d!")
         await send_message(
             message,
-            f"Rss links with Title(s): <code>{updated}</code> has been {state}d!",
+            f"RSS links with Title(s): <code>{updated}</code> has been {state}d!",
         )
         if rss_dict.get(user_id):
             await database.rss_update(user_id)
@@ -300,6 +561,9 @@ async def rss_list(query, start, all_users=False):
                     list_feed += f"<b>Exf:</b> <code>{data['exf']}</code>\n"
                     list_feed += f"<b>Sensitive:</b> <code>{data.get('sensitive', False)}</code>\n"
                     list_feed += f"<b>Paused:</b> <code>{data['paused']}</code>\n"
+                    # Add site name if available
+                    if site_name := data.get("site_name"):
+                        list_feed += f"<b>Site:</b> <code>{site_name}</code>\n"
                     list_feed += f"<b>User:</b> {data['tag'].replace('@', '', 1)}"
                     index += 1
                     if index == 5:
@@ -315,6 +579,9 @@ async def rss_list(query, start, all_users=False):
                 list_feed += f"<b>Exf:</b> <code>{data['exf']}</code>\n"
                 list_feed += f"<b>Sensitive:</b> <code>{data.get('sensitive', False)}</code>\n"
                 list_feed += f"<b>Paused:</b> <code>{data['paused']}</code>\n"
+                # Add site name if available
+                if site_name := data.get("site_name"):
+                    list_feed += f"<b>Site:</b> <code>{site_name}</code>\n"
     buttons.data_button("Back", f"rss back {user_id}")
     buttons.data_button("Close", f"rss close {user_id}")
     if keysCount > 5:
@@ -465,7 +732,10 @@ async def event_handler(client, query, pfunc):
     handler_dict[user_id] = True
     start_time = time()
 
-    async def event_filter(_, __, event):
+    # Create a filter function that ignores the first two parameters
+    async def event_filter(*args):
+        # The actual event is the third parameter
+        event = args[2]
         user = event.from_user or event.sender_chat
         return bool(
             user.id == user_id
@@ -490,7 +760,11 @@ async def rss_listener(client, query):
     user_id = query.from_user.id
     message = query.message
     data = query.data.split()
-    if int(data[2]) != user_id and not await CustomFilters.sudo("", query):
+    # Check if user is owner
+    is_owner = await CustomFilters.owner("", query)
+
+    # Only allow owner to use RSS functionality
+    if not is_owner:
         await query.answer(
             text="You don't have permission to use these buttons!",
             show_alert=True,
@@ -621,7 +895,7 @@ Timeout: 60 sec. Argument -c for command and arguments
             async with rss_dict_lock:
                 for user in list(rss_dict.keys()):
                     for title in list(rss_dict[user].keys()):
-                        rss_dict[int(data[2])][title]["paused"] = True
+                        rss_dict[user][title]["paused"] = True
             if scheduler.running:
                 scheduler.pause()
             await database.rss_update_all()
@@ -629,7 +903,7 @@ Timeout: 60 sec. Argument -c for command and arguments
             async with rss_dict_lock:
                 for user in list(rss_dict.keys()):
                     for title in list(rss_dict[user].keys()):
-                        rss_dict[int(data[2])][title]["paused"] = False
+                        rss_dict[user][title]["paused"] = False
             if scheduler.state == 2:
                 scheduler.resume()
             elif not scheduler.running:
@@ -675,6 +949,22 @@ Timeout: 60 sec. Argument -c for command and arguments
 
 
 async def rss_monitor():
+    # Add memory management
+    import gc
+
+    import psutil
+
+    # Force garbage collection before starting
+    gc.collect()
+
+    # Check memory usage
+    memory_info = psutil.virtual_memory()
+    if memory_info.percent > 90:  # If memory usage is above 90%
+        LOGGER.warning(
+            f"High memory usage detected: {memory_info.percent}%. Skipping RSS run."
+        )
+        return
+
     chat = Config.RSS_CHAT
     if not chat:
         LOGGER.warning("RSS_CHAT not added! Shutting down rss scheduler...")
@@ -693,37 +983,129 @@ async def rss_monitor():
         ]
     elif chat.lstrip("-").isdigit():
         rss_chat_id = int(chat)
+
+    # Initialize force_refresh variable
+    force_refresh = False
+
+    # Make a copy of the dictionary to avoid modification during iteration
     for user, items in list(rss_dict.items()):
-        for title, data in items.items():
+        for title, data in list(items.items()):
             try:
                 if data["paused"]:
                     continue
-                tries = 0
-                while True:
-                    try:
-                        async with AsyncClient(
-                            headers=headers,
-                            follow_redirects=True,
-                            timeout=60,
-                            verify=False,
-                        ) as client:
-                            res = await client.get(data["link"])
-                        html = res.text
-                        break
-                    except Exception:
-                        tries += 1
-                        if tries > 3:
-                            raise
+
+                # Check if this is a movie website feed
+                is_movie_site = data.get("is_movie_site", False)
+                site_key = data.get("site_key", "")
+
+                # Special handling for TamilMV and TamilBlasters
+                if is_movie_site and site_key in ["tamilmv", "tamilblasters"]:
+                    # Force regeneration of RSS feed for these sites
+                    LOGGER.debug(
+                        f"Special handling for {site_key}: using direct movie category navigation"
+                    )
+                    # Use the special function for TamilMV and TamilBlasters
+                    from bot.helper.ext_utils.movie_sites import get_tamil_site_rss
+
+                    # Generate fresh RSS feed using the special function
+                    LOGGER.debug(
+                        f"Generating fresh RSS feed for {site_key} using special function"
+                    )
+                    rss_content = await get_tamil_site_rss(site_key)
+                    if not rss_content:
+                        LOGGER.error(f"Failed to generate RSS feed for {site_key}")
                         continue
-                rss_d = feed_parse(html)
-                try:
-                    last_link = rss_d.entries[0]["links"][1]["href"]
-                except IndexError:
-                    last_link = rss_d.entries[0]["link"]
-                finally:
+
+                    # Parse the generated RSS feed
+                    rss_d = feed_parse(rss_content)
                     all_paused = False
-                last_title = rss_d.entries[0]["title"]
-                if (
+
+                elif is_movie_site and "movie.site" in data["link"]:
+                    # Check if we need to force refresh the RSS feed
+                    force_refresh = False
+                    last_update_time = data.get("last_update_time", 0)
+                    current_time = time()
+
+                    # Force refresh if it's been more than 1 hour since the last update
+                    if current_time - last_update_time > 3600:  # 1 hour in seconds
+                        force_refresh = True
+                        LOGGER.info(
+                            f"Force refreshing RSS feed for {site_key} (last updated {(current_time - last_update_time) / 60:.1f} minutes ago)"
+                        )
+
+                    # Generate fresh RSS feed for movie websites
+                    LOGGER.debug(
+                        f"Generating RSS feed for movie website: {site_key} (force_refresh={force_refresh})"
+                    )
+                    rss_content = await get_movie_site_rss(site_key, force_refresh)
+                    if not rss_content:
+                        LOGGER.error(f"Failed to generate RSS feed for {site_key}")
+                        continue
+
+                    # Parse the generated RSS feed
+                    rss_d = feed_parse(rss_content)
+                    all_paused = False
+
+                    # Update the last update time - we'll do this at the end of processing
+                else:
+                    # Regular RSS feed processing
+                    tries = 0
+                    while True:
+                        try:
+                            async with AsyncClient(
+                                headers=headers,
+                                follow_redirects=True,
+                                timeout=60,
+                                verify=False,
+                            ) as client:
+                                res = await client.get(data["link"])
+                            html = res.text
+                            break
+                        except Exception:
+                            tries += 1
+                            if tries > 3:
+                                raise
+                            continue
+                    rss_d = feed_parse(html)
+                    all_paused = False
+
+                # Check if there are any entries in the feed
+                if not rss_d.entries:
+                    LOGGER.warning(
+                        f"No entries found in feed: {title} - {data['link']}",
+                    )
+                    continue
+
+                try:
+                    # Safely get the last link
+                    if (
+                        "links" in rss_d.entries[0]
+                        and len(rss_d.entries[0]["links"]) > 1
+                    ):
+                        last_link = rss_d.entries[0]["links"][1]["href"]
+                    else:
+                        last_link = rss_d.entries[0]["link"]
+                except (IndexError, KeyError) as e:
+                    LOGGER.warning(f"Error parsing feed link for {title}: {e!s}")
+                    continue
+
+                # Safely get the last title
+                if "title" in rss_d.entries[0]:
+                    last_title = rss_d.entries[0]["title"]
+                else:
+                    LOGGER.warning(f"No title found in feed: {title}")
+                    last_title = "Unknown Title"
+                # For movie sites, we want to process all items if we've forced a refresh
+                if is_movie_site and "movie.site" in data["link"] and force_refresh:
+                    LOGGER.info(
+                        f"Processing all items for {title} due to forced refresh"
+                    )
+                    # Initialize a list to track processed items for this refresh
+                    async with rss_dict_lock:
+                        if user in rss_dict and title in rss_dict[user]:
+                            rss_dict[user][title]["processed_items"] = []
+                # For regular feeds or non-forced movie site feeds, check if we've seen this item before
+                elif (
                     data["last_feed"] == last_link
                     or data["last_title"] == last_title
                 ):
@@ -735,12 +1117,52 @@ async def rss_monitor():
                     except Exception:
                         raise RssShutdownException("Rss Monitor Stopped!") from None
                     try:
-                        item_title = rss_d.entries[feed_count]["title"]
+                        # Check if feed_count is within the range of available entries
+                        if feed_count >= len(rss_d.entries):
+                            # Only log at debug level to avoid cluttering logs
+                            LOGGER.debug(
+                                f"Reached Max index no. {feed_count} for this feed: {title}. All available entries processed.",
+                            )
+                            break
+
+                        # Safely get the item title
+                        if "title" in rss_d.entries[feed_count]:
+                            item_title = rss_d.entries[feed_count]["title"]
+                        else:
+                            item_title = f"Unknown Title {feed_count}"
+
+                        # Safely get the URL
                         try:
-                            url = rss_d.entries[feed_count]["links"][1]["href"]
-                        except IndexError:
-                            url = rss_d.entries[feed_count]["link"]
+                            if (
+                                "links" in rss_d.entries[feed_count]
+                                and len(rss_d.entries[feed_count]["links"]) > 1
+                            ):
+                                url = rss_d.entries[feed_count]["links"][1]["href"]
+                            else:
+                                url = rss_d.entries[feed_count]["link"]
+                        except (IndexError, KeyError):
+                            # If we can't get a URL, skip this entry
+                            feed_count += 1
+                            continue
+
+                        # For movie sites with forced refresh, check if we've processed this item in this refresh
                         if (
+                            is_movie_site
+                            and "movie.site" in data["link"]
+                            and force_refresh
+                        ):
+                            # Check if we've already processed this item in this refresh
+                            processed_items = []
+                            async with rss_dict_lock:
+                                if user in rss_dict and title in rss_dict[user]:
+                                    processed_items = rss_dict[user][title].get(
+                                        "processed_items", []
+                                    )
+                            if url in processed_items:
+                                feed_count += 1
+                                continue
+                        # For regular feeds or non-forced movie site feeds, check if we've seen this item before
+                        elif (
                             data["last_feed"] == url
                             or data["last_title"] == item_title
                         ):
@@ -755,8 +1177,9 @@ async def rss_monitor():
                         else:
                             size = 0
                     except IndexError:
-                        LOGGER.warning(
-                            f"Reached Max index no. {feed_count} for this feed: {title}. Maybe you need to use less RSS_DELAY to not miss some torrents",
+                        # Only log at debug level to avoid cluttering logs
+                        LOGGER.debug(
+                            f"Reached Max index no. {feed_count} for this feed: {title}. All available entries processed.",
                         )
                         break
                     parse = True
@@ -788,6 +1211,23 @@ async def rss_monitor():
                             break
                     if not parse:
                         continue
+                    # Sanitize item title and URL to prevent Telegram API errors
+                    sanitized_title = item_title.replace(">", "").replace("<", "")
+                    # Remove zero-width characters and other potentially problematic characters
+                    sanitized_title = (
+                        sanitized_title.replace("\u200b", "")
+                        .replace("\u200c", "")
+                        .replace("\u200d", "")
+                    )
+                    # Replace any other control characters
+                    sanitized_title = "".join(
+                        c if ord(c) >= 32 or c == "\n" else " "
+                        for c in sanitized_title
+                    )
+
+                    # Sanitize URL
+                    sanitized_url = url
+
                     if command := data["command"]:
                         if (
                             size
@@ -797,31 +1237,117 @@ async def rss_monitor():
                             feed_count += 1
                             continue
                         cmd = command.split(maxsplit=1)
-                        cmd.insert(1, url)
+                        cmd.insert(1, sanitized_url)
                         feed_msg = " ".join(cmd)
                         if not feed_msg.startswith("/"):
                             feed_msg = f"/{feed_msg}"
                     else:
-                        feed_msg = f"<b>Name: </b><code>{item_title.replace('>', '').replace('<', '')}</code>"
-                        feed_msg += f"\n\n<b>Link: </b><code>{url}</code>"
+                        feed_msg = f"<b>Name: </b><code>{sanitized_title}</code>"
+                        feed_msg += f"\n\n<b>Link: </b><code>{sanitized_url}</code>"
                         if size:
                             feed_msg += (
                                 f"\n<b>Size: </b>{get_readable_file_size(size)}"
                             )
-                    feed_msg += f"\n<b>Tag: </b><code>{data['tag']}</code> <code>{user}</code>"
-                    await send_rss(feed_msg, rss_chat_id, rss_topic_id)
-                    feed_count += 1
+                    # Add site name for all feeds
+                    # Use the site_name from the dictionary if available, otherwise extract it from the URL
+                    site_name = data.get("site_name", "")
+                    if not site_name:
+                        if data.get("is_movie_site"):
+                            # For movie websites, use the site_key
+                            site_name = data.get("site_key", "Unknown")
+                        else:
+                            # For other feeds, extract the site name from the URL
+                            try:
+                                from urllib.parse import urlparse
+
+                                parsed_url = urlparse(data["link"])
+                                site_name = parsed_url.netloc.replace("www.", "")
+                            except Exception as e:
+                                LOGGER.debug(
+                                    f"Error extracting site name from URL: {e}"
+                                )
+                                site_name = "Unknown"
+
+                    site_info = f" | <b>Site:</b> <code>{site_name}</code>"
+                    feed_msg += f"\n<b>Tag: </b><code>{data['tag']}</code> <code>{user}</code>{site_info}\n\n<blockquote><b>>> Powered by @aimmirror <<</b></blockquote>"
+
+                    # Validate message content before sending
+                    if not feed_msg.strip():
+                        LOGGER.error(
+                            f"Empty message generated for {title}. Skipping."
+                        )
+                        feed_count += 1
+                        continue
+
+                    # Sanitize message content to avoid Telegram API errors
+                    try:
+                        # Remove any potentially problematic characters
+                        feed_msg = (
+                            feed_msg.replace("\u200b", "")
+                            .replace("\u200c", "")
+                            .replace("\u200d", "")
+                        )
+
+                        # Ensure the message is not too long
+                        if len(feed_msg) > 4096:
+                            LOGGER.warning(
+                                f"Message too long for {title}, truncating to 4096 characters"
+                            )
+                            feed_msg = feed_msg[:4093] + "..."
+
+                        await send_rss(feed_msg, rss_chat_id, rss_topic_id)
+
+                        # For movie sites with forced refresh, track this item as processed
+                        if (
+                            is_movie_site
+                            and "movie.site" in data["link"]
+                            and force_refresh
+                        ):
+                            # Use a lock to safely modify the dictionary
+                            async with rss_dict_lock:
+                                if user in rss_dict and title in rss_dict[user]:
+                                    if (
+                                        "processed_items"
+                                        not in rss_dict[user][title]
+                                    ):
+                                        rss_dict[user][title]["processed_items"] = []
+                                    rss_dict[user][title]["processed_items"].append(
+                                        url
+                                    )
+
+                        feed_count += 1
+                    except Exception as e:
+                        LOGGER.error(f"Error sending RSS message for {title}: {e}")
+                        # Try with a simplified message as a fallback
+                        try:
+                            simplified_msg = (
+                                f"<b>Title:</b> {item_title}\n<b>Link:</b> {url}"
+                            )
+                            await send_rss(simplified_msg, rss_chat_id, rss_topic_id)
+                            feed_count += 1
+                        except Exception as e2:
+                            LOGGER.error(
+                                f"Failed to send simplified message too: {e2}"
+                            )
+                            feed_count += 1
                 async with rss_dict_lock:
                     if user not in rss_dict or not rss_dict[user].get(title, False):
                         continue
-                    rss_dict[user][title].update(
-                        {"last_feed": last_link, "last_title": last_title},
-                    )
+                    update_data = {"last_feed": last_link, "last_title": last_title}
+
+                    # For movie sites, also update the last_update_time
+                    if is_movie_site and "movie.site" in data["link"]:
+                        update_data["last_update_time"] = time()
+                        # Clear processed_items to avoid growing the database too much
+                        if "processed_items" in rss_dict[user][title]:
+                            rss_dict[user][title].pop("processed_items")
+
+                    rss_dict[user][title].update(update_data)
                 await database.rss_update(user)
-                LOGGER.info(f"Feed Name: {title}")
-                LOGGER.info(f"Last item: {last_link}")
+                LOGGER.debug(f"Feed Name: {title}")
+                LOGGER.debug(f"Last item: {last_link}")
             except RssShutdownException as ex:
-                LOGGER.info(ex)
+                LOGGER.warning(ex)
                 break
             except Exception as e:
                 LOGGER.error(f"{e} - Feed Name: {title} - Feed Link: {data['link']}")
@@ -831,16 +1357,21 @@ async def rss_monitor():
 
 
 def add_job():
+    # Use a longer interval to reduce memory pressure
+    rss_delay = max(600, Config.RSS_DELAY)  # Minimum 10 minutes
+
     scheduler.add_job(
         rss_monitor,
-        trigger=IntervalTrigger(seconds=Config.RSS_DELAY),
+        trigger=IntervalTrigger(seconds=rss_delay),
         id="0",
         name="RSS",
-        misfire_grace_time=15,
+        misfire_grace_time=120,  # Increased grace time to handle longer executions
         max_instances=1,
-        next_run_time=datetime.now() + timedelta(seconds=20),
+        next_run_time=datetime.now() + timedelta(seconds=30),
         replace_existing=True,
+        coalesce=True,  # Combine missed executions into a single one
     )
+    LOGGER.info(f"RSS job scheduled with interval of {rss_delay} seconds")
 
 
 add_job()

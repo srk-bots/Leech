@@ -1,11 +1,10 @@
 import contextlib
-from asyncio import sleep
+from asyncio import create_task, sleep
 from time import time
 
 from aiofiles.os import path as aiopath
 from aiofiles.os import remove
 from aiohttp.client_exceptions import ClientError
-from aioqbt.exc import AQError
 
 from bot import (
     LOGGER,
@@ -22,7 +21,11 @@ from bot.helper.ext_utils.files_utils import clean_unwanted
 from bot.helper.ext_utils.status_utils import get_readable_time, get_task_by_gid
 from bot.helper.ext_utils.task_manager import stop_duplicate_check
 from bot.helper.mirror_leech_utils.status_utils.qbit_status import QbittorrentStatus
-from bot.helper.telegram_helper.message_utils import update_status_message
+from bot.helper.telegram_helper.message_utils import (
+    auto_delete_message,
+    send_message,
+    update_status_message,
+)
 
 
 async def _remove_torrent(hash_, tag):
@@ -38,7 +41,16 @@ async def _on_download_error(err, tor, button=None):
     LOGGER.info(f"Cancelling Download: {tor.name}")
     ext_hash = tor.hash
     if task := await get_task_by_gid(ext_hash[:12]):
-        await task.listener.on_download_error(err, button)
+        try:
+            await task.listener.on_download_error(err, button)
+        except Exception as e:
+            LOGGER.error(f"Failed to handle qBit error through listener: {e!s}")
+            # Fallback error handling
+            error_msg = await send_message(
+                task.listener.message,
+                f"{task.listener.tag} Download Error: {err}",
+            )
+            create_task(auto_delete_message(error_msg, time=300))  # noqa: RUF006
     await TorrentManager.qbittorrent.torrents.stop([ext_hash])
     await sleep(0.3)
     await _remove_torrent(ext_hash, tor.tags[0])
@@ -49,16 +61,15 @@ async def _on_seed_finish(tor):
     ext_hash = tor.hash
     LOGGER.info(f"Cancelling Seed: {tor.name}")
     if task := await get_task_by_gid(ext_hash[:12]):
-        msg = f"Seeding stopped with Ratio: {round(tor.ratio, 3)} and Time: {get_readable_time(int(tor.seeding_time.total_seconds() or '0'))}"
+        msg = f"Seeding stopped with Ratio: {round(tor.ratio, 3)} and Time: {get_readable_time(int(tor.seeding_time.total_seconds()))}"
         await task.listener.on_upload_error(msg)
     await _remove_torrent(ext_hash, tor.tags[0])
 
 
 @new_task
 async def _stop_duplicate(tor):
-    if (
-        task := await get_task_by_gid(tor.hash[:12])
-    ) and task.listener.stop_duplicate:
+    task = await get_task_by_gid(tor.hash[:12])
+    if task and task.listener.stop_duplicate:
         task.listener.name = tor.content_path.rsplit("/", 1)[-1].rsplit(
             ".!qB",
             1,
@@ -179,12 +190,7 @@ async def _qb_listener():
                         int(tor_info.completion_on.timestamp()) != -1
                         and not qb_torrents[tag]["uploaded"]
                         and state
-                        in [
-                            "queuedUP",
-                            "stalledUP",
-                            "uploading",
-                            "forcedUP",
-                        ]
+                        not in ["checkingUP", "checkingDL", "checkingResumeData"]
                     ):
                         qb_torrents[tag]["uploaded"] = True
                         await _on_download_complete(tor_info)
@@ -195,7 +201,7 @@ async def _qb_listener():
                         qb_torrents[tag]["seeding"] = False
                         await _on_seed_finish(tor_info)
                         await sleep(0.5)
-            except (ClientError, TimeoutError, Exception, AQError) as e:
+            except (ClientError, TimeoutError, Exception) as e:
                 LOGGER.error(str(e))
         await sleep(3)
 

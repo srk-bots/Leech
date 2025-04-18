@@ -38,7 +38,6 @@ from bot.helper.telegram_helper.message_utils import (
 @new_task
 async def select_format(_, query, obj):
     data = query.data.split()
-    message = query.message
     await query.answer()
 
     if data[1] == "dict":
@@ -56,7 +55,23 @@ async def select_format(_, query, obj):
     elif data[1] == "back":
         await obj.back_to_main()
     elif data[1] == "cancel":
-        await edit_message(message, "Task has been cancelled.")
+        # First send cancellation message
+        cancel_msg = await send_message(
+            obj.listener.message,
+            f"{obj.listener.tag} Task has been cancelled!",
+        )
+
+        # Delete the selection menu
+        await delete_message(obj._reply_to)
+
+        # Delete the original command
+        await delete_message(obj.listener.message)
+
+        # Create background task for auto-deletion
+        create_task(  # noqa: RUF006
+            auto_delete_message(cancel_msg, time=300),
+        )  # 5 minutes auto-delete
+
         obj.qual = None
         obj.listener.is_cancelled = True
         obj.event.set()
@@ -95,7 +110,23 @@ class YtSelection:
         try:
             await wait_for(self.event.wait(), timeout=self._timeout)
         except Exception:
-            await edit_message(self._reply_to, "Timed Out. Task has been cancelled!")
+            # Delete both original command and its replied message
+            await delete_links(self.listener.message)
+
+            # Send new timeout message instead of editing
+            timeout_msg = await send_message(
+                self.listener.message,
+                f"{self.listener.tag} Timed Out. Task has been cancelled!",
+            )
+
+            # Delete the selection menu
+            await delete_message(self._reply_to)
+
+            # Create background task to delete timeout message after 5 minutes
+            create_task(  # noqa: RUF006
+                auto_delete_message(timeout_msg, time=300),
+            )  # 5 minutes auto-delete
+
             self.qual = None
             self.listener.is_cancelled = True
             self.event.set()
@@ -271,19 +302,21 @@ async def _mdisk(link, name):
 
 
 class YtDlp(TaskListener):
+    # pylint: disable=too-many-arguments
     def __init__(
         self,
         client,
         message,
-        _=None,
+        _=None,  # Placeholder for compatibility with Mirror class
         is_leech=False,
-        __=None,
-        ___=None,
-        same_dir=None,
-        bulk=None,
-        multi_tag=None,
-        options="",
+        # These parameters are unused but required for compatibility with Mirror class
+        **kwargs,
     ):
+        # Extract parameters from kwargs with defaults
+        same_dir = kwargs.get("same_dir", {})
+        bulk = kwargs.get("bulk", [])
+        multi_tag = kwargs.get("multi_tag")
+        options = kwargs.get("options", "")
         if same_dir is None:
             same_dir = {}
         if bulk is None:
@@ -306,7 +339,9 @@ class YtDlp(TaskListener):
         if error_msg:
             await delete_links(self.message)
             error = await send_message(self.message, error_msg, error_button)
-            return await auto_delete_message(error, time=300)
+            create_task(auto_delete_message(error, time=300))  # noqa: RUF006
+            return
+
         args = {
             "-doc": False,
             "-med": False,
@@ -321,6 +356,10 @@ class YtDlp(TaskListener):
             "-hl": False,
             "-bt": False,
             "-ut": False,
+            "-merge-video": False,
+            "-merge-audio": False,
+            "-merge-subtitle": False,
+            "-merge-all": False,
             "-i": 0,
             "-sp": 0,
             "link": "",
@@ -334,6 +373,10 @@ class YtDlp(TaskListener):
             "-cv": "",
             "-ns": "",
             "-md": "",
+            "-metadata-title": "",
+            "-metadata-author": "",
+            "-metadata-comment": "",
+            "-metadata-all": "",
             "-tl": "",
             "-ff": set(),
         }
@@ -382,11 +425,19 @@ class YtDlp(TaskListener):
         self.as_doc = args["-doc"]
         self.as_med = args["-med"]
         self.metadata = args["-md"]
+        self.metadata_title = args["-metadata-title"]
+        self.metadata_author = args["-metadata-author"]
+        self.metadata_comment = args["-metadata-comment"]
+        self.metadata_all = args["-metadata-all"]
         self.folder_name = (
             f"/{args['-m']}".rstrip("/") if len(args["-m"]) > 0 else ""
         )
         self.bot_trans = args["-bt"]
         self.user_trans = args["-ut"]
+        self.merge_video = args["-merge-video"]
+        self.merge_audio = args["-merge-audio"]
+        self.merge_subtitle = args["-merge-subtitle"]
+        self.merge_all = args["-merge-all"]
 
         is_bulk = args["-b"]
 
@@ -431,7 +482,7 @@ class YtDlp(TaskListener):
                             self.same_dir[fd_name]["total"] -= 1
         else:
             await self.init_bulk(input_list, bulk_start, bulk_end, YtDlp)
-            return None
+            return
 
         if len(self.bulk) != 0:
             del self.bulk[0]
@@ -446,13 +497,15 @@ class YtDlp(TaskListener):
             self.link = reply_to.text.split("\n", 1)[0].strip()
 
         if not is_url(self.link):
-            await send_message(
+            await delete_links(self.message)
+            usage_msg = await send_message(
                 self.message,
                 COMMAND_USAGE["yt"][0],
                 COMMAND_USAGE["yt"][1],
             )
+            create_task(auto_delete_message(usage_msg, time=300))  # noqa: RUF006
             await self.remove_from_same_dir()
-            return None
+            return
 
         if "mdisk.me" in self.link:
             self.name, self.link = await _mdisk(self.link, self.name)
@@ -460,9 +513,11 @@ class YtDlp(TaskListener):
         try:
             await self.before_start()
         except Exception as e:
-            await send_message(self.message, e)
+            await delete_links(self.message)
+            error_msg = await send_message(self.message, str(e))
+            create_task(auto_delete_message(error_msg, time=300))  # noqa: RUF006
             await self.remove_from_same_dir()
-            return None
+            return
 
         options = {"usenetrc": True, "cookiefile": "cookies.txt"}
         if opt:
@@ -482,9 +537,18 @@ class YtDlp(TaskListener):
             result = await sync_to_async(extract_info, self.link, options)
         except Exception as e:
             msg = str(e).replace("<", " ").replace(">", " ")
-            await send_message(self.message, f"{self.tag} {msg}")
-            await self.remove_from_same_dir()
-            return None
+            try:
+                # Use self directly since YtDlp inherits from TaskListener
+                await self.on_download_error(f"{self.tag} {msg}")
+            except Exception as err:
+                LOGGER.error(f"Error in error handling: {err}")
+                # Fallback error handling
+                await delete_links(self.message)
+                error_msg = await send_message(self.message, f"{self.tag} {msg}")
+                create_task(auto_delete_message(error_msg, time=300))  # noqa: RUF006
+            finally:
+                await self.remove_from_same_dir()
+            return
         finally:
             await self.run_multi(input_list, YtDlp)
 
@@ -492,14 +556,14 @@ class YtDlp(TaskListener):
             qual = await YtSelection(self).get_quality(result)
             if qual is None:
                 await self.remove_from_same_dir()
-                return None
+                return
 
         LOGGER.info(f"Downloading with YT-DLP: {self.link}")
         playlist = "entries" in result
         ydl = YoutubeDLHelper(self)
         create_task(ydl.add_download(path, qual, playlist, opt))  # noqa: RUF006
         await delete_links(self.message)
-        return None
+        return
 
 
 async def ytdl(client, message):

@@ -50,6 +50,8 @@ class FFmpegStatus:
             return MirrorStatus.STATUS_WATERMARK
         if self._cstatus == "E_thumb":
             return MirrorStatus.STATUS_ETHUMB
+        if self._cstatus == "Merge":
+            return MirrorStatus.STATUS_MERGE
         return MirrorStatus.STATUS_FFMPEG
 
     def task(self):

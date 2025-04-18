@@ -19,15 +19,21 @@ class Config:
     GDRIVE_ID: str = ""
     INCOMPLETE_TASK_NOTIFIER: bool = False
     INDEX_URL: str = ""
+    IMDB_TEMPLATE: str = ""
     JD_EMAIL: str = ""
     JD_PASS: str = ""
     IS_TEAM_DRIVE: bool = False
     LEECH_DUMP_CHAT: str = ""
     LEECH_FILENAME_PREFIX: str = ""
+    LEECH_SUFFIX: str = ""
+    LEECH_FONT: str = ""
+    LEECH_FILENAME: str = ""
     LEECH_SPLIT_SIZE: int = 2097152000
+    LOGIN_PASS: str = ""
     MEDIA_GROUP: bool = False
     HYBRID_LEECH: bool = False
-    NAME_SUBSTITUTE: str = ""
+    MUSIC_SEARCH_CHATS: ClassVar[list] = []
+    NAME_SUBSTITUTE: str = r""
     OWNER_ID: int = 0
     QUEUE_ALL: int = 0
     QUEUE_DOWNLOAD: int = 0
@@ -49,19 +55,22 @@ class Config:
     TG_PROXY: dict | None = None
     THUMBNAIL_LAYOUT: str = ""
     TORRENT_TIMEOUT: int = 0
-    UPLOAD_PATHS: ClassVar[dict[str, str]] = {}
+    UPLOAD_PATHS: ClassVar[dict] = {}
     UPSTREAM_REPO: str = ""
-    USENET_SERVERS: ClassVar[list[dict[str, object]]] = []
+    USENET_SERVERS: ClassVar[list] = []
     UPSTREAM_BRANCH: str = "main"
     USER_SESSION_STRING: str = ""
     USER_TRANSMISSION: bool = False
     USE_SERVICE_ACCOUNTS: bool = False
     WEB_PINCODE: bool = False
-    YT_DLP_OPTIONS: ClassVar[dict[str, Any]] = {}
+    YT_DLP_OPTIONS: ClassVar[dict] = {}
 
     # INKYPINKY
     METADATA_KEY: str = ""
-    WATERMARK_KEY: str = ""
+    METADATA_ALL: str = ""
+    METADATA_TITLE: str = ""
+    METADATA_AUTHOR: str = ""
+    METADATA_COMMENT: str = ""
     SET_COMMANDS: bool = True
     TOKEN_TIMEOUT: int = 0
     PAID_CHANNEL_ID: int = 0
@@ -73,6 +82,87 @@ class Config:
     HYDRA_IP: str = ""
     HYDRA_API_KEY: str = ""
     INSTADL_API: str = ""
+    MEDIA_STORE: bool = False
+
+    # Media Tools Settings
+    MEDIA_TOOLS_ENABLED: bool = True
+
+    # Watermark Settings
+    WATERMARK_ENABLED: bool = False
+    WATERMARK_KEY: str = ""
+    WATERMARK_POSITION: str = "top_left"
+    WATERMARK_SIZE: int = 20
+    WATERMARK_COLOR: str = "white"
+    WATERMARK_FONT: str = "default.otf"
+    WATERMARK_PRIORITY: int = 2
+    WATERMARK_THREADING: bool = True
+    WATERMARK_THREAD_NUMBER: int = 4
+
+    # Merge Settings
+    MERGE_ENABLED: bool = False
+    MERGE_PRIORITY: int = 1
+    MERGE_THREADING: bool = True
+    MERGE_THREAD_NUMBER: int = 4
+    CONCAT_DEMUXER_ENABLED: bool = True
+    FILTER_COMPLEX_ENABLED: bool = False
+
+    # Output formats
+    MERGE_OUTPUT_FORMAT_VIDEO: str = "mkv"
+    MERGE_OUTPUT_FORMAT_AUDIO: str = "mp3"
+    MERGE_OUTPUT_FORMAT_IMAGE: str = "jpg"
+    MERGE_OUTPUT_FORMAT_DOCUMENT: str = "pdf"
+    MERGE_OUTPUT_FORMAT_SUBTITLE: str = "srt"
+
+    # Video settings
+    MERGE_VIDEO_CODEC: str = "none"
+    MERGE_VIDEO_QUALITY: str = "none"
+    MERGE_VIDEO_PRESET: str = "none"
+    MERGE_VIDEO_CRF: int = 0
+    MERGE_VIDEO_PIXEL_FORMAT: str = "none"
+    MERGE_VIDEO_TUNE: str = "none"
+    MERGE_VIDEO_FASTSTART: bool = False
+
+    # Audio settings
+    MERGE_AUDIO_CODEC: str = "none"
+    MERGE_AUDIO_BITRATE: str = "none"
+    MERGE_AUDIO_CHANNELS: int = 0
+    MERGE_AUDIO_SAMPLING: str = "none"
+    MERGE_AUDIO_VOLUME: float = 0.0
+
+    # Image settings
+    MERGE_IMAGE_MODE: str = "none"
+    MERGE_IMAGE_COLUMNS: int = 0
+    MERGE_IMAGE_QUALITY: int = 0
+    MERGE_IMAGE_DPI: int = 0
+    MERGE_IMAGE_RESIZE: str = "none"
+    MERGE_IMAGE_BACKGROUND: str = "none"
+
+    # Subtitle settings
+    MERGE_SUBTITLE_ENCODING: str = "none"
+    MERGE_SUBTITLE_FONT: str = "none"
+    MERGE_SUBTITLE_FONT_SIZE: int = 0
+    MERGE_SUBTITLE_FONT_COLOR: str = "none"
+    MERGE_SUBTITLE_BACKGROUND: str = "none"
+
+    # Document settings
+    MERGE_DOCUMENT_PAPER_SIZE: str = "none"
+    MERGE_DOCUMENT_ORIENTATION: str = "none"
+    MERGE_DOCUMENT_MARGIN: int = 0
+
+    # General settings
+    MERGE_REMOVE_ORIGINAL: bool = True
+    MERGE_METADATA_TITLE: str = "none"
+    MERGE_METADATA_AUTHOR: str = "none"
+    MERGE_METADATA_COMMENT: str = "none"
+
+    # Resource Management Settings
+    FFMPEG_MEMORY_LIMIT: int = 2048
+    FFMPEG_CPU_AFFINITY: str = ""
+    FFMPEG_DYNAMIC_THREADS: bool = True
+
+    # Auto Restart Settings
+    AUTO_RESTART_ENABLED: bool = False
+    AUTO_RESTART_INTERVAL: int = 24  # in hours
 
     @classmethod
     def get(cls, key):

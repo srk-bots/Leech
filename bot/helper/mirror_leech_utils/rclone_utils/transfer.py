@@ -12,7 +12,7 @@ from aiofiles.os import listdir, makedirs
 from aiofiles.os import path as aiopath
 
 from bot.core.config_manager import Config
-from bot.helper.ext_utils.bot_utils import cmd_exec, sync_to_async
+from bot.helper.ext_utils.bot_utils import cmd_exec
 from bot.helper.ext_utils.files_utils import count_files_and_folders, get_mime_type
 
 LOGGER = getLogger(__name__)
@@ -290,7 +290,7 @@ class RcloneTransferHelper:
             folders, files = await count_files_and_folders(path)
             rc_path += f"/{self._listener.name}" if rc_path else self._listener.name
         else:
-            mime_type = await sync_to_async(get_mime_type, path)
+            mime_type = await get_mime_type(path)
             folders = 0
             files = 1
 
@@ -506,6 +506,8 @@ class RcloneTransferHelper:
             "-M",
             "-v",
             "--log-systemd",
+            "--buffer-size",
+            "100M",
         ]
         if self._rclone_select:
             cmd.extend(("--files-from", self._listener.link))

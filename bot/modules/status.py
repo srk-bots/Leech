@@ -1,10 +1,11 @@
-from asyncio import gather, iscoroutinefunction
+from asyncio import create_task, gather, iscoroutinefunction
 from time import time
 
 from psutil import cpu_percent, disk_usage, virtual_memory
 
 from bot import (
     DOWNLOAD_DIR,
+    LOGGER,
     bot_start_time,
     intervals,
     sabnzbd_client,
@@ -52,9 +53,14 @@ async def get_download_status(download):
 
 @new_task
 async def task_status(_, message):
+    # Delete the /status command message immediately
+    await delete_message(message)
+
     async with task_dict_lock:
         count = len(task_dict)
+
     if count == 0:
+        # Send status message when no tasks
         currentTime = get_readable_time(time() - bot_start_time)
         free = get_readable_file_size(disk_usage(DOWNLOAD_DIR).free)
         msg = "No Active Tasks!\n"
@@ -63,8 +69,10 @@ async def task_status(_, message):
             f"\n<b>RAM:</b> {virtual_memory().percent}% | <b>UPTIME:</b> {currentTime}"
         )
         reply_message = await send_message(message, msg)
-        await auto_delete_message(message, reply_message)
+        # Auto delete status message after 5 minutes when no tasks
+        create_task(auto_delete_message(reply_message, time=300))  # noqa: RUF006
     else:
+        # Send status message when tasks are running
         text = message.text.split()
         if len(text) > 1:
             user_id = message.from_user.id if text[1] == "me" else int(text[1])
@@ -75,14 +83,20 @@ async def task_status(_, message):
                 obj.cancel()
                 del intervals["status"][sid]
         await send_status_message(message, user_id)
-        await delete_message(message)
 
 
 @new_task
 async def status_pages(_, query):
     data = query.data.split()
     key = int(data[1])
-    await query.answer()
+
+    # Handle query.answer() with proper error handling
+    try:
+        await query.answer()
+    except Exception as e:
+        LOGGER.warning(f"Failed to answer callback query: {e!s}")
+        # Continue processing even if answering the query fails
+
     if data[2] == "ref":
         await update_status_message(key, force=True)
     elif data[2] in ["nex", "pre"]:

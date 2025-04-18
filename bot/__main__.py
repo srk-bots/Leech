@@ -1,5 +1,5 @@
 # ruff: noqa: E402
-from asyncio import gather
+from asyncio import create_task, gather
 
 from pyrogram.types import BotCommand
 
@@ -29,17 +29,23 @@ COMMANDS = {
     "YtdlCommand": "- Mirror yt-dlp supported link",
     "YtdlLeechCommand": "- Leech through yt-dlp supported link",
     "CloneCommand": "- Copy file/folder to Drive",
-    "MediaInfoCommand": "- Get mediainfo",
+    "MediaInfoCommand": "- Get mediainfo (/mi)",
     "ForceStartCommand": "- Start task from queue",
     "CountCommand": "- Count file/folder on Google Drive",
     "ListCommand": "- Search in Drive",
     "SearchCommand": "- Search in Torrent",
     "UserSetCommand": "- User settings",
-    "StatusCommand": "- Get mirror status message",
+    "MediaToolsCommand": "- Media tools settings for watermark and other media features",
+    "MediaToolsHelpCommand": "- View detailed help for merge and watermark features",
+    "StatusCommand": "- Get mirror status message (/s, /statusall, /sall)",
     "StatsCommand": "- Check Bot & System stats",
     "CancelAllCommand": "- Cancel all tasks added by you to the bot",
     "HelpCommand": "- Get detailed help",
+    "FontStylesCommand": "- View available font styles for leech",
+    "IMDBCommand": "- Search for movies or TV series info",
+    "MusicSearchCommand": "- Search for music files (/ms) or reply to a message",
     "SpeedTest": "- Get speedtest result",
+    "GenSessionCommand": "- Generate Pyrogram session string",
     "BotSetCommand": "- [ADMIN] Open Bot settings",
     "LogCommand": "- [ADMIN] View log",
     "RestartCommand": "- [ADMIN] Restart the bot",
@@ -70,6 +76,7 @@ async def main():
     from .core.startup import (
         load_configurations,
         save_settings,
+        start_bot,
         update_aria2_options,
         update_nzb_options,
         update_qb_options,
@@ -86,6 +93,9 @@ async def main():
         update_aria2_options(),
         update_nzb_options(),
     )
+
+    # Start the scheduled deletion checker and other tasks
+    await start_bot()
     from .core.jdownloader_booter import jdownloader
     from .helper.ext_utils.files_utils import clean_all
     from .helper.ext_utils.telegraph_helper import telegraph
@@ -100,6 +110,8 @@ async def main():
         set_commands(),
         jdownloader.boot(),
     )
+    from .helper.ext_utils.task_monitor import start_monitoring
+
     await gather(
         save_settings(),
         clean_all(),
@@ -109,6 +121,19 @@ async def main():
         telegraph.create_account(),
         rclone_serve_booter(),
     )
+
+    # Start task monitoring system
+    create_task(start_monitoring())  # noqa: RUF006
+
+    # Initialize resource manager
+    from .helper.ext_utils.resource_manager import start_resource_monitor
+
+    create_task(start_resource_monitor())  # noqa: RUF006
+
+    # Initialize auto-restart scheduler
+    from .helper.ext_utils.auto_restart import init_auto_restart
+
+    init_auto_restart()
 
 
 bot_loop.run_until_complete(main())
