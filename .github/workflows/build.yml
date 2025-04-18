@@ -49,8 +49,8 @@ jobs:
 
       - name: Prepare Docker Build Files
         run: |
-          cp Docker\ Build/Dockerfile .
-          cp Docker\ Build/Aeon .
+          cp dev/Dockerfile .
+          cp dev/Aeon .
           chmod +x Aeon
 
       - name: Build and Push

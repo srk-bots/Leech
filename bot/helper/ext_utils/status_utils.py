@@ -272,8 +272,8 @@ async def get_readable_message(sid, is_user, page_no=1, status="All", page_step=
         msg += f"\n<b>Tool:</b> {task.tool}"
         msg += f"\n<b>Elapsed: </b>{get_readable_time(time() - task.listener.message.date.timestamp())}</blockquote>"
         task_gid = task.gid()
-        task_gid[-8:] if task_gid.startswith("SABnzbd") else task_gid[:8]
-        msg += f"\n<blockquote>/stop_{task.gid()[:8]}</blockquote>\n\n"
+        short_gid = task_gid[-8:] if task_gid.startswith("SABnzbd") else task_gid[:8]
+        msg += f"\n<blockquote>/stop_{short_gid}</blockquote>\n\n"
 
     if len(msg) == 0:
         if status == "All":

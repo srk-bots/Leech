@@ -62,8 +62,6 @@ We welcome contributions! Whether it's bug fixes, feature enhancements, or gener
 
 # Aeon-MLTB Docker Build Guide
 
-This repository provides a GitHub Actions workflow to build and push Docker images for Aeon-MLTB.
-
 ## Usage
 
 1. **Run the Workflow**  
