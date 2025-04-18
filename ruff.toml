@@ -2,6 +2,7 @@ fix = true
 unsafe-fixes = true
 line-length = 85
 target-version = "py313"
+exclude = ["dev"]
 
 [lint.mccabe]
 max-complexity = 100
