@@ -195,7 +195,7 @@ def source(self):
 
 async def get_readable_message(sid, is_user, page_no=1, status="All", page_step=1):
     msg = ""
-    msg += "<blockquote><b>Powered by @aimmirror</b></blockquote>\n\n"
+    msg += ""
     button = None
 
     tasks = await get_specific_tasks(status, sid if is_user else None)
@@ -306,5 +306,4 @@ async def get_readable_message(sid, is_user, page_no=1, status="All", page_step=
         if restart_time:
             msg += f"\n<b>NEXT RESTART:</b> {restart_time}"
 
-    msg += "\n\n<blockquote><b>Support the group by completing the link <a href='https://tinyurl.com/45xcst76'>here</a></b></blockquote>"
     return msg, button
