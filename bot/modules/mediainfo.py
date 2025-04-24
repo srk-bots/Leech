@@ -1,10 +1,10 @@
-import json
 from asyncio import create_task
 from os import getcwd
 from os import path as ospath
 from re import search as re_search
 from shlex import split as ssplit
 from time import time
+import json
 
 import aiohttp
 from aiofiles import open as aiopen
@@ -28,7 +28,6 @@ from bot.helper.telegram_helper.message_utils import (
     send_message,
 )
 
-
 def parse_ffprobe_info(json_data, file_size, filename):
     tc = f"<h4>{filename}</h4><br><br>"
     tc += "<blockquote>General</blockquote><pre>"
@@ -36,28 +35,33 @@ def parse_ffprobe_info(json_data, file_size, filename):
     format_info = json_data.get("format", {})
     tc += f"{'File name':<28}: {filename}\n"
     tc += f"{'File size':<28}: {file_size / (1024 * 1024):.2f} MiB\n"
+
     for key in ["duration", "bit_rate", "format_name", "format_long_name"]:
         if key in format_info:
             tc += f"{key.replace('_', ' ').capitalize():<28}: {format_info[key]}\n"
+
+    tags = format_info.get("tags", {})
+    for k, v in tags.items():
+        tc += f"{k.replace('_', ' ').capitalize():<28}: {v}\n"
     tc += "</pre><br>"
 
     for stream in json_data.get("streams", []):
         codec_type = stream.get("codec_type", "Unknown").capitalize()
-        if codec_type == "Subtitle":
-            codec_type = "Subtitle"
         if codec_type in {"Video", "Audio", "Subtitle"}:
             tc += f"<blockquote>{codec_type}</blockquote><pre>"
             for k, v in stream.items():
-                if isinstance(v, str | int | float):
+                if isinstance(v, (str, int, float)):
                     tc += f"{k.replace('_', ' ').capitalize():<28}: {v}\n"
+            for k, v in stream.get("tags", {}).items():
+                tc += f"{k.replace('_', ' ').capitalize():<28}: {v}\n"
             tc += "</pre><br>"
     return tc
 
-
 async def gen_mediainfo(message, link=None, media=None, reply=None):
-    temp_send = await send_message(message, "Generating MediaInfo...")
+    temp_send = await send_message(message, "Generating MediaInfo with ffprobe...")
     des_path = None
     tc = ""
+
     try:
         path = "Mediainfo/"
         if not await aiopath.isdir(path):
@@ -67,14 +71,11 @@ async def gen_mediainfo(message, link=None, media=None, reply=None):
         if link:
             if not is_url(link):
                 raise ValueError(f"Invalid URL: {link}")
-            filename_match = re_search(".+/(.+)", link)
-            filename = (
-                filename_match.group(1)
-                if filename_match
-                else f"mediainfo_{int(time())}"
-            )
-            des_path = ospath.join(path, filename)
 
+            filename_match = re_search(".+/(.+)", link)
+            filename = filename_match.group(1) if filename_match else f"mediainfo_{int(time())}"
+
+            des_path = ospath.join(path, filename)
             headers = {
                 "user-agent": "Mozilla/5.0 (Linux; Android 12; 2201116PI) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/107.0.0.0 Mobile Safari/537.36",
             }
@@ -95,35 +96,29 @@ async def gen_mediainfo(message, link=None, media=None, reply=None):
                     async with aiopen(des_path, "ab") as f:
                         await f.write(chunk)
 
-        stdout, _, _ = await cmd_exec(
-            ssplit(
-                f'ffprobe -v quiet -print_format json -show_format -show_streams "{des_path}"'
-            )
-        )
-        ff_data = json.loads(stdout)
-        tc = parse_ffprobe_info(ff_data, file_size, ospath.basename(des_path))
+        cmd = f'ffprobe -v quiet -print_format json -show_format -show_streams -show_chapters -show_programs -show_entries format_tags:stream_tags "{des_path}"'
+        stdout, _, _ = await cmd_exec(ssplit(cmd))
+
+        if stdout:
+            data = json.loads(stdout)
+            tc = parse_ffprobe_info(data, file_size, ospath.basename(des_path))
 
     except Exception as e:
         LOGGER.error(e)
-        await edit_message(temp_send, f"MediaInfo stopped due to {e!s}")
+        await edit_message(temp_send, f"MediaInfo failed: {e}")
     finally:
         if des_path:
             await aioremove(des_path)
 
     if tc:
-        link_id = (await telegraph.create_page(title="MediaInfo", content=tc))[
-            "path"
-        ]
+        link_id = (await telegraph.create_page(title="MediaInfo", content=tc))["path"]
         tag = message.from_user.mention
         await temp_send.edit(
-            f"<blockquote>{tag}, MediaInfo generated successfully<a href='https://graph.org/{link_id}'>.</a></blockquote>",
+            f"<blockquote>{tag}, MediaInfo generated with ffprobe <a href='https://graph.org/{link_id}'>here</a>.</blockquote>",
             disable_web_page_preview=False,
         )
     else:
-        await temp_send.edit(
-            "Failed to generate MediaInfo. Please try again with a valid file."
-        )
-
+        await temp_send.edit("Failed to generate MediaInfo.")
 
 async def mediainfo(_, message):
     user_id = message.from_user.id
@@ -150,7 +145,7 @@ async def mediainfo(_, message):
         await gen_mediainfo(message, link)
     elif reply:
         await delete_links(message)
-        if file := next(
+        file = next(
             (
                 i
                 for i in [
@@ -164,7 +159,8 @@ async def mediainfo(_, message):
                 if i
             ),
             None,
-        ):
+        )
+        if file:
             await gen_mediainfo(message, None, file, reply)
         else:
             help_message = await send_message(message, help_msg)
