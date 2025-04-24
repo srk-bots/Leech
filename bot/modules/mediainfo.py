@@ -1,10 +1,10 @@
+import json
 from asyncio import create_task
 from os import getcwd
 from os import path as ospath
 from re import search as re_search
 from shlex import split as ssplit
 from time import time
-import json
 
 import aiohttp
 from aiofiles import open as aiopen
@@ -28,6 +28,7 @@ from bot.helper.telegram_helper.message_utils import (
     send_message,
 )
 
+
 def parse_ffprobe_info(json_data, file_size, filename):
     tc = f"<h4>{filename}</h4><br><br>"
     tc += "<blockquote>General</blockquote><pre>"
@@ -50,12 +51,13 @@ def parse_ffprobe_info(json_data, file_size, filename):
         if codec_type in {"Video", "Audio", "Subtitle"}:
             tc += f"<blockquote>{codec_type}</blockquote><pre>"
             for k, v in stream.items():
-                if isinstance(v, (str, int, float)):
+                if isinstance(v, str | int | float):
                     tc += f"{k.replace('_', ' ').capitalize():<28}: {v}\n"
             for k, v in stream.get("tags", {}).items():
                 tc += f"{k.replace('_', ' ').capitalize():<28}: {v}\n"
             tc += "</pre><br>"
     return tc
+
 
 async def gen_mediainfo(message, link=None, media=None, reply=None):
     temp_send = await send_message(message, "Generating MediaInfo with ffprobe...")
@@ -73,7 +75,11 @@ async def gen_mediainfo(message, link=None, media=None, reply=None):
                 raise ValueError(f"Invalid URL: {link}")
 
             filename_match = re_search(".+/(.+)", link)
-            filename = filename_match.group(1) if filename_match else f"mediainfo_{int(time())}"
+            filename = (
+                filename_match.group(1)
+                if filename_match
+                else f"mediainfo_{int(time())}"
+            )
 
             des_path = ospath.join(path, filename)
             headers = {
@@ -111,7 +117,9 @@ async def gen_mediainfo(message, link=None, media=None, reply=None):
             await aioremove(des_path)
 
     if tc:
-        link_id = (await telegraph.create_page(title="MediaInfo", content=tc))["path"]
+        link_id = (await telegraph.create_page(title="MediaInfo", content=tc))[
+            "path"
+        ]
         tag = message.from_user.mention
         await temp_send.edit(
             f"<blockquote>{tag}, MediaInfo generated with ffprobe <a href='https://graph.org/{link_id}'>here</a>.</blockquote>",
@@ -119,6 +127,7 @@ async def gen_mediainfo(message, link=None, media=None, reply=None):
         )
     else:
         await temp_send.edit("Failed to generate MediaInfo.")
+
 
 async def mediainfo(_, message):
     user_id = message.from_user.id
