@@ -48,12 +48,33 @@ def parse_ffprobe_info(json_data, file_size, filename):
 
     for stream in json_data.get("streams", []):
         codec_type = stream.get("codec_type", "Unknown").capitalize()
+        
+        # Skip cover/thumbnail misclassified as video
+        disposition = stream.get("disposition", {})
+        tags = stream.get("tags", {})
+        if (
+            disposition.get("attached_pic") == 1 or
+            tags.get("title", "").lower() in {"cover", "thumbnail"}
+        ):
+            continue
+
         if codec_type in {"Video", "Audio", "Subtitle"}:
             tc += f"<blockquote>{codec_type}</blockquote><pre>"
             for k, v in stream.items():
-                if isinstance(v, str | int | float):
+                if isinstance(v, (str, int, float)) and k not in {"disposition", "tags"}:
                     tc += f"{k.replace('_', ' ').capitalize():<28}: {v}\n"
-            for k, v in stream.get("tags", {}).items():
+
+            # Calculate subtitle duration manually if possible
+            if codec_type == "Subtitle":
+                start_time = float(stream.get("start_time", 0))
+                duration = float(stream.get("duration", 0))
+                if start_time and duration:
+                    end_time = start_time + duration
+                    tc += f"{'Start time':<28}: {start_time:.3f} sec\n"
+                    tc += f"{'Duration':<28}: {duration:.3f} sec\n"
+                    tc += f"{'End time':<28}: {end_time:.3f} sec\n"
+
+            for k, v in tags.items():
                 tc += f"{k.replace('_', ' ').capitalize():<28}: {v}\n"
             tc += "</pre><br>"
     return tc
