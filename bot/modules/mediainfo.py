@@ -50,30 +50,35 @@ def parse_ffprobe_info(json_data, file_size, filename):
         codec_type = stream.get("codec_type", "Unknown").capitalize()
         if codec_type in {"Video", "Audio", "Subtitle"}:
             tc += f"<blockquote>{codec_type}</blockquote><pre>"
-            
+
             # Handle different stream types
             if codec_type == "Subtitle":
                 # Add specific subtitle information
-                for key in ["codec_name", "codec_long_name", "start_time", "duration"]:
+                for key in [
+                    "codec_name",
+                    "codec_long_name",
+                    "start_time",
+                    "duration",
+                ]:
                     if key in stream:
                         tc += f"{key.replace('_', ' ').capitalize():<28}: {stream[key]}\n"
                 # Add language if available
                 if "tags" in stream and "language" in stream["tags"]:
                     tc += f"{'Language':<28}: {stream['tags']['language']}\n"
-                    
+
             elif codec_type == "Video":
                 # Handle cover/thumbnail images properly
                 if stream.get("codec_name") in ["mjpeg", "png"]:
                     tc += f"{'Type':<28}: Cover/Thumbnail\n"
                 for k, v in stream.items():
-                    if isinstance(v, (str, int, float)):
+                    if isinstance(v, str | int | float):
                         tc += f"{k.replace('_', ' ').capitalize():<28}: {v}\n"
             else:
                 # Default handling for other stream types
                 for k, v in stream.items():
-                    if isinstance(v, (str, int, float)):
+                    if isinstance(v, str | int | float):
                         tc += f"{k.replace('_', ' ').capitalize():<28}: {v}\n"
-            
+
             # Add tags if available
             for k, v in stream.get("tags", {}).items():
                 tc += f"{k.replace('_', ' ').capitalize():<28}: {v}\n"
