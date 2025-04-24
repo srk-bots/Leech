@@ -48,20 +48,23 @@ def parse_ffprobe_info(json_data, file_size, filename):
 
     for stream in json_data.get("streams", []):
         codec_type = stream.get("codec_type", "Unknown").capitalize()
-        
+
         # Skip cover/thumbnail misclassified as video
         disposition = stream.get("disposition", {})
         tags = stream.get("tags", {})
-        if (
-            disposition.get("attached_pic") == 1 or
-            tags.get("title", "").lower() in {"cover", "thumbnail"}
-        ):
+        if disposition.get("attached_pic") == 1 or tags.get("title", "").lower() in {
+            "cover",
+            "thumbnail",
+        }:
             continue
 
         if codec_type in {"Video", "Audio", "Subtitle"}:
             tc += f"<blockquote>{codec_type}</blockquote><pre>"
             for k, v in stream.items():
-                if isinstance(v, (str, int, float)) and k not in {"disposition", "tags"}:
+                if isinstance(v, str | int | float) and k not in {
+                    "disposition",
+                    "tags",
+                }:
                     tc += f"{k.replace('_', ' ').capitalize():<28}: {v}\n"
 
             # Calculate subtitle duration manually if possible
