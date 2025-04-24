@@ -43,7 +43,6 @@ COMMANDS = {
     "HelpCommand": "- Get detailed help",
     "FontStylesCommand": "- View available font styles for leech",
     "IMDBCommand": "- Search for movies or TV series info",
-    "MusicSearchCommand": "- Search for music files (/ms) or reply to a message",
     "SpeedTest": "- Get speedtest result",
     "GenSessionCommand": "- Generate Pyrogram session string",
     "BotSetCommand": "- [ADMIN] Open Bot settings",

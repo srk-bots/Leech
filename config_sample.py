@@ -44,9 +44,6 @@ MEDIA_STORE = False
 # Media Tools Settings
 MEDIA_TOOLS_ENABLED = True  # Enable/disable Media Tools feature
 
-# Music Search
-MUSIC_SEARCH_CHATS = []  # List of chat IDs to search for music
-
 # GDrive Tools
 GDRIVE_ID = ""
 IS_TEAM_DRIVE = False

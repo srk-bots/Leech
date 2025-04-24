@@ -32,7 +32,6 @@ class Config:
     LOGIN_PASS: str = ""
     MEDIA_GROUP: bool = False
     HYBRID_LEECH: bool = False
-    MUSIC_SEARCH_CHATS: ClassVar[list] = []
     NAME_SUBSTITUTE: str = r""
     OWNER_ID: int = 0
     QUEUE_ALL: int = 0

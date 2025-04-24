@@ -35,8 +35,7 @@ from .mirror_leech import (
     nzb_leech,
     nzb_mirror,
 )
-from .music_search import music_cancel_callback, music_get_callback, music_search
-from .nzbsearch import hydra_search
+from .nzb_search import hydra_search
 from .restart import (
     confirm_restart,
     restart_bot,
@@ -106,9 +105,6 @@ __all__ = [
     "media_tools_settings",
     "mediainfo",
     "mirror",
-    "music_cancel_callback",
-    "music_get_callback",
-    "music_search",
     "nzb_leech",
     "nzb_mirror",
     "ping",

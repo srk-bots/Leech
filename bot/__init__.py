@@ -31,7 +31,6 @@ getLogger("pyrogram").setLevel(ERROR)
 getLogger("httpx").setLevel(WARNING)
 getLogger("pymongo").setLevel(WARNING)
 getLogger("aiohttp").setLevel(WARNING)
-getLogger("bot.modules.music_search").setLevel(ERROR)
 
 bot_start_time = time()
 

@@ -49,7 +49,6 @@ class BotCommands:
     CheckDeletionsCommand = [f"check_deletions{i}", f"cd{i}"]
     IMDBCommand = f"imdb{i}"
     LoginCommand = f"login{i}"
-    MusicSearchCommand = [f"musicsearch{i}", f"ms{i}"]
     MediaToolsCommand = [f"mediatools{i}", f"mt{i}"]
     MediaToolsHelpCommand = [f"mthelp{i}", f"mth{i}"]
     GenSessionCommand = [f"gensession{i}", f"gs{i}"]
