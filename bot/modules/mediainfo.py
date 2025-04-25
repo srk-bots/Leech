@@ -49,39 +49,33 @@ def parse_ffprobe_info(json_data, file_size, filename):
     for stream in json_data.get("streams", []):
         codec_type = stream.get("codec_type", "Unknown").capitalize()
         if codec_type in {"Video", "Audio", "Subtitle"}:
-            tc += f"<blockquote>{codec_type}</blockquote><pre>"
-
-            # Handle different stream types
-            if codec_type == "Subtitle":
-                # Add specific subtitle information
-                for key in [
-                    "codec_name",
-                    "codec_long_name",
-                    "start_time",
-                    "duration",
-                ]:
-                    if key in stream:
-                        tc += f"{key.replace('_', ' ').capitalize():<28}: {stream[key]}\n"
-                # Add language if available
-                if "tags" in stream and "language" in stream["tags"]:
-                    tc += f"{'Language':<28}: {stream['tags']['language']}\n"
-
-            elif codec_type == "Video":
-                # Handle cover/thumbnail images properly
-                if stream.get("codec_name") in ["mjpeg", "png"]:
-                    tc += f"{'Type':<28}: Cover/Thumbnail\n"
-                for k, v in stream.items():
-                    if isinstance(v, str | int | float):
-                        tc += f"{k.replace('_', ' ').capitalize():<28}: {v}\n"
+            # Handle cover/thumbnail images specially
+            if codec_type == "Video" and stream.get("codec_name") in ["mjpeg", "png"]:
+                tc += "<blockquote>Cover/Thumbnail</blockquote><pre>"
+                tc += f"{'Type':<28}: Embedded Cover Image\n"
+                tc += f"{'Format':<28}: {stream.get('codec_long_name', stream.get('codec_name', 'Unknown'))}\n"
+                tc += f"{'Dimensions':<28}: {stream.get('width', '?')}x{stream.get('height', '?')}\n"
             else:
-                # Default handling for other stream types
-                for k, v in stream.items():
-                    if isinstance(v, str | int | float):
-                        tc += f"{k.replace('_', ' ').capitalize():<28}: {v}\n"
-
-            # Add tags if available
-            for k, v in stream.get("tags", {}).items():
-                tc += f"{k.replace('_', ' ').capitalize():<28}: {v}\n"
+                tc += f"<blockquote>{codec_type}</blockquote><pre>"
+                
+                # Special handling for subtitle streams
+                if codec_type == "Subtitle":
+                    for key in ["codec_name", "codec_long_name", "start_time", "duration"]:
+                        if key in stream:
+                            tc += f"{key.replace('_', ' ').capitalize():<28}: {stream[key]}\n"
+                    if "tags" in stream and "language" in stream["tags"]:
+                        tc += f"{'Language':<28}: {stream['tags']['language']}\n"
+                else:
+                    # Default handling for other stream types
+                    for k, v in stream.items():
+                        if isinstance(v, (str, int, float)) and k not in ['codec_type', 'codec_tag_string', 'codec_tag']:
+                            tc += f"{k.replace('_', ' ').capitalize():<28}: {v}\n"
+            
+            # Add tags if available (except for cover images)
+            if not (codec_type == "Video" and stream.get("codec_name") in ["mjpeg", "png"]):
+                for k, v in stream.get("tags", {}).items():
+                    tc += f"{k.replace('_', ' ').capitalize():<28}: {v}\n"
+            
             tc += "</pre><br>"
     return tc
 
