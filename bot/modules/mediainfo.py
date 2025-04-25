@@ -30,14 +30,12 @@ from bot.helper.telegram_helper.message_utils import (
 
 
 def parse_ffprobe_info(json_data, file_size, filename):
-    tc = f"<h4>{filename}</h4><br><br>"
-    tc += "<blockquote>General</blockquote><pre>"
-
+    tc = f"<h4>{filename}</h4><br><br><blockquote>General</blockquote><pre>"
     format_info = json_data.get("format", {})
     tc += f"{'File name':<28}: {filename}\n"
     tc += f"{'File size':<28}: {file_size / (1024 * 1024):.2f} MiB\n"
 
-    for key in ["duration", "bit_rate", "format_name", "format_long_name"]:
+    for key in ["duration", "bit_rate", "format_name", "format_long_name", "probe_score"]:
         if key in format_info:
             tc += f"{key.replace('_', ' ').capitalize():<28}: {format_info[key]}\n"
 
@@ -46,52 +44,41 @@ def parse_ffprobe_info(json_data, file_size, filename):
         tc += f"{k.replace('_', ' ').capitalize():<28}: {v}\n"
     tc += "</pre><br>"
 
-    for stream in json_data.get("streams", []):
+    for idx, stream in enumerate(json_data.get("streams", []), 1):
         codec_type = stream.get("codec_type", "Unknown").capitalize()
-        if codec_type in {"Video", "Audio", "Subtitle"}:
-            # Handle cover/thumbnail images specially
-            if codec_type == "Video" and stream.get("codec_name") in [
-                "mjpeg",
-                "png",
-            ]:
-                tc += "<blockquote>Cover/Thumbnail</blockquote><pre>"
-                tc += f"{'Type':<28}: Embedded Cover Image\n"
-                tc += f"{'Format':<28}: {stream.get('codec_long_name', stream.get('codec_name', 'Unknown'))}\n"
-                tc += f"{'Dimensions':<28}: {stream.get('width', '?')}x{stream.get('height', '?')}\n"
-            else:
-                tc += f"<blockquote>{codec_type}</blockquote><pre>"
+        tc += f"<blockquote>{codec_type} Stream #{idx}</blockquote><pre>"
 
-                # Special handling for subtitle streams
-                if codec_type == "Subtitle":
-                    for key in [
-                        "codec_name",
-                        "codec_long_name",
-                        "start_time",
-                        "duration",
-                    ]:
-                        if key in stream:
-                            tc += f"{key.replace('_', ' ').capitalize():<28}: {stream[key]}\n"
-                    if "tags" in stream and "language" in stream["tags"]:
-                        tc += f"{'Language':<28}: {stream['tags']['language']}\n"
-                else:
-                    # Default handling for other stream types
-                    for k, v in stream.items():
-                        if isinstance(v, str | int | float) and k not in [
-                            "codec_type",
-                            "codec_tag_string",
-                            "codec_tag",
-                        ]:
-                            tc += f"{k.replace('_', ' ').capitalize():<28}: {v}\n"
+        for key, val in stream.items():
+            if isinstance(val, (str, int, float)) and key not in ['codec_type', 'codec_tag_string', 'codec_tag']:
+                tc += f"{key.replace('_', ' ').capitalize():<28}: {val}\n"
 
-            # Add tags if available (except for cover images)
-            if not (
-                codec_type == "Video"
-                and stream.get("codec_name") in ["mjpeg", "png"]
-            ):
-                for k, v in stream.get("tags", {}).items():
+        tags = stream.get("tags", {})
+        for k, v in tags.items():
+            tc += f"{k.replace('_', ' ').capitalize():<28}: {v}\n"
+        tc += "</pre><br>"
+
+    # Chapter Info
+    chapters = json_data.get("chapters", [])
+    if chapters:
+        tc += f"<blockquote>Chapters</blockquote><pre>"
+        for i, chapter in enumerate(chapters):
+            start = float(chapter.get("start_time", 0))
+            end = float(chapter.get("end_time", 0))
+            tc += f"Chapter {i+1:<20}: {start:.2f} - {end:.2f} sec\n"
+            for k, v in chapter.get("tags", {}).items():
+                tc += f"{k.replace('_', ' ').capitalize():<28}: {v}\n"
+        tc += "</pre><br>"
+
+    # Program Info
+    programs = json_data.get("programs", [])
+    if programs:
+        tc += f"<blockquote>Programs</blockquote><pre>"
+        for i, prog in enumerate(programs):
+            for k, v in prog.items():
+                if isinstance(v, (str, int, float)):
                     tc += f"{k.replace('_', ' ').capitalize():<28}: {v}\n"
+        tc += "</pre><br>"
 
-            tc += "</pre><br>"
     return tc
 
 
@@ -149,13 +136,11 @@ async def gen_mediainfo(message, link=None, media=None, reply=None):
         LOGGER.error(e)
         await edit_message(temp_send, f"MediaInfo failed: {e}")
     finally:
-        if des_path:
+        if des_path and await aiopath.exists(des_path):
             await aioremove(des_path)
 
     if tc:
-        link_id = (await telegraph.create_page(title="MediaInfo", content=tc))[
-            "path"
-        ]
+        link_id = (await telegraph.create_page(title="MediaInfo", content=tc))["path"]
         tag = message.from_user.mention
         await temp_send.edit(
             f"<blockquote>{tag}, MediaInfo generated with ffprobe <a href='https://graph.org/{link_id}'>here</a>.</blockquote>",
