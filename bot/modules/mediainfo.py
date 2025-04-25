@@ -35,7 +35,13 @@ def parse_ffprobe_info(json_data, file_size, filename):
     tc += f"{'File name':<28}: {filename}\n"
     tc += f"{'File size':<28}: {file_size / (1024 * 1024):.2f} MiB\n"
 
-    for key in ["duration", "bit_rate", "format_name", "format_long_name", "probe_score"]:
+    for key in [
+        "duration",
+        "bit_rate",
+        "format_name",
+        "format_long_name",
+        "probe_score",
+    ]:
         if key in format_info:
             tc += f"{key.replace('_', ' ').capitalize():<28}: {format_info[key]}\n"
 
@@ -49,7 +55,11 @@ def parse_ffprobe_info(json_data, file_size, filename):
         tc += f"<blockquote>{codec_type} Stream #{idx}</blockquote><pre>"
 
         for key, val in stream.items():
-            if isinstance(val, (str, int, float)) and key not in ['codec_type', 'codec_tag_string', 'codec_tag']:
+            if isinstance(val, str | int | float) and key not in [
+                "codec_type",
+                "codec_tag_string",
+                "codec_tag",
+            ]:
                 tc += f"{key.replace('_', ' ').capitalize():<28}: {val}\n"
 
         tags = stream.get("tags", {})
@@ -60,11 +70,11 @@ def parse_ffprobe_info(json_data, file_size, filename):
     # Chapter Info
     chapters = json_data.get("chapters", [])
     if chapters:
-        tc += f"<blockquote>Chapters</blockquote><pre>"
+        tc += "<blockquote>Chapters</blockquote><pre>"
         for i, chapter in enumerate(chapters):
             start = float(chapter.get("start_time", 0))
             end = float(chapter.get("end_time", 0))
-            tc += f"Chapter {i+1:<20}: {start:.2f} - {end:.2f} sec\n"
+            tc += f"Chapter {i + 1:<20}: {start:.2f} - {end:.2f} sec\n"
             for k, v in chapter.get("tags", {}).items():
                 tc += f"{k.replace('_', ' ').capitalize():<28}: {v}\n"
         tc += "</pre><br>"
@@ -72,10 +82,10 @@ def parse_ffprobe_info(json_data, file_size, filename):
     # Program Info
     programs = json_data.get("programs", [])
     if programs:
-        tc += f"<blockquote>Programs</blockquote><pre>"
+        tc += "<blockquote>Programs</blockquote><pre>"
         for i, prog in enumerate(programs):
             for k, v in prog.items():
-                if isinstance(v, (str, int, float)):
+                if isinstance(v, str | int | float):
                     tc += f"{k.replace('_', ' ').capitalize():<28}: {v}\n"
         tc += "</pre><br>"
 
@@ -140,7 +150,9 @@ async def gen_mediainfo(message, link=None, media=None, reply=None):
             await aioremove(des_path)
 
     if tc:
-        link_id = (await telegraph.create_page(title="MediaInfo", content=tc))["path"]
+        link_id = (await telegraph.create_page(title="MediaInfo", content=tc))[
+            "path"
+        ]
         tag = message.from_user.mention
         await temp_send.edit(
             f"<blockquote>{tag}, MediaInfo generated with ffprobe <a href='https://graph.org/{link_id}'>here</a>.</blockquote>",
