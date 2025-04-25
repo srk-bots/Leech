@@ -35,13 +35,7 @@ def parse_ffprobe_info(json_data, file_size, filename):
     tc += f"{'File name':<28}: {filename}\n"
     tc += f"{'File size':<28}: {file_size / (1024 * 1024):.2f} MiB\n"
 
-    for key in [
-        "duration",
-        "bit_rate",
-        "format_name",
-        "format_long_name",
-        "probe_score",
-    ]:
+    for key in ["duration", "bit_rate", "format_name", "format_long_name", "probe_score"]:
         if key in format_info:
             tc += f"{key.replace('_', ' ').capitalize():<28}: {format_info[key]}\n"
 
@@ -50,42 +44,59 @@ def parse_ffprobe_info(json_data, file_size, filename):
         tc += f"{k.replace('_', ' ').capitalize():<28}: {v}\n"
     tc += "</pre><br>"
 
-    for idx, stream in enumerate(json_data.get("streams", []), 1):
-        codec_type = stream.get("codec_type", "Unknown").capitalize()
-        tc += f"<blockquote>{codec_type} Stream #{idx}</blockquote><pre>"
+    # Counters for each stream type
+    counters = {
+        "video": 0,
+        "audio": 0,
+        "subtitle": 0,
+        "data": 0,
+        "attachment": 0,
+        "cover": 0,
+        "other": 0,
+    }
 
+    for stream in json_data.get("streams", []):
+        codec_type = stream.get("codec_type", "other").lower()
+        codec_name = stream.get("codec_name", "").lower()
+
+        # Detect cover image
+        if codec_type == "video" and codec_name == "mjpeg":
+            section = "Cover"
+            counters["cover"] += 1
+            count = counters["cover"]
+        else:
+            if codec_type not in counters:
+                codec_type = "other"
+            counters[codec_type] += 1
+            count = counters[codec_type]
+            section = codec_type.capitalize()
+
+        tc += f"<blockquote>{section} Stream #{count}</blockquote><pre>"
         for key, val in stream.items():
-            if isinstance(val, str | int | float) and key not in [
-                "codec_type",
-                "codec_tag_string",
-                "codec_tag",
-            ]:
+            if isinstance(val, (str, int, float)) and key not in ['codec_type', 'codec_tag_string', 'codec_tag']:
                 tc += f"{key.replace('_', ' ').capitalize():<28}: {val}\n"
-
         tags = stream.get("tags", {})
         for k, v in tags.items():
             tc += f"{k.replace('_', ' ').capitalize():<28}: {v}\n"
         tc += "</pre><br>"
 
-    # Chapter Info
     chapters = json_data.get("chapters", [])
     if chapters:
-        tc += "<blockquote>Chapters</blockquote><pre>"
+        tc += f"<blockquote>Chapters</blockquote><pre>"
         for i, chapter in enumerate(chapters):
             start = float(chapter.get("start_time", 0))
             end = float(chapter.get("end_time", 0))
-            tc += f"Chapter {i + 1:<20}: {start:.2f} - {end:.2f} sec\n"
+            tc += f"Chapter {i+1:<20}: {start:.2f} - {end:.2f} sec\n"
             for k, v in chapter.get("tags", {}).items():
                 tc += f"{k.replace('_', ' ').capitalize():<28}: {v}\n"
         tc += "</pre><br>"
 
-    # Program Info
     programs = json_data.get("programs", [])
     if programs:
-        tc += "<blockquote>Programs</blockquote><pre>"
+        tc += f"<blockquote>Programs</blockquote><pre>"
         for i, prog in enumerate(programs):
             for k, v in prog.items():
-                if isinstance(v, str | int | float):
+                if isinstance(v, (str, int, float)):
                     tc += f"{k.replace('_', ' ').capitalize():<28}: {v}\n"
         tc += "</pre><br>"
 
