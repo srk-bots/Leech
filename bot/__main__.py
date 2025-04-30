@@ -1,4 +1,5 @@
 # ruff: noqa: E402
+import gc
 from asyncio import create_task, gather
 
 from pyrogram.types import BotCommand
@@ -72,6 +73,11 @@ async def set_commands():
 
 # Main Function
 async def main():
+    # Initialize garbage collection
+    LOGGER.info("Configuring garbage collection...")
+    gc.enable()
+    gc.set_threshold(700, 10, 10)  # Adjust GC thresholds for better performance
+
     from .core.startup import (
         load_configurations,
         save_settings,
@@ -97,6 +103,10 @@ async def main():
     await start_bot()
     from .core.jdownloader_booter import jdownloader
     from .helper.ext_utils.files_utils import clean_all
+    from .helper.ext_utils.gc_utils import (
+        log_memory_usage,
+        smart_garbage_collection,
+    )
     from .helper.ext_utils.telegraph_helper import telegraph
     from .helper.mirror_leech_utils.rclone_utils.serve import rclone_serve_booter
     from .modules import (
@@ -124,15 +134,15 @@ async def main():
     # Start task monitoring system
     create_task(start_monitoring())  # noqa: RUF006
 
-    # Initialize resource manager
-    from .helper.ext_utils.resource_manager import start_resource_monitor
-
-    create_task(start_resource_monitor())  # noqa: RUF006
-
     # Initialize auto-restart scheduler
     from .helper.ext_utils.auto_restart import init_auto_restart
 
     init_auto_restart()
+
+    # Initial garbage collection and memory usage logging
+    LOGGER.info("Performing initial garbage collection...")
+    smart_garbage_collection(aggressive=True)  # Use aggressive mode for initial cleanup
+    log_memory_usage()
 
 
 bot_loop.run_until_complete(main())

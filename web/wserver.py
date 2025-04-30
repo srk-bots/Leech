@@ -47,11 +47,38 @@ SERVICES = {
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    # Initialize clients
     app.state.aria2 = Aria2HttpClient("http://localhost:6800/jsonrpc")
     app.state.qbittorrent = await create_client("http://localhost:8090/api/v2/")
+
+    try:
+        # Import garbage collection utilities
+        from bot.helper.ext_utils.gc_utils import smart_garbage_collection
+
+        app.state.gc_utils = smart_garbage_collection
+    except ImportError:
+        app.state.gc_utils = None
+
     yield
-    await app.state.aria2.close()
-    await app.state.qbittorrent.close()
+
+    # Properly close all connections
+    try:
+        await app.state.aria2.close()
+        LOGGER.info("Aria2 client connection closed")
+    except Exception as e:
+        LOGGER.error(f"Error closing Aria2 client: {e}")
+
+    try:
+        await app.state.qbittorrent.close()
+        LOGGER.info("qBittorrent client connection closed")
+    except Exception as e:
+        LOGGER.error(f"Error closing qBittorrent client: {e}")
+
+    # Force garbage collection
+    if app.state.gc_utils:
+        app.state.gc_utils(
+            aggressive=True
+        )  # Use aggressive mode for cleanup on shutdown
 
 
 app = FastAPI(lifespan=lifespan)
@@ -71,7 +98,7 @@ LOGGER = getLogger(__name__)
 async def re_verify(paused, resumed, hash_id):
     k = 0
     while True:
-        res = await qbittorrent.torrents.files(hash_id)
+        res = await app.state.qbittorrent.torrents.files(hash_id)
         verify = True
         for i in res:
             if i.index in paused and i.priority != 0:
@@ -86,7 +113,7 @@ async def re_verify(paused, resumed, hash_id):
         await sleep(0.5)
         if paused:
             try:
-                await qbittorrent.torrents.file_prio(
+                await app.state.qbittorrent.torrents.file_prio(
                     hash=hash_id,
                     id=paused,
                     priority=0,
@@ -95,7 +122,7 @@ async def re_verify(paused, resumed, hash_id):
                 LOGGER.error(f"{e} Errored in reverification paused!")
         if resumed:
             try:
-                await qbittorrent.torrents.file_prio(
+                await app.state.qbittorrent.torrents.file_prio(
                     hash=hash_id,
                     id=resumed,
                     priority=1,
@@ -201,11 +228,13 @@ async def handle_torrent(request: Request):
                 res = await sabnzbd_client.get_files(gid)
                 content = make_tree(res, "sabnzbd")
             elif len(gid) > 20:
-                res = await qbittorrent.torrents.files(gid)
+                # Use app.state.qbittorrent instead of global qbittorrent
+                res = await app.state.qbittorrent.torrents.files(gid)
                 content = make_tree(res, "qbittorrent")
             else:
-                res = await aria2.getFiles(gid)
-                op = await aria2.getOption(gid)
+                # Use app.state.aria2 instead of global aria2
+                res = await app.state.aria2.getFiles(gid)
+                op = await app.state.aria2.getOption(gid)
                 fpath = f"{op['dir']}/"
                 content = make_tree(res, "aria2", fpath)
         except (ClientError, TimeoutError, Exception) as e:
@@ -224,9 +253,9 @@ async def handle_rename(gid, data):
         _type = data["type"]
         del data["type"]
         if _type == "file":
-            await qbittorrent.torrents.rename_file(hash=gid, **data)
+            await app.state.qbittorrent.torrents.rename_file(hash=gid, **data)
         else:
-            await qbittorrent.torrents.rename_folder(hash=gid, **data)
+            await app.state.qbittorrent.torrents.rename_folder(hash=gid, **data)
     except (ClientError, TimeoutError, Exception) as e:
         LOGGER.error(f"{e} Errored in renaming")
 
@@ -239,7 +268,7 @@ async def set_sabnzbd(gid, unselected_files):
 async def set_qbittorrent(gid, selected_files, unselected_files):
     if unselected_files:
         try:
-            await qbittorrent.torrents.file_prio(
+            await app.state.qbittorrent.torrents.file_prio(
                 hash=gid,
                 id=unselected_files,
                 priority=0,
@@ -248,7 +277,7 @@ async def set_qbittorrent(gid, selected_files, unselected_files):
             LOGGER.error(f"{e} Errored in paused")
     if selected_files:
         try:
-            await qbittorrent.torrents.file_prio(
+            await app.state.qbittorrent.torrents.file_prio(
                 hash=gid,
                 id=selected_files,
                 priority=1,
@@ -261,7 +290,7 @@ async def set_qbittorrent(gid, selected_files, unselected_files):
 
 
 async def set_aria2(gid, selected_files):
-    res = await aria2.changeOption(gid, {"select-file": selected_files})
+    res = await app.state.aria2.changeOption(gid, {"select-file": selected_files})
     if res == "OK":
         LOGGER.info(f"Verified! Gid: {gid}")
     else:
@@ -348,9 +377,7 @@ async def protected_proxy(
 async def sabnzbd_proxy(path: str = "", request: Request = None):
     # Get username and password from query params or cookies
     username = (
-        request.query_params.get("user")
-        or request.cookies.get("nzb_user")
-        or "admin"
+        request.query_params.get("user") or request.cookies.get("nzb_user") or "admin"
     )
     password = (
         request.query_params.get("pass")
@@ -377,9 +404,7 @@ async def sabnzbd_proxy(path: str = "", request: Request = None):
 async def qbittorrent_proxy(path: str = "", request: Request = None):
     # Get username and password from query params or cookies
     username = (
-        request.query_params.get("user")
-        or request.cookies.get("qbit_user")
-        or "admin"
+        request.query_params.get("user") or request.cookies.get("qbit_user") or "admin"
     )
     password = request.query_params.get("pass") or request.cookies.get("qbit_pass")
 

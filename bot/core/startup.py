@@ -124,7 +124,7 @@ async def update_nzb_options():
 async def load_settings():
     if not Config.DATABASE_URL:
         return
-    for p in ["thumbnails", "tokens", "rclone"]:
+    for p in ["thumbnails", "tokens", "rclone", "cookies"]:
         if await aiopath.exists(p):
             await rmtree(p, ignore_errors=True)
     await database.connect()
@@ -235,9 +235,13 @@ async def load_settings():
             LOGGER.error(f"Error loading SABnzbd configuration from database: {e}")
 
         if await database.db.users.find_one():
-            for p in ["thumbnails", "tokens", "rclone"]:
+            for p in ["thumbnails", "tokens", "rclone", "cookies"]:
                 if not await aiopath.exists(p):
                     await makedirs(p)
+
+            # Set secure permissions for cookies directory
+            if await aiopath.exists("cookies"):
+                await create_subprocess_exec("chmod", "700", "cookies")
             rows = database.db.users.find({})
             async for row in rows:
                 uid = row["_id"]
@@ -257,6 +261,15 @@ async def load_settings():
                     async with aiopen(token_path, "wb+") as f:
                         await f.write(row["TOKEN_PICKLE"])
                     row["TOKEN_PICKLE"] = token_path
+                # Load user cookies if available
+                cookies_path = f"cookies/{uid}.txt"
+                if row.get("USER_COOKIES"):
+                    async with aiopen(cookies_path, "wb+") as f:
+                        await f.write(row["USER_COOKIES"])
+                    row["USER_COOKIES"] = cookies_path
+                    # Set secure permissions for individual cookie files
+                    await create_subprocess_exec("chmod", "600", cookies_path)
+                    # Silently load user cookies without logging
                 user_data[uid] = row
             LOGGER.info("Users data has been imported from Database")
 
@@ -321,12 +334,21 @@ async def save_settings():
 
 
 async def update_variables():
+    # Calculate max split size based on owner's session only
+    max_split_size = (
+        TgClient.MAX_SPLIT_SIZE
+        if hasattr(Config, "USER_SESSION_STRING") and Config.USER_SESSION_STRING
+        else 2097152000
+    )
+
+    # Set default leech split size to max split size based on owner session premium status
+    # Only if not explicitly set by owner or if it exceeds max split size
     if (
-        Config.LEECH_SPLIT_SIZE > TgClient.MAX_SPLIT_SIZE
-        or Config.LEECH_SPLIT_SIZE == 2097152000
-        or not Config.LEECH_SPLIT_SIZE
+        not Config.LEECH_SPLIT_SIZE  # Not set
+        or Config.LEECH_SPLIT_SIZE > max_split_size  # Exceeds max allowed
+        or Config.LEECH_SPLIT_SIZE == 2097152000  # Default value, not custom
     ):
-        Config.LEECH_SPLIT_SIZE = TgClient.MAX_SPLIT_SIZE
+        Config.LEECH_SPLIT_SIZE = max_split_size
 
     Config.HYBRID_LEECH = bool(Config.HYBRID_LEECH and TgClient.IS_PREMIUM_USER)
     Config.USER_TRANSMISSION = bool(

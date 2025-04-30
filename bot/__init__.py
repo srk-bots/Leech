@@ -1,5 +1,6 @@
 # ruff: noqa: E402
-from uvloop import install
+# Fix IDE issues by adding type annotations and import comments
+from uvloop import install  # type: ignore
 
 install()
 
@@ -39,7 +40,7 @@ set_event_loop(bot_loop)
 
 
 class CustomFormatter(Formatter):
-    def formatTime(
+    def formatTime(  # noqa: N802
         self,
         record: LogRecord,
         datefmt: str | None,

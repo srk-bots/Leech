@@ -1,8 +1,11 @@
 #!/usr/bin/env python3
 import os
+import contextlib
 from logging import getLogger
 
 import aiohttp
+
+from bot.helper.ext_utils.gc_utils import smart_garbage_collection
 
 LOGGER = getLogger(__name__)
 
@@ -503,6 +506,13 @@ async def apply_font_style(text, style):
     if not style:
         return text
 
+    # Handle the literal string "style" as a special case
+    if style.lower() == "style":
+        LOGGER.debug(
+            f"'style' is a reserved word, not a valid font style. Using code formatting instead."
+        )
+        return f"<code>{text}</code>"
+
     style_lower = style.lower()
 
     # Check if it's a predefined style in FONT_STYLES
@@ -605,8 +615,23 @@ async def download_google_font(font_name):
                         )
                         return None
 
-                    with open(font_path, "wb") as f:
-                        f.write(await font_response.read())
+                    # Use context manager to ensure file is properly closed
+                    try:
+                        with open(font_path, "wb") as f:
+                            font_data = await font_response.read()
+                            f.write(font_data)
+                            # Explicitly delete large data after writing
+                            del font_data
+                            # Force garbage collection after handling large data
+                            # Use normal mode for better performance with binary data
+                            smart_garbage_collection(aggressive=False)
+                    except Exception as e:
+                        LOGGER.error(f"Error writing font file {font_name}: {e}")
+                        # Clean up partial file if there was an error
+                        with contextlib.suppress(Exception):
+                            if os.path.exists(font_path):
+                                os.remove(font_path)
+                        return None
 
                     LOGGER.info(f"Successfully downloaded Google Font: {font_name}")
                     return font_path
@@ -625,6 +650,13 @@ async def is_google_font(font_name):
     Returns:
         bool: True if the font is a valid Google Font, False otherwise
     """
+    # Check if it's just a numeric weight (like "400")
+    if font_name.isdigit():
+        LOGGER.debug(
+            f"Font name '{font_name}' is just a numeric weight, not a valid Google Font"
+        )
+        return False
+
     # Extract just the font name if weight is included
     if ":" in font_name:
         font_name = font_name.split(":", 1)[0]
@@ -635,6 +667,11 @@ async def is_google_font(font_name):
 
     # If it's in the FONT_STYLES dictionary, it's not a Google Font
     if font_name.lower() in FONT_STYLES:
+        return False
+
+    # If it's the literal string "style", it's not a valid font
+    if font_name.lower() == "style":
+        LOGGER.debug(f"Font name 'style' is a reserved word, not a valid Google Font")
         return False
 
     # Try to download the font to check if it exists
@@ -663,9 +700,7 @@ async def apply_google_font_style(text, font_name):
     # Check if the font exists
     font_exists = await is_google_font(font_name)
     if not font_exists:
-        LOGGER.warning(
-            f"Google Font '{font_name}' not found. Using default styling."
-        )
+        LOGGER.warning(f"Google Font '{font_name}' not found. Using default styling.")
         return f"<code>{text}</code>"
 
     # Apply the font using HTML (this is just for visual indication in the caption)

@@ -8,12 +8,18 @@ from asyncio.subprocess import PIPE
 from base64 import urlsafe_b64decode, urlsafe_b64encode
 from concurrent.futures import ThreadPoolExecutor
 from functools import partial, wraps
+import math
 
 from httpx import AsyncClient
 
-from bot import bot_loop, user_data
+from bot import bot_loop, LOGGER, user_data
 from bot.core.config_manager import Config
 from bot.helper.telegram_helper.button_build import ButtonMaker
+
+try:
+    from bot.helper.ext_utils.gc_utils import smart_garbage_collection
+except ImportError:
+    smart_garbage_collection = None
 
 from .help_messages import (
     CLONE_HELP_DICT,
@@ -117,6 +123,39 @@ def arg_parser(items, arg_base):
         "-med",
         "-ut",
         "-bt",
+        "-es",
+        "-compress",
+        "-comp-video",
+        "-comp-audio",
+        "-comp-image",
+        "-comp-document",
+        "-comp-subtitle",
+        "-comp-archive",
+        "-video-fast",
+        "-video-medium",
+        "-video-slow",
+        "-audio-fast",
+        "-audio-medium",
+        "-audio-slow",
+        "-image-fast",
+        "-image-medium",
+        "-image-slow",
+        "-document-fast",
+        "-document-medium",
+        "-document-slow",
+        "-subtitle-fast",
+        "-subtitle-medium",
+        "-subtitle-slow",
+        "-archive-fast",
+        "-archive-medium",
+        "-archive-slow",
+        "-extract",
+        "-extract-video",
+        "-extract-audio",
+        "-extract-subtitle",
+        "-extract-attachment",
+        "-extract-priority",
+        "-del",
     }
 
     while i < total:
@@ -136,6 +175,38 @@ def arg_parser(items, arg_base):
                 "-med",
                 "-ut",
                 "-bt",
+                "-es",
+                "-compress",
+                "-comp-video",
+                "-comp-audio",
+                "-comp-image",
+                "-comp-document",
+                "-comp-subtitle",
+                "-comp-archive",
+                "-video-fast",
+                "-video-medium",
+                "-video-slow",
+                "-audio-fast",
+                "-audio-medium",
+                "-audio-slow",
+                "-image-fast",
+                "-image-medium",
+                "-image-slow",
+                "-document-fast",
+                "-document-medium",
+                "-document-slow",
+                "-subtitle-fast",
+                "-subtitle-medium",
+                "-subtitle-slow",
+                "-archive-fast",
+                "-archive-medium",
+                "-archive-slow",
+                "-extract",
+                "-extract-video",
+                "-extract-audio",
+                "-extract-subtitle",
+                "-extract-attachment",
+                "-del",
             ]:
                 arg_base[part] = True
             else:
@@ -191,6 +262,103 @@ async def get_content_type(url):
         return None
 
 
+def get_user_split_size(user_id, args, file_size, equal_splits=False):
+    """
+    Calculate the split size based on user settings, command arguments, and file size.
+    User settings take priority over owner bot settings.
+
+    Args:
+        user_id: User ID for retrieving user settings
+        args: Command arguments that may override settings
+        file_size: Size of the file to be split
+        equal_splits: Whether to use equal splits calculation
+
+    Returns:
+        int: Calculated split size in bytes
+        bool: Whether to skip splitting
+    """
+    from bot import user_data
+    from bot.core.config_manager import Config
+    from bot.core.aeon_client import TgClient
+
+    user_dict = user_data.get(user_id, {})
+
+    # Calculate max split size based on owner's session only
+    # Always use owner's session for max split size calculation, not user's own session
+    max_split_size = (
+        TgClient.MAX_SPLIT_SIZE
+        if hasattr(Config, "USER_SESSION_STRING") and Config.USER_SESSION_STRING
+        else 2097152000
+    )
+
+    # Get split size from command args, user settings, or bot config (in that order)
+    # This ensures custom split sizes set by user or owner get priority
+    split_size = 0
+
+    # Command args have highest priority (if args is provided)
+    if args is not None and args.get("-sp"):
+        split_arg = args.get("-sp")
+        if split_arg.isdigit():
+            split_size = int(split_arg)
+        else:
+            split_size = get_size_bytes(split_arg)
+    # User settings have second priority
+    elif user_dict.get("LEECH_SPLIT_SIZE"):
+        split_size = user_dict.get("LEECH_SPLIT_SIZE")
+    # Owner settings have third priority
+    elif Config.LEECH_SPLIT_SIZE and Config.LEECH_SPLIT_SIZE != max_split_size:
+        split_size = Config.LEECH_SPLIT_SIZE
+    # Default to max split size if no custom size is set
+    else:
+        split_size = max_split_size
+
+    # Ensure split size never exceeds Telegram's limit (based on premium status)
+    # TgClient.MAX_SPLIT_SIZE is already set based on premium status
+    # This will be 4000 MiB for premium users and 2000 MiB for regular users
+    telegram_limit = TgClient.MAX_SPLIT_SIZE
+
+    # Add a safety margin to ensure we never exceed Telegram's limit
+    # Use a 10 MiB safety margin to account for any overhead or rounding issues
+    safety_margin = 10 * 1024 * 1024  # 10 MiB
+    safe_telegram_limit = telegram_limit - safety_margin
+
+    if split_size > safe_telegram_limit:
+        premium_status = "premium" if TgClient.IS_PREMIUM_USER else "non-premium"
+        limit_in_gb = telegram_limit / (1024 * 1024 * 1024)
+        safe_limit_in_gb = safe_telegram_limit / (1024 * 1024 * 1024)
+        LOGGER.warning(
+            f"Split size {split_size} exceeds Telegram's {limit_in_gb:.1f} GiB {premium_status} limit. Reducing to {safe_telegram_limit} bytes ({safe_limit_in_gb:.1f} GiB) with safety margin."
+        )
+        split_size = safe_telegram_limit
+
+    # Ensure split size doesn't exceed maximum allowed
+    split_size = min(split_size, max_split_size)
+
+    # If equal splits is enabled, always split the file into equal parts based on max split size
+    if equal_splits:
+        if file_size <= max_split_size:
+            # If file size is less than max split size, no need to split
+            return file_size, True
+        else:
+            # Calculate number of parts needed based on max split size
+            parts = math.ceil(file_size / max_split_size)
+            # Calculate equal split size
+            equal_split_size = math.ceil(file_size / parts)
+            # Ensure the calculated equal split size is never greater than max split size
+            equal_split_size = min(equal_split_size, max_split_size)
+            # Never skip splitting if equal splits is on and file size is greater than max split size
+            return equal_split_size, False
+    else:
+        # For regular splitting (not equal splits):
+        # Skip splitting if file size is less than the split size
+        if file_size <= split_size:
+            return file_size, True
+        else:
+            # Always split the file if it's larger than split_size, regardless of max_split_size
+            # This ensures files larger than max_split_size still get split when equal_splits is off
+            return split_size, False
+
+
 def update_user_ldata(id_, key, value):
     user_data.setdefault(id_, {})
     user_data[id_][key] = value
@@ -214,8 +382,8 @@ async def cmd_exec(
     Args:
         cmd: Command to execute (list or string)
         shell: Whether to use shell execution
-        apply_limits: Whether to apply resource limits (for FFmpeg commands)
-        process_id: Unique identifier for the process (for tracking)
+        apply_limits: Whether to apply resource limits (deprecated, kept for compatibility)
+        process_id: Unique identifier for the process (deprecated, kept for compatibility)
         task_type: Type of task (e.g., "FFmpeg", "Watermark", "Merge")
 
     Returns:
@@ -223,17 +391,11 @@ async def cmd_exec(
     """
     import shlex
 
-    from .resource_manager import apply_resource_limits
-
-    # Check for special characters in command arguments if using shell with apply_limits
-    if apply_limits and shell and isinstance(cmd, str):
+    # Handle shell commands with special characters
+    if shell and isinstance(cmd, str):
         # Use shlex.quote to properly escape the command for shell execution
         cmd_parts = shlex.split(cmd)
         cmd = " ".join(shlex.quote(part) for part in cmd_parts)
-
-    if apply_limits and not shell:
-        # Apply resource limits for FFmpeg commands
-        cmd = await apply_resource_limits(cmd, process_id, task_type)
 
     if shell:
         proc = await create_subprocess_shell(cmd, stdout=PIPE, stderr=PIPE)
@@ -250,11 +412,17 @@ async def cmd_exec(
     except Exception:
         stderr = "Unable to decode the error!"
 
-    # Clean up process tracking if needed
-    if apply_limits and process_id:
-        from .resource_manager import cleanup_process
-
-        cleanup_process(process_id)
+    # Force garbage collection after resource-intensive operations
+    if (
+        task_type in ["FFmpeg", "Watermark", "Merge", "7z", "Split File"]
+        and smart_garbage_collection is not None
+    ):
+        smart_garbage_collection(
+            aggressive=True
+        )  # Use aggressive mode for resource-intensive operations
+    elif proc.returncode != 0 and smart_garbage_collection is not None:
+        # Also collect garbage after failed operations to clean up any partial resources
+        smart_garbage_collection(aggressive=False)
 
     return stdout, stderr, proc.returncode
 
@@ -270,7 +438,20 @@ def new_task(func):
 async def sync_to_async(func, *args, wait=True, **kwargs):
     pfunc = partial(func, *args, **kwargs)
     future = bot_loop.run_in_executor(THREAD_POOL, pfunc)
-    return await future if wait else future
+    result = await future if wait else future
+
+    # Force garbage collection after large operations
+    if (
+        smart_garbage_collection is not None
+        and hasattr(func, "__name__")
+        and func.__name__
+        in ["walk", "get_media_info", "extract", "zip", "get_path_size"]
+    ):
+        smart_garbage_collection(
+            aggressive=False
+        )  # Use normal mode for standard operations
+
+    return result
 
 
 def async_to_sync(func, *args, wait=True, **kwargs):

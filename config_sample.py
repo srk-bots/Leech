@@ -112,13 +112,6 @@ QUEUE_ALL = 0
 QUEUE_DOWNLOAD = 0
 QUEUE_UPLOAD = 0
 
-# Resource Management
-FFMPEG_MEMORY_LIMIT = 2048  # Memory limit in MB (0 = no limit)
-FFMPEG_CPU_AFFINITY = (
-    ""  # CPU cores to use (e.g., "0-3" or "0,2,4,6"), empty = all cores
-)
-FFMPEG_DYNAMIC_THREADS = True  # Dynamically adjust thread count based on system load
-
 # Auto Restart Settings
 AUTO_RESTART_ENABLED = False  # Enable/disable automatic bot restart
 AUTO_RESTART_INTERVAL = 24  # Restart interval in hours

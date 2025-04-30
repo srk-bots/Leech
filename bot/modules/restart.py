@@ -20,10 +20,16 @@ from bot.helper.telegram_helper.message_utils import (
     delete_message,
     send_message,
 )
+from bot.helper.telegram_helper.message_utils import (
+    auto_delete_message,
+    delete_message,
+    send_message,
+)
 
 
 @new_task
 async def restart_bot(_, message):
+    await delete_message(message)  # Delete command message immediately
     await delete_message(message)  # Delete command message immediately
     buttons = button_build.ButtonMaker()
     buttons.data_button("Yes!", "botrestart confirm")
@@ -38,6 +44,7 @@ async def restart_bot(_, message):
 
 @new_task
 async def restart_sessions(_, message):
+    await delete_message(message)  # Delete command message immediately
     await delete_message(message)  # Delete command message immediately
     buttons = button_build.ButtonMaker()
     buttons.data_button("Yes!", "sessionrestart confirm")
@@ -54,12 +61,15 @@ async def send_incomplete_task_message(cid, msg_id, msg):
     try:
         if msg.startswith("Restarted Successfully!"):
             restart_msg = await TgClient.bot.edit_message_text(
+            restart_msg = await TgClient.bot.edit_message_text(
                 chat_id=cid,
                 message_id=msg_id,
                 text=msg,
                 disable_web_page_preview=True,
             )
             await remove(".restartmsg")
+            # Auto delete the restart success message after 5 minutes
+            create_task(auto_delete_message(restart_msg, time=300))  # noqa: RUF006
             # Auto delete the restart success message after 5 minutes
             create_task(auto_delete_message(restart_msg, time=300))  # noqa: RUF006
         else:
@@ -101,10 +111,16 @@ async def restart_notification():
     if await aiopath.isfile(".restartmsg"):
         try:
             restart_msg = await TgClient.bot.edit_message_text(
+        try:
+            restart_msg = await TgClient.bot.edit_message_text(
                 chat_id=chat_id,
                 message_id=msg_id,
                 text="Restarted Successfully!",
             )
+            # Auto delete the restart success message after 5 minutes
+            create_task(auto_delete_message(restart_msg, time=300))  # noqa: RUF006
+        except Exception as e:
+            LOGGER.error(e)
             # Auto delete the restart success message after 5 minutes
             create_task(auto_delete_message(restart_msg, time=300))  # noqa: RUF006
         except Exception as e:
@@ -125,9 +141,22 @@ async def confirm_restart(_, query):
             chat_id=message.chat.id,
             text="Restarting...",
         )
+        # Import garbage collection utilities
+        try:
+            from bot.helper.ext_utils.gc_utils import smart_garbage_collection
+
+            gc_available = True
+        except ImportError:
+            gc_available = False
+
+        # Stop Telegram clients
         await TgClient.stop()
+
+        # Shutdown scheduler
         if scheduler.running:
             scheduler.shutdown(wait=False)
+
+        # Cancel all intervals
         if qb := intervals["qb"]:
             qb.cancel()
         if jd := intervals["jd"]:
@@ -137,8 +166,18 @@ async def confirm_restart(_, query):
         if st := intervals["status"]:
             for intvl in list(st.values()):
                 intvl.cancel()
+
+        # Clean all downloads
         await clean_all()
+
+        # Close torrent managers
         await TorrentManager.close_all()
+
+        # Force garbage collection before closing other services
+        if gc_available:
+            smart_garbage_collection(
+                aggressive=True
+            )  # Use aggressive mode for cleanup before restart
         if sabnzbd_client.LOGGED_IN:
             await gather(
                 sabnzbd_client.pause_all(),
@@ -169,4 +208,5 @@ async def confirm_restart(_, query):
         async with aiopen(".restartmsg", "w") as f:
             await f.write(f"{restart_message.chat.id}\n{restart_message.id}\n")
         osexecl(executable, executable, "-m", "bot")
+        # REMOVE THIS delete_message(message) - message is already deleted
         # REMOVE THIS delete_message(message) - message is already deleted

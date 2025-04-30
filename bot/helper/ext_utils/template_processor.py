@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import gc
 import re
 from logging import getLogger
 
@@ -8,6 +9,12 @@ from bot.helper.ext_utils.font_utils import (
     apply_google_font_style,
     is_google_font,
 )
+# Legacy implementation is used directly in this file
+
+try:
+    from bot.helper.ext_utils.gc_utils import smart_garbage_collection
+except ImportError:
+    smart_garbage_collection = None
 
 LOGGER = getLogger(__name__)
 
@@ -29,6 +36,7 @@ async def process_template(template, data_dict):
                         - {{var}style} - Variable with styling (Google Font, HTML, Unicode)
                         - {{{var}style1}style2} - Nested styling with two levels
                         - {{{{var}style1}style2}style3} - Nested styling with three levels
+                        - Any arbitrary nesting depth with any combination of styles
         data_dict (dict): Dictionary containing values for template variables
 
     Returns:
@@ -37,13 +45,21 @@ async def process_template(template, data_dict):
     if not template:
         return ""
 
+    # Use the legacy template processor directly
+    LOGGER.debug("Using legacy template processor")
+
+    # Legacy template processor for backward compatibility
+    # Make a copy of the template to avoid modifying the original
+    processed_template = template
+
     # First, process quadruple nested template variables (four braces)
     # Format: {{{{variable}font1}font2}font3}
-    for match in re.finditer(QUAD_NESTED_TEMPLATE_VAR_PATTERN, template):
+    for match in re.finditer(QUAD_NESTED_TEMPLATE_VAR_PATTERN, processed_template):
         var_name = match.group(1).strip()
         style1 = match.group(2).strip() if match.group(2) else None
         style2 = match.group(3).strip() if match.group(3) else None
         style3 = match.group(4).strip() if match.group(4) else None
+        original_match = match.group(0)
 
         if var_name in data_dict:
             value = str(data_dict[var_name])
@@ -53,39 +69,37 @@ async def process_template(template, data_dict):
         else:
             # If it's not a template variable, treat it as custom text
             value = var_name
-            LOGGER.debug(
-                f"Processing custom text in quad nested template: {var_name}"
-            )
+            LOGGER.debug(f"Processing custom text in quad nested template: {var_name}")
 
-            # Apply first style (innermost)
-            if style1:
-                try:
-                    LOGGER.debug(f"Applying style1: {style1} to {value}")
-                    # Check if it's a Google Font
-                    if await is_google_font(style1):
-                        value = await apply_google_font_style(value, style1)
+        # Apply first style (innermost)
+        if style1:
+            try:
+                LOGGER.debug(f"Applying style1: {style1} to {value}")
+                # Check if it's a Google Font
+                if await is_google_font(style1):
+                    value = await apply_google_font_style(value, style1)
+                    LOGGER.debug(f"Applied Google Font {style1}, result: {value}")
+                # Check if it's an HTML style
+                elif style1.lower() in FONT_STYLES:
+                    value = await apply_font_style(value, style1)
+                    LOGGER.debug(f"Applied HTML style {style1}, result: {value}")
+                # Check if it's a single character (emoji/unicode)
+                elif (
+                    len(style1) == 1 or len(style1) == 2
+                ):  # Support for emoji (which can be 2 chars)
+                    value = f"{style1}{value}{style1}"
+                    LOGGER.debug(f"Applied emoji/unicode {style1}, result: {value}")
+                else:
+                    # Special handling for the literal string "style"
+                    if style1.lower() == "style":
                         LOGGER.debug(
-                            f"Applied Google Font {style1}, result: {value}"
+                            f"'style' is a reserved word, not a valid font style. Using code formatting instead."
                         )
-                    # Check if it's an HTML style
-                    elif style1.lower() in FONT_STYLES:
-                        value = await apply_font_style(value, style1)
-                        LOGGER.debug(f"Applied HTML style {style1}, result: {value}")
-                        # Special handling for combined HTML styles
-                        if "_" in style1.lower():
-                            LOGGER.debug(f"Detected combined HTML style: {style1}")
-                    # Check if it's a single character (emoji/unicode)
-                    elif (
-                        len(style1) == 1 or len(style1) == 2
-                    ):  # Support for emoji (which can be 2 chars)
-                        value = f"{style1}{value}{style1}"
-                        LOGGER.debug(
-                            f"Applied emoji/unicode {style1}, result: {value}"
-                        )
+                        value = f"<code>{value}</code>"
                     else:
                         LOGGER.warning(f"Style1 '{style1}' not recognized")
-                except Exception as e:
-                    LOGGER.error(f"Error applying style1 {style1}: {e}")
+            except Exception as e:
+                LOGGER.error(f"Error applying style1 {style1}: {e}")
 
             # Apply second style
             if style2:
@@ -94,9 +108,7 @@ async def process_template(template, data_dict):
                     # Check if it's a Google Font
                     if await is_google_font(style2):
                         value = await apply_google_font_style(value, style2)
-                        LOGGER.debug(
-                            f"Applied Google Font {style2}, result: {value}"
-                        )
+                        LOGGER.debug(f"Applied Google Font {style2}, result: {value}")
                     # Check if it's an HTML style
                     elif style2.lower() in FONT_STYLES:
                         value = await apply_font_style(value, style2)
@@ -109,11 +121,16 @@ async def process_template(template, data_dict):
                         len(style2) == 1 or len(style2) == 2
                     ):  # Support for emoji (which can be 2 chars)
                         value = f"{style2}{value}{style2}"
-                        LOGGER.debug(
-                            f"Applied emoji/unicode {style2}, result: {value}"
-                        )
+                        LOGGER.debug(f"Applied emoji/unicode {style2}, result: {value}")
                     else:
-                        LOGGER.warning(f"Style2 '{style2}' not recognized")
+                        # Special handling for the literal string "style"
+                        if style2.lower() == "style":
+                            LOGGER.debug(
+                                f"'style' is a reserved word, not a valid font style. Using code formatting instead."
+                            )
+                            value = f"<code>{value}</code>"
+                        else:
+                            LOGGER.warning(f"Style2 '{style2}' not recognized")
                 except Exception as e:
                     LOGGER.error(f"Error applying style2 {style2}: {e}")
 
@@ -124,9 +141,7 @@ async def process_template(template, data_dict):
                     # Check if it's a Google Font
                     if await is_google_font(style3):
                         value = await apply_google_font_style(value, style3)
-                        LOGGER.debug(
-                            f"Applied Google Font {style3}, result: {value}"
-                        )
+                        LOGGER.debug(f"Applied Google Font {style3}, result: {value}")
                     # Check if it's an HTML style
                     elif style3.lower() in FONT_STYLES:
                         value = await apply_font_style(value, style3)
@@ -139,24 +154,30 @@ async def process_template(template, data_dict):
                         len(style3) == 1 or len(style3) == 2
                     ):  # Support for emoji (which can be 2 chars)
                         value = f"{style3}{value}{style3}"
-                        LOGGER.debug(
-                            f"Applied emoji/unicode {style3}, result: {value}"
-                        )
+                        LOGGER.debug(f"Applied emoji/unicode {style3}, result: {value}")
                     else:
-                        LOGGER.warning(f"Style3 '{style3}' not recognized")
+                        # Special handling for the literal string "style"
+                        if style3.lower() == "style":
+                            LOGGER.debug(
+                                f"'style' is a reserved word, not a valid font style. Using code formatting instead."
+                            )
+                            value = f"<code>{value}</code>"
+                        else:
+                            LOGGER.warning(f"Style3 '{style3}' not recognized")
                 except Exception as e:
                     LOGGER.error(f"Error applying style3 {style3}: {e}")
 
             # Replace in the template
-            LOGGER.debug(f"Replacing {match.group(0)} with {value}")
-            template = template.replace(match.group(0), value)
+            LOGGER.debug(f"Replacing {original_match} with {value}")
+            processed_template = processed_template.replace(original_match, value)
 
-    # First, process nested template variables (triple braces)
+    # Next, process nested template variables (triple braces)
     # Format: {{{variable}font1}font2}
-    for match in re.finditer(NESTED_TEMPLATE_VAR_PATTERN, template):
+    for match in re.finditer(NESTED_TEMPLATE_VAR_PATTERN, processed_template):
         var_name = match.group(1).strip()
         inner_style = match.group(2).strip() if match.group(2) else None
         outer_style = match.group(3).strip() if match.group(3) else None
+        original_match = match.group(0)
 
         if var_name in data_dict:
             value = str(data_dict[var_name])
@@ -168,39 +189,37 @@ async def process_template(template, data_dict):
             value = var_name
             LOGGER.debug(f"Processing custom text in nested template: {var_name}")
 
-            # Apply inner style first
-            if inner_style:
-                try:
-                    LOGGER.debug(f"Applying inner style: {inner_style} to {value}")
-                    # Check if it's a Google Font
-                    if await is_google_font(inner_style):
-                        value = await apply_google_font_style(value, inner_style)
+        # Apply inner style first
+        if inner_style:
+            try:
+                LOGGER.debug(f"Applying inner style: {inner_style} to {value}")
+                # Check if it's a Google Font
+                if await is_google_font(inner_style):
+                    value = await apply_google_font_style(value, inner_style)
+                    LOGGER.debug(f"Applied Google Font {inner_style}, result: {value}")
+                # Check if it's an HTML style
+                elif inner_style.lower() in FONT_STYLES:
+                    value = await apply_font_style(value, inner_style)
+                    LOGGER.debug(f"Applied HTML style {inner_style}, result: {value}")
+                # Check if it's a single character (emoji/unicode)
+                elif (
+                    len(inner_style) == 1 or len(inner_style) == 2
+                ):  # Support for emoji (which can be 2 chars)
+                    value = f"{inner_style}{value}{inner_style}"
+                    LOGGER.debug(
+                        f"Applied emoji/unicode {inner_style}, result: {value}"
+                    )
+                else:
+                    # Special handling for the literal string "style"
+                    if inner_style.lower() == "style":
                         LOGGER.debug(
-                            f"Applied Google Font {inner_style}, result: {value}"
+                            f"'style' is a reserved word, not a valid font style. Using code formatting instead."
                         )
-                    # Check if it's an HTML style
-                    elif inner_style.lower() in FONT_STYLES:
-                        value = await apply_font_style(value, inner_style)
-                        LOGGER.debug(
-                            f"Applied HTML style {inner_style}, result: {value}"
-                        )
-                        # Special handling for combined HTML styles to ensure proper nesting
-                        if "_" in inner_style.lower():
-                            LOGGER.debug(
-                                f"Detected combined HTML style: {inner_style}"
-                            )
-                    # Check if it's a single character (emoji/unicode)
-                    elif (
-                        len(inner_style) == 1 or len(inner_style) == 2
-                    ):  # Support for emoji (which can be 2 chars)
-                        value = f"{inner_style}{value}{inner_style}"
-                        LOGGER.debug(
-                            f"Applied emoji/unicode {inner_style}, result: {value}"
-                        )
+                        value = f"<code>{value}</code>"
                     else:
                         LOGGER.warning(f"Inner style '{inner_style}' not recognized")
-                except Exception as e:
-                    LOGGER.error(f"Error applying inner style {inner_style}: {e}")
+            except Exception as e:
+                LOGGER.error(f"Error applying inner style {inner_style}: {e}")
 
             # Apply outer style
             if outer_style:
@@ -220,9 +239,7 @@ async def process_template(template, data_dict):
                         )
                         # Special handling for combined HTML styles to ensure proper nesting
                         if "_" in outer_style.lower():
-                            LOGGER.debug(
-                                f"Detected combined HTML style: {outer_style}"
-                            )
+                            LOGGER.debug(f"Detected combined HTML style: {outer_style}")
                     # Check if it's a single character (emoji/unicode)
                     elif (
                         len(outer_style) == 1 or len(outer_style) == 2
@@ -232,13 +249,22 @@ async def process_template(template, data_dict):
                             f"Applied emoji/unicode {outer_style}, result: {value}"
                         )
                     else:
-                        LOGGER.warning(f"Outer style '{outer_style}' not recognized")
+                        # Special handling for the literal string "style"
+                        if outer_style.lower() == "style":
+                            LOGGER.debug(
+                                f"'style' is a reserved word, not a valid font style. Using code formatting instead."
+                            )
+                            value = f"<code>{value}</code>"
+                        else:
+                            LOGGER.warning(
+                                f"Outer style '{outer_style}' not recognized"
+                            )
                 except Exception as e:
                     LOGGER.error(f"Error applying outer style {outer_style}: {e}")
 
             # Replace in the template
-            LOGGER.debug(f"Replacing {match.group(0)} with {value}")
-            template = template.replace(match.group(0), value)
+            LOGGER.debug(f"Replacing {original_match} with {value}")
+            processed_template = processed_template.replace(original_match, value)
 
     # Function to process regular template variables
     async def replace_match(match):
@@ -253,6 +279,49 @@ async def process_template(template, data_dict):
             if var_name in data_dict:
                 value = str(data_dict[var_name])
                 LOGGER.debug(f"Variable {var_name} value: {value}")
+
+                # Apply styling if specified
+                if style_name:
+                    try:
+                        LOGGER.debug(f"Applying style: {style_name} to {value}")
+                        # Check if it's a Google Font
+                        if await is_google_font(style_name):
+                            styled_value = await apply_google_font_style(
+                                value, style_name
+                            )
+                            LOGGER.debug(
+                                f"Applied Google Font {style_name}, result: {styled_value}"
+                            )
+                            return styled_value
+                        # Check if it's an HTML style
+                        if style_name.lower() in FONT_STYLES:
+                            styled_value = await apply_font_style(value, style_name)
+                            LOGGER.debug(
+                                f"Applied HTML style {style_name}, result: {styled_value}"
+                            )
+                            return styled_value
+                        # Check if it's a single character (emoji/unicode)
+                        if (
+                            len(style_name) == 1 or len(style_name) == 2
+                        ):  # Support for emoji (which can be 2 chars)
+                            styled_value = f"{style_name}{value}{style_name}"
+                            LOGGER.debug(
+                                f"Applied emoji/unicode {style_name}, result: {styled_value}"
+                            )
+                            return styled_value
+                        # Special handling for the literal string "style"
+                        if style_name.lower() == "style":
+                            LOGGER.debug(
+                                f"'style' is a reserved word, not a valid font style. Using code formatting instead."
+                            )
+                            return f"<code>{value}</code>"
+                        else:
+                            LOGGER.warning(f"Style '{style_name}' not recognized")
+                            return value
+                    except Exception as e:
+                        LOGGER.error(f"Error applying style {style_name}: {e}")
+                        return value
+                return value
             else:
                 # If it's not a template variable, treat it as custom text
                 value = var_name
@@ -292,8 +361,15 @@ async def process_template(template, data_dict):
                                 f"Applied emoji/unicode {style_name}, result: {styled_value}"
                             )
                             return styled_value
-                        LOGGER.warning(f"Style '{style_name}' not recognized")
-                        return f"<code>{value}</code>"
+                        # Special handling for the literal string "style"
+                        if style_name.lower() == "style":
+                            LOGGER.debug(
+                                f"'style' is a reserved word, not a valid font style. Using code formatting instead."
+                            )
+                            return f"<code>{value}</code>"
+                        else:
+                            LOGGER.warning(f"Style '{style_name}' not recognized")
+                            return f"<code>{value}</code>"
                     except Exception as e:
                         LOGGER.error(f"Error applying style {style_name}: {e}")
                         return value
@@ -313,13 +389,24 @@ async def process_template(template, data_dict):
         return match.group(0)  # Return the original if variable not found
 
     # Process regular template variables
-    result = template
-    for match in re.finditer(TEMPLATE_VAR_PATTERN, template):
+    result = processed_template
+    for match in re.finditer(TEMPLATE_VAR_PATTERN, processed_template):
         replacement = await replace_match(match)
         result = result.replace(match.group(0), replacement)
 
     # Final processing of HTML tags to ensure they're properly formatted
-    return await process_html_tags(result)
+    processed_result = await process_html_tags(result)
+
+    # Force garbage collection after processing complex templates
+    # This can create many temporary strings and objects
+    if smart_garbage_collection and len(template) > 1000:  # Only for large templates
+        # Use normal mode for template processing
+        smart_garbage_collection(aggressive=False)
+    elif len(template) > 1000:  # Only for large templates
+        # Only collect generation 0 (youngest objects) for better performance
+        gc.collect(0)
+
+    return processed_result
 
 
 async def process_html_tags(text):
@@ -362,9 +449,7 @@ async def process_html_tags(text):
     ]
 
     # Check for expandable blockquotes and ensure they have multiple lines
-    expandable_blockquote_pattern = (
-        r"<blockquote\s+expandable[^>]*>(.*?)</blockquote>"
-    )
+    expandable_blockquote_pattern = r"<blockquote\s+expandable[^>]*>(.*?)</blockquote>"
     for match in re.finditer(expandable_blockquote_pattern, text, re.DOTALL):
         content = match.group(1)
         if "\n" not in content:
@@ -400,4 +485,12 @@ async def process_html_tags(text):
         LOGGER.warning(f"Unclosed HTML tags: {open_tags} in: {text}")
 
     # Return the potentially modified text
+    # Force garbage collection if the text is very large
+    if smart_garbage_collection and len(text) > 10000:  # Only for very large texts
+        # Use normal mode for HTML processing
+        smart_garbage_collection(aggressive=False)
+    elif len(text) > 10000:  # Only for very large texts
+        # Only collect generation 0 (youngest objects) for better performance
+        gc.collect(0)
+
     return text

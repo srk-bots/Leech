@@ -1,4 +1,5 @@
 import contextlib
+import gc
 from asyncio import gather, sleep
 from inspect import iscoroutinefunction
 from pathlib import Path
@@ -14,6 +15,7 @@ from tenacity import (  # type: ignore
 )
 
 from bot import LOGGER, aria2_options
+from bot.helper.ext_utils.gc_utils import smart_garbage_collection
 
 
 def wrap_with_retry(obj, max_retries=5):
@@ -114,7 +116,14 @@ class TorrentManager:
         if cls.qbittorrent:
             tasks.append(cls.qbittorrent.close())
         if tasks:
-            await gather(*tasks)
+            try:
+                await gather(*tasks)
+                LOGGER.info("Successfully closed all torrent connections")
+            except Exception as e:
+                LOGGER.error(f"Error closing torrent connections: {e}")
+
+        # Force garbage collection after closing connections
+        smart_garbage_collection(aggressive=True)
 
     @classmethod
     async def aria2_remove(cls, download):
@@ -126,24 +135,32 @@ class TorrentManager:
 
     @classmethod
     async def remove_all(cls):
-        await cls.pause_all()
-        await gather(
-            cls.qbittorrent.torrents.delete("all", True),
-            cls.aria2.purgeDownloadResult(),
-        )
-        downloads = []
-        results = await gather(
-            cls.aria2.tellActive(),
-            cls.aria2.tellWaiting(0, 1000),
-        )
-        for res in results:
-            downloads.extend(res)
-        tasks = []
-        tasks.extend(
-            cls.aria2.forceRemove(download.get("gid")) for download in downloads
-        )
-        with contextlib.suppress(Exception):
-            await gather(*tasks)
+        try:
+            await cls.pause_all()
+            await gather(
+                cls.qbittorrent.torrents.delete("all", True),
+                cls.aria2.purgeDownloadResult(),
+            )
+            downloads = []
+            results = await gather(
+                cls.aria2.tellActive(),
+                cls.aria2.tellWaiting(0, 1000),
+            )
+            for res in results:
+                downloads.extend(res)
+            tasks = []
+            tasks.extend(
+                cls.aria2.forceRemove(download.get("gid")) for download in downloads
+            )
+            with contextlib.suppress(Exception):
+                await gather(*tasks)
+
+            # Force garbage collection after removing all torrents
+            # This helps free memory used by large torrent metadata
+            smart_garbage_collection(aggressive=True)
+
+        except Exception as e:
+            LOGGER.error(f"Error removing all torrents: {e}")
 
     @classmethod
     async def overall_speed(cls):

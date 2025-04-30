@@ -32,7 +32,7 @@ commands = {
     "python": (["python3", "--version"], r"Python ([\d.]+)"),
     "rclone": (["xone", "--version"], r"rclone v([\d.]+)"),
     "yt-dlp": (["yt-dlp", "--version"], r"([\d.]+)"),
-    "ffmpeg": (["xtra", "-version"], r"ffmpeg version (n[\d.]+)"),
+    "ffmpeg": (["xtra", "-version"], r"ffmpeg version ([\d.\w-]+)"),
     "7z": (["7z", "i"], r"7-Zip ([\d.]+)"),
 }
 
@@ -96,9 +96,7 @@ async def get_version_async(command, regex):
 
 @new_task
 async def get_packages_version():
-    tasks = [
-        get_version_async(command, regex) for command, regex in commands.values()
-    ]
+    tasks = [get_version_async(command, regex) for command, regex in commands.values()]
     versions = await gather(*tasks)
     commands.update(dict(zip(commands.keys(), versions, strict=False)))
     if await aiopath.exists(".git"):

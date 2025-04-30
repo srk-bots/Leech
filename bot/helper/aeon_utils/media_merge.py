@@ -1,3 +1,4 @@
+import gc
 import logging
 import os
 import resource
@@ -10,13 +11,18 @@ from bot.core.config_manager import Config
 
 LOGGER = logging.getLogger(__name__)
 
+try:
+    from bot.helper.ext_utils.gc_utils import smart_garbage_collection
+except ImportError:
+    smart_garbage_collection = None
+
 
 # Function to limit memory usage for PIL operations
 def limit_memory_for_pil():
     """Apply memory limits for PIL operations based on config."""
     try:
         # Get memory limit from config
-        memory_limit = Config.FFMPEG_MEMORY_LIMIT
+        memory_limit = Config.PIL_MEMORY_LIMIT
 
         if memory_limit > 0:
             # Convert MB to bytes for resource limit
@@ -25,9 +31,6 @@ def limit_memory_for_pil():
             # Set soft limit (warning) and hard limit (error)
             resource.setrlimit(
                 resource.RLIMIT_AS, (memory_limit_bytes, memory_limit_bytes)
-            )
-            LOGGER.debug(
-                f"Applied memory limit of {memory_limit} MB for image processing"
             )
 
         return True
@@ -70,7 +73,27 @@ async def merge_images(
         images = []
         for f in files:
             try:
+                # Skip the merged output file if it exists in the input list
+                if os.path.basename(f) == f"merged.{output_format}":
+                    LOGGER.info(f"Skipping previous merged output file: {f}")
+                    continue
+
+                # Skip any extremely large images (potential memory issues)
+                file_size = os.path.getsize(f)
+                if file_size > 50 * 1024 * 1024:  # 50 MB limit
+                    LOGGER.warning(
+                        f"Skipping very large image file ({file_size / 1024 / 1024:.2f} MB): {f}"
+                    )
+                    continue
+
                 img = Image.open(f)
+
+                # Skip images with extreme dimensions
+                if img.width > 5000 or img.height > 5000:
+                    LOGGER.warning(
+                        f"Skipping image with extreme dimensions ({img.width}x{img.height}): {f}"
+                    )
+                    continue
 
                 # Convert to RGB if needed (handle more color modes)
                 if img.mode == "RGBA" and output_format.lower() in ["jpg", "jpeg"]:
@@ -82,9 +105,6 @@ async def merge_images(
                     img = background
                 elif img.mode != "RGB" and output_format.lower() in ["jpg", "jpeg"]:
                     img = img.convert("RGB")
-
-                # Log image details for debugging
-                LOGGER.debug(f"Image {f}: size={img.size}, mode={img.mode}")
 
                 images.append(img)
             except Exception as e:
@@ -101,25 +121,48 @@ async def merge_images(
             total_height = sum(img.height for img in images)
             max_width = max(img.width for img in images)
 
-            # Check if we need to resize images to match width
-            need_resize = any(img.width != max_width for img in images)
-            if need_resize:
-                LOGGER.info(f"Resizing images to match width: {max_width}px")
+            # Check if dimensions are too large (add a reasonable limit)
+            MAX_DIMENSION = 10000  # Maximum dimension in pixels
+            if max_width > MAX_DIMENSION or total_height > MAX_DIMENSION:
+                LOGGER.warning(
+                    f"Image dimensions too large: {max_width}x{total_height}. Scaling down."
+                )
+                scale_factor = min(
+                    MAX_DIMENSION / max_width, MAX_DIMENSION / total_height
+                )
+                target_width = int(max_width * scale_factor)
+
+                # Resize all images proportionally
                 resized_images = []
                 for img in images:
-                    if img.width != max_width:
-                        # Calculate new height maintaining aspect ratio
-                        new_height = int(img.height * (max_width / img.width))
-                        resized_img = img.resize(
-                            (max_width, new_height), Image.LANCZOS
-                        )
-                        resized_images.append(resized_img)
-                    else:
-                        resized_images.append(img)
+                    new_width = target_width
+                    new_height = int(img.height * (new_width / img.width))
+                    resized_img = img.resize((new_width, new_height), Image.LANCZOS)
+                    resized_images.append(resized_img)
 
-                # Recalculate total height with resized images
+                # Recalculate dimensions
+                max_width = target_width
                 total_height = sum(img.height for img in resized_images)
                 images = resized_images
+            else:
+                # Check if we need to resize images to match width
+                need_resize = any(img.width != max_width for img in images)
+                if need_resize:
+                    resized_images = []
+                    for img in images:
+                        if img.width != max_width:
+                            # Calculate new height maintaining aspect ratio
+                            new_height = int(img.height * (max_width / img.width))
+                            resized_img = img.resize(
+                                (max_width, new_height), Image.LANCZOS
+                            )
+                            resized_images.append(resized_img)
+                        else:
+                            resized_images.append(img)
+
+                    # Recalculate total height with resized images
+                    total_height = sum(img.height for img in resized_images)
+                    images = resized_images
 
             # Create a new image with the calculated dimensions
             merged_image = Image.new("RGB", (max_width, total_height))
@@ -135,25 +178,48 @@ async def merge_images(
             total_width = sum(img.width for img in images)
             max_height = max(img.height for img in images)
 
-            # Check if we need to resize images to match height
-            need_resize = any(img.height != max_height for img in images)
-            if need_resize:
-                LOGGER.info(f"Resizing images to match height: {max_height}px")
+            # Check if dimensions are too large (add a reasonable limit)
+            MAX_DIMENSION = 10000  # Maximum dimension in pixels
+            if max_height > MAX_DIMENSION or total_width > MAX_DIMENSION:
+                LOGGER.warning(
+                    f"Image dimensions too large: {total_width}x{max_height}. Scaling down."
+                )
+                scale_factor = min(
+                    MAX_DIMENSION / max_height, MAX_DIMENSION / total_width
+                )
+                target_height = int(max_height * scale_factor)
+
+                # Resize all images proportionally
                 resized_images = []
                 for img in images:
-                    if img.height != max_height:
-                        # Calculate new width maintaining aspect ratio
-                        new_width = int(img.width * (max_height / img.height))
-                        resized_img = img.resize(
-                            (new_width, max_height), Image.LANCZOS
-                        )
-                        resized_images.append(resized_img)
-                    else:
-                        resized_images.append(img)
+                    new_height = target_height
+                    new_width = int(img.width * (new_height / img.height))
+                    resized_img = img.resize((new_width, new_height), Image.LANCZOS)
+                    resized_images.append(resized_img)
 
-                # Recalculate total width with resized images
+                # Recalculate dimensions
+                max_height = target_height
                 total_width = sum(img.width for img in resized_images)
                 images = resized_images
+            else:
+                # Check if we need to resize images to match height
+                need_resize = any(img.height != max_height for img in images)
+                if need_resize:
+                    resized_images = []
+                    for img in images:
+                        if img.height != max_height:
+                            # Calculate new width maintaining aspect ratio
+                            new_width = int(img.width * (max_height / img.height))
+                            resized_img = img.resize(
+                                (new_width, max_height), Image.LANCZOS
+                            )
+                            resized_images.append(resized_img)
+                        else:
+                            resized_images.append(img)
+
+                    # Recalculate total width with resized images
+                    total_width = sum(img.width for img in resized_images)
+                    images = resized_images
 
             # Create a new image with the calculated dimensions
             merged_image = Image.new("RGB", (total_width, max_height))
@@ -172,8 +238,6 @@ async def merge_images(
             columns = max(1, min(columns, len(images)))  # Ensure valid column count
             rows = (len(images) + columns - 1) // columns  # Ceiling division
 
-            LOGGER.info(f"Creating collage with {columns}x{rows} grid")
-
             # Find the average dimensions for better proportions
             avg_width = sum(img.width for img in images) // len(images)
             avg_height = sum(img.height for img in images) // len(images)
@@ -182,6 +246,22 @@ async def merge_images(
             # Using average dimensions with a margin for better aesthetics
             cell_width = int(avg_width * 1.1)  # 10% margin
             cell_height = int(avg_height * 1.1)  # 10% margin
+
+            # Check if the total dimensions would be too large
+            MAX_DIMENSION = 10000  # Maximum dimension in pixels
+            total_width = cell_width * columns
+            total_height = cell_height * rows
+
+            if total_width > MAX_DIMENSION or total_height > MAX_DIMENSION:
+                scale_factor = min(
+                    MAX_DIMENSION / total_width, MAX_DIMENSION / total_height
+                )
+                cell_width = int(cell_width * scale_factor)
+                cell_height = int(cell_height * scale_factor)
+
+                # Recalculate total dimensions
+                total_width = cell_width * columns
+                total_height = cell_height * rows
 
             # Resize all images to fit the cell size while maintaining aspect ratio
             resized_images = []
@@ -217,9 +297,7 @@ async def merge_images(
             images = resized_images
 
             # Create a new image with the calculated dimensions
-            merged_image = Image.new(
-                "RGB", (cell_width * columns, cell_height * rows)
-            )
+            merged_image = Image.new("RGB", (cell_width * columns, cell_height * rows))
 
             # Paste images in a grid
             for i, img in enumerate(images):
@@ -245,9 +323,6 @@ async def merge_images(
         # Convert image mode if needed for the output format
         if output_format in ["jpg", "jpeg"]:
             if merged_image.mode != "RGB":
-                LOGGER.info(
-                    f"Converting image mode from {merged_image.mode} to RGB for JPEG output"
-                )
                 merged_image = merged_image.convert("RGB")
             merged_image.save(output_file, quality=quality)
         elif output_format == "png":
@@ -277,6 +352,14 @@ async def merge_images(
             merged_image.save(output_file)
 
         LOGGER.info(f"Successfully merged {len(images)} images into {output_file}")
+
+        # Force garbage collection after image merging
+        # This can create large objects in memory
+        if smart_garbage_collection:
+            smart_garbage_collection(aggressive=True)
+        else:
+            gc.collect()
+
         return output_file
 
     except Exception as e:
@@ -340,6 +423,14 @@ async def merge_pdfs(files, output_filename="merged.pdf"):
         merger.close()
 
         LOGGER.info(f"Successfully merged {valid_pdfs} PDFs into {output_file}")
+
+        # Force garbage collection after PDF merging
+        # This can create large objects in memory
+        if smart_garbage_collection:
+            smart_garbage_collection(aggressive=True)
+        else:
+            gc.collect()
+
         return output_file
 
     except Exception as e:
@@ -456,9 +547,7 @@ async def merge_documents(files, output_format="pdf"):
             if img.mode == "RGBA":
                 # Create white background for transparent images
                 background = Image.new("RGB", img.size, (255, 255, 255))
-                background.paste(
-                    img, mask=img.split()[3]
-                )  # Use alpha channel as mask
+                background.paste(img, mask=img.split()[3])  # Use alpha channel as mask
                 img = background
             elif img.mode != "RGB":
                 img = img.convert("RGB")
@@ -494,15 +583,21 @@ async def merge_documents(files, output_format="pdf"):
         LOGGER.info(
             f"Successfully merged {pdf_count} PDFs and {image_count} images into {output_file}"
         )
+
+        # Force garbage collection after document merging
+        # This can create large objects in memory
+        if smart_garbage_collection:
+            smart_garbage_collection(aggressive=True)
+        else:
+            gc.collect()
+
         return output_file
     except Exception as e:
         LOGGER.error(f"Error writing merged PDF: {e}")
         return None
 
 
-async def create_pdf_from_images(
-    image_files, output_file="merged.pdf", page_size=None
-):
+async def create_pdf_from_images(image_files, output_file="merged.pdf", page_size=None):
     """
     Create a PDF from multiple image files.
 
@@ -666,7 +761,9 @@ async def add_text_to_image(
         draw.text(position, text, fill=color, font=font)
 
         # Save the image
-        output_path = f"{os.path.splitext(image_path)[0]}_text{os.path.splitext(image_path)[1]}"
+        output_path = (
+            f"{os.path.splitext(image_path)[0]}_text{os.path.splitext(image_path)[1]}"
+        )
         img.save(output_path)
 
         LOGGER.info(f"Successfully added text to image: {output_path}")

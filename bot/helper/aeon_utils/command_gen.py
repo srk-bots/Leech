@@ -1,45 +1,13 @@
 import asyncio
 import json
 import os
-from time import time
+import os.path
 
 import aiohttp
 
 from bot import LOGGER, cpu_no
 from bot.helper.ext_utils.bot_utils import cmd_exec
-
-
-async def get_streams(file):
-    cmd = [
-        "ffprobe",
-        "-hide_banner",
-        "-loglevel",
-        "error",
-        "-print_format",
-        "json",
-        "-show_streams",
-        file,
-    ]
-
-    # Generate a unique process ID for tracking
-    process_id = f"ffprobe_streams_{time()}"
-
-    # Execute the command with resource limits
-    stdout, stderr, code = await cmd_exec(
-        cmd, apply_limits=True, process_id=process_id, task_type="FFprobe"
-    )
-
-    if code != 0:
-        LOGGER.error(f"Error getting stream info: {stderr}")
-        return None
-
-    try:
-        return json.loads(stdout)["streams"]
-    except KeyError:
-        LOGGER.error(
-            f"No streams found in the ffprobe output: {stdout}",
-        )
-        return None
+from bot.helper.ext_utils.media_utils import get_streams
 
 
 async def download_google_font(font_name):
@@ -108,9 +76,21 @@ async def download_google_font(font_name):
 
 
 async def get_watermark_cmd(
-    file, key, position="top_left", size=20, color="white", font="default.otf"
+    file,
+    key,
+    position="top_left",
+    size=20,
+    color="white",  # Default color is white
+    font="default.otf",
+    fast_mode=False,
+    maintain_quality=True,
+    opacity=1.0,
+    audio_watermark_enabled=False,
+    audio_watermark_text="",
+    subtitle_watermark_enabled=False,
+    subtitle_watermark_text="",
 ):
-    """Generate FFmpeg command for adding watermark to video or image.
+    """Generate FFmpeg command for adding watermark to media files with improved handling.
 
     Args:
         file: Path to the input file
@@ -119,13 +99,18 @@ async def get_watermark_cmd(
         size: Font size
         color: Font color
         font: Font file name or Google Font name
+        fast_mode: Whether to use ultrafast preset for large files
+        maintain_quality: Whether to maintain original quality
+        opacity: Opacity of watermark (0.0-1.0)
 
     Returns:
         tuple: FFmpeg command and temporary output file path, or None, None if not supported
     """
     # Import the function to determine media type
     from bot.helper.ext_utils.media_utils import get_media_type_for_watermark
-    from bot.helper.ext_utils.resource_manager import get_optimal_thread_count
+
+    # Resource manager removed
+    from bot.helper.ext_utils.bot_utils import cmd_exec
 
     # Determine the media type
     media_type = await get_media_type_for_watermark(file)
@@ -133,12 +118,66 @@ async def get_watermark_cmd(
         LOGGER.warning(f"Unsupported file type for watermarking: {file}")
         return None, None
 
+    # Check if file dimensions are divisible by 2 for video files
+    needs_padding = True  # Always use padding for safety
+    width = 0
+    height = 0
+
+    if media_type == "video":
+        try:
+            # Use ffprobe to get dimensions
+            cmd = [
+                "ffprobe",  # Keep as ffprobe, not xtra
+                "-v",
+                "error",
+                "-select_streams",
+                "v:0",
+                "-show_entries",
+                "stream=width,height",
+                "-of",
+                "json",
+                file,
+            ]
+
+            # Execute the command
+            stdout, _, code = await cmd_exec(cmd)
+
+            if code == 0:
+                data = json.loads(stdout)
+                if data.get("streams"):
+                    width = int(data["streams"][0].get("width", 0))
+                    height = int(data["streams"][0].get("height", 0))
+
+                    # Check if dimensions are divisible by 2
+                    if width % 2 != 0 or height % 2 != 0:
+                        LOGGER.debug(
+                            f"Video dimensions not divisible by 2: {width}x{height}, will apply padding"
+                        )
+                    else:
+                        LOGGER.debug(
+                            f"Video dimensions are divisible by 2: {width}x{height}"
+                        )
+                        needs_padding = False
+
+        except Exception as e:
+            LOGGER.warning(f"Error checking video dimensions: {e}")
+
+        LOGGER.debug(
+            f"Padding decision for {os.path.basename(file)}: needs_padding={needs_padding}, dimensions={width}x{height}"
+        )
+
     # Determine output file extension based on input file
     file_ext = os.path.splitext(file)[1].lower()
 
     # For videos, always use .mkv as temp extension for maximum compatibility
     if media_type == "video":
         temp_file = f"{file}.temp.mkv"
+    elif media_type == "audio":
+        # For audio files, preserve the original extension
+        temp_file = f"{file}.temp{file_ext}"
+    elif media_type == "subtitle":
+        # For subtitle files, preserve the original extension
+        temp_file = f"{file}.temp{file_ext}"
     else:
         # For images, preserve the original extension
         temp_file = f"{file}.temp{file_ext}"
@@ -174,11 +213,21 @@ async def get_watermark_cmd(
 
     # Create the drawtext filter with shadow for better visibility
     # Add a shadow effect to make text more readable on any background
+
+    # Handle None values for color by using default color "white"
+    if color is None or color == "None":
+        color = "white"
+        LOGGER.info(f"Color parameter was None, using default color: {color}")
+
     shadow_color = "black" if color.lower() != "black" else "white"
     drawtext_filter = (
         f"drawtext=text='{key}':fontfile={font_path}:fontsize={size}:"
         f"fontcolor={color}:x={x_pos}:y={y_pos}:shadowcolor={shadow_color}:shadowx=1:shadowy=1"
     )
+
+    # Add opacity if specified
+    if opacity < 1.0:
+        drawtext_filter += f":alpha={opacity}"
 
     # Base command for all media types
     cmd = [
@@ -193,42 +242,63 @@ async def get_watermark_cmd(
         "-ignore_unknown",
     ]
 
+    # Check file size for fast mode
+    large_file_threshold = 100 * 1024 * 1024  # 100MB
+    file_size = os.path.getsize(file)
+    use_fast_mode = fast_mode and file_size > large_file_threshold
+
+    # Use default thread count
+    thread_count = max(1, cpu_no // 2)
+
     # Add media-specific parameters
     if media_type == "video":
-        # For videos, use the drawtext filter and copy audio streams
-        # Also preserve subtitles and other streams
-        # Get optimal thread count based on system load if dynamic threading is enabled
-        thread_count = await get_optimal_thread_count() or max(1, cpu_no // 2)
+        # For video files - use a simpler approach that selects only the main video stream
+        # This avoids issues with multiple video streams with odd dimensions
 
-        cmd.extend(
-            [
-                "-vf",
-                drawtext_filter,
-                "-c:a",
-                "copy",  # Copy audio streams
-                "-c:s",
-                "copy",  # Copy subtitle streams
-                "-map",
-                "0",  # Map all streams from input
-                "-threads",
-                f"{thread_count}",
-                temp_file,
-            ]
-        )
+        # First, select only the main video stream (usually the first one)
+        cmd.extend(["-map", "0:v:0"])
+
+        # Add the watermark filter with padding if needed
+        if needs_padding:
+            cmd.extend(
+                [
+                    "-vf",
+                    f"scale=iw:ih,pad=width=ceil(iw/2)*2:height=ceil(ih/2)*2,{drawtext_filter}",
+                ]
+            )
+        else:
+            cmd.extend(["-vf", drawtext_filter])
+
+        # Map audio and subtitle streams
+        cmd.extend(["-map", "0:a?", "-map", "0:s?", "-map", "0:t?"])
+
+        # Copy audio and subtitle streams
+        cmd.extend(["-c:a", "copy", "-c:s", "copy"])
+
+        # Add quality settings if maintain_quality is enabled
+        if maintain_quality:
+            cmd.extend(["-crf", "18"])  # High quality
+
+        # Add fast mode if needed
+        if use_fast_mode:
+            cmd.extend(["-preset", "ultrafast"])
+            LOGGER.debug(
+                f"Using fast mode for large file: {file_size / (1024 * 1024):.2f} MB"
+            )
+
     elif media_type == "image":
         # For static images, use the drawtext filter with appropriate output format
         # Use higher quality settings for better results
         if file_ext in [".jpg", ".jpeg"]:
             # For JPEG, use quality parameter
-            # Get optimal thread count based on system load if dynamic threading is enabled
-            thread_count = await get_optimal_thread_count() or max(1, cpu_no // 2)
-
             cmd.extend(
                 [
                     "-vf",
                     drawtext_filter,
                     "-q:v",
-                    "1",  # Highest quality (1-31, lower is better)
+                    "1"
+                    if maintain_quality
+                    else "2",  # Highest quality (1-31, lower is better)
                     "-threads",
                     f"{thread_count}",
                     temp_file,
@@ -236,15 +306,12 @@ async def get_watermark_cmd(
             )
         elif file_ext in [".png", ".webp"]:
             # For PNG and WebP, preserve transparency
-            # Get optimal thread count based on system load if dynamic threading is enabled
-            thread_count = await get_optimal_thread_count() or max(1, cpu_no // 2)
-
             cmd.extend(
                 [
                     "-vf",
                     drawtext_filter,
                     "-compression_level",
-                    "0",  # Lossless compression
+                    "0" if maintain_quality else "3",  # Lossless compression
                     "-threads",
                     f"{thread_count}",
                     temp_file,
@@ -252,15 +319,12 @@ async def get_watermark_cmd(
             )
         else:
             # For other image formats, use general high quality settings
-            # Get optimal thread count based on system load if dynamic threading is enabled
-            thread_count = await get_optimal_thread_count() or max(1, cpu_no // 2)
-
             cmd.extend(
                 [
                     "-vf",
                     drawtext_filter,
                     "-q:v",
-                    "2",  # High quality
+                    "2" if maintain_quality else "5",  # High quality
                     "-threads",
                     f"{thread_count}",
                     temp_file,
@@ -273,14 +337,11 @@ async def get_watermark_cmd(
 
         # Create a complex filtergraph that includes both the watermark and palette generation
         complex_filter = (
-            f"[0:v]{drawtext_filter}[marked];"
+            f"[0:v]scale=iw:ih,pad=width=ceil(iw/2)*2:height=ceil(ih/2)*2,{drawtext_filter}[marked];"
             f"[marked]split[v1][v2];"
             f"[v1]palettegen=reserve_transparent=1[pal];"
             f"[v2][pal]paletteuse=alpha_threshold=128"
         )
-
-        # Get optimal thread count based on system load if dynamic threading is enabled
-        thread_count = await get_optimal_thread_count() or max(1, cpu_no // 2)
 
         cmd.extend(
             [
@@ -291,56 +352,1067 @@ async def get_watermark_cmd(
                 temp_file,
             ]
         )
+    elif media_type == "audio":
+        # For audio files, we'll add a voice watermark using FFmpeg's built-in sine tone
+        # This adds a beep sound at specified intervals with the watermark text
+
+        # Get audio duration
+        try:
+            audio_info_cmd = [
+                "ffprobe",  # Keep as ffprobe, not xtra
+                "-v",
+                "error",
+                "-show_entries",
+                "format=duration",
+                "-of",
+                "json",
+                file,
+            ]
+            stdout, _, code = await cmd_exec(audio_info_cmd)
+            duration = 10  # Default duration if we can't determine
+
+            if code == 0:
+                data = json.loads(stdout)
+                if data.get("format") and data["format"].get("duration"):
+                    duration = float(data["format"]["duration"])
+
+            # Use audio_watermark_text if provided, otherwise use the general watermark text
+            watermark_text = audio_watermark_text if audio_watermark_text else key
+
+            # Determine beep parameters based on position and color
+            beep_frequency = 1000  # Default frequency in Hz
+            beep_duration = 0.5  # Default duration in seconds
+
+            # Use the audio_watermark_volume parameter if provided, otherwise use default
+            from bot.core.config_manager import Config
+
+            beep_volume = (
+                Config.AUDIO_WATERMARK_VOLUME
+                if hasattr(Config, "AUDIO_WATERMARK_VOLUME")
+                else 0.3
+            )
+
+            # Adjust parameters based on position
+            if position in ["top_left", "top_right", "top_center"]:
+                beep_frequency = 1500  # Higher pitch for top positions
+                beep_volume = beep_volume * 0.7  # Quieter for top positions
+            elif position in ["bottom_left", "bottom_right", "bottom_center"]:
+                beep_frequency = 800  # Lower pitch for bottom positions
+                beep_volume = (
+                    beep_volume * 1.2
+                )  # Louder for bottom positions (but cap at 1.0)
+                beep_volume = min(beep_volume, 1.0)  # Ensure volume doesn't exceed 1.0
+            elif position == "center":
+                beep_frequency = 1200  # Medium pitch for center position
+                beep_volume = beep_volume * 1.1  # Slightly louder for center position
+                beep_volume = min(beep_volume, 1.0)  # Ensure volume doesn't exceed 1.0
+
+            # Adjust parameters based on color
+            if color.lower() == "red":
+                beep_frequency = 1800  # Higher pitch for red
+            elif color.lower() == "blue":
+                beep_frequency = 600  # Lower pitch for blue
+            elif color.lower() == "green":
+                beep_frequency = 1200  # Medium pitch for green
+            elif color.lower() == "yellow":
+                beep_frequency = 1500  # Higher medium pitch for yellow
+
+            # Calculate spacing for watermark insertion
+            # We'll use duration to determine spacing of beeps
+
+            # Create filter to add beep tones at intervals
+            filter_complex = ""
+
+            # Use size parameter to determine number of beeps (10=1, 20=2, 30=3, 40=4)
+            num_beeps = max(1, min(size // 10, 4))
+
+            # Use opacity to determine volume
+            beep_volume = beep_volume * opacity
+
+            # Skip audio watermarking if it's explicitly disabled
+            if not audio_watermark_enabled:
+                # Just copy the audio without modification
+                cmd = [
+                    "xtra",
+                    "-hide_banner",
+                    "-loglevel",
+                    "error",
+                    "-progress",
+                    "pipe:1",
+                    "-i",
+                    file,
+                    "-c:a",
+                    "copy",
+                    "-metadata",
+                    f"comment=Watermarked with: {watermark_text}",
+                    "-metadata",
+                    f"title=Original title + {watermark_text}",
+                    "-threads",
+                    f"{thread_count}",
+                    temp_file,
+                ]
+            else:
+                # Apply audio watermark
+                if duration <= 30:
+                    # For short files, add beep at beginning and end
+                    filter_complex = (
+                        f"[0:a]asetpts=PTS-STARTPTS[a];"
+                        f"aevalsrc=0.1*sin({beep_frequency}*2*PI*t):d={beep_duration}:s=44100[beep];"
+                        f"[a][beep]amix=inputs=2:duration=first:weights=1 {beep_volume}[aout]"
+                    )
+                else:
+                    # For longer files, add beeps at intervals
+                    beep_points = []
+                    for i in range(num_beeps):
+                        point = i * (duration / (num_beeps - 0.5))
+                        if point < duration:
+                            beep_points.append(point)
+
+                    # Create a complex filter to insert beeps at intervals
+                    beep_parts = []
+                    for i, point in enumerate(beep_points):
+                        beep_parts.append(
+                            f"aevalsrc=0.1*sin({beep_frequency}*2*PI*t):d={beep_duration}:s=44100,adelay={int(point * 1000)}|{int(point * 1000)}[beep{i + 1}];"
+                        )
+
+                    # Combine all beeps
+                    beep_inputs = "".join(
+                        f"[beep{i + 1}]" for i in range(len(beep_points))
+                    )
+                    weights = " ".join(["1"] * len(beep_points))
+                    beep_volumes = " ".join([str(beep_volume)] * len(beep_points))
+
+                    filter_complex = (
+                        f"[0:a]asetpts=PTS-STARTPTS[a];"
+                        f"{''.join(beep_parts)}"
+                        f"[a]{beep_inputs}amix=inputs={len(beep_points) + 1}:duration=first:weights={weights} {beep_volumes}[aout]"
+                    )
+
+                # Create command to add beep watermark
+                cmd = [
+                    "xtra",
+                    "-hide_banner",
+                    "-loglevel",
+                    "error",
+                    "-progress",
+                    "pipe:1",
+                    "-i",
+                    file,
+                    "-filter_complex",
+                    filter_complex,
+                    "-map",
+                    "[aout]",
+                    "-c:a",
+                    "aac",
+                    "-b:a",
+                    "192k" if maintain_quality else "128k",
+                    "-metadata",
+                    f"comment=Watermarked with: {watermark_text}",
+                    "-metadata",
+                    f"title=Original title + {watermark_text}",
+                    "-threads",
+                    f"{thread_count}",
+                    temp_file,
+                ]
+
+            LOGGER.debug(f"Creating audio watermark for {os.path.basename(file)}")
+
+        except Exception as e:
+            LOGGER.error(f"Error creating audio watermark command: {e}")
+            return None, None
+
+    elif media_type == "video_with_subtitle":
+        # For videos with subtitle streams, we should handle them as regular videos
+        # but skip the subtitle watermarking
+        LOGGER.debug(f"Detected video with subtitle streams: {os.path.basename(file)}")
+
+        # Use the same code as for regular videos, but make sure we don't modify subtitle streams
+        # First, select only the main video stream (usually the first one)
+        cmd.extend(["-map", "0:v:0"])
+
+        # Add the watermark filter with padding if needed
+        if needs_padding:
+            cmd.extend(
+                [
+                    "-vf",
+                    f"scale=iw:ih,pad=width=ceil(iw/2)*2:height=ceil(ih/2)*2,{drawtext_filter}",
+                ]
+            )
+        else:
+            cmd.extend(["-vf", drawtext_filter])
+
+        # Map audio and subtitle streams, but copy subtitle streams without modification
+        cmd.extend(["-map", "0:a?", "-map", "0:s?", "-map", "0:t?"])
+
+        # Copy audio and subtitle streams
+        cmd.extend(["-c:a", "copy", "-c:s", "copy"])
+
+        # Add quality settings if maintain_quality is enabled
+        if maintain_quality:
+            cmd.extend(["-crf", "18"])  # High quality
+
+        # Add fast mode if needed
+        if use_fast_mode:
+            cmd.extend(["-preset", "ultrafast"])
+            LOGGER.debug(
+                f"Using fast mode for large file: {file_size / (1024 * 1024):.2f} MB"
+            )
+
+        return cmd, temp_file
+
+    elif media_type == "subtitle":
+        # For subtitle files, we'll add the watermark text to each subtitle entry
+        # This requires parsing and modifying the subtitle file
+
+        # Skip subtitle watermarking if it's explicitly disabled
+        if not subtitle_watermark_enabled:
+            # For subtitle files with watermarking disabled, just return the file as is
+            LOGGER.debug(
+                f"Subtitle watermarking is disabled, skipping: {os.path.basename(file)}"
+            )
+            return None, None
+
+        try:
+            # Read the subtitle file
+            with open(file, "r", encoding="utf-8", errors="ignore") as f:
+                content = f.read()
+
+            # Create a temporary file for the modified subtitles
+            # Use a unique name to avoid conflicts
+            import uuid
+
+            temp_file = (
+                f"{os.path.splitext(file)[0]}_wm_{uuid.uuid4().hex[:8]}{file_ext}"
+            )
+
+            # Determine watermark style based on parameters
+            # First check if we have a specific subtitle style set in config
+            from bot.core.config_manager import Config
+
+            subtitle_style = (
+                Config.SUBTITLE_WATERMARK_STYLE
+                if hasattr(Config, "SUBTITLE_WATERMARK_STYLE")
+                else "normal"
+            )
+
+            # Set style based on subtitle_style parameter
+            if subtitle_style.lower() == "bold":
+                watermark_style = "**"  # Bold style
+            elif subtitle_style.lower() == "italic":
+                watermark_style = "_"  # Italic style
+            elif subtitle_style.lower() == "underline":
+                watermark_style = "__"  # Underline style
+            else:
+                # If no specific style or "normal", use color-based styling
+                watermark_style = ""
+                if color.lower() == "white":
+                    watermark_style = ""  # Default, no special styling
+                elif color.lower() == "black":
+                    watermark_style = "▓"  # Dark background
+                elif color.lower() == "red":
+                    watermark_style = "❤️"  # Red heart symbol
+                elif color.lower() == "green":
+                    watermark_style = "✅"  # Green checkmark
+                elif color.lower() == "blue":
+                    watermark_style = "🔷"  # Blue diamond
+                elif color.lower() == "yellow":
+                    watermark_style = "⭐"  # Yellow star
+
+            # Use size parameter to determine frequency
+            # 10 = every subtitle, 20 = every 2nd, 30 = every 3rd, 40 = every 4th
+            frequency = max(1, size // 10)
+
+            # Use opacity to determine visibility (1.0 = full text, lower = abbreviated)
+            abbreviated = opacity < 0.7
+
+            with open(temp_file, "w", encoding="utf-8") as f:
+                # Check if it's an SRT file (most common)
+                if file_ext.lower() == ".srt":
+                    # Enhanced watermarking: add the watermark text with styling
+                    import re
+
+                    # Pattern to match SRT entries
+                    pattern = r"(\d+)\r?\n(\d{2}:\d{2}:\d{2},\d{3}\s-->\s\d{2}:\d{2}:\d{2},\d{3})\r?\n(.*?)(?=\r?\n\r?\n\d+|\Z)"
+
+                    # Function to add watermark to each subtitle entry
+                    def add_watermark(match):
+                        index = int(match.group(1))
+                        timing = match.group(2)
+                        text = match.group(3).strip()
+
+                        # Only add watermark based on frequency
+                        if index % frequency != 0:
+                            return f"{index}\n{timing}\n{text}\n\n"
+
+                        # Prepare watermark text - use subtitle_watermark_text if provided
+                        watermark_text = (
+                            subtitle_watermark_text if subtitle_watermark_text else key
+                        )
+                        if abbreviated and len(watermark_text) > 10:
+                            # Use abbreviated version for lower opacity
+                            words = watermark_text.split()
+                            if len(words) > 1:
+                                watermark_text = "".join(word[0] for word in words)
+                            else:
+                                watermark_text = watermark_text[:5] + "..."
+
+                        # Format with style
+                        formatted_watermark = (
+                            f"{watermark_style}[{watermark_text}]{watermark_style}"
+                        )
+
+                        # Add watermark based on position
+                        if position in ["bottom_left", "bottom_right", "bottom_center"]:
+                            # Add at the end
+                            watermarked_text = f"{text}\n{formatted_watermark}"
+                        elif position in ["top_left", "top_right", "top_center"]:
+                            # Add at the beginning
+                            watermarked_text = f"{formatted_watermark}\n{text}"
+                        elif position == "center":
+                            # Add in the middle of the text if possible
+                            lines = text.split("\n")
+                            if len(lines) > 1:
+                                middle = len(lines) // 2
+                                lines.insert(middle, formatted_watermark)
+                                watermarked_text = "\n".join(lines)
+                            else:
+                                # If single line, add at the end
+                                watermarked_text = f"{text} {formatted_watermark}"
+                        else:
+                            # For other positions, add inline
+                            watermarked_text = f"{text} {formatted_watermark}"
+
+                        return f"{index}\n{timing}\n{watermarked_text}\n\n"
+
+                    # Apply the watermark
+                    watermarked_content = re.sub(
+                        pattern, add_watermark, content, flags=re.DOTALL
+                    )
+                    f.write(watermarked_content)
+
+                    LOGGER.debug(
+                        f"Added watermark to subtitle file: {os.path.basename(file)}"
+                    )
+
+                    # For subtitle files, we don't use FFmpeg, so return None for the command
+                    # but keep the temp_file for the result
+                    return None, temp_file
+
+                elif file_ext.lower() in [".ass", ".ssa"]:
+                    # For ASS/SSA files, add the watermark to the style or as a separate line
+                    # This is more complex and would require a proper ASS parser
+                    import re
+
+                    # Try to find the Events section
+                    events_match = re.search(
+                        r"(\[Events\].*?)(?=\[|\Z)", content, re.DOTALL
+                    )
+                    if events_match:
+                        events_section = events_match.group(1)
+                        # Find the format line
+                        format_match = re.search(
+                            r"Format:(.*?)$", events_section, re.MULTILINE
+                        )
+                        if format_match:
+                            # Get the format fields
+                            format_fields = [
+                                f.strip() for f in format_match.group(1).split(",")
+                            ]
+
+                            # Find the dialogue lines
+                            dialogue_pattern = r"(Dialogue:.*?)$"
+
+                            # Function to add watermark to dialogue lines
+                            def add_ass_watermark(match):
+                                line = match.group(1)
+                                parts = line.split(",", len(format_fields))
+
+                                # Get the text part (last part)
+                                if len(parts) >= len(format_fields):
+                                    text = parts[-1]
+
+                                    # Add watermark based on position
+                                    if position in [
+                                        "bottom_left",
+                                        "bottom_right",
+                                        "bottom_center",
+                                    ]:
+                                        # Add at the end
+                                        # Use subtitle_watermark_text if provided
+                                        watermark_text = (
+                                            subtitle_watermark_text
+                                            if subtitle_watermark_text
+                                            else key
+                                        )
+                                        watermarked_text = f"{text}\\N{watermark_style}[{watermark_text}]{watermark_style}"
+                                    else:
+                                        # Add at the beginning
+                                        # Use subtitle_watermark_text if provided
+                                        watermark_text = (
+                                            subtitle_watermark_text
+                                            if subtitle_watermark_text
+                                            else key
+                                        )
+                                        watermarked_text = f"{watermark_style}[{watermark_text}]{watermark_style}\\N{text}"
+
+                                    # Replace the text part
+                                    parts[-1] = watermarked_text
+                                    return ",".join(parts)
+                                return line
+
+                            # Apply watermark to every nth dialogue line based on frequency
+                            lines = events_section.split("\n")
+                            dialogue_count = 0
+                            for i in range(len(lines)):
+                                if lines[i].startswith("Dialogue:"):
+                                    dialogue_count += 1
+                                    if dialogue_count % frequency == 0:
+                                        lines[i] = re.sub(
+                                            dialogue_pattern,
+                                            add_ass_watermark,
+                                            lines[i],
+                                        )
+
+                            # Replace the events section in the content
+                            modified_events = "\n".join(lines)
+                            modified_content = content.replace(
+                                events_match.group(1), modified_events
+                            )
+                            f.write(modified_content)
+
+                            LOGGER.debug(
+                                f"Added watermark to ASS/SSA file: {os.path.basename(file)}"
+                            )
+                            return None, temp_file
+
+                    # If we couldn't parse the ASS file properly, just add a comment
+                    # Use subtitle_watermark_text if provided
+                    watermark_text = (
+                        subtitle_watermark_text if subtitle_watermark_text else key
+                    )
+                    f.write(f"; Watermarked with: {watermark_text}\n{content}")
+                    LOGGER.debug(
+                        f"Added watermark comment to ASS/SSA file: {os.path.basename(file)}"
+                    )
+                    return None, temp_file
+
+                else:
+                    # For other subtitle formats, try to add watermark based on common patterns
+                    # WebVTT format
+                    if file_ext.lower() == ".vtt":
+                        import re
+
+                        # Pattern for WebVTT cues
+                        pattern = r"(\d{2}:\d{2}:\d{2}\.\d{3}\s-->\s\d{2}:\d{2}:\d{2}\.\d{3}.*?\n)(.*?)(?=\n\n|\Z)"
+
+                        # Function to add watermark to WebVTT cues
+                        def add_vtt_watermark(match):
+                            timing = match.group(1)
+                            text = match.group(2).strip()
+
+                            # Add watermark based on position
+                            if position in [
+                                "bottom_left",
+                                "bottom_right",
+                                "bottom_center",
+                            ]:
+                                # Add at the end
+                                # Use subtitle_watermark_text if provided
+                                watermark_text = (
+                                    subtitle_watermark_text
+                                    if subtitle_watermark_text
+                                    else key
+                                )
+                                watermarked_text = f"{text}\n{watermark_style}[{watermark_text}]{watermark_style}"
+                            else:
+                                # Add at the beginning
+                                # Use subtitle_watermark_text if provided
+                                watermark_text = (
+                                    subtitle_watermark_text
+                                    if subtitle_watermark_text
+                                    else key
+                                )
+                                watermarked_text = f"{watermark_style}[{watermark_text}]{watermark_style}\n{text}"
+
+                            return f"{timing}{watermarked_text}\n\n"
+
+                        # Apply the watermark
+                        watermarked_content = re.sub(
+                            pattern, add_vtt_watermark, content, flags=re.DOTALL
+                        )
+                        f.write(watermarked_content)
+
+                        LOGGER.debug(
+                            f"Added watermark to WebVTT file: {os.path.basename(file)}"
+                        )
+                        return None, temp_file
+
+                    # For other formats, just add a comment if possible
+                    # Use subtitle_watermark_text if provided
+                    watermark_text = (
+                        subtitle_watermark_text if subtitle_watermark_text else key
+                    )
+                    f.write(f"# Watermarked with: {watermark_text}\n{content}")
+
+                    LOGGER.debug(
+                        f"Added watermark comment to subtitle file: {os.path.basename(file)}"
+                    )
+                    return None, temp_file
+
+        except Exception as e:
+            LOGGER.error(f"Error watermarking subtitle file: {e}")
+            return None, None
     else:
         # This should not happen as we already checked media_type
         LOGGER.error(f"Unknown media type: {media_type}")
         return None, None
 
-    # Log the generated command for debugging
+    # Add threads parameter if not already added
+    if "-threads" not in cmd and media_type not in ["subtitle"]:
+        cmd.extend(["-threads", f"{thread_count}", temp_file])
+
+    # Log the generated command for debugging only
     LOGGER.debug(f"Generated watermark command for {media_type}: {' '.join(cmd)}")
 
     return cmd, temp_file
 
 
 async def get_metadata_cmd(
-    file_path, key, title=None, author=None, comment=None, metadata_all=None
+    file_path,
+    key,
+    title=None,
+    author=None,
+    comment=None,
+    metadata_all=None,
+    video_title=None,
+    video_author=None,
+    video_comment=None,
+    audio_title=None,
+    audio_author=None,
+    audio_comment=None,
+    subtitle_title=None,
+    subtitle_author=None,
+    subtitle_comment=None,
 ):
     """Processes a single file to update metadata.
 
     Args:
         file_path: Path to the file to process
         key: Legacy metadata key (for backward compatibility)
-        title: Title metadata value
-        author: Author metadata value
-        comment: Comment metadata value
-        metadata_all: Value to use for all metadata fields (takes priority)
-    """
-    from bot.helper.ext_utils.resource_manager import get_optimal_thread_count
+        title: Global title metadata value
+        author: Global author metadata value
+        comment: Global comment metadata value
+        metadata_all: Value to use for all metadata fields (takes priority over all)
+        video_title: Video track title metadata value
+        video_author: Video track author metadata value
+        video_comment: Video track comment metadata value
+        audio_title: Audio track title metadata value
+        audio_author: Audio track author metadata value
+        audio_comment: Audio track comment metadata value
+        subtitle_title: Subtitle track title metadata value
+        subtitle_author: Subtitle track author metadata value
+        subtitle_comment: Subtitle track comment metadata value
 
-    temp_file = f"{file_path}.temp.mkv"
+    Returns:
+        tuple: FFmpeg command and temporary output file path, or None, None if not supported
+    """
+    # Resource manager removed
+
+    # Get file extension
+    file_ext = os.path.splitext(file_path)[1].lower()
+
+    # For most files, use .mkv as temp extension for maximum metadata compatibility
+    # For HEVC files, use .mp4 as temp extension for better compatibility
+    # For MPEG files, use .mp4 as temp extension for better compatibility
+    # For image files, use appropriate extensions
+    # For subtitle files, use .srt for maximum compatibility
+    if file_ext in [".hevc", ".mpeg"]:
+        temp_file = f"{file_path}.temp.mp4"
+        LOGGER.debug(f"Using .mp4 container for {file_ext} file: {file_path}")
+    elif file_ext in [".jpg", ".jpeg", ".png", ".gif", ".tiff", ".tif", ".webp"]:
+        # For image files, keep the same extension for better compatibility
+        temp_file = f"{file_path}.temp{file_ext}"
+        LOGGER.debug(f"Using {file_ext} container for image file: {file_path}")
+    elif file_ext in [
+        ".srt",
+        ".ass",
+        ".ssa",
+        ".vtt",
+        ".webvtt",
+        ".sub",
+        ".sbv",
+        ".stl",
+    ]:
+        # For subtitle files, use .srt for maximum compatibility
+        temp_file = f"{file_path}.temp.srt"
+        LOGGER.debug(f"Using .srt container for subtitle file: {file_path}")
+    else:
+        temp_file = f"{file_path}.temp.mkv"
+
+    # Get stream information
+    # For subtitle files, we might not get proper stream info, so handle them specially
+    file_ext = os.path.splitext(file_path)[1].lower()
+    if file_ext in [
+        ".srt",
+        ".ass",
+        ".ssa",
+        ".vtt",
+        ".webvtt",
+        ".sub",
+        ".sbv",
+        ".stl",
+        ".scc",
+        ".ttml",
+        ".dfxp",
+    ]:
+        # For subtitle files, create a simple command that just copies the file and adds metadata
+        # For some subtitle formats, we need to convert them to SRT for better compatibility
+
+        # Create a temporary text file with metadata
+        meta_file = f"{file_path}.meta"
+        with open(meta_file, "w") as f:
+            if title:
+                f.write(f";TITLE={title}\n")
+            if author:
+                f.write(f";AUTHOR={author}\n")
+            if comment:
+                f.write(f";COMMENT={comment}\n")
+            if subtitle_title:
+                f.write(f";SUBTITLE_TITLE={subtitle_title}\n")
+            if subtitle_author:
+                f.write(f";SUBTITLE_AUTHOR={subtitle_author}\n")
+            if subtitle_comment:
+                f.write(f";SUBTITLE_COMMENT={subtitle_comment}\n")
+
+        # For problematic formats, try to convert to SRT first
+        if file_ext in [
+            ".vtt",
+            ".webvtt",
+            ".sbv",
+            ".stl",
+            ".scc",
+            ".ttml",
+            ".dfxp",
+            ".sub",
+        ]:
+            LOGGER.debug(
+                f"Converting subtitle format {file_ext} to SRT for better metadata support"
+            )
+
+            # First, try to convert using FFmpeg
+            cmd = [
+                "xtra",
+                "-hide_banner",
+                "-loglevel",
+                "error",
+                "-progress",
+                "pipe:1",
+                "-i",
+                file_path,
+                "-map_metadata",
+                "-1",  # Remove existing metadata
+            ]
+
+            # Add global metadata
+            if title:
+                cmd.extend(["-metadata", f"title={title}"])
+            if author:
+                cmd.extend(
+                    ["-metadata", f"artist={author}", "-metadata", f"author={author}"]
+                )
+            if comment:
+                cmd.extend(["-metadata", f"comment={comment}"])
+
+            # Add subtitle-specific metadata
+            if subtitle_title:
+                cmd.extend(["-metadata", f"subtitle_title={subtitle_title}"])
+            if subtitle_author:
+                cmd.extend(["-metadata", f"subtitle_author={subtitle_author}"])
+            if subtitle_comment:
+                cmd.extend(["-metadata", f"subtitle_comment={subtitle_comment}"])
+
+            # Convert to SRT format
+            cmd.extend(
+                [
+                    "-c:s",
+                    "srt",  # Convert to SRT format
+                    "-threads",
+                    "8",
+                    temp_file,
+                ]
+            )
+
+            # If this is a .sub file, try a different approach as fallback
+            if file_ext == ".sub":
+                # For .sub files, we need to check if it's a SubRip or MicroDVD format
+                try:
+                    with open(file_path, "r", encoding="utf-8", errors="ignore") as f:
+                        first_line = f.readline().strip()
+
+                    # Check if it's MicroDVD format (starts with {number}{number})
+                    if first_line.startswith("{") and "}" in first_line:
+                        LOGGER.info(
+                            f"Detected MicroDVD format for {file_path}, using special handling"
+                        )
+                        # For MicroDVD, we need to use a different approach
+                        # Create a new command that handles MicroDVD format
+                        cmd = [
+                            "xtra",
+                            "-hide_banner",
+                            "-loglevel",
+                            "error",
+                            "-progress",
+                            "pipe:1",
+                            "-i",
+                            file_path,
+                            "-map_metadata",
+                            "-1",  # Remove existing metadata
+                            "-sub_charenc",
+                            "UTF-8",  # Ensure UTF-8 encoding
+                            "-f",
+                            "srt",  # Force SRT output format
+                        ]
+
+                        # Add metadata
+                        if title:
+                            cmd.extend(["-metadata", f"title={title}"])
+                        if author:
+                            cmd.extend(
+                                [
+                                    "-metadata",
+                                    f"artist={author}",
+                                    "-metadata",
+                                    f"author={author}",
+                                ]
+                            )
+                        if comment:
+                            cmd.extend(["-metadata", f"comment={comment}"])
+                        if subtitle_title:
+                            cmd.extend(
+                                ["-metadata", f"subtitle_title={subtitle_title}"]
+                            )
+                        if subtitle_author:
+                            cmd.extend(
+                                ["-metadata", f"subtitle_author={subtitle_author}"]
+                            )
+                        if subtitle_comment:
+                            cmd.extend(
+                                ["-metadata", f"subtitle_comment={subtitle_comment}"]
+                            )
+
+                        cmd.append(temp_file)
+                except Exception as e:
+                    LOGGER.error(f"Error checking SUB format: {e}")
+        else:
+            # For SRT, ASS, SSA formats, just copy
+            cmd = [
+                "xtra",
+                "-hide_banner",
+                "-loglevel",
+                "error",
+                "-progress",
+                "pipe:1",
+                "-i",
+                file_path,
+                "-map_metadata",
+                "-1",  # Remove existing metadata
+            ]
+
+            # Add global metadata
+            if title:
+                cmd.extend(["-metadata", f"title={title}"])
+            if author:
+                cmd.extend(
+                    ["-metadata", f"artist={author}", "-metadata", f"author={author}"]
+                )
+            if comment:
+                cmd.extend(["-metadata", f"comment={comment}"])
+
+            # Add subtitle-specific metadata
+            if subtitle_title:
+                cmd.extend(["-metadata", f"subtitle_title={subtitle_title}"])
+            if subtitle_author:
+                cmd.extend(["-metadata", f"subtitle_author={subtitle_author}"])
+            if subtitle_comment:
+                cmd.extend(["-metadata", f"subtitle_comment={subtitle_comment}"])
+
+            # Finish the command
+            cmd.extend(["-c", "copy", "-threads", "8", temp_file])
+
+        # Add cleanup for the metadata file
+        LOGGER.info(f"Created temporary metadata file: {meta_file}")
+
+        return cmd, temp_file
+
+    # Special handling for image and document files
+    file_ext = os.path.splitext(file_path)[1].lower()
+    image_extensions = [
+        ".jpg",
+        ".jpeg",
+        ".png",
+        ".gif",
+        ".tiff",
+        ".tif",
+        ".webp",
+        ".bmp",
+        ".heic",
+        ".heif",
+        ".avif",
+        ".jfif",
+        ".svg",
+        ".ico",
+        ".psd",
+        ".eps",
+        ".raw",
+        ".cr2",
+        ".nef",
+        ".orf",
+        ".sr2",
+    ]
+
+    document_extensions = [
+        ".pdf",
+        ".epub",
+        ".mobi",
+        ".azw",
+        ".azw3",
+        ".djvu",
+        ".doc",
+        ".docx",
+        ".xls",
+        ".xlsx",
+        ".ppt",
+        ".pptx",
+        ".odt",
+        ".ods",
+        ".odp",
+        ".txt",
+        ".rtf",
+        ".md",
+        ".csv",
+    ]
+
+    if file_ext in document_extensions:
+        LOGGER.info(
+            f"Detected document file: {file_path}, using special handling for metadata"
+        )
+
+        # For document files, use the document_utils module
+
+        # Create a dummy command that will be replaced by the document_utils module
+        cmd = ["echo", "Using document_utils module for metadata"]
+
+        # The temp_file will be created by the document_utils module
+        temp_file = f"{file_path}.temp{file_ext}"
+
+        # Return the dummy command and temp_file
+        # The actual metadata application will be handled by the document_utils module
+        # in the metadata_watermark_cmds method
+        return cmd, temp_file
+
+    elif file_ext in image_extensions:
+        LOGGER.info(
+            f"Detected image file: {file_path}, using special handling for metadata"
+        )
+
+        # For image files, we'll use a different approach
+        # First, create a temporary file with the same extension
+        if ".temp" not in file_path:
+            temp_file = f"{file_path}.temp{file_ext}"
+        else:
+            temp_file = file_path
+
+        # Create the command based on the image type
+        if file_ext in [
+            ".jpg",
+            ".jpeg",
+            ".png",
+            ".gif",
+            ".webp",
+            ".bmp",
+            ".tiff",
+            ".tif",
+        ]:
+            # For common image formats, use FFmpeg
+            cmd = [
+                "xtra",
+                "-hide_banner",
+                "-loglevel",
+                "error",
+                "-progress",
+                "pipe:1",
+                "-i",
+                file_path,
+                "-map_metadata",
+                "-1",  # Remove existing metadata
+            ]
+
+            # Add global metadata
+            if title:
+                cmd.extend(["-metadata", f"title={title}"])
+            if author:
+                cmd.extend(
+                    ["-metadata", f"artist={author}", "-metadata", f"author={author}"]
+                )
+            if comment:
+                cmd.extend(["-metadata", f"comment={comment}"])
+
+            # Finish the command
+            cmd.extend(["-c", "copy", "-threads", "8", temp_file])
+
+            return cmd, temp_file
+        else:
+            # For other image formats, try to use exiftool if available
+            try:
+                # Check if exiftool is available
+                result = await cmd_exec(["which", "exiftool"])
+                if result[0] and result[2] == 0:
+                    # exiftool is available, use it
+                    cmd = ["exiftool"]
+
+                    # Add metadata
+                    if title:
+                        cmd.extend(["-Title=" + title])
+                    if author:
+                        cmd.extend(["-Artist=" + author, "-Author=" + author])
+                    if comment:
+                        cmd.extend(["-Comment=" + comment])
+
+                    # Add output file
+                    cmd.extend(["-o", temp_file, file_path])
+
+                    return cmd, temp_file
+                else:
+                    # exiftool not available, fall back to FFmpeg
+                    LOGGER.warning(
+                        "exiftool not found, falling back to FFmpeg for image metadata"
+                    )
+                    cmd = [
+                        "xtra",
+                        "-hide_banner",
+                        "-loglevel",
+                        "error",
+                        "-progress",
+                        "pipe:1",
+                        "-i",
+                        file_path,
+                        "-map_metadata",
+                        "-1",  # Remove existing metadata
+                    ]
+
+                    # Add global metadata
+                    if title:
+                        cmd.extend(["-metadata", f"title={title}"])
+                    if author:
+                        cmd.extend(
+                            [
+                                "-metadata",
+                                f"artist={author}",
+                                "-metadata",
+                                f"author={author}",
+                            ]
+                        )
+                    if comment:
+                        cmd.extend(["-metadata", f"comment={comment}"])
+
+                    # Finish the command
+                    cmd.extend(["-c", "copy", "-threads", "8", temp_file])
+
+                    return cmd, temp_file
+            except Exception as e:
+                LOGGER.error(f"Error checking for exiftool: {e}")
+                # Fall back to FFmpeg
+                cmd = [
+                    "xtra",
+                    "-hide_banner",
+                    "-loglevel",
+                    "error",
+                    "-progress",
+                    "pipe:1",
+                    "-i",
+                    file_path,
+                    "-map_metadata",
+                    "-1",  # Remove existing metadata
+                ]
+
+                # Add global metadata
+                if title:
+                    cmd.extend(["-metadata", f"title={title}"])
+                if author:
+                    cmd.extend(
+                        [
+                            "-metadata",
+                            f"artist={author}",
+                            "-metadata",
+                            f"author={author}",
+                        ]
+                    )
+                if comment:
+                    cmd.extend(["-metadata", f"comment={comment}"])
+
+                # Finish the command
+                cmd.extend(["-c", "copy", "-threads", "8", temp_file])
+
+                return cmd, temp_file
+
+    # For other files, get stream information
     streams = await get_streams(file_path)
     if not streams:
+        LOGGER.error(f"Failed to get stream information for {file_path}")
         return None, None
 
-    languages = {
-        stream["index"]: stream["tags"]["language"]
-        for stream in streams
-        if "tags" in stream and "language" in stream["tags"]
-    }
+    # Extract language information from streams
+    languages = {}
+    try:
+        languages = {
+            stream["index"]: stream["tags"]["language"]
+            for stream in streams
+            if "tags" in stream and "language" in stream["tags"]
+        }
+    except Exception as e:
+        LOGGER.warning(
+            f"Error extracting language tags: {e}. Continuing without language metadata."
+        )
 
-    # Get optimal thread count based on system load if dynamic threading is enabled
-    thread_count = await get_optimal_thread_count() or max(1, cpu_no // 2)
+    # Use default thread count
+    thread_count = max(1, cpu_no // 2)
 
     # Determine which metadata values to use
-    # metadata_all takes priority over individual settings
+    # metadata_all takes priority over all other settings
     if metadata_all:
-        title_value = author_value = comment_value = metadata_all
+        # Use metadata_all for all fields
+        global_title_value = global_author_value = global_comment_value = metadata_all
+        video_title_value = video_author_value = video_comment_value = metadata_all
+        audio_title_value = audio_author_value = audio_comment_value = metadata_all
+        subtitle_title_value = subtitle_author_value = subtitle_comment_value = (
+            metadata_all
+        )
     else:
-        # Use individual values if provided, otherwise fall back to legacy key
-        title_value = title if title else key
-        author_value = author if author else key
-        comment_value = comment if comment else key
+        # Global metadata (fallback to legacy key if not provided)
+        global_title_value = title if title else key
+        global_author_value = author if author else key
+        global_comment_value = comment if comment else key
 
+        # Video track metadata (fallback to global values if not provided)
+        video_title_value = video_title if video_title else global_title_value
+        video_author_value = video_author if video_author else global_author_value
+        video_comment_value = video_comment if video_comment else global_comment_value
+
+        # Audio track metadata (fallback to global values if not provided)
+        audio_title_value = audio_title if audio_title else global_title_value
+        audio_author_value = audio_author if audio_author else global_author_value
+        audio_comment_value = audio_comment if audio_comment else global_comment_value
+
+        # Subtitle track metadata (fallback to global values if not provided)
+        subtitle_title_value = subtitle_title if subtitle_title else global_title_value
+        subtitle_author_value = (
+            subtitle_author if subtitle_author else global_author_value
+        )
+        subtitle_comment_value = (
+            subtitle_comment if subtitle_comment else global_comment_value
+        )
+
+    # Start building the FFmpeg command
     cmd = [
         "xtra",
         "-hide_banner",
@@ -350,115 +1422,222 @@ async def get_metadata_cmd(
         "pipe:1",
         "-i",
         file_path,
-        "-ignore_unknown",
-        "-c",
-        "copy",
-        # Global metadata for the file
-        "-metadata",
-        f"title={title_value}",
     ]
 
+    # Add -map_metadata -1 to clear existing metadata
+    cmd.extend(["-map_metadata", "-1"])
+
+    # Always use copy codec to preserve quality
+    cmd.extend(["-c", "copy"])
+
+    # Add global metadata
+    cmd.extend(["-metadata", f"title={global_title_value}"])
+
     # Add author and comment metadata if they exist
-    if author_value:
-        cmd.extend(["-metadata", f"artist={author_value}"])
-        cmd.extend(["-metadata", f"author={author_value}"])
+    if global_author_value:
+        cmd.extend(["-metadata", f"artist={global_author_value}"])
+        cmd.extend(["-metadata", f"author={global_author_value}"])
 
-    if comment_value:
-        cmd.extend(["-metadata", f"comment={comment_value}"])
+    if global_comment_value:
+        cmd.extend(["-metadata", f"comment={global_comment_value}"])
 
-    cmd.extend(["-threads", f"{thread_count}"])
+    # Count stream types for proper indexing
+    video_count = 0
+    audio_count = 0
+    subtitle_count = 0
+    other_count = 0
 
+    # First pass: count streams by type
+    for stream in streams:
+        stream_type = stream.get("codec_type", "unknown")
+        if stream_type == "video":
+            video_count += 1
+        elif stream_type == "audio":
+            audio_count += 1
+        elif stream_type == "subtitle":
+            subtitle_count += 1
+        else:
+            other_count += 1
+
+    LOGGER.info(
+        f"File {file_path} has {video_count} video, {audio_count} audio, {subtitle_count} subtitle, and {other_count} other streams"
+    )
+
+    # Second pass: map all streams and add metadata
+    video_index = 0
     audio_index = 0
     subtitle_index = 0
-    first_video = False
+    attachment_index = 0
 
+    # Map all streams to preserve them
+    cmd.extend(["-map", "0"])
+
+    # Add stream-specific metadata
     for stream in streams:
         stream_index = stream["index"]
-        stream_type = stream["codec_type"]
+        stream_type = stream.get("codec_type", "unknown")
 
         if stream_type == "video":
-            if not first_video:
-                cmd.extend(["-map", f"0:{stream_index}"])
-                first_video = True
-            cmd.extend([f"-metadata:s:v:{stream_index}", f"title={title_value}"])
+            # Skip attached pictures (cover art)
+            if stream.get("disposition", {}).get("attached_pic", 0) == 1:
+                LOGGER.info(f"Skipping attached picture in stream {stream_index}")
+                continue
+
+            # Add video metadata
+            cmd.extend([f"-metadata:s:v:{video_index}", f"title={video_title_value}"])
+
+            if video_author_value:
+                cmd.extend(
+                    [f"-metadata:s:v:{video_index}", f"artist={video_author_value}"]
+                )
+
+            if video_comment_value:
+                cmd.extend(
+                    [f"-metadata:s:v:{video_index}", f"comment={video_comment_value}"]
+                )
+
+            # Preserve language tag if it exists
             if stream_index in languages:
                 cmd.extend(
                     [
-                        f"-metadata:s:v:{stream_index}",
+                        f"-metadata:s:v:{video_index}",
                         f"language={languages[stream_index]}",
-                    ],
+                    ]
                 )
+
+            video_index += 1
+
         elif stream_type == "audio":
-            cmd.extend(
-                [
-                    "-map",
-                    f"0:{stream_index}",
-                    f"-metadata:s:a:{audio_index}",
-                    f"title={title_value}",
-                ],
-            )
-            if author_value:
+            # Add audio metadata
+            cmd.extend([f"-metadata:s:a:{audio_index}", f"title={audio_title_value}"])
+
+            if audio_author_value:
                 cmd.extend(
-                    [
-                        f"-metadata:s:a:{audio_index}",
-                        f"artist={author_value}",
-                    ],
+                    [f"-metadata:s:a:{audio_index}", f"artist={audio_author_value}"]
                 )
-            if comment_value:
+
+            if audio_comment_value:
                 cmd.extend(
-                    [
-                        f"-metadata:s:a:{audio_index}",
-                        f"comment={comment_value}",
-                    ],
+                    [f"-metadata:s:a:{audio_index}", f"comment={audio_comment_value}"]
                 )
+
+            # Preserve language tag if it exists
             if stream_index in languages:
                 cmd.extend(
                     [
                         f"-metadata:s:a:{audio_index}",
                         f"language={languages[stream_index]}",
-                    ],
+                    ]
                 )
+
             audio_index += 1
+
         elif stream_type == "subtitle":
             codec_name = stream.get("codec_name", "unknown")
+
+            # Some subtitle formats don't support metadata well
             if codec_name in ["webvtt", "unknown"]:
                 LOGGER.warning(
-                    f"Skipping unsupported subtitle metadata modification: {codec_name} for stream {stream_index}",
+                    f"Limited metadata support for subtitle format: {codec_name} in stream {stream_index}"
                 )
-            else:
+
+            # Add subtitle metadata
+            cmd.extend(
+                [f"-metadata:s:s:{subtitle_index}", f"title={subtitle_title_value}"]
+            )
+
+            if subtitle_author_value:
                 cmd.extend(
                     [
-                        "-map",
-                        f"0:{stream_index}",
                         f"-metadata:s:s:{subtitle_index}",
-                        f"title={title_value}",
-                    ],
+                        f"artist={subtitle_author_value}",
+                    ]
                 )
-                if comment_value:
-                    cmd.extend(
-                        [
-                            f"-metadata:s:s:{subtitle_index}",
-                            f"comment={comment_value}",
-                        ],
-                    )
-                if stream_index in languages:
-                    cmd.extend(
-                        [
-                            f"-metadata:s:s:{subtitle_index}",
-                            f"language={languages[stream_index]}",
-                        ],
-                    )
-                subtitle_index += 1
-        else:
-            cmd.extend(["-map", f"0:{stream_index}"])
 
-    cmd.extend(["-threads", f"{max(1, cpu_no // 2)}", temp_file])
+            if subtitle_comment_value:
+                cmd.extend(
+                    [
+                        f"-metadata:s:s:{subtitle_index}",
+                        f"comment={subtitle_comment_value}",
+                    ]
+                )
+
+            # Preserve language tag if it exists
+            if stream_index in languages:
+                cmd.extend(
+                    [
+                        f"-metadata:s:s:{subtitle_index}",
+                        f"language={languages[stream_index]}",
+                    ]
+                )
+
+            subtitle_index += 1
+
+        elif stream_type == "attachment":
+            # Handle attachment streams
+            # Check if the attachment has a filename tag
+            if "tags" in stream and "filename" in stream["tags"]:
+                # Preserve the original filename
+                cmd.extend(
+                    [
+                        f"-metadata:s:t:{attachment_index}",
+                        f"filename={stream['tags']['filename']}",
+                    ]
+                )
+            else:
+                # If no filename tag exists, add a default one
+                LOGGER.info(
+                    f"Adding default filename for attachment stream {stream_index}"
+                )
+                cmd.extend(
+                    [
+                        f"-metadata:s:t:{attachment_index}",
+                        f"filename=attachment_{attachment_index}.bin",
+                    ]
+                )
+
+            # Add mimetype if available, or use a default
+            if "tags" in stream and "mimetype" in stream["tags"]:
+                mimetype = stream["tags"]["mimetype"]
+                cmd.extend(
+                    [f"-metadata:s:t:{attachment_index}", f"mimetype={mimetype}"]
+                )
+            else:
+                # Determine mimetype based on codec_name if available
+                codec_name = stream.get("codec_name", "").lower()
+                if codec_name in ["ttf"]:
+                    mimetype = "application/x-truetype-font"
+                elif codec_name in ["otf"]:
+                    mimetype = "application/vnd.ms-opentype"
+                elif codec_name in ["woff"]:
+                    mimetype = "application/font-woff"
+                elif codec_name in ["woff2"]:
+                    mimetype = "application/font-woff2"
+                else:
+                    # Use a generic mimetype
+                    mimetype = "application/octet-stream"
+
+                cmd.extend(
+                    [f"-metadata:s:t:{attachment_index}", f"mimetype={mimetype}"]
+                )
+
+            attachment_index += 1
+
+    # Add thread count for better performance
+    cmd.extend(["-threads", f"{thread_count}"])
+
+    # Add output file
+    cmd.append(temp_file)
+
+    # Log the command for debugging
+    LOGGER.debug(f"Metadata command: {' '.join(cmd)}")
+
     return cmd, temp_file
 
 
 # TODO later
 async def get_embed_thumb_cmd(file, attachment_path):
-    from bot.helper.ext_utils.resource_manager import get_optimal_thread_count
+    # Resource manager removed
 
     temp_file = f"{file}.temp.mkv"
     attachment_ext = attachment_path.split(".")[-1].lower()
@@ -468,8 +1647,8 @@ async def get_embed_thumb_cmd(file, attachment_path):
     elif attachment_ext == "png":
         mime_type = "image/png"
 
-    # Get optimal thread count based on system load if dynamic threading is enabled
-    thread_count = await get_optimal_thread_count() or max(1, cpu_no // 2)
+    # Use default thread count
+    thread_count = max(1, cpu_no // 2)
 
     cmd = [
         "xtra",
@@ -497,7 +1676,7 @@ async def get_embed_thumb_cmd(file, attachment_path):
     return cmd, temp_file
 
 
-async def get_media_type(file_path):
+async def get_media_type_internal(file_path):
     """Determine if a file is video, audio, or subtitle.
 
     Args:
@@ -544,7 +1723,7 @@ async def get_merge_concat_demuxer_cmd(files, output_format="mkv", media_type=No
     Returns:
         tuple: FFmpeg command and output file path
     """
-    from bot.helper.ext_utils.resource_manager import get_optimal_thread_count
+    # Resource manager removed
 
     if not files:
         return None, None
@@ -563,7 +1742,7 @@ async def get_merge_concat_demuxer_cmd(files, output_format="mkv", media_type=No
             codecs = []
             for file_path in files:
                 cmd = [
-                    "ffprobe",
+                    "ffprobe",  # Keep as ffprobe, not xtra
                     "-v",
                     "error",
                     "-select_streams",
@@ -863,8 +2042,8 @@ async def get_merge_concat_demuxer_cmd(files, output_format="mkv", media_type=No
         LOGGER.info(f"Using copy for unknown media type: {media_type}")
 
     # Add threading and output file
-    # Get optimal thread count based on system load if dynamic threading is enabled
-    thread_count = await get_optimal_thread_count() or max(1, cpu_no // 2)
+    # Use default thread count
+    thread_count = max(1, cpu_no // 2)
     cmd.extend(
         [
             "-threads",
@@ -887,7 +2066,7 @@ async def get_merge_filter_complex_cmd(files, media_type, output_format=None):
     Returns:
         tuple: FFmpeg command and output file path
     """
-    from bot.helper.ext_utils.resource_manager import get_optimal_thread_count
+    # Resource manager removed
 
     if not files:
         return None, None
@@ -916,7 +2095,7 @@ async def get_merge_filter_complex_cmd(files, media_type, output_format=None):
                 info = {}
                 # Get codec information
                 cmd = [
-                    "ffprobe",
+                    "ffprobe",  # Keep as ffprobe, not xtra
                     "-v",
                     "error",
                     "-select_streams",
@@ -1119,9 +2298,7 @@ async def get_merge_filter_complex_cmd(files, media_type, output_format=None):
                             if filter_complex and not filter_complex.endswith(";"):
                                 filter_complex += ";"
                             audio_filter = (
-                                "".join(
-                                    [f"[{i}:a:{idx}]" for i, idx in track_inputs]
-                                )
+                                "".join([f"[{i}:a:{idx}]" for i, idx in track_inputs])
                                 + f"concat=n={len(track_inputs)}:v=0:a=1[outa{track_pos}]"
                             )
                             filter_complex += audio_filter
@@ -1206,7 +2383,9 @@ async def get_merge_filter_complex_cmd(files, media_type, output_format=None):
             for stream in streams:
                 if stream.get("codec_type") == "subtitle":
                     subtitle_index = stream.get("index", 0)
-                    map_args.extend(["-map", f"{i}:s:{subtitle_index}"])
+                    # Add a question mark to make the mapping optional
+                    # This prevents errors when a subtitle stream doesn't exist
+                    map_args.extend(["-map", f"{i}:s:{subtitle_index}?"])
                     LOGGER.info(
                         f"Mapping subtitle track from file {i}: index={subtitle_index}, codec={stream.get('codec_name')}"
                     )
@@ -1515,8 +2694,8 @@ if __name__ == '__main__':
     else:
         return None, None
 
-    # Get optimal thread count based on system load if dynamic threading is enabled
-    thread_count = await get_optimal_thread_count() or max(1, cpu_no // 2)
+    # Use default thread count
+    thread_count = max(1, cpu_no // 2)
 
     cmd = [
         "xtra",
@@ -1547,7 +2726,7 @@ async def get_merge_mixed_cmd(
 ):
     import os
 
-    from bot.helper.ext_utils.resource_manager import get_optimal_thread_count
+    # Resource manager removed
 
     """Generate FFmpeg command for merging mixed media types.
 
@@ -1601,9 +2780,7 @@ async def get_merge_mixed_cmd(
                 f.write(f"file '{escaped_path}'\n")
 
         # Create a temporary merged video file
-        temp_video_output = os.path.join(
-            base_dir, f"temp_merged_video.{output_format}"
-        )
+        temp_video_output = os.path.join(base_dir, f"temp_merged_video.{output_format}")
         video_cmd = [
             "xtra",
             "-hide_banner",
@@ -1662,8 +2839,8 @@ async def get_merge_mixed_cmd(
                         ]
                     )
 
-            # Get optimal thread count based on system load if dynamic threading is enabled
-            thread_count = await get_optimal_thread_count() or max(1, cpu_no // 2)
+            # Use default thread count
+            thread_count = max(1, cpu_no // 2)
 
             # Create final command
             cmd = [
@@ -1760,7 +2937,7 @@ async def get_merge_mixed_cmd(
                                     import subprocess
 
                                     cmd = [
-                                        "ffprobe",
+                                        "ffprobe",  # Keep as ffprobe, not xtra
                                         "-v",
                                         "error",
                                         "-show_entries",
@@ -1785,9 +2962,7 @@ async def get_merge_mixed_cmd(
                                                 data["format"]["duration"]
                                             )
                                 except Exception as e:
-                                    LOGGER.warning(
-                                        f"Error getting video duration: {e}"
-                                    )
+                                    LOGGER.warning(f"Error getting video duration: {e}")
 
                     # If we have video duration, create a temporary subtitle file with correct duration
                     if video_duration:
@@ -1878,9 +3053,7 @@ async def get_merge_mixed_cmd(
                                         f"Created adjusted subtitle file with scale factor {scale_factor}"
                                     )
                         except Exception as e:
-                            LOGGER.warning(
-                                f"Error adjusting subtitle timestamps: {e}"
-                            )
+                            LOGGER.warning(f"Error adjusting subtitle timestamps: {e}")
 
                         # Add input with the adjusted subtitle file
                         input_args.extend(["-i", sub_file])
@@ -1920,8 +3093,8 @@ async def get_merge_mixed_cmd(
                         ]
                     )
 
-        # Get optimal thread count based on system load if dynamic threading is enabled
-        thread_count = await get_optimal_thread_count() or max(1, cpu_no // 2)
+        # Use default thread count
+        thread_count = max(1, cpu_no // 2)
 
         # Create final command
         cmd = [
@@ -1970,8 +3143,8 @@ async def get_merge_mixed_cmd(
             # Default to AAC for other formats
             codec_args = ["-c:a", "aac", "-b:a", "320k"]
 
-        # Get optimal thread count based on system load if dynamic threading is enabled
-        thread_count = await get_optimal_thread_count() or max(1, cpu_no // 2)
+        # Use default thread count
+        thread_count = max(1, cpu_no // 2)
 
         cmd = [
             "xtra",
@@ -2028,7 +3201,7 @@ async def get_merge_mixed_cmd(
                         import subprocess
 
                         cmd = [
-                            "ffprobe",
+                            "ffprobe",  # Keep as ffprobe, not xtra
                             "-v",
                             "error",
                             "-show_entries",
@@ -2044,9 +3217,6 @@ async def get_merge_mixed_cmd(
                             data = json.loads(result.stdout)
                             if "format" in data and "duration" in data["format"]:
                                 video_duration = float(data["format"]["duration"])
-                                LOGGER.info(
-                                    f"Using video duration {video_duration} for subtitle"
-                                )
                     except Exception as e:
                         LOGGER.warning(f"Error getting video duration: {e}")
 
@@ -2092,7 +3262,9 @@ async def get_merge_mixed_cmd(
                                 new_s = int(total_seconds % 60)
                                 new_ms = int((total_seconds * 1000) % 1000)
 
-                                return f"{new_h:02d}:{new_m:02d}:{new_s:02d},{new_ms:03d}"
+                                return (
+                                    f"{new_h:02d}:{new_m:02d}:{new_s:02d},{new_ms:03d}"
+                                )
 
                             # Adjust all timestamps in the subtitle file
                             adjusted_content = re.sub(
@@ -2114,9 +3286,7 @@ async def get_merge_mixed_cmd(
 
                             # Use the temporary subtitle file instead
                             sub_file = temp_sub_path
-                            LOGGER.info(
-                                f"Created adjusted subtitle file with scale factor {scale_factor}"
-                            )
+
                 except Exception as e:
                     LOGGER.warning(f"Error adjusting subtitle timestamps: {e}")
 
@@ -2273,7 +3443,7 @@ async def analyze_media_for_merge(files):
             continue
 
         # For other files, use FFprobe to determine media type
-        media_type = await get_media_type(file_path)
+        media_type = await get_media_type_internal(file_path)
         if media_type == "video":
             video_files.append(file_path)
             # Get detailed video info
@@ -2402,7 +3572,6 @@ async def analyze_media_for_merge(files):
 
     if total_media_files == 0:
         recommended_approach = None
-        LOGGER.info("No media files found for merging")
     elif (
         len(video_files) > 0
         and len(audio_files) == 0
@@ -2414,21 +3583,12 @@ async def analyze_media_for_merge(files):
         if len(video_codec_groups) == 1 and len(video_resolution_groups) == 1:
             # All videos have same codec and resolution - can use concat demuxer
             recommended_approach = "concat_demuxer"
-            LOGGER.info(
-                "All videos have same codec and resolution - using concat demuxer"
-            )
         elif len(video_resolution_groups) > 1:
             # Different resolutions - need to use filter_complex with scaling
             recommended_approach = "filter_complex"
-            LOGGER.info(
-                "Videos have different resolutions - using filter_complex with scaling"
-            )
         else:
             # Different codecs but same resolution - can try concat demuxer with transcoding
             recommended_approach = "concat_demuxer"
-            LOGGER.info(
-                "Videos have different codecs but same resolution - using concat demuxer with transcoding"
-            )
     elif (
         len(audio_files) > 0
         and len(video_files) == 0
@@ -2440,11 +3600,9 @@ async def analyze_media_for_merge(files):
         if len(audio_codec_groups) == 1:
             # All audios have same codec - can use concat demuxer
             recommended_approach = "concat_demuxer"
-            LOGGER.info("All audio files have same codec - using concat demuxer")
         else:
             # Different codecs - need to use filter_complex
             recommended_approach = "filter_complex"
-            LOGGER.info("Audio files have different codecs - using filter_complex")
     elif (
         len(subtitle_files) > 0
         and len(video_files) == 0
@@ -2456,13 +3614,9 @@ async def analyze_media_for_merge(files):
         if len(subtitle_format_groups) == 1:
             # All subtitles have same format - can use concat demuxer
             recommended_approach = "concat_demuxer"
-            LOGGER.info("All subtitle files have same format - using concat demuxer")
         else:
             # Different formats - need special handling
             recommended_approach = "subtitle_special"
-            LOGGER.info(
-                "Subtitle files have different formats - using special handling"
-            )
     elif (
         len(image_files) > 0
         and len(video_files) == 0
@@ -2472,7 +3626,6 @@ async def analyze_media_for_merge(files):
     ):
         # All images - use PIL for merging
         recommended_approach = "image_merge"
-        LOGGER.info("Found image files - using PIL for merging")
     elif (
         len(document_files) > 0
         and len(video_files) == 0
@@ -2482,21 +3635,15 @@ async def analyze_media_for_merge(files):
     ):
         # All documents - use PDF merging
         recommended_approach = "document_merge"
-        LOGGER.info("Found document files - using PDF merging")
     # Mixed media types - need to use filter_complex or mixed approach
     elif len(video_files) > 0 and (len(audio_files) > 0 or len(subtitle_files) > 0):
         recommended_approach = "mixed"
-        LOGGER.info(
-            "Found mixed media types (video, audio, subtitles) - using mixed approach"
-        )
     elif len(video_files) > 0 and len(image_files) > 0:
         # Video and images - can create a slideshow
         recommended_approach = "slideshow"
-        LOGGER.info("Found video and image files - can create a slideshow")
     else:
         # Other combinations - use separate merges
         recommended_approach = "separate"
-        LOGGER.info("Found incompatible media types - will merge separately by type")
 
     return {
         "video_files": video_files,
@@ -2513,3 +3660,1562 @@ async def analyze_media_for_merge(files):
         "document_format_groups": document_format_groups,
         "recommended_approach": recommended_approach,
     }
+
+
+async def get_convert_cmd(
+    file,
+    output_format,
+    media_type=None,
+    video_codec="libx264",
+    audio_codec="aac",
+    video_preset="medium",
+    video_crf=23,
+    audio_bitrate="128k",
+    # subtitle_encoding is not used but kept for API compatibility
+    maintain_quality=True,
+):
+    """Generate FFmpeg command for converting media files to different formats.
+
+    Args:
+        file: Path to the input file
+        output_format: Desired output format (e.g., mp4, mkv, mp3, etc.)
+        media_type: Type of media (video, audio, subtitle, document, archive)
+        video_codec: Video codec to use for video conversion
+        audio_codec: Audio codec to use for audio conversion
+        video_preset: Video encoding preset for video conversion
+        video_crf: Constant Rate Factor for video quality (lower is better)
+        audio_bitrate: Audio bitrate for audio conversion
+        subtitle_encoding: Subtitle encoding for subtitle conversion
+        maintain_quality: Whether to maintain original quality
+
+    Returns:
+        tuple: FFmpeg command and temporary output file path, or None, None if not supported
+    """
+    # Import necessary modules
+    from bot import LOGGER, cpu_no
+    from bot.helper.ext_utils.media_utils import get_media_type
+
+    # Determine media type if not provided
+    if not media_type:
+        media_type = await get_media_type(file)
+        if not media_type:
+            LOGGER.warning(f"Unsupported file type for conversion: {file}")
+            return None, None
+
+    # Determine output file extension based on output format
+    output_ext = f".{output_format.lower()}"
+    temp_file = f"{file}.temp{output_ext}"
+
+    # Use default thread count
+    thread_count = max(1, cpu_no // 2)
+
+    # Base command for all media types
+    cmd = [
+        "xtra",
+        "-hide_banner",
+        "-loglevel",
+        "error",
+        "-progress",
+        "pipe:1",
+        "-i",
+        file,
+        "-ignore_unknown",
+    ]
+
+    # Add media-specific parameters
+    if media_type == "video":
+        # For video files
+        if maintain_quality:
+            video_crf = min(
+                video_crf, 18
+            )  # Use better quality if maintain_quality is enabled
+
+        cmd.extend(
+            [
+                "-c:v",
+                video_codec,
+                "-preset",
+                video_preset,
+                "-crf",
+                str(video_crf),
+                "-c:a",
+                audio_codec,
+                "-b:a",
+                audio_bitrate,
+                "-map",
+                "0:v?",
+                "-map",
+                "0:a?",
+                "-map",
+                "0:s?",
+                "-map",
+                "0:t?",
+                "-threads",
+                f"{thread_count}",
+                temp_file,
+            ]
+        )
+
+    elif media_type == "audio":
+        # For audio files
+        if output_format.lower() in ["mp3", "aac", "ogg", "opus", "flac", "wav"]:
+            # Set codec based on output format
+            if output_format.lower() == "mp3":
+                audio_codec = "libmp3lame"
+            elif output_format.lower() == "aac":
+                audio_codec = "aac"
+            elif output_format.lower() == "ogg":
+                audio_codec = "libvorbis"
+            elif output_format.lower() == "opus":
+                audio_codec = "libopus"
+            elif output_format.lower() == "flac":
+                audio_codec = "flac"
+            elif output_format.lower() == "wav":
+                audio_codec = "pcm_s16le"
+
+            # Set quality based on maintain_quality flag
+            if maintain_quality:
+                if output_format.lower() == "mp3":
+                    audio_bitrate = "320k"
+                elif output_format.lower() == "aac":
+                    audio_bitrate = "256k"
+                elif output_format.lower() == "ogg":
+                    audio_bitrate = "256k"
+                elif output_format.lower() == "opus":
+                    audio_bitrate = "192k"
+                # For lossless formats like FLAC and WAV, bitrate doesn't apply
+
+            cmd.extend(
+                [
+                    "-c:a",
+                    audio_codec,
+                    "-b:a",
+                    audio_bitrate if audio_codec not in ["flac", "pcm_s16le"] else "",
+                    "-map",
+                    "0:a",
+                    "-threads",
+                    f"{thread_count}",
+                    temp_file,
+                ]
+            )
+        else:
+            LOGGER.warning(f"Unsupported audio output format: {output_format}")
+            return None, None
+
+    elif media_type == "subtitle":
+        # For subtitle files
+        if output_format.lower() in ["srt", "ass", "ssa", "vtt", "sub"]:
+            cmd = [
+                "xtra",
+                "-hide_banner",
+                "-loglevel",
+                "error",
+                "-i",
+                file,
+                "-c:s",
+                "text" if output_format.lower() == "srt" else output_format.lower(),
+                "-threads",
+                f"{thread_count}",
+                temp_file,
+            ]
+        else:
+            LOGGER.warning(f"Unsupported subtitle output format: {output_format}")
+            return None, None
+
+    elif media_type == "document":
+        # For document files (PDF, DOCX, etc.)
+        # Document conversion is complex and might require specialized tools
+        # For now, we'll just return None for unsupported formats
+        LOGGER.warning(f"Document conversion not supported yet: {file}")
+        return None, None
+
+    elif media_type == "archive":
+        # For archive files (ZIP, RAR, etc.)
+        # Archive conversion is complex and might require specialized tools
+        # For now, we'll just return None for unsupported formats
+        LOGGER.warning(f"Archive conversion not supported yet: {file}")
+        return None, None
+
+    else:
+        # For other media types
+        LOGGER.warning(f"Unsupported media type for conversion: {media_type}")
+        return None, None
+
+    return cmd, temp_file
+
+
+async def get_trim_cmd(
+    file,
+    trim_params=None,
+    video_codec="none",
+    video_preset="none",
+    video_format="none",
+    audio_codec="none",
+    audio_preset="none",  # audio_preset is not used but kept for API compatibility
+    audio_format="none",
+    image_quality="none",
+    image_format="none",
+    document_quality="none",  # document_quality is not used but kept for API compatibility
+    document_format="none",
+    subtitle_encoding="none",
+    subtitle_format="none",
+    archive_format="none",
+    start_time=None,
+    end_time=None,
+    delete_original=False,
+):
+    """Generate FFmpeg command for trimming media files.
+
+    Args:
+        file: Path to the input file
+        trim_params: String containing trim parameters in format "start_time-end_time" (deprecated)
+        video_codec: Video codec to use for trimming
+        video_preset: Video preset to use for trimming
+        video_format: Output format for video trimming
+        audio_codec: Audio codec to use for trimming
+        audio_preset: Audio preset to use for trimming
+        audio_format: Output format for audio trimming
+        image_quality: Quality for image trimming
+        image_format: Output format for image trimming
+        document_quality: Quality for document trimming
+        document_format: Output format for document trimming
+        subtitle_encoding: Encoding for subtitle trimming
+        subtitle_format: Output format for subtitle trimming
+        archive_format: Output format for archive trimming
+        start_time: Start time for trimming (overrides trim_params)
+        end_time: End time for trimming (overrides trim_params)
+        delete_original: Whether to delete the original file after trimming
+
+    Returns:
+        tuple: FFmpeg command and temporary output file path, or None, None if not supported
+    """
+    # Import necessary modules
+    import os
+    from bot import LOGGER
+    from bot.helper.aeon_utils.media_utils import get_streams
+    from bot.helper.ext_utils.media_utils import get_media_type
+
+    # First try to determine media type using get_media_type
+    media_type = await get_media_type(file)
+
+    # If get_media_type fails, try to determine by file extension
+    if not media_type:
+        file_ext = os.path.splitext(file)[1].lower()
+        # Video extensions
+        if file_ext in [
+            ".mp4",
+            ".mkv",
+            ".avi",
+            ".mov",
+            ".webm",
+            ".flv",
+            ".wmv",
+            ".m4v",
+            ".ts",
+            ".3gp",
+            ".mpg",
+            ".mpeg",
+        ]:
+            media_type = "video"
+        # Audio extensions
+        elif file_ext in [".mp3", ".m4a", ".wav", ".flac", ".ogg", ".opus", ".aac"]:
+            media_type = "audio"
+        # Image extensions
+        elif file_ext in [
+            ".jpg",
+            ".jpeg",
+            ".png",
+            ".bmp",
+            ".webp",
+            ".tiff",
+            ".tif",
+            ".gif",
+        ]:
+            media_type = "image"
+        # Subtitle extensions
+        elif file_ext in [".srt", ".vtt", ".ass", ".ssa", ".sub"]:
+            media_type = "subtitle"
+        # Document extensions
+        elif file_ext in [".pdf", ".doc", ".docx", ".txt", ".rtf", ".odt"]:
+            media_type = "document"
+        # Archive extensions
+        elif file_ext in [".zip", ".rar", ".7z", ".tar", ".gz", ".bz2"]:
+            media_type = "archive"
+
+    if not media_type:
+        LOGGER.warning(f"Unsupported file type for trimming: {file}")
+        return None, None
+
+    # Parse trim parameters
+    try:
+        # If start_time and end_time are provided directly, use them
+        if start_time is None and end_time is None and trim_params:
+            # Fallback to the old trim_params format for backward compatibility
+            if "-" in trim_params:
+                start_time, end_time = trim_params.split("-", 1)
+            else:
+                # If only one time is provided, assume it's the start time and trim to the end
+                start_time = trim_params
+                end_time = None
+
+            LOGGER.info(
+                f"Using deprecated trim_params format: {trim_params}, parsed to start_time={start_time}, end_time={end_time}"
+            )
+
+        # If start_time is empty or "00:00:00", set it to None (beginning of file)
+        if start_time == "" or start_time == "00:00:00":
+            start_time = "00:00:00"
+
+        # If end_time is empty, set it to None (end of file)
+        if end_time == "":
+            end_time = None
+
+    except ValueError:
+        LOGGER.error(
+            f"Invalid trim parameters: trim_params={trim_params}, start_time={start_time}, end_time={end_time}"
+        )
+        return None, None
+
+    # Enhanced time format validation
+    def validate_time(time_str):
+        if time_str is None:
+            return None
+
+        # Check if it's in seconds format (e.g., "120")
+        if time_str.isdigit():
+            return time_str
+
+        # Check if it's in HH:MM:SS format (e.g., "00:02:00")
+        if ":" in time_str:
+            parts = time_str.split(":")
+            if len(parts) <= 3 and all(part.isdigit() for part in parts):
+                return time_str
+
+        # Check if it's in HH:MM:SS.mmm format (e.g., "00:02:00.500")
+        if ":" in time_str and "." in time_str:
+            time_parts = time_str.split(".")
+            if len(time_parts) == 2 and time_parts[1].isdigit():
+                parts = time_parts[0].split(":")
+                if len(parts) <= 3 and all(part.isdigit() for part in parts):
+                    return time_str
+
+        LOGGER.error(f"Invalid time format: {time_str}")
+        return None
+
+    start_time = validate_time(start_time)
+    end_time = validate_time(end_time)
+
+    if start_time is None:
+        LOGGER.error("Invalid start time for trimming")
+        return None, None
+
+    # Determine output file extension based on input file or specified format
+    file_ext = os.path.splitext(file)[1].lower()
+
+    # We already have the media type from earlier, no need to get it again
+
+    # Determine output extension based on specified format
+    if media_type == "video" and video_format and video_format != "none":
+        output_ext = f".{video_format.lower()}"
+    elif media_type == "audio" and audio_format and audio_format != "none":
+        output_ext = f".{audio_format.lower()}"
+    elif media_type == "image" and image_format and image_format != "none":
+        output_ext = f".{image_format.lower()}"
+    elif media_type == "document" and document_format and document_format != "none":
+        output_ext = f".{document_format.lower()}"
+    elif media_type == "subtitle" and subtitle_format and subtitle_format != "none":
+        output_ext = f".{subtitle_format.lower()}"
+    elif media_type == "archive" and archive_format and archive_format != "none":
+        output_ext = f".{archive_format.lower()}"
+    else:
+        # Use the original extension if no format is specified
+        output_ext = file_ext
+
+    temp_file = f"{file}.trim{output_ext}"
+
+    # Get file information for better handling
+    streams = await get_streams(file)
+
+    # Base command for all media types
+    cmd = [
+        "xtra",
+        "-hide_banner",
+        "-loglevel",
+        "error",
+        "-progress",
+        "pipe:1",
+    ]
+
+    # Add trim parameters - for better accuracy, put -ss before -i for seeking
+    if start_time:
+        cmd.extend(["-ss", start_time])
+
+    # Add input file
+    cmd.extend(["-i", file])
+
+    # Add end time parameter
+    if end_time:
+        cmd.extend(["-to", end_time])
+
+    # Add media-specific parameters
+    if media_type == "video":
+        # Check if the file has video streams
+        has_video = False
+        has_audio = False
+        # We don't need to track subtitle streams here as we always copy them
+
+        if streams:
+            for stream in streams:
+                if stream.get("codec_type") == "video" and not stream.get(
+                    "disposition", {}
+                ).get("attached_pic"):
+                    has_video = True
+                elif stream.get("codec_type") == "audio":
+                    has_audio = True
+                # We don't need to check for subtitles here as we're always copying them
+
+        # Add video codec parameters
+        if has_video:
+            # Check if this is a HEVC/10-bit MKV file
+            is_hevc_10bit = file_ext.lower() == ".mkv" and (
+                "10bit" in file.lower()
+                or "10bi" in file.lower()
+                or "hevc" in file.lower()
+            )
+
+            # For HEVC/10-bit MKV files, always use copy codec for better compatibility
+            if is_hevc_10bit:
+                LOGGER.info(f"Detected HEVC/10-bit MKV file, using copy codec: {file}")
+                cmd.extend(["-c:v", "copy"])
+            else:
+                # Check if video_codec is "none" (case-insensitive) or None
+                if not video_codec or video_codec.lower() == "none":
+                    # Use copy codec as default when none is specified
+                    cmd.extend(["-c:v", "copy"])
+                else:
+                    cmd.extend(["-c:v", video_codec])
+
+                    if video_codec != "copy":
+                        # Check if video_preset is "none" (case-insensitive) or None
+                        if video_preset and video_preset.lower() != "none":
+                            cmd.extend(["-preset", video_preset])
+                        # Ensure even dimensions for encoded video
+                        cmd.extend(["-vf", "scale=trunc(iw/2)*2:trunc(ih/2)*2"])
+                        # Ensure compatible pixel format
+                        cmd.extend(["-pix_fmt", "yuv420p"])
+                        # Add quality parameter for better results
+                        cmd.extend(["-crf", "23"])
+
+        # Add audio codec parameters
+        if has_audio:
+            # Check if audio_codec is "none" (case-insensitive) or None
+            if not audio_codec or audio_codec.lower() == "none":
+                # Use copy codec as default when none is specified
+                cmd.extend(["-c:a", "copy"])
+            else:
+                cmd.extend(["-c:a", audio_codec])
+
+                if audio_codec != "copy":
+                    if audio_codec == "aac":
+                        cmd.extend(["-b:a", "192k"])
+                    elif audio_codec == "libmp3lame":
+                        cmd.extend(["-q:a", "3"])
+                    elif audio_codec == "libopus":
+                        cmd.extend(["-b:a", "128k"])
+
+        # Always copy subtitle tracks
+        cmd.extend(["-c:s", "copy"])
+
+        # Map all streams
+        cmd.extend(["-map", "0"])
+
+        # Add avoid_negative_ts to fix timestamp issues
+        cmd.extend(["-avoid_negative_ts", "make_zero"])
+
+        # Add container-specific parameters
+        if file_ext == ".mp4":
+            # For MP4, ensure compatibility
+            cmd.extend(["-movflags", "+faststart"])
+        elif file_ext == ".mkv":
+            # For MKV, no special parameters needed
+            pass
+        elif file_ext == ".avi":
+            # For AVI, ensure compatibility
+            if video_codec != "copy":
+                cmd.extend(["-c:v", "libx264"])
+        elif file_ext == ".webm":
+            # For WebM, use VP9 and Opus
+            if video_codec != "copy":
+                cmd.extend(["-c:v", "libvpx-vp9", "-b:v", "1M"])
+            if audio_codec != "copy":
+                cmd.extend(["-c:a", "libopus", "-b:a", "128k"])
+        elif file_ext == ".hevc":
+            # For HEVC files, ensure we use a proper container
+            # Change the output file extension to .mp4
+            temp_file = f"{os.path.splitext(file)[0]}.trim.mp4"
+
+            # For raw HEVC files, we need to specify the format
+            cmd.extend(["-f", "hevc"])
+
+            # Use H.265 codec
+            if video_codec == "copy":
+                cmd.extend(["-c:v", "copy"])
+            else:
+                cmd.extend(["-c:v", "libx265", "-crf", "28", "-preset", video_preset])
+
+            # Add MP4 container flags
+            cmd.extend(["-movflags", "+faststart"])
+
+    elif media_type == "audio":
+        # For audio files
+        # Check if audio_codec is "none" (case-insensitive) or None
+        if not audio_codec or audio_codec.lower() == "none":
+            # Use copy codec as default when none is specified
+            cmd.extend(["-c:a", "copy"])
+        else:
+            cmd.extend(["-c:a", audio_codec])
+
+            if audio_codec != "copy":
+                if audio_codec == "aac":
+                    cmd.extend(["-b:a", "192k"])
+                elif audio_codec == "libmp3lame":
+                    cmd.extend(["-q:a", "3"])
+                elif audio_codec == "libopus":
+                    cmd.extend(["-b:a", "128k"])
+                elif audio_codec == "flac":
+                    cmd.extend(["-compression_level", "8"])
+
+        # Map all audio streams
+        cmd.extend(["-map", "0:a"])
+
+        # Add avoid_negative_ts to fix timestamp issues
+        cmd.extend(["-avoid_negative_ts", "make_zero"])
+
+        # Add container-specific parameters
+        if file_ext == ".mp3":
+            if audio_codec == "copy":
+                # For MP3 files, sometimes copy doesn't work well with trimming
+                # Use re-encoding with high quality
+                cmd.extend(["-c:a", "libmp3lame", "-q:a", "3"])
+        elif file_ext == ".m4a":
+            if audio_codec == "copy":
+                # For M4A files, sometimes copy doesn't work well with trimming
+                # Use re-encoding with high quality
+                cmd.extend(["-c:a", "aac", "-b:a", "192k"])
+        elif file_ext == ".opus":
+            if audio_codec == "copy":
+                # For Opus files, sometimes copy doesn't work well with trimming
+                # Use re-encoding with high quality
+                cmd.extend(["-c:a", "libopus", "-b:a", "128k"])
+        elif file_ext == ".flac":
+            # For FLAC files, ensure we preserve quality
+            if audio_codec == "copy":
+                # No special parameters needed for FLAC copy
+                pass
+            else:
+                # Use high quality for re-encoding
+                cmd.extend(["-compression_level", "8"])
+
+    elif media_type == "image":
+        # For image files, we need special handling since images don't have duration
+        # We'll create a short video from the image
+
+        # Remove any existing trim parameters since they don't apply to images
+        cmd = [
+            "xtra",
+            "-hide_banner",
+            "-loglevel",
+            "error",
+            "-progress",
+            "pipe:1",
+            "-i",
+            file,
+        ]
+
+        # For JPEG files
+        if file_ext in [".jpg", ".jpeg"]:
+            if (
+                not image_quality
+                or image_quality.lower() == "none"
+                or image_quality == "0"
+            ):
+                cmd.extend(["-q:v", "1"])  # Best quality
+            else:
+                try:
+                    quality_val = int(image_quality)
+                    cmd.extend(["-q:v", str(min(31, 31 - int(quality_val * 0.31)))])
+                except (ValueError, TypeError):
+                    cmd.extend(["-q:v", "1"])  # Default to best quality
+        # For PNG files
+        elif file_ext in [".png"]:
+            if (
+                not image_quality
+                or image_quality.lower() == "none"
+                or image_quality == "0"
+            ):
+                cmd.extend(["-compression_level", "0"])  # Best quality
+            else:
+                try:
+                    quality_val = int(image_quality)
+                    cmd.extend(
+                        ["-compression_level", str(min(9, 9 - int(quality_val * 0.09)))]
+                    )
+                except (ValueError, TypeError):
+                    cmd.extend(["-compression_level", "0"])  # Default to best quality
+        # For SVG files
+        elif file_ext == ".svg":
+            # SVG files need special handling - convert to PNG first
+            LOGGER.warning(f"SVG files are not directly supported for trimming: {file}")
+            return None, None
+        # For PSD files
+        elif file_ext == ".psd":
+            # PSD files need special handling
+            LOGGER.warning(f"PSD files are not directly supported for trimming: {file}")
+            return None, None
+        # For GIF files
+        elif file_ext == ".gif":
+            # For GIF, we need special handling
+            # Check if it's an animated GIF by getting the number of frames
+            streams = await get_streams(file)
+            if streams and len(streams) > 0:
+                # Try to get the number of frames
+                nb_frames = 1
+                for stream in streams:
+                    if stream.get("codec_type") == "video" and stream.get("nb_frames"):
+                        try:
+                            nb_frames = int(stream.get("nb_frames"))
+                        except (ValueError, TypeError):
+                            pass
+
+                # If it's an animated GIF (more than 1 frame)
+                if nb_frames > 1:
+                    LOGGER.info(
+                        f"Detected animated GIF with {nb_frames} frames: {file}"
+                    )
+
+                    # For animated GIFs, we need to use a different approach
+                    # We'll use palettegen and paletteuse filters to maintain quality
+                    cmd = [
+                        "xtra",
+                        "-hide_banner",
+                        "-loglevel",
+                        "error",
+                        "-progress",
+                        "pipe:1",
+                    ]
+
+                    # Add input file with seek if needed
+                    if start_time:
+                        cmd.extend(["-ss", start_time])
+
+                    cmd.extend(["-i", file])
+
+                    # Add duration limit if needed
+                    if end_time:
+                        cmd.extend(["-to", end_time])
+
+                    # Create a palette for better quality
+                    cmd.extend(
+                        [
+                            "-vf",
+                            "split[s0][s1];[s0]palettegen=stats_mode=diff[p];[s1][p]paletteuse=dither=sierra2_4a",
+                            "-loop",
+                            "0",  # Preserve looping
+                        ]
+                    )
+
+                    # Ensure we're using the GIF format
+                    cmd.extend(["-f", "gif"])
+                else:
+                    # For static GIFs, use a simpler approach
+                    LOGGER.info(f"Detected static GIF: {file}")
+                    cmd = [
+                        "xtra",
+                        "-hide_banner",
+                        "-loglevel",
+                        "error",
+                        "-progress",
+                        "pipe:1",
+                    ]
+
+                    # For static GIFs, it's better to put -ss before -i for accurate seeking
+                    if start_time:
+                        cmd.extend(["-ss", start_time])
+
+                    cmd.extend(["-i", file])
+
+                    if end_time:
+                        cmd.extend(["-to", end_time])
+
+                    # Use a simple filter to ensure the output is a valid GIF
+                    cmd.extend(
+                        ["-vf", "scale=trunc(iw/2)*2:trunc(ih/2)*2", "-f", "gif"]
+                    )
+            else:
+                # Fallback to a more robust approach if we can't determine frame count
+                cmd = [
+                    "xtra",
+                    "-hide_banner",
+                    "-loglevel",
+                    "error",
+                    "-progress",
+                    "pipe:1",
+                ]
+
+                # Put -ss before -i for accurate seeking
+                if start_time:
+                    cmd.extend(["-ss", start_time])
+
+                cmd.extend(["-i", file])
+
+                if end_time:
+                    cmd.extend(["-to", end_time])
+
+                # Use a simple filter to ensure the output is a valid GIF
+                cmd.extend(["-vf", "scale=trunc(iw/2)*2:trunc(ih/2)*2", "-f", "gif"])
+
+    elif media_type == "subtitle":
+        # For subtitle files
+
+        # Determine subtitle format
+        subtitle_format = "srt"  # Default format
+        if file_ext == ".vtt":
+            subtitle_format = "webvtt"
+        elif file_ext in [".ass", ".ssa"]:
+            subtitle_format = "ass"
+        elif file_ext == ".sub":
+            subtitle_format = "subviewer"
+
+        # For subtitle files, we need a different approach
+        # FFmpeg's subtitle trimming can be unreliable
+
+        # We'll use a custom approach for SRT files
+        if file_ext == ".srt":
+            # For SRT files, we'll use a special approach
+            # First, we'll read the file and parse it
+            LOGGER.info(f"Using custom SRT trimming approach for {file}")
+
+            # Create a temporary file with the same name but .trim extension
+            temp_file = f"{file}.trim{file_ext}"
+
+            # We'll handle SRT trimming in the proceed_trim method
+            # For now, just return a special command that will be recognized
+            cmd = [
+                "srt_trim",
+                file,
+                start_time or "0",
+                end_time or "999:59:59",
+                temp_file,
+            ]
+            return cmd, temp_file
+        elif file_ext == ".vtt":
+            # For VTT files, we'll use a similar approach to SRT
+            # First convert to SRT, then trim, then convert back to VTT
+            LOGGER.info(f"Using custom VTT trimming approach for {file}")
+
+            # Create temporary files
+            temp_srt = f"{file}.temp.srt"
+            temp_file = f"{file}.trim{file_ext}"
+
+            # First convert VTT to SRT for easier processing
+            convert_cmd = [
+                "xtra",
+                "-hide_banner",
+                "-loglevel",
+                "error",
+                "-i",
+                file,
+                "-f",
+                "srt",
+                temp_srt,
+            ]
+
+            # Execute the conversion command
+            try:
+                import subprocess
+
+                result = subprocess.run(
+                    convert_cmd, capture_output=True, text=True, check=False
+                )
+                if result.returncode != 0:
+                    LOGGER.error(f"Failed to convert VTT to SRT: {result.stderr}")
+                    # Fallback to standard approach
+                    cmd.extend(["-c:s", "copy", "-f", subtitle_format])
+                    return cmd, temp_file
+
+                # Now use the SRT trimming approach
+                cmd = [
+                    "srt_trim",
+                    temp_srt,
+                    start_time or "0",
+                    end_time or "999:59:59",
+                    temp_srt + ".trim",
+                ]
+
+                # After trimming, we'll need to convert back to VTT
+                # This will be handled in the proceed_trim method
+                return cmd, temp_file
+            except Exception as e:
+                LOGGER.error(f"Error in VTT trimming: {e}")
+                # Fallback to standard approach
+                cmd.extend(["-c:s", "copy", "-f", subtitle_format])
+        else:
+            # For other subtitle formats, try the standard approach
+            # Check if subtitle_encoding is "none" (case-insensitive) or None
+            if not subtitle_encoding or subtitle_encoding.lower() == "none":
+                # Use copy codec as default when none is specified
+                cmd.extend(["-c:s", "copy", "-f", subtitle_format])
+            else:
+                # For subtitle encoding, we typically use "copy" anyway
+                cmd.extend(["-c:s", "copy", "-f", subtitle_format])
+
+    elif media_type == "document":
+        # For document files, we need to use a different approach
+        if file_ext == ".pdf":
+            # For PDF files, we can use a special approach to extract pages
+            LOGGER.info(f"Using PDF trimming approach for {file}")
+
+            # Create a temporary file with the same name but .trim extension
+            temp_file = f"{file}.trim{file_ext}"
+
+            # We'll handle PDF trimming in the proceed_trim method
+            # For now, just return a special command that will be recognized
+            cmd = [
+                "pdf_trim",
+                file,
+                start_time or "0",  # Use start_time as start page
+                end_time or "999",  # Use end_time as end page
+                temp_file,
+            ]
+            return cmd, temp_file
+        else:
+            # For other document types, we can't use FFmpeg directly
+            LOGGER.warning(
+                f"Document trimming is not supported for this format: {file}"
+            )
+            return None, None
+
+    elif media_type == "archive":
+        # For archive files, we can't use FFmpeg
+        LOGGER.warning(f"Archive trimming is not supported: {file}")
+        return None, None
+
+    # Add output file
+    cmd.append(temp_file)
+
+    # Add -y flag to force overwrite without prompting
+    if "-y" not in cmd:
+        cmd.append("-y")
+
+    # Remove any -map options for GIF files to ensure our special handling works
+    if file_ext == ".gif" and "-map" in cmd:
+        map_index = cmd.index("-map")
+        if map_index < len(cmd) - 1:
+            # Remove the -map option and its argument
+            cmd.pop(map_index)  # Remove -map
+            cmd.pop(map_index)  # Remove the argument (e.g., 0)
+
+    # Add delete_original flag to the command for handling in the proceed_trim method
+    if delete_original:
+        LOGGER.info(f"Original file will be deleted after trimming: {file}")
+        # We'll handle this in the proceed_trim method, but we need to pass this information
+        # Use -del flag which is recognized and handled by the proceed_trim method
+        cmd.append("-del")
+
+    return cmd, temp_file
+
+
+async def get_compression_cmd(
+    file_path,
+    media_type=None,
+    video_preset="medium",
+    video_crf=23,
+    video_codec="libx264",
+    video_tune="film",
+    video_pixel_format="yuv420p",
+    video_format="none",
+    audio_preset="medium",
+    audio_codec="aac",
+    audio_bitrate="128k",
+    audio_channels=2,
+    audio_format="none",
+    image_preset="medium",
+    image_quality=80,
+    image_resize="none",
+    image_format="none",
+    document_preset="medium",
+    document_dpi=150,
+    document_format="none",
+    subtitle_preset="medium",
+    subtitle_encoding="utf-8",
+    subtitle_format="none",
+    archive_preset="medium",
+    archive_level=5,
+    archive_method="deflate",
+    archive_format="none",
+    # delete_original is not used here but kept for API compatibility
+    # It's handled in the proceed_compression method
+    delete_original=False,
+):
+    """Generate FFmpeg command for compressing media files.
+
+    Args:
+        file_path: Path to the input file
+        media_type: Type of media (video, audio, image, document, subtitle, archive)
+        video_preset: Compression preset for video (fast, medium, slow)
+        video_crf: Constant Rate Factor for video quality (0-51, lower is better)
+        video_codec: Video codec to use (libx264, libx265, etc.)
+        video_tune: Video tuning parameter (film, animation, grain, etc.)
+        video_pixel_format: Pixel format for video (yuv420p, yuv444p, etc.)
+        video_format: Output format for video (mp4, mkv, etc.)
+        audio_preset: Compression preset for audio (fast, medium, slow)
+        audio_codec: Audio codec to use (aac, mp3, opus, etc.)
+        audio_bitrate: Audio bitrate (64k, 128k, 192k, etc.)
+        audio_channels: Number of audio channels (1=mono, 2=stereo)
+        audio_format: Output format for audio (mp3, aac, etc.)
+        image_preset: Compression preset for images (fast, medium, slow)
+        image_quality: Quality for image compression (1-100)
+        image_resize: Size to resize images to (e.g., 1280x720)
+        image_format: Output format for images (jpg, png, etc.)
+        document_preset: Compression preset for documents (fast, medium, slow)
+        document_dpi: DPI for document compression
+        document_format: Output format for documents (pdf, etc.)
+        subtitle_preset: Compression preset for subtitles (fast, medium, slow)
+        subtitle_encoding: Character encoding for subtitles
+        subtitle_format: Output format for subtitles (srt, ass, etc.)
+        archive_preset: Compression preset for archives (fast, medium, slow)
+        archive_level: Compression level for archives (1-9)
+        archive_method: Compression method for archives (deflate, lzma, etc.)
+        archive_format: Output format for archives (zip, 7z, etc.)
+        delete_original: Whether to delete the original file after compression
+
+    Returns:
+        tuple: FFmpeg command and temporary output file path, or None, None if not supported
+    """
+    # Import necessary modules
+    from bot import LOGGER, cpu_no
+    from bot.helper.ext_utils.media_utils import get_media_type, get_streams
+
+    # Determine media type if not provided
+    if not media_type:
+        media_type = await get_media_type(file_path)
+        if not media_type:
+            LOGGER.warning(f"Unsupported file type for compression: {file_path}")
+            return None, None
+
+    # Get file extension
+    file_ext = os.path.splitext(file_path)[1].lower()
+
+    # Determine output file extension based on format settings
+    if media_type == "video" and video_format and video_format.lower() != "none":
+        output_ext = f".{video_format.lower()}"
+    elif media_type == "audio" and audio_format and audio_format.lower() != "none":
+        output_ext = f".{audio_format.lower()}"
+    elif media_type == "image" and image_format and image_format.lower() != "none":
+        output_ext = f".{image_format.lower()}"
+    elif (
+        media_type == "document"
+        and document_format
+        and document_format.lower() != "none"
+    ):
+        output_ext = f".{document_format.lower()}"
+    elif (
+        media_type == "subtitle"
+        and subtitle_format
+        and subtitle_format.lower() != "none"
+    ):
+        output_ext = f".{subtitle_format.lower()}"
+    elif (
+        media_type == "archive" and archive_format and archive_format.lower() != "none"
+    ):
+        output_ext = f".{archive_format.lower()}"
+    else:
+        # Keep original extension if no format specified
+        output_ext = file_ext
+
+    # Create temporary output file path
+    temp_file = f"{file_path}.compressed{output_ext}"
+
+    # Get stream information
+    streams = await get_streams(file_path)
+
+    # Use default thread count
+    thread_count = max(1, cpu_no // 2)
+
+    # Base command for all media types
+    cmd = [
+        "xtra",
+        "-hide_banner",
+        "-loglevel",
+        "error",
+        "-progress",
+        "pipe:1",
+        "-i",
+        file_path,
+        "-ignore_unknown",
+    ]
+
+    # Add media-specific parameters
+    if media_type == "video":
+        # Check if the file has video streams
+        has_video = False
+        has_audio = False
+        has_subtitle = False
+
+        if streams:
+            for stream in streams:
+                if stream.get("codec_type") == "video" and not stream.get(
+                    "disposition", {}
+                ).get("attached_pic"):
+                    has_video = True
+                elif stream.get("codec_type") == "audio":
+                    has_audio = True
+                elif stream.get("codec_type") == "subtitle":
+                    has_subtitle = True
+
+        # Add video codec parameters
+        if has_video:
+            # Check if this is a HEVC/10-bit MKV file
+            is_hevc_10bit = file_ext.lower() == ".mkv" and (
+                "10bit" in file_path.lower()
+                or "10bi" in file_path.lower()
+                or "hevc" in file_path.lower()
+            )
+
+            # For HEVC/10-bit MKV files, always use copy codec for better compatibility
+            if is_hevc_10bit:
+                LOGGER.info(
+                    f"Detected HEVC/10-bit MKV file, using copy codec: {file_path}"
+                )
+                cmd.extend(["-c:v", "copy"])
+            else:
+                # Add video codec
+                cmd.extend(["-c:v", video_codec])
+
+                # Add video preset
+                if video_preset and video_preset.lower() != "none":
+                    if video_codec in ["libx264", "libx265"]:
+                        cmd.extend(["-preset", video_preset])
+
+                # Add CRF for quality control
+                if video_crf > 0:
+                    cmd.extend(["-crf", str(video_crf)])
+
+                # Add tune parameter
+                if video_tune and video_tune.lower() != "none":
+                    if video_codec in ["libx264", "libx265"]:
+                        cmd.extend(["-tune", video_tune])
+
+                # Add pixel format
+                if video_pixel_format and video_pixel_format.lower() != "none":
+                    cmd.extend(["-pix_fmt", video_pixel_format])
+
+        # Add audio codec parameters
+        if has_audio:
+            # Add audio codec
+            cmd.extend(["-c:a", audio_codec])
+
+            # Add audio bitrate
+            if audio_bitrate and audio_bitrate.lower() != "none":
+                cmd.extend(["-b:a", audio_bitrate])
+
+            # Add audio channels
+            if audio_channels > 0:
+                cmd.extend(["-ac", str(audio_channels)])
+
+        # Add subtitle parameters
+        if has_subtitle:
+            # For subtitles, we typically use copy codec
+            cmd.extend(["-c:s", "copy"])
+
+        # Map all streams
+        cmd.extend(["-map", "0"])
+
+    elif media_type == "audio":
+        # Add audio codec
+        cmd.extend(["-c:a", audio_codec])
+
+        # Add audio preset
+        if audio_preset and audio_preset.lower() != "none":
+            if audio_codec == "libopus":
+                cmd.extend(
+                    [
+                        "-compression_level",
+                        "10"
+                        if audio_preset == "slow"
+                        else "5"
+                        if audio_preset == "medium"
+                        else "0",
+                    ]
+                )
+
+        # Add audio bitrate
+        if audio_bitrate and audio_bitrate.lower() != "none":
+            cmd.extend(["-b:a", audio_bitrate])
+
+        # Add audio channels
+        if audio_channels > 0:
+            cmd.extend(["-ac", str(audio_channels)])
+
+        # Map all audio streams
+        cmd.extend(["-map", "0:a"])
+
+    elif media_type == "image":
+        # For image files
+        if file_ext in [".jpg", ".jpeg"]:
+            # For JPEG, use quality parameter
+            quality_val = (
+                min(31, 31 - int(int(image_quality) * 0.31)) if image_quality > 0 else 1
+            )
+            cmd.extend(["-q:v", str(quality_val)])
+        elif file_ext in [".png", ".webp"]:
+            # For PNG and WebP, use compression level
+            compression_level = (
+                min(9, 9 - int(int(image_quality) * 0.09)) if image_quality > 0 else 0
+            )
+            cmd.extend(["-compression_level", str(compression_level)])
+        else:
+            # For other image formats, use general quality settings
+            cmd.extend(["-q:v", "2"])
+
+        # Add resize filter if specified
+        if image_resize and image_resize.lower() != "none":
+            cmd.extend(["-vf", f"scale={image_resize}"])
+
+    elif media_type == "document":
+        # For document files (mainly PDF)
+        if file_ext == ".pdf":
+            # For PDF files, we'll use a special approach
+            # This will be handled separately in the proceed_compression method
+            # Just return a special command that will be recognized
+            cmd = [
+                "pdf_compress",
+                file_path,
+                str(document_dpi),
+                document_preset,
+                temp_file,
+            ]
+            return cmd, temp_file
+        else:
+            # For other document types, we can't use FFmpeg directly
+            LOGGER.warning(
+                f"Document compression not supported for this format: {file_ext}"
+            )
+            return None, None
+
+    elif media_type == "subtitle":
+        # For subtitle files
+        if file_ext in [".srt", ".ass", ".ssa", ".vtt"]:
+            # For text-based subtitles, we'll use a special approach
+            # This will be handled separately in the proceed_compression method
+            cmd = [
+                "subtitle_compress",
+                file_path,
+                subtitle_encoding,
+                subtitle_preset,
+                temp_file,
+            ]
+            return cmd, temp_file
+        else:
+            # For other subtitle formats, try standard approach
+            cmd.extend(["-c:s", "copy"])
+
+    elif media_type == "archive":
+        # For archive files, we'll use a special approach
+        # This will be handled separately in the proceed_compression method
+        cmd = [
+            "archive_compress",
+            file_path,
+            str(archive_level),
+            archive_method,
+            archive_preset,
+            temp_file,
+        ]
+        return cmd, temp_file
+
+    else:
+        # For other media types
+        LOGGER.warning(f"Unsupported media type for compression: {media_type}")
+        return None, None
+
+    # Add threads parameter
+    cmd.extend(["-threads", f"{thread_count}"])
+
+    # Add output file
+    cmd.append(temp_file)
+
+    return cmd, temp_file
+
+
+async def get_extract_cmd(
+    file_path,
+    extract_video=False,
+    extract_audio=False,
+    extract_subtitle=False,
+    extract_attachment=False,
+    video_index=None,
+    audio_index=None,
+    subtitle_index=None,
+    attachment_index=None,
+    video_codec="copy",
+    audio_codec="copy",
+    subtitle_codec="copy",
+    maintain_quality=True,
+):
+    """Generate FFmpeg command for extracting tracks from a media file.
+
+    Args:
+        file_path: Path to the input file
+        extract_video: Whether to extract video tracks
+        extract_audio: Whether to extract audio tracks
+        extract_subtitle: Whether to extract subtitle tracks
+        extract_attachment: Whether to extract attachments
+        video_index: Specific video track index to extract (None for all)
+        audio_index: Specific audio track index to extract (None for all)
+        subtitle_index: Specific subtitle track index to extract (None for all)
+        attachment_index: Specific attachment index to extract (None for all)
+        video_codec: Codec to use for video extraction
+        audio_codec: Codec to use for audio extraction
+        subtitle_codec: Codec to use for subtitle extraction
+        maintain_quality: Whether to maintain high quality during extraction
+
+    Returns:
+        Tuple containing the FFmpeg command and the temporary output file path
+    """
+    # Check if file exists
+    if not os.path.exists(file_path):
+        LOGGER.error(f"File not found for extraction: {file_path}")
+        return [], ""
+
+    # Get file information
+    file_name = os.path.basename(file_path)
+    file_dir = os.path.dirname(file_path)
+    file_base, file_ext = os.path.splitext(file_name)
+
+    # Create a temporary output file path
+    temp_file = os.path.join(file_dir, f"{file_base}.extract.temp{file_ext}")
+
+    # Check if any extraction option is enabled
+    if not (extract_video or extract_audio or extract_subtitle or extract_attachment):
+        LOGGER.warning("No extraction option is enabled")
+        return [], temp_file
+
+    # Get track information
+    streams = await get_streams(file_path)
+    if not streams:
+        LOGGER.error(f"Failed to get stream information for {file_path}")
+        return [], temp_file
+
+    # Group streams by type
+    video_streams = []
+    audio_streams = []
+    subtitle_streams = []
+    attachment_streams = []
+
+    for i, stream in enumerate(streams):
+        stream_type = stream.get("codec_type")
+        if stream_type == "video":
+            video_streams.append((i, stream))
+        elif stream_type == "audio":
+            audio_streams.append((i, stream))
+        elif stream_type == "subtitle":
+            subtitle_streams.append((i, stream))
+        elif stream_type == "attachment":
+            attachment_streams.append((i, stream))
+
+    # Check if we have any streams to extract
+    if (
+        (extract_video and not video_streams)
+        and (extract_audio and not audio_streams)
+        and (extract_subtitle and not subtitle_streams)
+        and (extract_attachment and not attachment_streams)
+    ):
+        LOGGER.error(f"No streams found to extract from {file_path}")
+        return [], temp_file
+
+    # Handle attachment extraction separately
+    if extract_attachment and attachment_streams:
+        # For attachments, we need to use a different approach
+        if attachment_index is not None:
+            # Extract specific attachment
+            try:
+                attachment_index = int(attachment_index)
+                if 0 <= attachment_index < len(attachment_streams):
+                    stream_index, stream = attachment_streams[attachment_index]
+                    filename = stream.get("tags", {}).get(
+                        "filename", f"attachment_{attachment_index}"
+                    )
+                    output_path = os.path.join(file_dir, filename)
+                    return [
+                        "EXTRACT_ATTACHMENTS_ONLY",
+                        file_path,
+                        f"EXTRACT_ATTACHMENT:{stream_index}:{output_path}",
+                    ], temp_file
+                else:
+                    LOGGER.warning(
+                        f"Attachment index {attachment_index} out of range (0-{len(attachment_streams) - 1})"
+                    )
+            except ValueError:
+                LOGGER.error(f"Invalid attachment index: {attachment_index}")
+        else:
+            # Extract all attachments
+            commands = ["EXTRACT_ATTACHMENTS_ONLY", file_path]
+            for i, (stream_index, stream) in enumerate(attachment_streams):
+                filename = stream.get("tags", {}).get("filename", f"attachment_{i}")
+                output_path = os.path.join(file_dir, filename)
+                commands.append(f"EXTRACT_ATTACHMENT:{stream_index}:{output_path}")
+            return commands, temp_file
+
+    # For media tracks, we'll use multiple FFmpeg commands if needed
+    commands = []
+
+    # Extract video streams
+    if extract_video and video_streams:
+        if video_index is not None:
+            # Extract specific video track by index
+            try:
+                video_index = int(video_index)
+                if 0 <= video_index < len(video_streams):
+                    stream_index, stream = video_streams[video_index]
+                    codec_name = stream.get("codec_name", "unknown")
+                    # We don't need width and height for extraction
+                    # but we could use them for logging or future enhancements
+
+                    # Determine output extension based on codec
+                    output_ext = "mp4" if video_codec in ["h264", "libx264"] else "mkv"
+                    output_file = os.path.join(
+                        file_dir,
+                        f"{file_base}.video.{stream.get('tags', {}).get('language', 'und')}.{stream_index}.{output_ext}",
+                    )
+
+                    cmd = [
+                        "xtra",
+                        "-i",
+                        file_path,
+                        "-map",
+                        f"0:{stream_index}",
+                        "-c:v",
+                        video_codec,
+                    ]
+
+                    # Add quality settings if not using copy codec
+                    if video_codec != "copy" and maintain_quality:
+                        if video_codec in ["h264", "libx264"]:
+                            cmd.extend(["-crf", "18", "-preset", "slow"])
+                        elif video_codec in ["h265", "libx265"]:
+                            cmd.extend(["-crf", "22", "-preset", "slow"])
+                        elif video_codec in ["vp9", "libvpx-vp9"]:
+                            cmd.extend(["-crf", "30", "-b:v", "0"])
+
+                    cmd.append(output_file)
+                    commands.append(" ".join(cmd))
+                else:
+                    LOGGER.warning(
+                        f"Video index {video_index} out of range (0-{len(video_streams) - 1})"
+                    )
+            except ValueError:
+                LOGGER.error(f"Invalid video index: {video_index}")
+        else:
+            # Extract all video tracks
+            for i, (stream_index, stream) in enumerate(video_streams):
+                # Skip attached pictures (cover art)
+                if stream.get("disposition", {}).get("attached_pic", 0) == 1:
+                    continue
+
+                # Determine output extension based on codec
+                output_ext = "mp4" if video_codec in ["h264", "libx264"] else "mkv"
+                output_file = os.path.join(
+                    file_dir,
+                    f"{file_base}.video.{stream.get('tags', {}).get('language', 'und')}.{stream_index}.{output_ext}",
+                )
+
+                cmd = [
+                    "xtra",
+                    "-i",
+                    file_path,
+                    "-map",
+                    f"0:{stream_index}",
+                    "-c:v",
+                    video_codec,
+                ]
+
+                # Add quality settings if not using copy codec
+                if video_codec != "copy" and maintain_quality:
+                    if video_codec in ["h264", "libx264"]:
+                        cmd.extend(["-crf", "18", "-preset", "slow"])
+                    elif video_codec in ["h265", "libx265"]:
+                        cmd.extend(["-crf", "22", "-preset", "slow"])
+                    elif video_codec in ["vp9", "libvpx-vp9"]:
+                        cmd.extend(["-crf", "30", "-b:v", "0"])
+
+                cmd.append(output_file)
+                commands.append(" ".join(cmd))
+
+    # Extract audio streams
+    if extract_audio and audio_streams:
+        if audio_index is not None:
+            # Extract specific audio track by indexbut by default all the configs should be none and none means none and those configs should not be used for command generation. global settings will use that settings by default
+            try:
+                audio_index = int(audio_index)
+                if 0 <= audio_index < len(audio_streams):
+                    stream_index, stream = audio_streams[audio_index]
+                    codec_name = stream.get("codec_name", "unknown")
+
+                    # Determine output extension based on codec
+                    output_ext = (
+                        "m4a" if audio_codec in ["aac", "libfdk_aac"] else audio_codec
+                    )
+                    output_file = os.path.join(
+                        file_dir,
+                        f"{file_base}.audio.{stream.get('tags', {}).get('language', 'und')}.{stream_index}.{output_ext}",
+                    )
+
+                    cmd = [
+                        "xtra",
+                        "-i",
+                        file_path,
+                        "-map",
+                        f"0:{stream_index}",
+                        "-c:a",
+                        audio_codec,
+                    ]
+
+                    # Add quality settings if not using copy codec
+                    if audio_codec != "copy" and maintain_quality:
+                        if audio_codec in ["aac", "libfdk_aac"]:
+                            cmd.extend(["-b:a", "320k"])
+                        elif audio_codec == "mp3":
+                            cmd.extend(["-b:a", "320k"])
+                        elif audio_codec in ["opus", "libopus"]:
+                            cmd.extend(["-b:a", "192k"])
+                        elif audio_codec in ["flac", "libflac"]:
+                            cmd.extend(["-compression_level", "8"])
+
+                    cmd.append(output_file)
+                    commands.append(" ".join(cmd))
+                else:
+                    LOGGER.warning(
+                        f"Audio index {audio_index} out of range (0-{len(audio_streams) - 1})"
+                    )
+            except ValueError:
+                LOGGER.error(f"Invalid audio index: {audio_index}")
+        else:
+            # Extract all audio tracks
+            for i, (stream_index, stream) in enumerate(audio_streams):
+                # Determine output extension based on codec
+                output_ext = (
+                    "m4a" if audio_codec in ["aac", "libfdk_aac"] else audio_codec
+                )
+                output_file = os.path.join(
+                    file_dir,
+                    f"{file_base}.audio.{stream.get('tags', {}).get('language', 'und')}.{stream_index}.{output_ext}",
+                )
+
+                cmd = [
+                    "xtra",
+                    "-i",
+                    file_path,
+                    "-map",
+                    f"0:{stream_index}",
+                    "-c:a",
+                    audio_codec,
+                ]
+
+                # Add quality settings if not using copy codec
+                if audio_codec != "copy" and maintain_quality:
+                    if audio_codec in ["aac", "libfdk_aac"]:
+                        cmd.extend(["-b:a", "320k"])
+                    elif audio_codec == "mp3":
+                        cmd.extend(["-b:a", "320k"])
+                    elif audio_codec in ["opus", "libopus"]:
+                        cmd.extend(["-b:a", "192k"])
+                    elif audio_codec in ["flac", "libflac"]:
+                        cmd.extend(["-compression_level", "8"])
+
+                cmd.append(output_file)
+                commands.append(" ".join(cmd))
+
+    # Extract subtitle streams
+    if extract_subtitle and subtitle_streams:
+        if subtitle_index is not None:
+            # Extract specific subtitle track by index
+            try:
+                subtitle_index = int(subtitle_index)
+                if 0 <= subtitle_index < len(subtitle_streams):
+                    stream_index, stream = subtitle_streams[subtitle_index]
+                    codec_name = stream.get("codec_name", "unknown")
+
+                    # Determine output extension based on codec
+                    if codec_name in ["subrip", "srt"]:
+                        output_ext = "srt"
+                    elif codec_name in ["ass", "ssa"]:
+                        output_ext = "ass"
+                    elif codec_name in ["webvtt", "vtt"]:
+                        output_ext = "vtt"
+                    else:
+                        output_ext = "srt"  # Default format
+
+                    output_file = os.path.join(
+                        file_dir,
+                        f"{file_base}.subtitle.{stream.get('tags', {}).get('language', 'und')}.{stream_index}.{output_ext}",
+                    )
+
+                    cmd = [
+                        "xtra",
+                        "-i",
+                        file_path,
+                        "-map",
+                        f"0:{stream_index}",
+                        "-c:s",
+                        subtitle_codec,
+                    ]
+                    cmd.append(output_file)
+                    commands.append(" ".join(cmd))
+                else:
+                    LOGGER.warning(
+                        f"Subtitle index {subtitle_index} out of range (0-{len(subtitle_streams) - 1})"
+                    )
+            except ValueError:
+                LOGGER.error(f"Invalid subtitle index: {subtitle_index}")
+        else:
+            # Extract all subtitle tracks
+            for i, (stream_index, stream) in enumerate(subtitle_streams):
+                codec_name = stream.get("codec_name", "unknown")
+
+                # Determine output extension based on codec
+                if codec_name in ["subrip", "srt"]:
+                    output_ext = "srt"
+                elif codec_name in ["ass", "ssa"]:
+                    output_ext = "ass"
+                elif codec_name in ["webvtt", "vtt"]:
+                    output_ext = "vtt"
+                else:
+                    output_ext = "srt"  # Default format
+
+                output_file = os.path.join(
+                    file_dir,
+                    f"{file_base}.subtitle.{stream.get('tags', {}).get('language', 'und')}.{stream_index}.{output_ext}",
+                )
+
+                cmd = [
+                    "xtra",
+                    "-i",
+                    file_path,
+                    "-map",
+                    f"0:{stream_index}",
+                    "-c:s",
+                    subtitle_codec,
+                ]
+                cmd.append(output_file)
+                commands.append(" ".join(cmd))
+
+    # Return the commands
+    if len(commands) == 1:
+        # If there's only one command, return it directly
+        return commands[0].split(), temp_file
+    elif len(commands) > 1:
+        # If there are multiple commands, return them as a special format
+        return ["EXTRACT_MULTI_COMMAND"] + commands, temp_file
+    else:
+        # No commands were generated
+        return [], temp_file

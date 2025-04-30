@@ -42,6 +42,8 @@ from bot.modules import (
     handle_cancel_command,
     handle_command,
     handle_group_gensession,
+    handle_no_suffix_commands,
+    handle_qb_commands,
     handle_session_input,
     hydra_search,
     imdb_callback,
@@ -258,7 +260,7 @@ def add_handlers():
         "send_user_settings": (
             send_user_settings,
             BotCommands.UserSetCommand,
-            CustomFilters.authorized,
+            CustomFilters.authorized & filters.group,
         ),
         "ytdl": (
             ytdl,
@@ -308,7 +310,7 @@ def add_handlers():
         "font_styles_cmd": (
             font_styles_cmd,
             BotCommands.FontStylesCommand,
-            CustomFilters.authorized,
+            CustomFilters.authorized & filters.group,
         ),
         "imdb_search": (
             imdb_search,
@@ -328,7 +330,7 @@ def add_handlers():
         "media_tools_help_cmd": (
             media_tools_help_cmd,
             BotCommands.MediaToolsHelpCommand,
-            CustomFilters.authorized,
+            CustomFilters.authorized & filters.group,
         ),
         "gen_session": (
             handle_command,
@@ -374,6 +376,42 @@ def add_handlers():
         "force_delete_all": force_delete_all_messages,
     }
 
+    # Special handling for settings callbacks to allow in PMs without auth
+    settings_callbacks = {
+        "^userset": edit_user_settings,
+        "^mediatools": edit_media_tools_settings,
+        "^fontstyles": font_styles_callback,
+        "^mthelp": media_tools_help_callback,
+    }
+
+    # Remove settings callbacks from the main regex_filters
+    for pattern in settings_callbacks:
+        if pattern in regex_filters:
+            del regex_filters[pattern]
+
+    # Add handlers for settings callbacks in groups with authorization
+    for regex_filter, handler_func in settings_callbacks.items():
+        TgClient.bot.add_handler(
+            CallbackQueryHandler(
+                handler_func,
+                filters=regex(regex_filter) & CustomFilters.authorized & filters.create(
+                    lambda *args: args[2].message and args[2].message.chat.type != "private"
+                ),
+            ),
+        )
+
+    # Add handlers for settings callbacks in private chats without authorization
+    for regex_filter, handler_func in settings_callbacks.items():
+        TgClient.bot.add_handler(
+            CallbackQueryHandler(
+                handler_func,
+                filters=regex(regex_filter) & filters.create(
+                    lambda *args: args[2].message and args[2].message.chat.type == "private"
+                ),
+            ),
+        )
+
+    # Add handlers for other callbacks
     for regex_filter, handler_func in regex_filters.items():
         TgClient.bot.add_handler(
             CallbackQueryHandler(handler_func, filters=regex(regex_filter)),
@@ -393,12 +431,61 @@ def add_handlers():
         ),
     )
 
+    # Add handler for deprecated commands (qbleech, qbmirror) with any suffix
+    TgClient.bot.add_handler(
+        MessageHandler(
+            handle_qb_commands,
+            filters=regex(r"^/qb(leech|mirror)(\d+|[a-zA-Z0-9_]+)?") & CustomFilters.authorized,
+        ),
+    )
+
+    # Add handler for commands without suffix
+    TgClient.bot.add_handler(
+        MessageHandler(
+            handle_no_suffix_commands,
+            filters=regex(r"^/(mirror|leech|jdmirror|jdleech|nzbmirror|nzbleech|ytdl|ytdlleech|clone|count|del|list|search|mediainfo|mi|status|s|ping|help|speedtest)$") & CustomFilters.authorized,
+        ),
+    )
+
     # Add a handler for /gensession in groups to guide users to PM
     TgClient.bot.add_handler(
         MessageHandler(
             handle_group_gensession,
             filters=command(BotCommands.GenSessionCommand, case_sensitive=True)
             & filters.group,
+        ),
+    )
+
+    # Add handlers for settings commands in private chats without authorization
+    TgClient.bot.add_handler(
+        MessageHandler(
+            send_user_settings,
+            filters=command(BotCommands.UserSetCommand, case_sensitive=True)
+            & filters.private,
+        ),
+    )
+
+    TgClient.bot.add_handler(
+        MessageHandler(
+            media_tools_settings,
+            filters=command(BotCommands.MediaToolsCommand, case_sensitive=True)
+            & filters.private,
+        ),
+    )
+
+    TgClient.bot.add_handler(
+        MessageHandler(
+            media_tools_help_cmd,
+            filters=command(BotCommands.MediaToolsHelpCommand, case_sensitive=True)
+            & filters.private,
+        ),
+    )
+
+    TgClient.bot.add_handler(
+        MessageHandler(
+            font_styles_cmd,
+            filters=command(BotCommands.FontStylesCommand, case_sensitive=True)
+            & filters.private,
         ),
     )
 
@@ -411,8 +498,9 @@ def add_handlers():
     )
 
     # Define a custom filter for non-command messages, but allow /cancel
-    def session_input_filter(_, __, update):
-        # The second parameter is client, which we don't use
+    def session_input_filter(*args):
+        # Extract update from args (args[2])
+        update = args[2]
         if update.text:
             # Allow /cancel command specifically
             if update.text.lower() == "/cancel":

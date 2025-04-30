@@ -34,7 +34,7 @@ from myjd.exception import MYJDException
 
 
 @new_task
-async def configureDownload(_, query, obj):
+async def configureDownload(_, query, obj):  # noqa: N802
     data = query.data.split()
     message = query.message
     await query.answer()
@@ -90,9 +90,7 @@ async def get_online_packages(path, state="grabbing"):
         queued_downloads = await jdownloader.device.linkgrabber.query_packages(
             [{"saveTo": True}],
         )
-        return [
-            qd["uuid"] for qd in queued_downloads if qd["saveTo"].startswith(path)
-        ]
+        return [qd["uuid"] for qd in queued_downloads if qd["saveTo"].startswith(path)]
     download_packages = await jdownloader.device.downloads.query_packages(
         [{"saveTo": True}],
     )
@@ -236,9 +234,7 @@ async def add_jd_download(listener, path):
                                 1,
                             )[0]
                         else:
-                            name = save_to.replace(f"{path}/", "", 1).split("/", 1)[
-                                0
-                            ]
+                            name = save_to.replace(f"{path}/", "", 1).split("/", 1)[0]
                         name = name[:255]
 
                     if (

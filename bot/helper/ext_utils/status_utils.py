@@ -31,6 +31,8 @@ class MirrorStatus:
     STATUS_WATERMARK = "Watermark"
     STATUS_ETHUMB = "Embed Thumb"
     STATUS_MERGE = "Merging"
+    STATUS_COMPRESS = "Compress"
+    STATUS_TRIM = "Trim"
 
 
 STATUSES = {
@@ -49,6 +51,8 @@ STATUSES = {
     "FF": MirrorStatus.STATUS_FFMPEG,
     "PA": MirrorStatus.STATUS_PAUSED,
     "CK": MirrorStatus.STATUS_CHECK,
+    "CP": MirrorStatus.STATUS_COMPRESS,
+    "TR": MirrorStatus.STATUS_TRIM,
 }
 
 
@@ -65,9 +69,7 @@ async def get_task_by_gid(gid: str):
 async def get_specific_tasks(status, user_id):
     if status == "All":
         if user_id:
-            return [
-                tk for tk in task_dict.values() if tk.listener.user_id == user_id
-            ]
+            return [tk for tk in task_dict.values() if tk.listener.user_id == user_id]
         return list(task_dict.values())
     tasks_to_check = (
         [tk for tk in task_dict.values() if tk.listener.user_id == user_id]

@@ -114,11 +114,18 @@ class Mirror(TaskListener):
             "-merge-all": False,
             "-merge-image": False,
             "-merge-pdf": False,
+            "-merge-video": False,
+            "-merge-audio": False,
+            "-merge-subtitle": False,
+            "-merge-all": False,
+            "-merge-image": False,
+            "-merge-pdf": False,
             "-i": 0,
             "-sp": 0,
             "link": "",
             "-n": "",
             "-m": "",
+            "-watermark": "",
             "-watermark": "",
             "-up": "",
             "-rcf": "",
@@ -134,8 +141,63 @@ class Mirror(TaskListener):
             "-metadata-author": "",
             "-metadata-comment": "",
             "-metadata-all": "",
+            "-metadata-video-title": "",
+            "-metadata-video-author": "",
+            "-metadata-video-comment": "",
+            "-metadata-audio-title": "",
+            "-metadata-audio-author": "",
+            "-metadata-audio-comment": "",
+            "-metadata-subtitle-title": "",
+            "-metadata-subtitle-author": "",
+            "-metadata-subtitle-comment": "",
             "-tl": "",
             "-ff": set(),
+            "-compress": False,
+            "-comp-video": False,
+            "-comp-audio": False,
+            "-comp-image": False,
+            "-comp-document": False,
+            "-comp-subtitle": False,
+            "-comp-archive": False,
+            "-video-fast": False,
+            "-video-medium": False,
+            "-video-slow": False,
+            "-audio-fast": False,
+            "-audio-medium": False,
+            "-audio-slow": False,
+            "-image-fast": False,
+            "-image-medium": False,
+            "-image-slow": False,
+            "-document-fast": False,
+            "-document-medium": False,
+            "-document-slow": False,
+            "-subtitle-fast": False,
+            "-subtitle-medium": False,
+            "-subtitle-slow": False,
+            "-archive-fast": False,
+            "-archive-medium": False,
+            "-archive-slow": False,
+            "-trim": "",
+            "-extract": False,
+            "-extract-video": False,
+            "-extract-audio": False,
+            "-extract-subtitle": False,
+            "-extract-attachment": False,
+            "-extract-video-index": "",
+            "-extract-audio-index": "",
+            "-extract-subtitle-index": "",
+            "-extract-attachment-index": "",
+            "-extract-video-codec": "",
+            "-extract-audio-codec": "",
+            "-extract-subtitle-codec": "",
+            "-extract-maintain-quality": "",
+            "-extract-priority": "",
+            "-del": "",
+            # Shorter index flags
+            "-vi": "",
+            "-ai": "",
+            "-si": "",
+            "-ati": "",
         }
 
         arg_parser(input_list[1:], args)
@@ -168,9 +230,16 @@ class Mirror(TaskListener):
         self.metadata_author = args["-metadata-author"]
         self.metadata_comment = args["-metadata-comment"]
         self.metadata_all = args["-metadata-all"]
-        self.folder_name = (
-            f"/{args['-m']}".rstrip("/") if len(args["-m"]) > 0 else ""
-        )
+        self.metadata_video_title = args["-metadata-video-title"]
+        self.metadata_video_author = args["-metadata-video-author"]
+        self.metadata_video_comment = args["-metadata-video-comment"]
+        self.metadata_audio_title = args["-metadata-audio-title"]
+        self.metadata_audio_author = args["-metadata-audio-author"]
+        self.metadata_audio_comment = args["-metadata-audio-comment"]
+        self.metadata_subtitle_title = args["-metadata-subtitle-title"]
+        self.metadata_subtitle_author = args["-metadata-subtitle-author"]
+        self.metadata_subtitle_comment = args["-metadata-subtitle-comment"]
+        self.folder_name = f"/{args['-m']}".rstrip("/") if len(args["-m"]) > 0 else ""
         self.bot_trans = args["-bt"]
         self.user_trans = args["-ut"]
         self.merge_video = args["-merge-video"]
@@ -180,6 +249,76 @@ class Mirror(TaskListener):
         self.merge_image = args["-merge-image"]
         self.merge_pdf = args["-merge-pdf"]
         self.watermark_text = args["-watermark"]
+        self.trim = args["-trim"]
+
+        # Compression flags
+        self.compression_enabled = args["-compress"]
+        self.compress_video = args["-comp-video"]
+        self.compress_audio = args["-comp-audio"]
+        self.compress_image = args["-comp-image"]
+        self.compress_document = args["-comp-document"]
+        self.compress_subtitle = args["-comp-subtitle"]
+        self.compress_archive = args["-comp-archive"]
+
+        # Enable compression if any specific compression flag is set
+        if (
+            self.compress_video
+            or self.compress_audio
+            or self.compress_image
+            or self.compress_document
+            or self.compress_subtitle
+            or self.compress_archive
+        ):
+            self.compression_enabled = True
+
+        # Compression presets
+        self.video_preset = None
+        if args["-video-fast"]:
+            self.video_preset = "fast"
+        elif args["-video-medium"]:
+            self.video_preset = "medium"
+        elif args["-video-slow"]:
+            self.video_preset = "slow"
+
+        self.audio_preset = None
+        if args["-audio-fast"]:
+            self.audio_preset = "fast"
+        elif args["-audio-medium"]:
+            self.audio_preset = "medium"
+        elif args["-audio-slow"]:
+            self.audio_preset = "slow"
+
+        self.image_preset = None
+        if args["-image-fast"]:
+            self.image_preset = "fast"
+        elif args["-image-medium"]:
+            self.image_preset = "medium"
+        elif args["-image-slow"]:
+            self.image_preset = "slow"
+
+        self.document_preset = None
+        if args["-document-fast"]:
+            self.document_preset = "fast"
+        elif args["-document-medium"]:
+            self.document_preset = "medium"
+        elif args["-document-slow"]:
+            self.document_preset = "slow"
+
+        self.subtitle_preset = None
+        if args["-subtitle-fast"]:
+            self.subtitle_preset = "fast"
+        elif args["-subtitle-medium"]:
+            self.subtitle_preset = "medium"
+        elif args["-subtitle-slow"]:
+            self.subtitle_preset = "slow"
+
+        self.archive_preset = None
+        if args["-archive-fast"]:
+            self.archive_preset = "fast"
+        elif args["-archive-medium"]:
+            self.archive_preset = "medium"
+        elif args["-archive-slow"]:
+            self.archive_preset = "slow"
 
         headers = args["-h"]
         is_bulk = args["-b"]
@@ -332,11 +471,8 @@ class Mirror(TaskListener):
 
         try:
             if (
-                self.link
-                and (is_magnet(self.link) or self.link.endswith(".torrent"))
-            ) or (
-                file_ and file_.file_name and file_.file_name.endswith(".torrent")
-            ):
+                self.link and (is_magnet(self.link) or self.link.endswith(".torrent"))
+            ) or (file_ and file_.file_name and file_.file_name.endswith(".torrent")):
                 self.is_qbit = True
         except Exception:
             pass
@@ -353,6 +489,7 @@ class Mirror(TaskListener):
                 and not is_gdrive_id(self.link)
                 and not is_gdrive_link(self.link)
                 and not is_mega_link(self.link)
+                and not is_mega_link(self.link)
             )
         ):
             x = await send_message(
@@ -365,6 +502,17 @@ class Mirror(TaskListener):
             return await auto_delete_message(x, time=300)
 
         if len(self.link) > 0:
+            LOGGER.debug(self.link)
+
+        # Check if it's a Mega link but not using jdleech or jdmirror command
+        if is_mega_link(self.link) and not self.is_jd:
+            error_msg = (
+                "⚠️ For Mega links, please use /jdleech or /jdmirror command instead."
+            )
+            x = await send_message(self.message, error_msg)
+            await self.remove_from_same_dir()
+            await delete_links(self.message)
+            return await auto_delete_message(x, time=300)
             LOGGER.debug(self.link)
 
         # Check if it's a Mega link but not using jdleech or jdmirror command
@@ -395,6 +543,7 @@ class Mirror(TaskListener):
             and not self.link.endswith(".torrent")
             and file_ is None
             and not is_gdrive_id(self.link)
+            and not is_mega_link(self.link)
             and not is_mega_link(self.link)
         ):
             content_type = await get_content_type(self.link)
@@ -448,7 +597,9 @@ class Mirror(TaskListener):
             pssw = args["-ap"]
             if ussr or pssw:
                 auth = f"{ussr}:{pssw}"
-                headers += f" authorization: Basic {b64encode(auth.encode()).decode('ascii')}"
+                headers += (
+                    f" authorization: Basic {b64encode(auth.encode()).decode('ascii')}"
+                )
             create_task(add_aria2_download(self, path, headers, ratio, seed_time))
         await delete_links(self.message)
         return None

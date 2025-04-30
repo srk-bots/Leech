@@ -1,3 +1,4 @@
+import gc
 import inspect
 from importlib import import_module
 from time import time as get_time
@@ -12,6 +13,11 @@ from bot import LOGGER, qbit_options, rss_dict, user_data
 from bot.core.aeon_client import TgClient
 from bot.core.config_manager import Config
 
+try:
+    from bot.helper.ext_utils.gc_utils import smart_garbage_collection
+except ImportError:
+    smart_garbage_collection = None
+
 
 class DbManager:
     def __init__(self):
@@ -22,13 +28,22 @@ class DbManager:
     async def connect(self):
         try:
             if self._conn is not None:
-                await self._conn.close()
+                try:
+                    await self._conn.close()
+                except Exception as e:
+                    LOGGER.error(f"Error closing previous DB connection: {e}")
             self._conn = AsyncIOMotorClient(
                 Config.DATABASE_URL,
                 server_api=ServerApi("1"),
+                maxPoolSize=10,  # Limit connection pool size
+                minPoolSize=1,
+                maxIdleTimeMS=30000,  # Close idle connections after 30 seconds
+                connectTimeoutMS=5000,  # 5 second connection timeout
+                socketTimeoutMS=10000,  # 10 second socket timeout
             )
             self.db = self._conn.luna
             self._return = False
+            LOGGER.info("Successfully connected to database")
         except PyMongoError as e:
             LOGGER.error(f"Error in DB connection: {e}")
             self.db = None
@@ -38,8 +53,17 @@ class DbManager:
     async def disconnect(self):
         self._return = True
         if self._conn is not None:
-            await self._conn.close()
+            try:
+                await self._conn.close()
+                LOGGER.info("Database connection closed successfully")
+            except Exception as e:
+                LOGGER.error(f"Error closing database connection: {e}")
         self._conn = None
+        self.db = None
+
+        # Force garbage collection after database operations
+        if smart_garbage_collection is not None:
+            smart_garbage_collection(aggressive=True)
 
     async def update_deploy_config(self):
         if self._return:
@@ -97,15 +121,27 @@ class DbManager:
             return
         db_path = path.replace(".", "__")
         if await aiopath.exists(path):
-            async with aiopen(path, "rb+") as pf:
-                pf_bin = await pf.read()
-            await self.db.settings.files.update_one(
-                {"_id": TgClient.ID},
-                {"$set": {db_path: pf_bin}},
-                upsert=True,
-            )
-            if path == "config.py":
-                await self.update_deploy_config()
+            try:
+                async with aiopen(path, "rb+") as pf:
+                    pf_bin = await pf.read()
+                await self.db.settings.files.update_one(
+                    {"_id": TgClient.ID},
+                    {"$set": {db_path: pf_bin}},
+                    upsert=True,
+                )
+                if path == "config.py":
+                    await self.update_deploy_config()
+
+                # Force garbage collection after handling large files
+                if (
+                    len(pf_bin) > 1024 * 1024 and smart_garbage_collection is not None
+                ):  # 1MB
+                    smart_garbage_collection(aggressive=False)
+
+                # Explicitly delete large binary data
+                del pf_bin
+            except Exception as e:
+                LOGGER.error(f"Error updating private file {path}: {e}")
         else:
             await self.db.settings.files.update_one(
                 {"_id": TgClient.ID},
@@ -129,7 +165,14 @@ class DbManager:
             return
         data = user_data.get(user_id, {})
         data = data.copy()
-        for key in ("THUMBNAIL", "RCLONE_CONFIG", "TOKEN_PICKLE", "TOKEN", "TIME"):
+        for key in (
+            "THUMBNAIL",
+            "RCLONE_CONFIG",
+            "TOKEN_PICKLE",
+            "USER_COOKIES",
+            "TOKEN",
+            "TIME",
+        ):
             data.pop(key, None)
         pipeline = [
             {
@@ -149,6 +192,7 @@ class DbManager:
                                                     "THUMBNAIL",
                                                     "RCLONE_CONFIG",
                                                     "TOKEN_PICKLE",
+                                                    "USER_COOKIES",
                                                 ],
                                             ],
                                         },
@@ -390,9 +434,7 @@ class DbManager:
         # Cleaning up old scheduled deletion entries
 
         # Get all entries to check which ones are actually old and processed
-        entries_to_check = [
-            doc async for doc in self.db.scheduled_deletions.find({})
-        ]
+        entries_to_check = [doc async for doc in self.db.scheduled_deletions.find({})]
 
         # Count entries by type
         current_time = int(get_time())
@@ -434,8 +476,7 @@ class DbManager:
                 "time_remaining": doc["delete_time"] - current_time
                 if "delete_time" in doc
                 else "unknown",
-                "is_due": doc["delete_time"]
-                <= current_time + 30  # 30 seconds buffer
+                "is_due": doc["delete_time"] <= current_time + 30  # 30 seconds buffer
                 if "delete_time" in doc
                 else False,
             }

@@ -13,6 +13,13 @@ except ImportError:
     pip.main(["install", "psutil"])
     import psutil
 
+from bot.helper.ext_utils.gc_utils import (
+    force_garbage_collection,
+    log_memory_usage,
+    smart_garbage_collection,
+)
+# Resource manager removed
+
 from bot import (
     LOGGER,
     non_queued_dl,
@@ -32,26 +39,61 @@ from bot.helper.telegram_helper.message_utils import (
     send_message,
 )
 
-# Constants for monitoring
-CHECK_INTERVAL = 60  # Check every 60 seconds
-SPEED_THRESHOLD = 50 * 1024  # 50 KB/s in bytes
-CONSECUTIVE_CHECKS = 3  # Number of consecutive checks for confirmation
-ELAPSED_TIME_THRESHOLD = 3600  # 1 hour in seconds
-LONG_ETA_THRESHOLD = 86400  # 24 hours in seconds
-WAIT_TIME_BEFORE_CANCEL = 600  # 10 minutes in seconds
-LONG_COMPLETION_THRESHOLD = 14400  # 4 hours in seconds
-CPU_HIGH_THRESHOLD = 90  # 90% CPU usage
-CPU_LOW_THRESHOLD = 40  # 40% CPU usage
-MEMORY_HIGH_THRESHOLD = 75  # 75% memory usage
-MEMORY_LOW_THRESHOLD = 60  # 60% memory usage
+from bot.core.config_manager import Config
+
+
+# Get monitoring settings from Config
+def get_check_interval():
+    return Config.TASK_MONITOR_INTERVAL
+
+
+def get_speed_threshold():
+    return Config.TASK_MONITOR_SPEED_THRESHOLD * 1024  # Convert KB/s to bytes
+
+
+def get_consecutive_checks():
+    return Config.TASK_MONITOR_CONSECUTIVE_CHECKS
+
+
+def get_elapsed_time_threshold():
+    return Config.TASK_MONITOR_ELAPSED_THRESHOLD
+
+
+def get_long_eta_threshold():
+    return Config.TASK_MONITOR_ETA_THRESHOLD
+
+
+def get_wait_time_before_cancel():
+    return Config.TASK_MONITOR_WAIT_TIME
+
+
+def get_long_completion_threshold():
+    return Config.TASK_MONITOR_COMPLETION_THRESHOLD
+
+
+def get_cpu_high_threshold():
+    return Config.TASK_MONITOR_CPU_HIGH
+
+
+def get_cpu_low_threshold():
+    return Config.TASK_MONITOR_CPU_LOW
+
+
+def get_memory_high_threshold():
+    return Config.TASK_MONITOR_MEMORY_HIGH
+
+
+def get_memory_low_threshold():
+    return Config.TASK_MONITOR_MEMORY_LOW
+
 
 # Store monitoring data
 task_speeds: dict[str, deque[int]] = defaultdict(
-    lambda: deque(maxlen=CONSECUTIVE_CHECKS)
+    lambda: deque(maxlen=get_consecutive_checks())
 )
 task_warnings: dict[str, dict] = {}
-cpu_usage_history: deque[float] = deque(maxlen=CONSECUTIVE_CHECKS)
-memory_usage_history: deque[float] = deque(maxlen=CONSECUTIVE_CHECKS)
+cpu_usage_history: deque[float] = deque(maxlen=get_consecutive_checks())
+memory_usage_history: deque[float] = deque(maxlen=get_consecutive_checks())
 queued_by_monitor: set[int] = set()  # Store tasks queued by the monitor
 cpu_intensive_tasks: list[tuple[int, str]] = []  # [(mid, task_type), ...]
 memory_intensive_tasks: list[tuple[int, str]] = []  # [(mid, task_type), ...]
@@ -65,6 +107,9 @@ async def get_task_speed(task) -> int:
 
         speed = task.speed()
         if isinstance(speed, str):
+            # Handle common zero speed strings explicitly
+            if speed in ["0B/s", "0.00B/s", "-"]:
+                return 0
             # Convert string speed (like "1.5 MB/s") to bytes
             return speed_string_to_bytes(speed)
         return speed
@@ -81,8 +126,16 @@ async def get_task_eta(task) -> int:
 
         eta = task.eta()
         if isinstance(eta, str):
-            if eta == "-" or "∞" in eta:
+            # Handle common cases for stalled or unknown ETA
+            if eta == "-" or "∞" in eta or not eta:
+                # Check if speed is zero - this is a strong indicator of a stalled task
+                speed = await get_task_speed(task)
+                if speed == 0:
+                    # For stalled tasks with zero speed, return a high but finite value
+                    # This helps differentiate between truly stalled tasks and those just starting
+                    return 86400  # 24 hours - high enough to trigger cancellation
                 return float("inf")  # Infinite ETA
+
             # Try to convert readable time to seconds
             try:
                 # Parse time string like "2h 3m 4s" to seconds
@@ -165,8 +218,8 @@ async def is_task_slow(task, gid: str) -> bool:
 
     # Check if we have enough data points and all are below threshold
     return bool(
-        len(task_speeds[gid]) >= CONSECUTIVE_CHECKS
-        and all(s <= SPEED_THRESHOLD for s in task_speeds[gid])
+        len(task_speeds[gid]) >= get_consecutive_checks()
+        and all(s <= get_speed_threshold() for s in task_speeds[gid])
     )
 
 
@@ -202,13 +255,13 @@ async def should_cancel_task(task, gid: str) -> tuple[bool, str]:
 
     # Case 1: Task estimation > 24h or no estimation && elapsed > 1h
     if (
-        eta == float("inf") or eta > LONG_ETA_THRESHOLD
-    ) and elapsed_time > ELAPSED_TIME_THRESHOLD:
+        eta == float("inf") or eta > get_long_eta_threshold()
+    ) and elapsed_time > get_elapsed_time_threshold():
         if gid not in task_warnings:
             task_warnings[gid] = {
                 "warning_sent": False,
                 "warning_time": 0,
-                "reason": f"Long estimated completion time or no progress. {user_tag} please cancel this task if it's stuck.",
+                "reason": f"Long estimated completion time or no progress. Please cancel this task if it's stuck.",
                 "case": 1,
             }
 
@@ -217,35 +270,47 @@ async def should_cancel_task(task, gid: str) -> tuple[bool, str]:
             task_warnings[gid]["warning_time"] = time.time()
             return False, task_warnings[gid]["reason"]
 
-        # Check if 10 minutes have passed since warning
+        # Check if wait time has passed since warning
         if (
             time.time() - task_warnings[gid]["warning_time"]
-            > WAIT_TIME_BEFORE_CANCEL
+            > get_wait_time_before_cancel()
         ):
             return (
                 True,
-                f"Task was warned 10 minutes ago but not cancelled manually. {task_warnings[gid]['reason']}",
+                f"Task was warned {get_wait_time_before_cancel() // 60} minutes ago but not cancelled manually.",
             )
 
     # Case 2: Slow download + long ETA + elapsed > 1h
     if (
         is_slow
-        and (eta == float("inf") or eta > LONG_ETA_THRESHOLD)
-        and elapsed_time > ELAPSED_TIME_THRESHOLD
+        and (eta == float("inf") or eta > get_long_eta_threshold())
+        and elapsed_time > get_elapsed_time_threshold()
     ):
         return (
             True,
-            f"Slow download speed (≤50KB/s) with long estimated completion time. {user_tag}",
+            f"Slow download speed (≤{Config.TASK_MONITOR_SPEED_THRESHOLD}KB/s) with long estimated completion time.",
         )
 
     # Case 3: Slow download + estimated completion > 4h
     if is_slow:
         estimated_time = await estimate_completion_time(task)
-        if estimated_time > LONG_COMPLETION_THRESHOLD:  # 4 hours
+        if estimated_time > get_long_completion_threshold():
             return (
                 True,
-                f"Slow download speed (≤50KB/s) with estimated completion time over 4 hours. {user_tag}",
+                f"Slow download speed (≤{Config.TASK_MONITOR_SPEED_THRESHOLD}KB/s) with estimated completion time over {get_long_completion_threshold() // 3600} hours.",
             )
+
+    # Case 4: Zero progress for extended period
+    # Check if speed is consistently 0 and elapsed time is significant
+    speed = await get_task_speed(task)
+    if speed == 0 and elapsed_time > get_elapsed_time_threshold():
+        # Check if we have enough data points and all are zero
+        if gid in task_speeds and len(task_speeds[gid]) >= get_consecutive_checks():
+            if all(s == 0 for s in task_speeds[gid]):
+                return (
+                    True,
+                    f"No download progress for {elapsed_time // 60} minutes. Task appears to be stalled.",
+                )
 
     return False, ""
 
@@ -254,13 +319,13 @@ async def should_queue_task(task_type: str) -> tuple[bool, str]:
     """Determine if a task should be queued based on system resource usage."""
     # Check CPU usage
     if task_type == "cpu" and all(
-        usage >= CPU_HIGH_THRESHOLD for usage in cpu_usage_history
+        usage >= get_cpu_high_threshold() for usage in cpu_usage_history
     ):
         return True, f"High CPU usage ({cpu_usage_history[-1]}%) detected"
 
     # Check memory usage
     if task_type == "memory" and all(
-        usage >= MEMORY_HIGH_THRESHOLD for usage in memory_usage_history
+        usage >= get_memory_high_threshold() for usage in memory_usage_history
     ):
         return True, f"High memory usage ({memory_usage_history[-1]}%) detected"
 
@@ -270,11 +335,11 @@ async def should_queue_task(task_type: str) -> tuple[bool, str]:
 async def can_resume_queued_tasks() -> tuple[bool, str]:
     """Check if queued tasks can be resumed based on system resources."""
     # Check CPU usage for resuming CPU-intensive tasks
-    if all(usage <= CPU_LOW_THRESHOLD for usage in cpu_usage_history):
+    if all(usage <= get_cpu_low_threshold() for usage in cpu_usage_history):
         return True, "cpu"
 
     # Check memory usage for resuming memory-intensive tasks
-    if all(usage <= MEMORY_LOW_THRESHOLD for usage in memory_usage_history):
+    if all(usage <= get_memory_low_threshold() for usage in memory_usage_history):
         return True, "memory"
 
     return False, ""
@@ -317,6 +382,7 @@ async def identify_resource_intensive_tasks():
                 if status in [
                     MirrorStatus.STATUS_FFMPEG,
                     MirrorStatus.STATUS_CONVERT,
+                    MirrorStatus.STATUS_COMPRESS,
                 ] or status in [
                     MirrorStatus.STATUS_ARCHIVE,
                     MirrorStatus.STATUS_EXTRACT,
@@ -378,15 +444,11 @@ async def queue_task(mid: int, reason: str):
                 if mid in non_queued_dl:
                     non_queued_dl.remove(mid)
                     queued_dl[mid] = asyncio.Event()
-                    LOGGER.info(
-                        f"Queued download task {listener.name} due to {reason}"
-                    )
+                    LOGGER.info(f"Queued download task {listener.name} due to {reason}")
                 elif mid in non_queued_up:
                     non_queued_up.remove(mid)
                     queued_up[mid] = asyncio.Event()
-                    LOGGER.info(
-                        f"Queued upload task {listener.name} due to {reason}"
-                    )
+                    LOGGER.info(f"Queued upload task {listener.name} due to {reason}")
                 else:
                     # Task is not in any queue, can't queue it
                     queued_by_monitor.discard(mid)
@@ -407,7 +469,7 @@ async def queue_task(mid: int, reason: str):
                     f"<b>Name:</b> <code>{listener.name}</code>\n"
                     f"<b>Reason:</b> {reason}\n\n"
                     f"Task will resume automatically when system resources are available.\n\n"
-                    f"{user_tag} your task has been queued!",
+                    f"{user_tag}",
                 )
 
                 # Auto-delete queue message after 5 minutes
@@ -467,8 +529,7 @@ async def cancel_task(task, gid: str, reason: str):
         # Get user tag for notifications
         user_tag = (
             f"@{task.listener.user.username}"
-            if hasattr(task.listener.user, "username")
-            and task.listener.user.username
+            if hasattr(task.listener.user, "username") and task.listener.user.username
             else f"<a href='tg://user?id={task.listener.user_id}'>{task.listener.user_id}</a>"
         )
 
@@ -479,7 +540,7 @@ async def cancel_task(task, gid: str, reason: str):
             f"<b>Name:</b> <code>{task.listener.name}</code>\n"
             f"<b>Reason:</b> {reason}\n\n"
             f"<b>This task was automatically cancelled by the system.</b>\n\n"
-            f"{user_tag} your task has been cancelled!",
+            f"{user_tag}",
         )
 
         # Auto-delete cancellation message after 5 minutes
@@ -588,10 +649,9 @@ async def monitor_tasks():
                             f"⚠️ <b>Task Warning</b> ⚠️\n\n"
                             f"<b>Name:</b> <code>{task.listener.name}</code>\n"
                             f"<b>Issue:</b> {task_warnings[gid]['reason']}\n\n"
-                            f"<b>This task will be automatically cancelled in {WAIT_TIME_BEFORE_CANCEL // 60} minutes "
-                            f"if not manually cancelled.</b>\n"
-                            f"<b>Use /cancel command to cancel it manually.</b>\n\n"
-                            f"{user_tag} please take action!",
+                            f"<b>This task will be automatically cancelled in {get_wait_time_before_cancel() // 60} minutes "
+                            f"if not manually cancelled.</b>\n\n"
+                            f"{user_tag}",
                         )
                         # Auto-delete warning message after 5 minutes
                         if not isinstance(warning_msg, str):
@@ -602,9 +662,7 @@ async def monitor_tasks():
                 for task_info in cpu_intensive_tasks + memory_intensive_tasks:
                     mid, task_type = task_info
                     if mid == task.listener.mid:
-                        should_queue, queue_reason = await should_queue_task(
-                            task_type
-                        )
+                        should_queue, queue_reason = await should_queue_task(task_type)
                         if should_queue:
                             # Verify task is still in task_dict before queuing
                             async with task_dict_lock:
@@ -617,7 +675,11 @@ async def monitor_tasks():
 
         # Add periodic memory cleanup
         if time.time() % 300 < 1:  # Every ~5 minutes
-            gc.collect()  # Force garbage collection
+            # Use our smart garbage collection utility
+            # Check if memory usage is high (>75%)
+            memory_percent = memory_usage_history[-1] if memory_usage_history else 0
+            smart_garbage_collection(aggressive=memory_percent > 75)
+            log_memory_usage()
     except Exception as e:
         LOGGER.error(f"Error in task monitoring: {e}")
 
@@ -625,6 +687,12 @@ async def monitor_tasks():
 async def start_monitoring():
     """Start the task monitoring loop."""
     LOGGER.info("Starting task monitoring system")
+
+    # Initial garbage collection and memory usage logging
+    smart_garbage_collection(aggressive=False)
+    log_memory_usage()
+
     while True:
-        await monitor_tasks()
-        await asyncio.sleep(CHECK_INTERVAL)
+        if Config.TASK_MONITOR_ENABLED:
+            await monitor_tasks()
+        await asyncio.sleep(get_check_interval())

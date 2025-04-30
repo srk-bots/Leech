@@ -51,6 +51,36 @@ class GoogleDriveUpload(GoogleDriveHelper):
         link = None
         dir_id = None
         mime_type = None
+
+        # Generate MediaInfo for mirror tasks if enabled
+        # Check if MediaInfo is enabled for this user
+        user_mediainfo_enabled = self.listener.user_dict.get("MEDIAINFO_ENABLED", None)
+        if user_mediainfo_enabled is None:
+            user_mediainfo_enabled = Config.MEDIAINFO_ENABLED
+
+        # Generate MediaInfo if enabled and it's a file (not a folder)
+        if user_mediainfo_enabled and ospath.isfile(self._path):
+            LOGGER.debug("Generating MediaInfo for mirror task before upload...")
+            from bot.modules.mediainfo import gen_mediainfo
+
+            try:
+                # Generate MediaInfo for the file
+                self.listener.mediainfo_link = async_to_sync(
+                    gen_mediainfo, None, media_path=self._path, silent=True
+                )
+
+                # Check if MediaInfo was successfully generated
+                if self.listener.mediainfo_link and self.listener.mediainfo_link.strip():
+                    LOGGER.info(f"Generated MediaInfo for mirror file: {self._path}")
+                else:
+                    # Set mediainfo_link to None if it's empty or None
+                    self.listener.mediainfo_link = None
+                    LOGGER.info("MediaInfo generation skipped or failed for mirror task. Proceeding with upload...")
+            except Exception as e:
+                # Set mediainfo_link to None on error
+                self.listener.mediainfo_link = None
+                LOGGER.error(f"Error generating MediaInfo for mirror task: {e}")
+
         try:
             if ospath.isfile(self._path):
                 mime_type = get_mime_type(self._path)
