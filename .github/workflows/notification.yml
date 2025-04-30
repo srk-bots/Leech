@@ -1,75 +1,41 @@
-name: Format and Notify
+name: Telegram Notification
 
-on:
-  push:
+on: [push]
 
 jobs:
-  format-and-notify:
-    permissions:
-      contents: write
-    runs-on: ubuntu-24.04
+  notify:
+    runs-on: ubuntu-latest
     steps:
-    - name: Checkout repository
-      uses: actions/checkout@v4
+      - name: Send Telegram Notification
+        env:
+          TELEGRAM_CHAT_ID: "-1001964570396" # <-- Replace with your chat ID (HARD CODED)
+          TELEGRAM_BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
+          COMMIT_MSG: ${{ github.event.commits[0].message }}
+          REPO: ${{ github.repository }}
+          BRANCH: ${{ github.ref }}
+          COMMIT_URL: https://github.com/${{ github.repository }}/commit/${{ github.sha }}
+          AUTHOR_URL: https://github.com/${{ github.actor }}
+          USER: ${{ github.actor }}
+        run: |
+          BD_TIMESTAMP=$(TZ="Asia/Dhaka" date -d "${{ github.event.head_commit.timestamp }}" "+%Y-%m-%d %H:%M:%S")
 
-    - name: Set up Python
-      uses: actions/setup-python@v4
+          MESSAGE="New Commit Pushed\n"
+          MESSAGE+="\n"
+          MESSAGE+="Commit by: [${USER}](${AUTHOR_URL})\n"
+          MESSAGE+="Repository: ${REPO}\n"
+          MESSAGE+="Branch: ${BRANCH}\n"
+          MESSAGE+="Pushed at: ${BD_TIMESTAMP}\n"
+          MESSAGE+="\n"
+          MESSAGE+="Commit Message:\n"
+          MESSAGE+="${COMMIT_MSG}\n"
+          MESSAGE+="\n"
+          MESSAGE+="[View Commit Details](${COMMIT_URL})"
 
-    - name: Install ruff
-      run: pip install ruff
-
-    - name: Run ruff to format code
-      run: |
-        ruff check . --exit-zero
-        ruff format .
-        git add -u
-
-    - name: Commit and push changes if any
-      id: commit
-      run: |
-        git config --global user.name "5hojib"
-        git config --global user.email "yesiamshojib@gmail.com"
-        if git diff-index --quiet HEAD --; then
-          echo "no_changes=true" >> $GITHUB_ENV
-        else
-          git commit -m "format: auto-format code by ruff."
-          git push origin ${{ github.ref }}
-          echo "no_changes=false" >> $GITHUB_ENV
-        fi
-      env:
-        GITHUB_TOKEN: ${{ secrets.GX_TOKEN }}
-
-    - name: Send Telegram Notification
-      if: env.no_changes == 'false'
-      env:
-        TELEGRAM_CHAT_ID: "-1001964570396"
-        TELEGRAM_BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
-        COMMIT_MSG: "format: auto-format code by ruff."
-        REPO: ${{ github.repository }}
-        BRANCH: ${{ github.ref }}
-        COMMIT_URL: https://github.com/${{ github.repository }}/commit/${{ github.sha }}
-        AUTHOR_URL: https://github.com/${{ github.actor }}
-        USER: ${{ github.actor }}
-      run: |
-        BD_TIMESTAMP=$(TZ="Asia/Dhaka" date "+%Y-%m-%d %H:%M:%S")
-
-        MESSAGE="New Commit Pushed\n"
-        MESSAGE+="\n"
-        MESSAGE+="Commit by: [${USER}](${AUTHOR_URL})\n"
-        MESSAGE+="Repository: ${REPO}\n"
-        MESSAGE+="Branch: ${BRANCH}\n"
-        MESSAGE+="Pushed at: ${BD_TIMESTAMP}\n"
-        MESSAGE+="\n"
-        MESSAGE+="Commit Message:\n"
-        MESSAGE+="${COMMIT_MSG}\n"
-        MESSAGE+="\n"
-        MESSAGE+="[View Commit Details](${COMMIT_URL})"
-
-        curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
-        -H "Content-Type: application/json" \
-        -d '{
-          "chat_id": "'"${TELEGRAM_CHAT_ID}"'",
-          "text": "'"${MESSAGE}"'",
-          "parse_mode": "Markdown",
-          "disable_web_page_preview": true
-        }'
+          curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
+          -H "Content-Type: application/json" \
+          -d '{
+            "chat_id": "'"${TELEGRAM_CHAT_ID}"'",
+            "text": "'"${MESSAGE}"'",
+            "parse_mode": "Markdown",
+            "disable_web_page_preview": true
+          }'
