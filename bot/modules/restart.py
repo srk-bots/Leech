@@ -107,8 +107,6 @@ async def restart_notification():
     if await aiopath.isfile(".restartmsg"):
         try:
             restart_msg = await TgClient.bot.edit_message_text(
-        try:
-            restart_msg = await TgClient.bot.edit_message_text(
                 chat_id=chat_id,
                 message_id=msg_id,
                 text="Restarted Successfully!",
