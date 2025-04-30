@@ -163,29 +163,8 @@ async def broadcast_media(client, message, options=None):
         # This is handled by the core handlers system
         return
 
-    # Check for cancellation
-    if message.text and message.text == "/cancelbc":
-        user_id = message.from_user.id
-        LOGGER.info(f"Broadcast cancelled by owner {user_id}")
-        LOGGER.debug(
-            f"Current broadcast_awaiting_message state: {broadcast_awaiting_message}"
-        )
-
-        # Remove this user from the waiting list
-        if user_id in broadcast_awaiting_message:
-            del broadcast_awaiting_message[user_id]
-            LOGGER.info(f"Removed user {user_id} from broadcast_awaiting_message")
-        else:
-            LOGGER.warning(
-                f"User {user_id} not found in broadcast_awaiting_message: {broadcast_awaiting_message}"
-            )
-
-        await send_message(
-            message,
-            "<b>❌ Broadcast Cancelled</b>",
-            markdown=False,  # Use HTML mode (not markdown)
-        )
-        return
+    # Check for cancellation - this is now handled in the main handler section below
+    # to avoid duplicate code and ensure consistent behavior
 
     # Check if we're actually waiting for a message
     user_id = message.from_user.id
@@ -193,15 +172,41 @@ async def broadcast_media(client, message, options=None):
         f"Checking if user {user_id} is in broadcast_awaiting_message: {broadcast_awaiting_message}"
     )
 
-    if options is True and user_id not in broadcast_awaiting_message:
+    # Special handling for /cancelbc command is now in a dedicated function
+    # handle_cancel_broadcast_command
+
+    # Check if we're waiting for a message from this user
+    if user_id not in broadcast_awaiting_message:
         LOGGER.debug(
             f"Ignoring message from owner {user_id} as no broadcast is in progress for this user"
         )
         return
 
+    # Log message details for debugging
     LOGGER.info(f"Processing broadcast message from user {user_id}")
+
+    # Determine message type
+    msg_type = "unknown"
+    if message.text:
+        msg_type = "text"
+    elif message.photo:
+        msg_type = "photo"
+    elif message.video:
+        msg_type = "video"
+    elif message.document:
+        msg_type = "document"
+    elif message.audio:
+        msg_type = "audio"
+    elif message.voice:
+        msg_type = "voice"
+    elif message.sticker:
+        msg_type = "sticker"
+    elif message.animation:
+        msg_type = "animation"
+
+    LOGGER.info(f"Broadcasting message of type: {msg_type}")
     LOGGER.debug(
-        f"Message type: {message.media_group_id if hasattr(message, 'media_group_id') else 'single'}, has_media: {bool(message.media)}"
+        f"Message details: media_group_id={message.media_group_id if hasattr(message, 'media_group_id') else 'None'}, has_media={bool(message.media)}"
     )
 
     # Initialize counters
@@ -236,36 +241,25 @@ async def broadcast_media(client, message, options=None):
             await edit_message(broadcast_message, "No users found in database.")
             return
 
+        # Start broadcasting to users
         LOGGER.info(f"Starting broadcast to {len(pm_users)} users")
-
-        # Determine message type and prepare for broadcast
-        # Log message details for debugging
-        msg_type = "unknown"
-        if message.text:
-            msg_type = "text"
-        elif message.photo:
-            msg_type = "photo"
-        elif message.video:
-            msg_type = "video"
-        elif message.document:
-            msg_type = "document"
-        elif message.audio:
-            msg_type = "audio"
-        elif message.voice:
-            msg_type = "voice"
-        elif message.sticker:
-            msg_type = "sticker"
-        elif message.animation:
-            msg_type = "animation"
-
-        LOGGER.info(f"Broadcasting message of type: {msg_type}")
 
         for uid in pm_users:
             try:
                 # Copy the message with all its media and formatting
-                await message.copy(uid)
-                successful += 1
-                LOGGER.debug(f"Successfully sent broadcast to user {uid}")
+                LOGGER.debug(f"Attempting to send broadcast to user {uid}")
+
+                # Use the copy method which handles all media types automatically
+                result = await message.copy(uid)
+
+                if result:
+                    successful += 1
+                    LOGGER.debug(f"Successfully sent broadcast to user {uid}")
+                else:
+                    LOGGER.warning(
+                        f"Failed to send broadcast to user {uid} - empty result"
+                    )
+                    unsuccessful += 1
             except FloodWait as e:
                 LOGGER.warning(
                     f"FloodWait detected during broadcast: {e.value} seconds"
@@ -344,3 +338,31 @@ async def handle_broadcast_command(client, message):
     This ensures the coroutine is properly awaited
     """
     return await broadcast_media(client, message)
+
+
+@new_task
+async def handle_cancel_broadcast_command(client, message):
+    """
+    Dedicated function to handle the /cancelbc command
+    """
+    user_id = message.from_user.id
+    LOGGER.info(f"Cancel broadcast command received from user {user_id}")
+
+    if user_id in broadcast_awaiting_message:
+        del broadcast_awaiting_message[user_id]
+        LOGGER.info(f"Removed user {user_id} from broadcast_awaiting_message")
+        await send_message(
+            message,
+            "<b>❌ Broadcast Cancelled</b>",
+            markdown=False,  # Use HTML mode (not markdown)
+        )
+    else:
+        LOGGER.warning(
+            f"User {user_id} not in broadcast_awaiting_message, nothing to cancel"
+        )
+        await send_message(
+            message,
+            "<b>❓ No broadcast in progress</b>",
+            markdown=False,  # Use HTML mode (not markdown)
+        )
+    return

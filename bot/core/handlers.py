@@ -21,6 +21,7 @@ from bot.modules import (
     bot_stats,
     broadcast_media,
     handle_broadcast_command,
+    handle_cancel_broadcast_command,
     cancel,
     cancel_all_buttons,
     cancel_all_update,
@@ -537,44 +538,66 @@ def add_handlers():
     # Add a handler for /cancelbc command for broadcast cancellation
     TgClient.bot.add_handler(
         MessageHandler(
-            # Use a simple function call instead of a lambda with asyncio.create_task
-            broadcast_media,
+            # Use our dedicated cancel function
+            handle_cancel_broadcast_command,
             filters=command("cancelbc", case_sensitive=False)
             & filters.private
             & filters.create(
-                lambda _, __, m: m.from_user
-                and m.from_user.id == Config.OWNER_ID
-                and m.from_user.id in broadcast_awaiting_message
+                lambda _, __, m: m.from_user and m.from_user.id == Config.OWNER_ID
+                # We don't check broadcast_awaiting_message here to allow cancellation
+                # even if the state tracking has issues
             ),
         ),
         group=4,  # Use a specific group number for this handler
     )
 
-    # Add handler for broadcast media (second step)
+    # Add handler for broadcast media (second step) - text messages
     TgClient.bot.add_handler(
         MessageHandler(
             # Use a simple function call
             broadcast_media,
-            filters=filters.create(
+            filters=filters.private
+            & filters.text
+            & ~filters.command
+            & filters.create(
                 lambda _, __, m: (
                     # Must be from owner
                     m.from_user
                     and m.from_user.id == Config.OWNER_ID
-                    # Must be in private chat
-                    and m.chat.type == "private"
-                    # Either a non-command message or specifically /cancelbc
-                    and (
-                        not (
-                            hasattr(m, "text") and m.text and m.text.startswith("/")
-                        )
-                        or (hasattr(m, "text") and m.text and m.text == "/cancelbc")
-                    )
                     # Only process if we're waiting for a broadcast message from this user
                     and m.from_user.id in broadcast_awaiting_message
                 )
             ),
         ),
         group=5,  # Use a higher group number to ensure it's processed after command handlers
+    )
+
+    # Add handler for broadcast media (second step) - media messages
+    TgClient.bot.add_handler(
+        MessageHandler(
+            # Use a simple function call
+            broadcast_media,
+            filters=filters.private
+            & (
+                filters.photo
+                | filters.video
+                | filters.document
+                | filters.audio
+                | filters.voice
+                | filters.sticker
+                | filters.animation
+            )
+            & filters.create(
+                lambda _, __, m: (
+                    # Must be from owner
+                    m.from_user
+                    and m.from_user.id == Config.OWNER_ID
+                    # Only process if we're waiting for a broadcast message from this user
+                    and m.from_user.id in broadcast_awaiting_message
+                )
+            ),
+        ),
+        group=6,  # Use an even higher group number for media messages
     )
 
     # Define a custom filter for non-command messages, but allow /cancel
