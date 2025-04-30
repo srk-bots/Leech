@@ -1,5 +1,5 @@
 from .bot_settings import edit_bot_settings, send_bot_settings
-from .broadcast import broadcast, broadcast_media
+from .broadcast import broadcast, broadcast_media, handle_broadcast_command
 from .cancel_task import cancel, cancel_all_buttons, cancel_all_update, cancel_multi
 from .chat_permission import add_sudo, authorize, remove_sudo, unauthorize
 from .check_deletion import (
@@ -68,6 +68,7 @@ __all__ = [
     "bot_stats",
     "broadcast",
     "broadcast_media",
+    "handle_broadcast_command",
     "cancel",
     "cancel_all_buttons",
     "cancel_all_update",

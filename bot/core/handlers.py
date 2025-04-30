@@ -1,3 +1,5 @@
+import asyncio
+
 from pyrogram import filters
 from pyrogram.filters import command, regex
 from pyrogram.handlers import (
@@ -293,7 +295,7 @@ def add_handlers():
             CustomFilters.authorized,
         ),
         "broadcast": (
-            broadcast_media,
+            handle_broadcast_command,
             BotCommands.BroadcastCommand,
             CustomFilters.owner,
         ),
@@ -534,7 +536,8 @@ def add_handlers():
     # Add a handler for /cancelbc command for broadcast cancellation
     TgClient.bot.add_handler(
         MessageHandler(
-            lambda c, m: broadcast_media(c, m, True)
+            # Use an async lambda to properly await the coroutine
+            lambda c, m: asyncio.create_task(broadcast_media(c, m, True))
             if m.from_user and m.from_user.id in broadcast_awaiting_message
             else None,
             filters=command("cancelbc", case_sensitive=False)
@@ -549,7 +552,8 @@ def add_handlers():
     # Add handler for broadcast media (second step)
     TgClient.bot.add_handler(
         MessageHandler(
-            lambda c, m: broadcast_media(c, m, True),
+            # Use an async lambda to properly await the coroutine
+            lambda c, m: asyncio.create_task(broadcast_media(c, m, True)),
             filters=filters.create(
                 lambda _, __, m: (
                     # Must be from owner

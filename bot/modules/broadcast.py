@@ -289,3 +289,12 @@ async def is_owner(message):
     from bot.helper.telegram_helper.filters import CustomFilters
 
     return await CustomFilters.owner("", message)
+
+
+@new_task
+async def handle_broadcast_command(client, message):
+    """
+    Wrapper function to handle the broadcast command
+    This ensures the coroutine is properly awaited
+    """
+    return await broadcast_media(client, message)
