@@ -3,6 +3,7 @@ from .broadcast import (
     broadcast,
     broadcast_media,
     handle_broadcast_command,
+    handle_broadcast_media,
     handle_cancel_broadcast_command,
 )
 from .cancel_task import cancel, cancel_all_buttons, cancel_all_update, cancel_multi
@@ -74,6 +75,7 @@ __all__ = [
     "broadcast",
     "broadcast_media",
     "handle_broadcast_command",
+    "handle_broadcast_media",
     "handle_cancel_broadcast_command",
     "cancel",
     "cancel_all_buttons",

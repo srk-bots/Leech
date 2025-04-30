@@ -21,6 +21,7 @@ from bot.modules import (
     bot_stats,
     broadcast_media,
     handle_broadcast_command,
+    handle_broadcast_media,
     handle_cancel_broadcast_command,
     cancel,
     cancel_all_buttons,
@@ -554,8 +555,8 @@ def add_handlers():
     # Add handler for broadcast media (second step) - text messages
     TgClient.bot.add_handler(
         MessageHandler(
-            # Use a simple function call
-            broadcast_media,
+            # Use our dedicated media handler function (works for text too)
+            handle_broadcast_media,
             filters=filters.private
             & filters.text
             & filters.create(
@@ -563,13 +564,12 @@ def add_handlers():
                     # Must be from owner
                     m.from_user
                     and m.from_user.id == Config.OWNER_ID
-                    # Only process if we're waiting for a broadcast message from this user
-                    and m.from_user.id in broadcast_awaiting_message
                     # Exclude commands
                     and not (
                         hasattr(m, "text") and m.text and m.text.startswith("/")
                     )
                 )
+                # We'll check broadcast_awaiting_message inside the handler
             ),
         ),
         group=5,  # Use a higher group number to ensure it's processed after command handlers
@@ -578,8 +578,8 @@ def add_handlers():
     # Add handler for broadcast media (second step) - media messages
     TgClient.bot.add_handler(
         MessageHandler(
-            # Use a simple function call
-            broadcast_media,
+            # Use our dedicated media handler function
+            handle_broadcast_media,
             filters=filters.private
             & (
                 filters.photo
@@ -593,14 +593,12 @@ def add_handlers():
             & filters.create(
                 lambda _, __, m: (
                     # Must be from owner
-                    m.from_user
-                    and m.from_user.id == Config.OWNER_ID
-                    # Only process if we're waiting for a broadcast message from this user
-                    and m.from_user.id in broadcast_awaiting_message
+                    m.from_user and m.from_user.id == Config.OWNER_ID
                 )
+                # We'll check broadcast_awaiting_message inside the handler
             ),
         ),
-        group=6,  # Use an even higher group number for media messages
+        group=3,  # Use a lower group number to ensure it's processed before other handlers
     )
 
     # Define a custom filter for non-command messages, but allow /cancel

@@ -341,6 +341,45 @@ async def handle_broadcast_command(client, message):
 
 
 @new_task
+async def handle_broadcast_media(client, message):
+    """
+    Dedicated function to handle media messages for broadcast
+    This ensures media messages are properly processed
+    """
+    user_id = message.from_user.id
+    LOGGER.info(f"Received media message from user {user_id} for broadcast")
+
+    # Check if we're waiting for a broadcast message from this user
+    if user_id not in broadcast_awaiting_message:
+        LOGGER.warning(
+            f"User {user_id} not in broadcast_awaiting_message, ignoring media"
+        )
+        return
+
+    # Determine message type for logging
+    msg_type = "unknown"
+    if message.photo:
+        msg_type = "photo"
+    elif message.video:
+        msg_type = "video"
+    elif message.document:
+        msg_type = "document"
+    elif message.audio:
+        msg_type = "audio"
+    elif message.voice:
+        msg_type = "voice"
+    elif message.sticker:
+        msg_type = "sticker"
+    elif message.animation:
+        msg_type = "animation"
+
+    LOGGER.info(f"Processing {msg_type} message for broadcast")
+
+    # Process the broadcast with the media message
+    return await broadcast_media(client, message, True)
+
+
+@new_task
 async def handle_cancel_broadcast_command(client, message):
     """
     Dedicated function to handle the /cancelbc command
