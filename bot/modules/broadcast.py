@@ -140,7 +140,7 @@ async def broadcast_media(client, message, options=None):
         await send_message(
             message,
             "<b>🎙️ Send Any Message to Broadcast in HTML\n\nTo Cancel: /cancelbc</b>",
-            parse_mode="html",
+            markdown=False,  # Use HTML mode (not markdown)
         )
         # Set up handler for the next message
         # This is handled by the core handlers system
@@ -153,7 +153,7 @@ async def broadcast_media(client, message, options=None):
         await send_message(
             message,
             "<b>❌ Broadcast Cancelled</b>",
-            parse_mode="html",
+            markdown=False,  # Use HTML mode (not markdown)
         )
         return
 
