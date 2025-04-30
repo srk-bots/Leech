@@ -4,11 +4,13 @@ from logging import getLogger
 from time import time
 
 from pyrogram.errors import FloodWait, InputUserDeactivated, UserIsBlocked
+from pyrogram import enums
 
 from bot.helper.ext_utils.bot_utils import new_task
 from bot.helper.ext_utils.db_handler import database
 from bot.helper.ext_utils.status_utils import get_readable_time
 from bot.helper.telegram_helper.message_utils import edit_message, send_message
+from bot.core.config_manager import Config
 
 LOGGER = getLogger(__name__)
 
@@ -124,6 +126,8 @@ async def broadcast_media(client, message, options=None):
         message: The message object
         options: If None, this is the first step. If True, this is the second step.
     """
+    global broadcast_awaiting_message
+
     # Only allow owner to use this command
     if not await is_owner(message):
         LOGGER.warning(
@@ -133,7 +137,6 @@ async def broadcast_media(client, message, options=None):
 
     # First step: Ask for the message to broadcast
     if options is None:
-        global broadcast_awaiting_message
         LOGGER.info(f"Broadcast command initiated by owner {message.from_user.id}")
         broadcast_awaiting_message = True
         await send_message(
@@ -147,7 +150,6 @@ async def broadcast_media(client, message, options=None):
 
     # Check for cancellation
     if message.text and message.text == "/cancelbc":
-        global broadcast_awaiting_message
         LOGGER.info(f"Broadcast cancelled by owner {message.from_user.id}")
         broadcast_awaiting_message = False
         await send_message(
@@ -173,7 +175,6 @@ async def broadcast_media(client, message, options=None):
     # Get all PM users
     try:
         # Reset the broadcast state
-        global broadcast_awaiting_message
         broadcast_awaiting_message = False
 
         pm_users = await database.get_pm_uids()
