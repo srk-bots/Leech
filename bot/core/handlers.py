@@ -362,6 +362,7 @@ def add_handlers():
                 handler_func,
                 filters=filters_to_apply,
             ),
+            group=0,
         )
 
     regex_filters = {
@@ -412,6 +413,7 @@ def add_handlers():
                     and args[2].message.chat.type != "private"
                 ),
             ),
+            group=0,
         )
 
     # Add handlers for settings callbacks in private chats without authorization
@@ -425,12 +427,14 @@ def add_handlers():
                     and args[2].message.chat.type == "private"
                 ),
             ),
+            group=0,
         )
 
     # Add handlers for other callbacks
     for regex_filter, handler_func in regex_filters.items():
         TgClient.bot.add_handler(
             CallbackQueryHandler(handler_func, filters=regex(regex_filter)),
+            group=0,
         )
 
     TgClient.bot.add_handler(
@@ -439,12 +443,14 @@ def add_handlers():
             filters=command(BotCommands.ShellCommand, case_sensitive=True)
             & CustomFilters.owner,
         ),
+        group=0,
     )
     TgClient.bot.add_handler(
         MessageHandler(
             cancel,
             filters=regex(r"^/stop(_\w+)?(?!all)") & CustomFilters.authorized,
         ),
+        group=0,
     )
 
     # Add handler for deprecated commands (qbleech, qbmirror) with any suffix
@@ -454,6 +460,7 @@ def add_handlers():
             filters=regex(r"^/qb(leech|mirror)(\d+|[a-zA-Z0-9_]+)?")
             & CustomFilters.authorized,
         ),
+        group=0,
     )
 
     # Add handler for commands without suffix
@@ -465,6 +472,7 @@ def add_handlers():
             )
             & CustomFilters.authorized,
         ),
+        group=0,
     )
 
     # Add a handler for /gensession in groups to guide users to PM
@@ -474,6 +482,7 @@ def add_handlers():
             filters=command(BotCommands.GenSessionCommand, case_sensitive=True)
             & filters.group,
         ),
+        group=0,
     )
 
     # Add handlers for settings commands in private chats without authorization
@@ -483,6 +492,7 @@ def add_handlers():
             filters=command(BotCommands.UserSetCommand, case_sensitive=True)
             & filters.private,
         ),
+        group=0,
     )
 
     TgClient.bot.add_handler(
@@ -491,6 +501,7 @@ def add_handlers():
             filters=command(BotCommands.MediaToolsCommand, case_sensitive=True)
             & filters.private,
         ),
+        group=0,
     )
 
     TgClient.bot.add_handler(
@@ -499,6 +510,7 @@ def add_handlers():
             filters=command(BotCommands.MediaToolsHelpCommand, case_sensitive=True)
             & filters.private,
         ),
+        group=0,
     )
 
     TgClient.bot.add_handler(
@@ -507,6 +519,7 @@ def add_handlers():
             filters=command(BotCommands.FontStylesCommand, case_sensitive=True)
             & filters.private,
         ),
+        group=0,
     )
 
     # Add a handler for /cancel command in private chats
@@ -515,6 +528,7 @@ def add_handlers():
             handle_cancel_command,
             filters=command("cancel", case_sensitive=False) & filters.private,
         ),
+        group=0,
     )
 
     # Add a handler for /cancelbc command for broadcast cancellation
@@ -528,8 +542,8 @@ def add_handlers():
             & filters.create(
                 lambda _, __, m: m.from_user and m.from_user.id == Config.OWNER_ID
             ),
-            group=4,  # Use a specific group number for this handler
         ),
+        group=4,  # Use a specific group number for this handler
     )
 
     # Add handler for broadcast media (second step)
@@ -556,8 +570,8 @@ def add_handlers():
                     and broadcast_awaiting_message
                 )
             ),
-            group=5,  # Use a higher group number to ensure it's processed after command handlers
         ),
+        group=5,  # Use a higher group number to ensure it's processed after command handlers
     )
 
     # Define a custom filter for non-command messages, but allow /cancel
