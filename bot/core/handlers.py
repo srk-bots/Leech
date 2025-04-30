@@ -6,6 +6,8 @@ from pyrogram.handlers import (
     MessageHandler,
 )
 
+from bot.core.config_manager import Config
+
 from bot.helper.telegram_helper.bot_commands import BotCommands
 from bot.helper.telegram_helper.filters import CustomFilters
 from bot.modules import (
@@ -17,6 +19,7 @@ from bot.modules import (
     bot_help,
     bot_stats,
     broadcast,
+    broadcast_media,
     cancel,
     cancel_all_buttons,
     cancel_all_update,
@@ -291,7 +294,7 @@ def add_handlers():
             CustomFilters.authorized,
         ),
         "broadcast": (
-            broadcast,
+            broadcast_media,
             BotCommands.BroadcastCommand,
             CustomFilters.owner,
         ),
@@ -512,6 +515,40 @@ def add_handlers():
         MessageHandler(
             handle_cancel_command,
             filters=command("cancel", case_sensitive=False) & filters.private,
+        ),
+    )
+
+    # Add a handler for /cancelbc command for broadcast cancellation
+    TgClient.bot.add_handler(
+        MessageHandler(
+            lambda c, m: broadcast_media(c, m, True),
+            filters=command("cancelbc", case_sensitive=False) & filters.private & filters.create(
+                lambda _, __, m: m.from_user and m.from_user.id == Config.OWNER_ID
+            ),
+            group=4,  # Use a specific group number for this handler
+        ),
+    )
+
+    # Add handler for broadcast media (second step)
+    TgClient.bot.add_handler(
+        MessageHandler(
+            lambda c, m: broadcast_media(c, m, True),
+            filters=filters.create(
+                lambda _, __, m: (
+                    # Must be from owner
+                    m.from_user and m.from_user.id == Config.OWNER_ID
+                    # Must be in private chat
+                    and m.chat.type == "private"
+                    # Either a non-command message or specifically /cancelbc
+                    and (
+                        not (hasattr(m, "text") and m.text and m.text.startswith("/"))
+                        or (hasattr(m, "text") and m.text and m.text == "/cancelbc")
+                    )
+                    # We'll check the broadcast state in the handler function itself
+                    # This filter just passes all owner messages in private chat
+                )
+            ),
+            group=5,  # Use a higher group number to ensure it's processed after command handlers
         ),
     )
 
