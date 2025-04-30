@@ -20,6 +20,7 @@ from bot.modules import (
     bot_help,
     bot_stats,
     broadcast_media,
+    handle_broadcast_command,
     cancel,
     cancel_all_buttons,
     cancel_all_update,
@@ -85,7 +86,7 @@ from bot.modules import (
     ytdl,
     ytdl_leech,
 )
-from bot.modules.broadcast import broadcast_awaiting_message
+import bot.modules.broadcast as broadcast_module
 from bot.modules.font_styles import font_styles_callback
 from bot.modules.media_tools_help import media_tools_help_callback
 
@@ -536,14 +537,14 @@ def add_handlers():
     # Add a handler for /cancelbc command for broadcast cancellation
     TgClient.bot.add_handler(
         MessageHandler(
-            # Use an async lambda to properly await the coroutine
-            lambda c, m: asyncio.create_task(broadcast_media(c, m, True))
-            if m.from_user and m.from_user.id in broadcast_awaiting_message
-            else None,
+            # Use a simple function call instead of a lambda with asyncio.create_task
+            broadcast_media,
             filters=command("cancelbc", case_sensitive=False)
             & filters.private
             & filters.create(
-                lambda _, __, m: m.from_user and m.from_user.id == Config.OWNER_ID
+                lambda _, __, m: m.from_user
+                and m.from_user.id == Config.OWNER_ID
+                and m.from_user.id in broadcast_module.broadcast_awaiting_message
             ),
         ),
         group=4,  # Use a specific group number for this handler
@@ -552,8 +553,8 @@ def add_handlers():
     # Add handler for broadcast media (second step)
     TgClient.bot.add_handler(
         MessageHandler(
-            # Use an async lambda to properly await the coroutine
-            lambda c, m: asyncio.create_task(broadcast_media(c, m, True)),
+            # Use a simple function call
+            broadcast_media,
             filters=filters.create(
                 lambda _, __, m: (
                     # Must be from owner
@@ -569,7 +570,7 @@ def add_handlers():
                         or (hasattr(m, "text") and m.text and m.text == "/cancelbc")
                     )
                     # Only process if we're waiting for a broadcast message from this user
-                    and m.from_user.id in broadcast_awaiting_message
+                    and m.from_user.id in broadcast_module.broadcast_awaiting_message
                 )
             ),
         ),

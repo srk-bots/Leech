@@ -127,6 +127,11 @@ async def broadcast_media(client, message, options=None):
     """
     global broadcast_awaiting_message
 
+    # For handlers that pass options as a positional argument
+    # Convert it to the expected type
+    if options is not None and not isinstance(options, bool):
+        options = True
+
     # Only allow owner to use this command
     if not await is_owner(message):
         LOGGER.warning(
