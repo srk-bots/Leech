@@ -1341,12 +1341,15 @@ async def proceed_extract(
             extract_all_attachments = True
 
         # Also check attachment_index for "all"
-        if not extract_all_attachments and attachment_index is not None:
-            if (
+        if (
+            not extract_all_attachments
+            and attachment_index is not None
+            and (
                 isinstance(attachment_index, str)
                 and attachment_index.lower() == "all"
-            ):
-                extract_all_attachments = True
+            )
+        ):
+            extract_all_attachments = True
 
         if attachment_indices and not extract_all_attachments:
             # Extract specific attachments by indices
