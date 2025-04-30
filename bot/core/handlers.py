@@ -7,7 +7,6 @@ from pyrogram.handlers import (
 )
 
 from bot.core.config_manager import Config
-
 from bot.helper.telegram_helper.bot_commands import BotCommands
 from bot.helper.telegram_helper.filters import CustomFilters
 from bot.modules import (
@@ -18,7 +17,6 @@ from bot.modules import (
     authorize,
     bot_help,
     bot_stats,
-    broadcast,
     broadcast_media,
     cancel,
     cancel_all_buttons,
@@ -522,7 +520,9 @@ def add_handlers():
     TgClient.bot.add_handler(
         MessageHandler(
             lambda c, m: broadcast_media(c, m, True),
-            filters=command("cancelbc", case_sensitive=False) & filters.private & filters.create(
+            filters=command("cancelbc", case_sensitive=False)
+            & filters.private
+            & filters.create(
                 lambda _, __, m: m.from_user and m.from_user.id == Config.OWNER_ID
             ),
             group=4,  # Use a specific group number for this handler
@@ -536,12 +536,15 @@ def add_handlers():
             filters=filters.create(
                 lambda _, __, m: (
                     # Must be from owner
-                    m.from_user and m.from_user.id == Config.OWNER_ID
+                    m.from_user
+                    and m.from_user.id == Config.OWNER_ID
                     # Must be in private chat
                     and m.chat.type == "private"
                     # Either a non-command message or specifically /cancelbc
                     and (
-                        not (hasattr(m, "text") and m.text and m.text.startswith("/"))
+                        not (
+                            hasattr(m, "text") and m.text and m.text.startswith("/")
+                        )
                         or (hasattr(m, "text") and m.text and m.text == "/cancelbc")
                     )
                     # We'll check the broadcast state in the handler function itself

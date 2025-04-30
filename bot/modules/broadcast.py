@@ -1,17 +1,14 @@
 import asyncio
 import traceback
-from time import time
 from logging import getLogger
+from time import time
 
 from pyrogram.errors import FloodWait, InputUserDeactivated, UserIsBlocked
-from pyrogram import enums
 
 from bot.helper.ext_utils.bot_utils import new_task
 from bot.helper.ext_utils.db_handler import database
 from bot.helper.ext_utils.status_utils import get_readable_time
 from bot.helper.telegram_helper.message_utils import edit_message, send_message
-from bot.core.aeon_client import TgClient
-from bot.core.config_manager import Config
 
 LOGGER = getLogger(__name__)
 
@@ -28,7 +25,9 @@ async def broadcast(_, message):
     """
     # Check if user is owner
     if not await is_owner(message):
-        LOGGER.warning(f"Non-owner user {message.from_user.id} attempted to use broadcast command")
+        LOGGER.warning(
+            f"Non-owner user {message.from_user.id} attempted to use broadcast command"
+        )
         return
 
     if not message.reply_to_message:
@@ -62,21 +61,27 @@ async def broadcast(_, message):
                 successful += 1
                 LOGGER.debug(f"Successfully sent broadcast to user {uid}")
             except FloodWait as e:
-                LOGGER.warning(f"FloodWait detected during broadcast: {e.value} seconds")
+                LOGGER.warning(
+                    f"FloodWait detected during broadcast: {e.value} seconds"
+                )
                 await asyncio.sleep(e.value)
                 try:
                     await msg_to_broadcast.copy(uid)
                     successful += 1
-                    LOGGER.debug(f"Successfully sent broadcast to user {uid} after FloodWait")
+                    LOGGER.debug(
+                        f"Successfully sent broadcast to user {uid} after FloodWait"
+                    )
                 except Exception as retry_err:
-                    LOGGER.error(f"Failed to send broadcast to {uid} after FloodWait: {str(retry_err)}")
+                    LOGGER.error(
+                        f"Failed to send broadcast to {uid} after FloodWait: {retry_err!s}"
+                    )
                     unsuccessful += 1
             except (UserIsBlocked, InputUserDeactivated) as user_err:
-                LOGGER.info(f"Removing user {uid} from database: {str(user_err)}")
+                LOGGER.info(f"Removing user {uid} from database: {user_err!s}")
                 await database.rm_pm_user(uid)
                 blocked += 1
             except Exception as e:
-                LOGGER.error(f"Error sending broadcast to {uid}: {str(e)}")
+                LOGGER.error(f"Error sending broadcast to {uid}: {e!s}")
                 unsuccessful += 1
 
             total += 1
@@ -85,17 +90,26 @@ async def broadcast(_, message):
                 status = generate_status(total, successful, blocked, unsuccessful)
                 await edit_message(broadcast_message, status)
                 updater = time()
-                LOGGER.info(f"Broadcast progress: {successful}/{total} successful, {blocked} blocked, {unsuccessful} failed")
+                LOGGER.info(
+                    f"Broadcast progress: {successful}/{total} successful, {blocked} blocked, {unsuccessful} failed"
+                )
 
         elapsed_time = get_readable_time(time() - start_time, True)
-        status = generate_status(total, successful, blocked, unsuccessful, elapsed_time)
+        status = generate_status(
+            total, successful, blocked, unsuccessful, elapsed_time
+        )
         await edit_message(broadcast_message, status)
-        LOGGER.info(f"Broadcast completed: {successful}/{total} successful, {blocked} blocked, {unsuccessful} failed, time: {elapsed_time}")
+        LOGGER.info(
+            f"Broadcast completed: {successful}/{total} successful, {blocked} blocked, {unsuccessful} failed, time: {elapsed_time}"
+        )
 
     except Exception as e:
         error_traceback = traceback.format_exc()
-        LOGGER.error(f"Broadcast failed with error: {str(e)}\n{error_traceback}")
-        await edit_message(broadcast_message, f"<b>❌ Broadcast failed with error:</b>\n<code>{str(e)}</code>")
+        LOGGER.error(f"Broadcast failed with error: {e!s}\n{error_traceback}")
+        await edit_message(
+            broadcast_message,
+            f"<b>❌ Broadcast failed with error:</b>\n<code>{e!s}</code>",
+        )
         return
 
 
@@ -112,7 +126,9 @@ async def broadcast_media(client, message, options=None):
     """
     # Only allow owner to use this command
     if not await is_owner(message):
-        LOGGER.warning(f"Non-owner user {message.from_user.id} attempted to use broadcast command")
+        LOGGER.warning(
+            f"Non-owner user {message.from_user.id} attempted to use broadcast command"
+        )
         return
 
     # First step: Ask for the message to broadcast
@@ -143,7 +159,9 @@ async def broadcast_media(client, message, options=None):
 
     # Check if we're actually waiting for a message
     if options is True and not broadcast_awaiting_message:
-        LOGGER.debug(f"Ignoring message from owner {message.from_user.id} as no broadcast is in progress")
+        LOGGER.debug(
+            f"Ignoring message from owner {message.from_user.id} as no broadcast is in progress"
+        )
         return
 
     # Initialize counters
@@ -174,21 +192,27 @@ async def broadcast_media(client, message, options=None):
                 successful += 1
                 LOGGER.debug(f"Successfully sent broadcast to user {uid}")
             except FloodWait as e:
-                LOGGER.warning(f"FloodWait detected during broadcast: {e.value} seconds")
+                LOGGER.warning(
+                    f"FloodWait detected during broadcast: {e.value} seconds"
+                )
                 await asyncio.sleep(e.value)
                 try:
                     await message.copy(uid)
                     successful += 1
-                    LOGGER.debug(f"Successfully sent broadcast to user {uid} after FloodWait")
+                    LOGGER.debug(
+                        f"Successfully sent broadcast to user {uid} after FloodWait"
+                    )
                 except Exception as retry_err:
-                    LOGGER.error(f"Failed to send broadcast to {uid} after FloodWait: {str(retry_err)}")
+                    LOGGER.error(
+                        f"Failed to send broadcast to {uid} after FloodWait: {retry_err!s}"
+                    )
                     unsuccessful += 1
             except (UserIsBlocked, InputUserDeactivated) as user_err:
-                LOGGER.info(f"Removing user {uid} from database: {str(user_err)}")
+                LOGGER.info(f"Removing user {uid} from database: {user_err!s}")
                 await database.rm_pm_user(uid)
                 blocked += 1
             except Exception as e:
-                LOGGER.error(f"Error sending broadcast to {uid}: {str(e)}")
+                LOGGER.error(f"Error sending broadcast to {uid}: {e!s}")
                 unsuccessful += 1
 
             total += 1
@@ -197,17 +221,26 @@ async def broadcast_media(client, message, options=None):
                 status = generate_status(total, successful, blocked, unsuccessful)
                 await edit_message(broadcast_message, status)
                 updater = time()
-                LOGGER.info(f"Broadcast progress: {successful}/{total} successful, {blocked} blocked, {unsuccessful} failed")
+                LOGGER.info(
+                    f"Broadcast progress: {successful}/{total} successful, {blocked} blocked, {unsuccessful} failed"
+                )
 
         elapsed_time = get_readable_time(time() - start_time, True)
-        status = generate_status(total, successful, blocked, unsuccessful, elapsed_time)
+        status = generate_status(
+            total, successful, blocked, unsuccessful, elapsed_time
+        )
         await edit_message(broadcast_message, status)
-        LOGGER.info(f"Broadcast completed: {successful}/{total} successful, {blocked} blocked, {unsuccessful} failed, time: {elapsed_time}")
+        LOGGER.info(
+            f"Broadcast completed: {successful}/{total} successful, {blocked} blocked, {unsuccessful} failed, time: {elapsed_time}"
+        )
 
     except Exception as e:
         error_traceback = traceback.format_exc()
-        LOGGER.error(f"Broadcast failed with error: {str(e)}\n{error_traceback}")
-        await edit_message(broadcast_message, f"<b>❌ Broadcast failed with error:</b>\n<code>{str(e)}</code>")
+        LOGGER.error(f"Broadcast failed with error: {e!s}\n{error_traceback}")
+        await edit_message(
+            broadcast_message,
+            f"<b>❌ Broadcast failed with error:</b>\n<code>{e!s}</code>",
+        )
         return
 
 
@@ -225,4 +258,5 @@ def generate_status(total, successful, blocked, unsuccessful, elapsed_time=""):
 async def is_owner(message):
     """Check if the user is the owner of the bot"""
     from bot.helper.telegram_helper.filters import CustomFilters
+
     return await CustomFilters.owner("", message)
