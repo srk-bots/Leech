@@ -83,9 +83,9 @@ from bot.modules import (
     ytdl,
     ytdl_leech,
 )
+from bot.modules.broadcast import broadcast_awaiting_message
 from bot.modules.font_styles import font_styles_callback
 from bot.modules.media_tools_help import media_tools_help_callback
-from bot.modules.broadcast import broadcast_awaiting_message
 
 from .aeon_client import TgClient
 
@@ -520,7 +520,9 @@ def add_handlers():
     # Add a handler for /cancelbc command for broadcast cancellation
     TgClient.bot.add_handler(
         MessageHandler(
-            lambda c, m: broadcast_media(c, m, True) if broadcast_awaiting_message else None,
+            lambda c, m: broadcast_media(c, m, True)
+            if broadcast_awaiting_message
+            else None,
             filters=command("cancelbc", case_sensitive=False)
             & filters.private
             & filters.create(
@@ -533,7 +535,9 @@ def add_handlers():
     # Add handler for broadcast media (second step)
     TgClient.bot.add_handler(
         MessageHandler(
-            lambda c, m: broadcast_media(c, m, True) if broadcast_awaiting_message else None,
+            lambda c, m: broadcast_media(c, m, True)
+            if broadcast_awaiting_message
+            else None,
             filters=filters.create(
                 lambda _, __, m: (
                     # Must be from owner

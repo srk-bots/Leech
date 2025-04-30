@@ -4,13 +4,11 @@ from logging import getLogger
 from time import time
 
 from pyrogram.errors import FloodWait, InputUserDeactivated, UserIsBlocked
-from pyrogram import enums
 
 from bot.helper.ext_utils.bot_utils import new_task
 from bot.helper.ext_utils.db_handler import database
 from bot.helper.ext_utils.status_utils import get_readable_time
 from bot.helper.telegram_helper.message_utils import edit_message, send_message
-from bot.core.config_manager import Config
 
 LOGGER = getLogger(__name__)
 
