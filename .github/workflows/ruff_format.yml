@@ -1,7 +1,7 @@
 name: format code with ruff
 
 on:
-  push:
+  push: beta
 
 jobs:
   code-format:
