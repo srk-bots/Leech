@@ -558,7 +558,6 @@ def add_handlers():
             broadcast_media,
             filters=filters.private
             & filters.text
-            & ~filters.command
             & filters.create(
                 lambda _, __, m: (
                     # Must be from owner
@@ -566,6 +565,10 @@ def add_handlers():
                     and m.from_user.id == Config.OWNER_ID
                     # Only process if we're waiting for a broadcast message from this user
                     and m.from_user.id in broadcast_awaiting_message
+                    # Exclude commands
+                    and not (
+                        hasattr(m, "text") and m.text and m.text.startswith("/")
+                    )
                 )
             ),
         ),
