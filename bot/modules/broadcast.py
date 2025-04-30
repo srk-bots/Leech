@@ -12,8 +12,9 @@ from bot.helper.telegram_helper.message_utils import edit_message, send_message
 
 LOGGER = getLogger(__name__)
 
-# Track broadcast state
-broadcast_awaiting_message = False
+# Track broadcast state - use a dictionary to track by user ID
+# This allows multiple admins to use broadcast without interfering with each other
+broadcast_awaiting_message = {}
 
 
 @new_task
@@ -135,8 +136,10 @@ async def broadcast_media(client, message, options=None):
 
     # First step: Ask for the message to broadcast
     if options is None:
-        LOGGER.info(f"Broadcast command initiated by owner {message.from_user.id}")
-        broadcast_awaiting_message = True
+        user_id = message.from_user.id
+        LOGGER.info(f"Broadcast command initiated by owner {user_id}")
+        # Set this user as waiting for broadcast message
+        broadcast_awaiting_message[user_id] = True
         await send_message(
             message,
             "<b>🎙️ Send Any Message to Broadcast in HTML\n\nTo Cancel: /cancelbc</b>",
@@ -148,8 +151,11 @@ async def broadcast_media(client, message, options=None):
 
     # Check for cancellation
     if message.text and message.text == "/cancelbc":
-        LOGGER.info(f"Broadcast cancelled by owner {message.from_user.id}")
-        broadcast_awaiting_message = False
+        user_id = message.from_user.id
+        LOGGER.info(f"Broadcast cancelled by owner {user_id}")
+        # Remove this user from the waiting list
+        if user_id in broadcast_awaiting_message:
+            del broadcast_awaiting_message[user_id]
         await send_message(
             message,
             "<b>❌ Broadcast Cancelled</b>",
@@ -158,9 +164,10 @@ async def broadcast_media(client, message, options=None):
         return
 
     # Check if we're actually waiting for a message
-    if options is True and not broadcast_awaiting_message:
+    user_id = message.from_user.id
+    if options is True and user_id not in broadcast_awaiting_message:
         LOGGER.debug(
-            f"Ignoring message from owner {message.from_user.id} as no broadcast is in progress"
+            f"Ignoring message from owner {user_id} as no broadcast is in progress for this user"
         )
         return
 
@@ -172,8 +179,10 @@ async def broadcast_media(client, message, options=None):
 
     # Get all PM users
     try:
-        # Reset the broadcast state
-        broadcast_awaiting_message = False
+        # Reset the broadcast state for this user
+        user_id = message.from_user.id
+        if user_id in broadcast_awaiting_message:
+            del broadcast_awaiting_message[user_id]
 
         pm_users = await database.get_pm_uids()
         if not pm_users:
@@ -184,6 +193,27 @@ async def broadcast_media(client, message, options=None):
         LOGGER.info(f"Starting broadcast to {len(pm_users)} users")
 
         # Determine message type and prepare for broadcast
+        # Log message details for debugging
+        msg_type = "unknown"
+        if message.text:
+            msg_type = "text"
+        elif message.photo:
+            msg_type = "photo"
+        elif message.video:
+            msg_type = "video"
+        elif message.document:
+            msg_type = "document"
+        elif message.audio:
+            msg_type = "audio"
+        elif message.voice:
+            msg_type = "voice"
+        elif message.sticker:
+            msg_type = "sticker"
+        elif message.animation:
+            msg_type = "animation"
+
+        LOGGER.info(f"Broadcasting message of type: {msg_type}")
+
         for uid in pm_users:
             try:
                 # Copy the message with all its media and formatting

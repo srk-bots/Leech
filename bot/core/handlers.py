@@ -535,7 +535,7 @@ def add_handlers():
     TgClient.bot.add_handler(
         MessageHandler(
             lambda c, m: broadcast_media(c, m, True)
-            if broadcast_awaiting_message
+            if m.from_user and m.from_user.id in broadcast_awaiting_message
             else None,
             filters=command("cancelbc", case_sensitive=False)
             & filters.private
@@ -549,9 +549,7 @@ def add_handlers():
     # Add handler for broadcast media (second step)
     TgClient.bot.add_handler(
         MessageHandler(
-            lambda c, m: broadcast_media(c, m, True)
-            if broadcast_awaiting_message
-            else None,
+            lambda c, m: broadcast_media(c, m, True),
             filters=filters.create(
                 lambda _, __, m: (
                     # Must be from owner
@@ -566,8 +564,8 @@ def add_handlers():
                         )
                         or (hasattr(m, "text") and m.text and m.text == "/cancelbc")
                     )
-                    # Only process if we're waiting for a broadcast message
-                    and broadcast_awaiting_message
+                    # Only process if we're waiting for a broadcast message from this user
+                    and m.from_user.id in broadcast_awaiting_message
                 )
             ),
         ),
