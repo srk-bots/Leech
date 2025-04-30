@@ -431,22 +431,6 @@ def add_handlers():
         ),
     )
 
-    # Add handler for deprecated commands (qbleech, qbmirror) with any suffix
-    TgClient.bot.add_handler(
-        MessageHandler(
-            handle_qb_commands,
-            filters=regex(r"^/qb(leech|mirror)(\d+|[a-zA-Z0-9_]+)?") & CustomFilters.authorized,
-        ),
-    )
-
-    # Add handler for commands without suffix
-    TgClient.bot.add_handler(
-        MessageHandler(
-            handle_no_suffix_commands,
-            filters=regex(r"^/(mirror|leech|jdmirror|jdleech|nzbmirror|nzbleech|ytdl|ytdlleech|clone|count|del|list|search|mediainfo|mi|status|s|ping|help|speedtest)$") & CustomFilters.authorized,
-        ),
-    )
-
     # Add a handler for /gensession in groups to guide users to PM
     TgClient.bot.add_handler(
         MessageHandler(

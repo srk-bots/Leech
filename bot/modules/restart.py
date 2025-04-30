@@ -61,16 +61,12 @@ async def send_incomplete_task_message(cid, msg_id, msg):
     try:
         if msg.startswith("Restarted Successfully!"):
             restart_msg = await TgClient.bot.edit_message_text(
-            restart_msg = await TgClient.bot.edit_message_text(
                 chat_id=cid,
                 message_id=msg_id,
                 text=msg,
                 disable_web_page_preview=True,
             )
             await remove(".restartmsg")
-            # Auto delete the restart success message after 5 minutes
-            create_task(auto_delete_message(restart_msg, time=300))  # noqa: RUF006
-            # Auto delete the restart success message after 5 minutes
             create_task(auto_delete_message(restart_msg, time=300))  # noqa: RUF006
         else:
             await TgClient.bot.send_message(
@@ -117,14 +113,10 @@ async def restart_notification():
                 message_id=msg_id,
                 text="Restarted Successfully!",
             )
-            # Auto delete the restart success message after 5 minutes
             create_task(auto_delete_message(restart_msg, time=300))  # noqa: RUF006
         except Exception as e:
             LOGGER.error(e)
-            # Auto delete the restart success message after 5 minutes
             create_task(auto_delete_message(restart_msg, time=300))  # noqa: RUF006
-        except Exception as e:
-            LOGGER.error(e)
         await remove(".restartmsg")
 
 
@@ -208,5 +200,3 @@ async def confirm_restart(_, query):
         async with aiopen(".restartmsg", "w") as f:
             await f.write(f"{restart_message.chat.id}\n{restart_message.id}\n")
         osexecl(executable, executable, "-m", "bot")
-        # REMOVE THIS delete_message(message) - message is already deleted
-        # REMOVE THIS delete_message(message) - message is already deleted

@@ -91,8 +91,6 @@ __all__ = [
     "handle_cancel_command",
     "handle_command",
     "handle_group_gensession",
-    "handle_no_suffix_commands",
-    "handle_qb_commands",
     "handle_session_input",
     "hydra_search",
     "imdb_callback",
