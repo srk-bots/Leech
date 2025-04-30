@@ -625,6 +625,10 @@ async def get_buttons(key=None, edit_type=None, page=0, user_id=None):
                 )
                 msg += "Example: 24 (for daily restart)\n\n"
                 msg += "Minimum value is 1 hour.\n\n"
+            elif key == "TRUECALLER_API_URL":
+                msg += "Set the API URL for Truecaller phone number lookup.\n\n"
+                msg += "Default: https://truecaller.privates-bots.workers.dev/\n\n"
+                msg += "You can use your own API endpoint if you have one.\n\n"
 
             msg += f"Send a valid value for {key}. Current value is '{Config.get(key)}'. Timeout: 60 sec"
         elif edit_type == "ariavar":
@@ -690,10 +694,20 @@ async def get_buttons(key=None, edit_type=None, page=0, user_id=None):
             "AUTO_RESTART_INTERVAL",
         ]
 
+        # Add API settings to the config menu
+        api_keys = [
+            "TRUECALLER_API_URL",
+        ]
+
         # Ensure resource keys are in the filtered keys list
         for rk in resource_keys:
             if rk not in filtered_keys:
                 filtered_keys.append(rk)
+
+        # Ensure API keys are in the filtered keys list
+        for ak in api_keys:
+            if ak not in filtered_keys:
+                filtered_keys.append(ak)
 
         # Sort the keys alphabetically
         filtered_keys.sort()
@@ -704,6 +718,9 @@ async def get_buttons(key=None, edit_type=None, page=0, user_id=None):
             # Highlight resource management settings
             if k in resource_keys:
                 buttons.data_button(f"⚙️ {k}", f"botset botvar {k}")
+            # Highlight API settings
+            elif k in api_keys:
+                buttons.data_button(f"🔌 {k}", f"botset botvar {k}")
             else:
                 buttons.data_button(k, f"botset botvar {k}")
         if state == "view":

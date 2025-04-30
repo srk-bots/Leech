@@ -84,6 +84,7 @@ from bot.modules import (
     task_status,
     torrent_search,
     torrent_search_update,
+    truecaller_lookup,
     unauthorize,
     ytdl,
     ytdl_leech,
@@ -351,6 +352,11 @@ def add_handlers():
             handle_command,
             BotCommands.GenSessionCommand,
             filters.private,  # Only allow in private chats
+        ),
+        "truecaller_lookup": (
+            truecaller_lookup,
+            BotCommands.TruecallerCommand,
+            CustomFilters.authorized,
         ),
     }
 

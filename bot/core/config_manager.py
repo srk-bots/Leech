@@ -427,6 +427,9 @@ class Config:
     TASK_MONITOR_MEMORY_HIGH: int = 75  # percentage
     TASK_MONITOR_MEMORY_LOW: int = 60  # percentage
 
+    # Truecaller API Settings
+    TRUECALLER_API_URL: str = "https://truecaller.privates-bots.workers.dev/"
+
     @classmethod
     def get(cls, key):
         return getattr(cls, key) if hasattr(cls, key) else None

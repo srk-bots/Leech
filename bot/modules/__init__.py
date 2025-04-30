@@ -57,6 +57,7 @@ from .shell import run_shell
 from .speedtest import speedtest
 from .stats import bot_stats, get_packages_version
 from .status import status_pages, task_status
+from .truecaller import truecaller_lookup
 from .users_settings import (
     edit_user_settings,
     get_users_settings,
@@ -142,6 +143,7 @@ __all__ = [
     "task_status",
     "torrent_search",
     "torrent_search_update",
+    "truecaller_lookup",
     "unauthorize",
     "ytdl",
     "ytdl_leech",
