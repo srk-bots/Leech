@@ -86,7 +86,7 @@ from bot.modules import (
     ytdl,
     ytdl_leech,
 )
-import bot.modules.broadcast as broadcast_module
+from bot.modules.broadcast import broadcast_awaiting_message
 from bot.modules.font_styles import font_styles_callback
 from bot.modules.media_tools_help import media_tools_help_callback
 
@@ -544,7 +544,7 @@ def add_handlers():
             & filters.create(
                 lambda _, __, m: m.from_user
                 and m.from_user.id == Config.OWNER_ID
-                and m.from_user.id in broadcast_module.broadcast_awaiting_message
+                and m.from_user.id in broadcast_awaiting_message
             ),
         ),
         group=4,  # Use a specific group number for this handler
@@ -570,7 +570,7 @@ def add_handlers():
                         or (hasattr(m, "text") and m.text and m.text == "/cancelbc")
                     )
                     # Only process if we're waiting for a broadcast message from this user
-                    and m.from_user.id in broadcast_module.broadcast_awaiting_message
+                    and m.from_user.id in broadcast_awaiting_message
                 )
             ),
         ),

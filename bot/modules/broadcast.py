@@ -143,8 +143,17 @@ async def broadcast_media(client, message, options=None):
     if options is None:
         user_id = message.from_user.id
         LOGGER.info(f"Broadcast command initiated by owner {user_id}")
+        LOGGER.debug(
+            f"Current broadcast_awaiting_message state before adding: {broadcast_awaiting_message}"
+        )
+
         # Set this user as waiting for broadcast message
         broadcast_awaiting_message[user_id] = True
+        LOGGER.info(f"Added user {user_id} to broadcast_awaiting_message")
+        LOGGER.debug(
+            f"Current broadcast_awaiting_message state after adding: {broadcast_awaiting_message}"
+        )
+
         await send_message(
             message,
             "<b>🎙️ Send Any Message to Broadcast in HTML\n\nTo Cancel: /cancelbc</b>",
@@ -158,9 +167,19 @@ async def broadcast_media(client, message, options=None):
     if message.text and message.text == "/cancelbc":
         user_id = message.from_user.id
         LOGGER.info(f"Broadcast cancelled by owner {user_id}")
+        LOGGER.debug(
+            f"Current broadcast_awaiting_message state: {broadcast_awaiting_message}"
+        )
+
         # Remove this user from the waiting list
         if user_id in broadcast_awaiting_message:
             del broadcast_awaiting_message[user_id]
+            LOGGER.info(f"Removed user {user_id} from broadcast_awaiting_message")
+        else:
+            LOGGER.warning(
+                f"User {user_id} not found in broadcast_awaiting_message: {broadcast_awaiting_message}"
+            )
+
         await send_message(
             message,
             "<b>❌ Broadcast Cancelled</b>",
@@ -170,11 +189,20 @@ async def broadcast_media(client, message, options=None):
 
     # Check if we're actually waiting for a message
     user_id = message.from_user.id
+    LOGGER.debug(
+        f"Checking if user {user_id} is in broadcast_awaiting_message: {broadcast_awaiting_message}"
+    )
+
     if options is True and user_id not in broadcast_awaiting_message:
         LOGGER.debug(
             f"Ignoring message from owner {user_id} as no broadcast is in progress for this user"
         )
         return
+
+    LOGGER.info(f"Processing broadcast message from user {user_id}")
+    LOGGER.debug(
+        f"Message type: {message.media_group_id if hasattr(message, 'media_group_id') else 'single'}, has_media: {bool(message.media)}"
+    )
 
     # Initialize counters
     total, successful, blocked, unsuccessful = 0, 0, 0, 0
@@ -186,8 +214,21 @@ async def broadcast_media(client, message, options=None):
     try:
         # Reset the broadcast state for this user
         user_id = message.from_user.id
+        LOGGER.debug(
+            f"Resetting broadcast state for user {user_id}, current state: {broadcast_awaiting_message}"
+        )
+
         if user_id in broadcast_awaiting_message:
             del broadcast_awaiting_message[user_id]
+            LOGGER.info(
+                f"Removed user {user_id} from broadcast_awaiting_message for processing"
+            )
+        else:
+            LOGGER.warning(
+                f"User {user_id} not found in broadcast_awaiting_message during processing"
+            )
+
+        LOGGER.debug(f"Broadcast state after reset: {broadcast_awaiting_message}")
 
         pm_users = await database.get_pm_uids()
         if not pm_users:
