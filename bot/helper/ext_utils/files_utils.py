@@ -266,7 +266,6 @@ async def remove_excluded_files(fpath, ee):
 
 
 async def join_files(opath):
-
     files = await listdir(opath)
     results = []
     exists = False
@@ -382,11 +381,14 @@ async def split_file(f_path, split_size, listener):
 
         # Verify the split was successful by checking if at least one split file exists
         import glob
+
         split_pattern = f"{out_path}*"
         split_files = glob.glob(split_pattern)
 
         if not split_files:
-            LOGGER.error(f"Split command completed but no split files were created: {f_path}")
+            LOGGER.error(
+                f"Split command completed but no split files were created: {f_path}"
+            )
             return False
 
         # Check the size of each split file to ensure none exceed Telegram's limit
@@ -470,7 +472,6 @@ class SevenZ:
         self._percentage = "0%"
 
     async def extract(self, f_path, t_path, pswd):
-
         cmd = [
             "7z",
             "x",

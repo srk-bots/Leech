@@ -52,7 +52,7 @@ class YtDlpStatus:
                 if seconds > 4 * 60 * 60:
                     return "⚠️ >4h"  # Warning symbol for very long ETA
                 # If ETA is more than 24 hours, mark it differently
-                elif seconds > 24 * 60 * 60:
+                if seconds > 24 * 60 * 60:
                     return "⚠️ >24h"  # Warning symbol for extremely long ETA
 
             # Calculate ETA based on remaining bytes and current speed

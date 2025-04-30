@@ -345,7 +345,7 @@ async def update_variables():
     # Only if not explicitly set by owner or if it exceeds max split size
     if (
         not Config.LEECH_SPLIT_SIZE  # Not set
-        or Config.LEECH_SPLIT_SIZE > max_split_size  # Exceeds max allowed
+        or max_split_size < Config.LEECH_SPLIT_SIZE  # Exceeds max allowed
         or Config.LEECH_SPLIT_SIZE == 2097152000  # Default value, not custom
     ):
         Config.LEECH_SPLIT_SIZE = max_split_size

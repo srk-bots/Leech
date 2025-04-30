@@ -297,7 +297,9 @@ async def merge_images(
             images = resized_images
 
             # Create a new image with the calculated dimensions
-            merged_image = Image.new("RGB", (cell_width * columns, cell_height * rows))
+            merged_image = Image.new(
+                "RGB", (cell_width * columns, cell_height * rows)
+            )
 
             # Paste images in a grid
             for i, img in enumerate(images):
@@ -547,7 +549,9 @@ async def merge_documents(files, output_format="pdf"):
             if img.mode == "RGBA":
                 # Create white background for transparent images
                 background = Image.new("RGB", img.size, (255, 255, 255))
-                background.paste(img, mask=img.split()[3])  # Use alpha channel as mask
+                background.paste(
+                    img, mask=img.split()[3]
+                )  # Use alpha channel as mask
                 img = background
             elif img.mode != "RGB":
                 img = img.convert("RGB")
@@ -597,7 +601,9 @@ async def merge_documents(files, output_format="pdf"):
         return None
 
 
-async def create_pdf_from_images(image_files, output_file="merged.pdf", page_size=None):
+async def create_pdf_from_images(
+    image_files, output_file="merged.pdf", page_size=None
+):
     """
     Create a PDF from multiple image files.
 
@@ -761,9 +767,7 @@ async def add_text_to_image(
         draw.text(position, text, fill=color, font=font)
 
         # Save the image
-        output_path = (
-            f"{os.path.splitext(image_path)[0]}_text{os.path.splitext(image_path)[1]}"
-        )
+        output_path = f"{os.path.splitext(image_path)[0]}_text{os.path.splitext(image_path)[1]}"
         img.save(output_path)
 
         LOGGER.info(f"Successfully added text to image: {output_path}")

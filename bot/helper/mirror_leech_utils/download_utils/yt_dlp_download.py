@@ -250,7 +250,9 @@ class YoutubeDLHelper:
                 video_id = self._listener.link.split("watch?v=")[1].split("&")[0]
             elif "/shorts/" in self._listener.link:
                 video_id = (
-                    self._listener.link.split("/shorts/")[1].split("?")[0].split("&")[0]
+                    self._listener.link.split("/shorts/")[1]
+                    .split("?")[0]
+                    .split("&")[0]
                 )
 
             # Set fallback title if video ID was extracted
@@ -302,7 +304,9 @@ class YoutubeDLHelper:
                         )
 
                 # Handle YouTube SSAP experiment issues
-                if result.get("extractor") == "youtube" and not result.get("formats"):
+                if result.get("extractor") == "youtube" and not result.get(
+                    "formats"
+                ):
                     LOGGER.warning(
                         "No formats found, possible SSAP experiment issue. Trying with different client"
                     )
@@ -416,9 +420,9 @@ class YoutubeDLHelper:
                                 f"Starting download with format: {self.opts.get('format', 'default')}"
                             )
                             if "youtube" in self._listener.link:
-                                current_client = self.opts["extractor_args"]["youtube"][
-                                    "player_client"
-                                ][0]
+                                current_client = self.opts["extractor_args"][
+                                    "youtube"
+                                ]["player_client"][0]
                                 tried_clients.append(current_client)
                                 LOGGER.info(f"YouTube client: {current_client}")
 
@@ -438,25 +442,25 @@ class YoutubeDLHelper:
                                     error_msg += "\nTry uploading your own cookies file with YouTube Premium subscription."
                                     self._on_download_error(error_msg)
                                     return
-                                elif "Sign in to confirm your age" in error_msg:
+                                if "Sign in to confirm your age" in error_msg:
                                     error_msg += "\nTry uploading your own cookies file with age verification."
                                     self._on_download_error(error_msg)
                                     return
-                                elif (
+                                if (
                                     "Unable to extract video data" in error_msg
                                     and "youtube" in self._listener.link.lower()
                                 ):
                                     error_msg += "\nThis might be due to YouTube's SSAP experiment. Try again later."
                                     self._on_download_error(error_msg)
                                     return
-                                elif "ffmpeg not found" in error_msg.lower():
+                                if "ffmpeg not found" in error_msg.lower():
                                     # Ignore ffmpeg path error as requested
                                     LOGGER.warning(
                                         "ffmpeg warning detected but continuing as requested"
                                     )
                                     # Try to continue without ffmpeg
                                     break
-                                elif (
+                                if (
                                     "template variables not replaced"
                                     in error_msg.lower()
                                 ):
@@ -465,42 +469,40 @@ class YoutubeDLHelper:
                                         "Template variables warning detected but continuing as requested"
                                     )
                                     break
-                                else:
-                                    # For other errors, try different client if it's a YouTube link
-                                    if (
-                                        "youtube" in self._listener.link.lower()
-                                        and retry_count < max_retries - 1
-                                    ):
-                                        retry_count += 1
-                                        # Try different client types in sequence
-                                        available_clients = [
-                                            "tv",
-                                            "android",
-                                            "web",
-                                            "ios",
-                                        ]
-                                        # Filter out clients we've already tried
-                                        next_clients = [
-                                            c
-                                            for c in available_clients
-                                            if c not in tried_clients
-                                        ]
+                                # For other errors, try different client if it's a YouTube link
+                                if (
+                                    "youtube" in self._listener.link.lower()
+                                    and retry_count < max_retries - 1
+                                ):
+                                    retry_count += 1
+                                    # Try different client types in sequence
+                                    available_clients = [
+                                        "tv",
+                                        "android",
+                                        "web",
+                                        "ios",
+                                    ]
+                                    # Filter out clients we've already tried
+                                    next_clients = [
+                                        c
+                                        for c in available_clients
+                                        if c not in tried_clients
+                                    ]
 
-                                        if next_clients:
-                                            next_client = next_clients[0]
-                                            LOGGER.info(
-                                                f"Retrying with different YouTube client: {next_client}"
-                                            )
-                                            self.opts["extractor_args"]["youtube"][
-                                                "player_client"
-                                            ] = [next_client]
-                                            continue
+                                    if next_clients:
+                                        next_client = next_clients[0]
+                                        LOGGER.info(
+                                            f"Retrying with different YouTube client: {next_client}"
+                                        )
+                                        self.opts["extractor_args"]["youtube"][
+                                            "player_client"
+                                        ] = [next_client]
+                                        continue
 
-                                    # If we've tried all clients or it's not a YouTube link, report the error
-                                    self._on_download_error(error_msg)
-                                    return
-                            else:
+                                # If we've tried all clients or it's not a YouTube link, report the error
+                                self._on_download_error(error_msg)
                                 return
+                            return
                         finally:
                             # Force garbage collection after download attempt
                             # YT-DLP can create large objects in memory
@@ -547,7 +549,9 @@ class YoutubeDLHelper:
                             available_clients = ["tv", "android", "web", "ios"]
                             # Filter out clients we've already tried
                             next_clients = [
-                                c for c in available_clients if c not in tried_clients
+                                c
+                                for c in available_clients
+                                if c not in tried_clients
                             ]
 
                             if next_clients:
@@ -562,9 +566,8 @@ class YoutubeDLHelper:
 
                         # If we've tried all clients or max retries, raise the error
                         raise
-                    else:
-                        # For other exceptions, just raise
-                        raise
+                    # For other exceptions, just raise
+                    raise
 
             # Check if download was successful
             if self.is_playlist and (
@@ -605,7 +608,7 @@ class YoutubeDLHelper:
             error_str = str(e)
             if "Memory" in error_str or "memory" in error_str:
                 self._on_download_error(
-                    f"Error: Memory allocation failed. The video might be too large or in a format that requires too much memory to process. Try a lower quality format."
+                    "Error: Memory allocation failed. The video might be too large or in a format that requires too much memory to process. Try a lower quality format."
                 )
             elif "ffmpeg" in error_str.lower():
                 # Ignore ffmpeg errors as requested
@@ -738,7 +741,8 @@ class YoutubeDLHelper:
             self.opts["postprocessors"].append(
                 {
                     "already_have_thumbnail": bool(
-                        self._listener.is_leech and not self._listener.thumbnail_layout,
+                        self._listener.is_leech
+                        and not self._listener.thumbnail_layout,
                     ),
                     "key": "EmbedThumbnail",
                 },

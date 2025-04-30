@@ -121,7 +121,9 @@ async def path_updates(_, query, obj):
         # Always update the path when the button is clicked
         update_user_ldata(obj.listener.user_id, "RCLONE_PATH", path)
         # Send a temporary message that will be auto-deleted
-        temp_msg = await send_message(message, f"Default path set to: <code>{path}</code>")
+        temp_msg = await send_message(
+            message, f"Default path set to: <code>{path}</code>"
+        )
         await auto_delete_message(temp_msg, 5)  # Auto-delete after 5 seconds
         await obj.get_path_buttons()
         if Config.DATABASE_URL:

@@ -42,8 +42,6 @@ from bot.modules import (
     handle_cancel_command,
     handle_command,
     handle_group_gensession,
-    handle_no_suffix_commands,
-    handle_qb_commands,
     handle_session_input,
     hydra_search,
     imdb_callback,
@@ -386,16 +384,18 @@ def add_handlers():
 
     # Remove settings callbacks from the main regex_filters
     for pattern in settings_callbacks:
-        if pattern in regex_filters:
-            del regex_filters[pattern]
+        regex_filters.pop(pattern, None)
 
     # Add handlers for settings callbacks in groups with authorization
     for regex_filter, handler_func in settings_callbacks.items():
         TgClient.bot.add_handler(
             CallbackQueryHandler(
                 handler_func,
-                filters=regex(regex_filter) & CustomFilters.authorized & filters.create(
-                    lambda *args: args[2].message and args[2].message.chat.type != "private"
+                filters=regex(regex_filter)
+                & CustomFilters.authorized
+                & filters.create(
+                    lambda *args: args[2].message
+                    and args[2].message.chat.type != "private"
                 ),
             ),
         )
@@ -405,8 +405,10 @@ def add_handlers():
         TgClient.bot.add_handler(
             CallbackQueryHandler(
                 handler_func,
-                filters=regex(regex_filter) & filters.create(
-                    lambda *args: args[2].message and args[2].message.chat.type == "private"
+                filters=regex(regex_filter)
+                & filters.create(
+                    lambda *args: args[2].message
+                    and args[2].message.chat.type == "private"
                 ),
             ),
         )

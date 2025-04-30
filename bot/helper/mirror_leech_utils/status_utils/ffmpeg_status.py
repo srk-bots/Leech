@@ -15,7 +15,7 @@ class FFmpegStatus:
         self._gid = gid
         self._cstatus = status
         # Set the cstatus attribute on the listener for progress calculation
-        if hasattr(listener, 'cstatus'):
+        if hasattr(listener, "cstatus"):
             listener.cstatus = status
         self.tool = "ffmpeg"
 

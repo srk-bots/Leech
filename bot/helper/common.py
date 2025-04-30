@@ -160,7 +160,9 @@ class TaskConfig:
         self.extract_subtitle_indices = (
             None  # List of subtitle track indices to extract
         )
-        self.extract_attachment_indices = None  # List of attachment indices to extract
+        self.extract_attachment_indices = (
+            None  # List of attachment indices to extract
+        )
         # Keep single index variables for backward compatibility
         self.extract_video_index = None
         self.extract_audio_index = None
@@ -256,7 +258,9 @@ class TaskConfig:
 
     def get_config_path(self, dest):
         return (
-            f"rclone/{self.user_id}.conf" if dest.startswith("mrcc:") else "rclone.conf"
+            f"rclone/{self.user_id}.conf"
+            if dest.startswith("mrcc:")
+            else "rclone.conf"
         )
 
     async def is_token_exists(self, path, status):
@@ -306,7 +310,11 @@ class TaskConfig:
         self.metadata_title = (
             self.metadata_title
             or self.user_dict.get("METADATA_TITLE", False)
-            or (Config.METADATA_TITLE if "METADATA_TITLE" not in self.user_dict else "")
+            or (
+                Config.METADATA_TITLE
+                if "METADATA_TITLE" not in self.user_dict
+                else ""
+            )
         )
 
         self.metadata_author = (
@@ -572,7 +580,9 @@ class TaskConfig:
             self.watermark_maintain_quality = self.user_dict[
                 "WATERMARK_MAINTAIN_QUALITY"
             ]
-        elif self.watermark_enabled and hasattr(Config, "WATERMARK_MAINTAIN_QUALITY"):
+        elif self.watermark_enabled and hasattr(
+            Config, "WATERMARK_MAINTAIN_QUALITY"
+        ):
             self.watermark_maintain_quality = Config.WATERMARK_MAINTAIN_QUALITY
         else:
             self.watermark_maintain_quality = True
@@ -692,7 +702,9 @@ class TaskConfig:
             and "MERGE_OUTPUT_FORMAT_VIDEO" in self.user_dict
             and self.user_dict["MERGE_OUTPUT_FORMAT_VIDEO"]
         ):
-            self.merge_output_format_video = self.user_dict["MERGE_OUTPUT_FORMAT_VIDEO"]
+            self.merge_output_format_video = self.user_dict[
+                "MERGE_OUTPUT_FORMAT_VIDEO"
+            ]
         elif self.merge_enabled and Config.MERGE_OUTPUT_FORMAT_VIDEO:
             self.merge_output_format_video = Config.MERGE_OUTPUT_FORMAT_VIDEO
         else:
@@ -704,7 +716,9 @@ class TaskConfig:
             and "MERGE_OUTPUT_FORMAT_AUDIO" in self.user_dict
             and self.user_dict["MERGE_OUTPUT_FORMAT_AUDIO"]
         ):
-            self.merge_output_format_audio = self.user_dict["MERGE_OUTPUT_FORMAT_AUDIO"]
+            self.merge_output_format_audio = self.user_dict[
+                "MERGE_OUTPUT_FORMAT_AUDIO"
+            ]
         elif self.merge_enabled and Config.MERGE_OUTPUT_FORMAT_AUDIO:
             self.merge_output_format_audio = Config.MERGE_OUTPUT_FORMAT_AUDIO
         else:
@@ -1335,7 +1349,9 @@ class TaskConfig:
             and self.user_dict["EXTRACT_VIDEO_RESOLUTION"]
             and self.user_dict["EXTRACT_VIDEO_RESOLUTION"].lower() != "none"
         ):
-            self.extract_video_resolution = self.user_dict["EXTRACT_VIDEO_RESOLUTION"]
+            self.extract_video_resolution = self.user_dict[
+                "EXTRACT_VIDEO_RESOLUTION"
+            ]
         elif (
             self.extract_enabled
             and hasattr(Config, "EXTRACT_VIDEO_RESOLUTION")
@@ -1576,7 +1592,9 @@ class TaskConfig:
 
         # Initialize subtitle extract settings
         if user_extract_enabled and "EXTRACT_SUBTITLE_ENABLED" in self.user_dict:
-            self.extract_subtitle_enabled = self.user_dict["EXTRACT_SUBTITLE_ENABLED"]
+            self.extract_subtitle_enabled = self.user_dict[
+                "EXTRACT_SUBTITLE_ENABLED"
+            ]
         elif self.extract_enabled and hasattr(Config, "EXTRACT_SUBTITLE_ENABLED"):
             self.extract_subtitle_enabled = Config.EXTRACT_SUBTITLE_ENABLED
         else:
@@ -1723,7 +1741,9 @@ class TaskConfig:
             and self.user_dict["EXTRACT_SUBTITLE_LANGUAGE"]
             and self.user_dict["EXTRACT_SUBTITLE_LANGUAGE"].lower() != "none"
         ):
-            self.extract_subtitle_language = self.user_dict["EXTRACT_SUBTITLE_LANGUAGE"]
+            self.extract_subtitle_language = self.user_dict[
+                "EXTRACT_SUBTITLE_LANGUAGE"
+            ]
         elif (
             self.extract_enabled
             and hasattr(Config, "EXTRACT_SUBTITLE_LANGUAGE")
@@ -1741,7 +1761,9 @@ class TaskConfig:
             and self.user_dict["EXTRACT_SUBTITLE_ENCODING"]
             and self.user_dict["EXTRACT_SUBTITLE_ENCODING"].lower() != "none"
         ):
-            self.extract_subtitle_encoding = self.user_dict["EXTRACT_SUBTITLE_ENCODING"]
+            self.extract_subtitle_encoding = self.user_dict[
+                "EXTRACT_SUBTITLE_ENCODING"
+            ]
         elif (
             self.extract_enabled
             and hasattr(Config, "EXTRACT_SUBTITLE_ENCODING")
@@ -1806,7 +1828,9 @@ class TaskConfig:
             and "EXTRACT_ATTACHMENT_INDEX" in self.user_dict
             and self.user_dict["EXTRACT_ATTACHMENT_INDEX"] is not None
         ):
-            self.extract_attachment_index = self.user_dict["EXTRACT_ATTACHMENT_INDEX"]
+            self.extract_attachment_index = self.user_dict[
+                "EXTRACT_ATTACHMENT_INDEX"
+            ]
             # Convert to list format for extract_attachment_indices
             if isinstance(self.extract_attachment_index, str):
                 if self.extract_attachment_index.lower() == "all":
@@ -1905,7 +1929,9 @@ class TaskConfig:
             and self.user_dict["EXTRACT_ATTACHMENT_FORMAT"]
             and self.user_dict["EXTRACT_ATTACHMENT_FORMAT"].lower() != "none"
         ):
-            self.extract_attachment_format = self.user_dict["EXTRACT_ATTACHMENT_FORMAT"]
+            self.extract_attachment_format = self.user_dict[
+                "EXTRACT_ATTACHMENT_FORMAT"
+            ]
         elif (
             self.extract_enabled
             and hasattr(Config, "EXTRACT_ATTACHMENT_FORMAT")
@@ -1923,7 +1949,9 @@ class TaskConfig:
             and self.user_dict["EXTRACT_ATTACHMENT_FILTER"]
             and self.user_dict["EXTRACT_ATTACHMENT_FILTER"].lower() != "none"
         ):
-            self.extract_attachment_filter = self.user_dict["EXTRACT_ATTACHMENT_FILTER"]
+            self.extract_attachment_filter = self.user_dict[
+                "EXTRACT_ATTACHMENT_FILTER"
+            ]
         elif (
             self.extract_enabled
             and hasattr(Config, "EXTRACT_ATTACHMENT_FILTER")
@@ -1936,7 +1964,9 @@ class TaskConfig:
 
         # Initialize extract maintain quality setting
         if user_extract_enabled and "EXTRACT_MAINTAIN_QUALITY" in self.user_dict:
-            self.extract_maintain_quality = self.user_dict["EXTRACT_MAINTAIN_QUALITY"]
+            self.extract_maintain_quality = self.user_dict[
+                "EXTRACT_MAINTAIN_QUALITY"
+            ]
         elif self.extract_enabled and hasattr(Config, "EXTRACT_MAINTAIN_QUALITY"):
             self.extract_maintain_quality = Config.EXTRACT_MAINTAIN_QUALITY
         else:
@@ -2036,7 +2066,9 @@ class TaskConfig:
                         f"Will extract video tracks with indices: {self.extract_video_indices}"
                     )
                 elif self.extract_video_enabled:
-                    LOGGER.info("Will extract all video tracks (no specific indices)")
+                    LOGGER.info(
+                        "Will extract all video tracks (no specific indices)"
+                    )
 
             elif self.args.get("-vi") is not None:
                 # Handle multiple indices separated by commas or spaces
@@ -2098,7 +2130,9 @@ class TaskConfig:
                         f"Will extract audio tracks with indices: {self.extract_audio_indices}"
                     )
                 elif self.extract_audio_enabled:
-                    LOGGER.info("Will extract all audio tracks (no specific indices)")
+                    LOGGER.info(
+                        "Will extract all audio tracks (no specific indices)"
+                    )
             elif self.args.get("-ai") is not None:
                 # Handle multiple indices separated by commas or spaces
                 audio_indices = str(self.args.get("-ai")).split(",")
@@ -2128,9 +2162,9 @@ class TaskConfig:
             # Subtitle indices
             if self.args.get("-extract-subtitle-index") is not None:
                 # Handle multiple indices separated by commas or spaces
-                subtitle_indices = str(self.args.get("-extract-subtitle-index")).split(
-                    ","
-                )
+                subtitle_indices = str(
+                    self.args.get("-extract-subtitle-index")
+                ).split(",")
                 for idx in subtitle_indices:
                     try:
                         # Check for special value "all"
@@ -2150,7 +2184,9 @@ class TaskConfig:
                         # Auto-enable subtitle extraction when index is specified
                         self.extract_enabled = True
                         self.extract_subtitle_enabled = True
-                        LOGGER.info(f"Added subtitle index {index} to extraction list")
+                        LOGGER.info(
+                            f"Added subtitle index {index} to extraction list"
+                        )
                     except ValueError:
                         if idx.strip() and idx.strip().lower() != "all":
                             LOGGER.warning(f"Invalid subtitle index: {idx}")
@@ -2271,10 +2307,14 @@ class TaskConfig:
                 self.extract_audio_format = self.args.get("-extract-audio-format")
 
             if self.args.get("-extract-subtitle-codec"):
-                self.extract_subtitle_codec = self.args.get("-extract-subtitle-codec")
+                self.extract_subtitle_codec = self.args.get(
+                    "-extract-subtitle-codec"
+                )
 
             if self.args.get("-extract-subtitle-format"):
-                self.extract_subtitle_format = self.args.get("-extract-subtitle-format")
+                self.extract_subtitle_format = self.args.get(
+                    "-extract-subtitle-format"
+                )
 
             if self.args.get("-extract-attachment-format"):
                 self.extract_attachment_format = self.args.get(
@@ -2320,9 +2360,9 @@ class TaskConfig:
         elif hasattr(self, "compress_archive") and self.compress_archive:
             self.compression_enabled = True
             self.compression_archive_enabled = True
-        elif user_compression_enabled:
-            self.compression_enabled = True
-        elif owner_compression_enabled and "COMPRESSION_ENABLED" not in self.user_dict:
+        elif user_compression_enabled or (
+            owner_compression_enabled and "COMPRESSION_ENABLED" not in self.user_dict
+        ):
             self.compression_enabled = True
         else:
             self.compression_enabled = False
@@ -2335,9 +2375,7 @@ class TaskConfig:
                     "COMPRESSION_VIDEO_ENABLED", False
                 )
                 owner_compression_video_enabled = Config.COMPRESSION_VIDEO_ENABLED
-                if user_compression_video_enabled:
-                    self.compression_video_enabled = True
-                elif (
+                if user_compression_video_enabled or (
                     owner_compression_video_enabled
                     and "COMPRESSION_VIDEO_ENABLED" not in self.user_dict
                 ):
@@ -2351,9 +2389,7 @@ class TaskConfig:
                     "COMPRESSION_AUDIO_ENABLED", False
                 )
                 owner_compression_audio_enabled = Config.COMPRESSION_AUDIO_ENABLED
-                if user_compression_audio_enabled:
-                    self.compression_audio_enabled = True
-                elif (
+                if user_compression_audio_enabled or (
                     owner_compression_audio_enabled
                     and "COMPRESSION_AUDIO_ENABLED" not in self.user_dict
                 ):
@@ -2367,9 +2403,7 @@ class TaskConfig:
                     "COMPRESSION_IMAGE_ENABLED", False
                 )
                 owner_compression_image_enabled = Config.COMPRESSION_IMAGE_ENABLED
-                if user_compression_image_enabled:
-                    self.compression_image_enabled = True
-                elif (
+                if user_compression_image_enabled or (
                     owner_compression_image_enabled
                     and "COMPRESSION_IMAGE_ENABLED" not in self.user_dict
                 ):
@@ -2382,10 +2416,10 @@ class TaskConfig:
                 user_compression_document_enabled = self.user_dict.get(
                     "COMPRESSION_DOCUMENT_ENABLED", False
                 )
-                owner_compression_document_enabled = Config.COMPRESSION_DOCUMENT_ENABLED
-                if user_compression_document_enabled:
-                    self.compression_document_enabled = True
-                elif (
+                owner_compression_document_enabled = (
+                    Config.COMPRESSION_DOCUMENT_ENABLED
+                )
+                if user_compression_document_enabled or (
                     owner_compression_document_enabled
                     and "COMPRESSION_DOCUMENT_ENABLED" not in self.user_dict
                 ):
@@ -2398,10 +2432,10 @@ class TaskConfig:
                 user_compression_subtitle_enabled = self.user_dict.get(
                     "COMPRESSION_SUBTITLE_ENABLED", False
                 )
-                owner_compression_subtitle_enabled = Config.COMPRESSION_SUBTITLE_ENABLED
-                if user_compression_subtitle_enabled:
-                    self.compression_subtitle_enabled = True
-                elif (
+                owner_compression_subtitle_enabled = (
+                    Config.COMPRESSION_SUBTITLE_ENABLED
+                )
+                if user_compression_subtitle_enabled or (
                     owner_compression_subtitle_enabled
                     and "COMPRESSION_SUBTITLE_ENABLED" not in self.user_dict
                 ):
@@ -2414,10 +2448,10 @@ class TaskConfig:
                 user_compression_archive_enabled = self.user_dict.get(
                     "COMPRESSION_ARCHIVE_ENABLED", False
                 )
-                owner_compression_archive_enabled = Config.COMPRESSION_ARCHIVE_ENABLED
-                if user_compression_archive_enabled:
-                    self.compression_archive_enabled = True
-                elif (
+                owner_compression_archive_enabled = (
+                    Config.COMPRESSION_ARCHIVE_ENABLED
+                )
+                if user_compression_archive_enabled or (
                     owner_compression_archive_enabled
                     and "COMPRESSION_ARCHIVE_ENABLED" not in self.user_dict
                 ):
@@ -2456,10 +2490,14 @@ class TaskConfig:
         user_video_format = self.user_dict.get("COMPRESSION_VIDEO_FORMAT")
         owner_video_format = getattr(Config, "COMPRESSION_VIDEO_FORMAT", None)
 
-        if user_video_format is not None and str(user_video_format).lower() != "none":
+        if (
+            user_video_format is not None
+            and str(user_video_format).lower() != "none"
+        ):
             self.compression_video_format = user_video_format
         elif (
-            owner_video_format is not None and str(owner_video_format).lower() != "none"
+            owner_video_format is not None
+            and str(owner_video_format).lower() != "none"
         ):
             self.compression_video_format = owner_video_format
         else:
@@ -2469,10 +2507,14 @@ class TaskConfig:
         user_audio_format = self.user_dict.get("COMPRESSION_AUDIO_FORMAT")
         owner_audio_format = getattr(Config, "COMPRESSION_AUDIO_FORMAT", None)
 
-        if user_audio_format is not None and str(user_audio_format).lower() != "none":
+        if (
+            user_audio_format is not None
+            and str(user_audio_format).lower() != "none"
+        ):
             self.compression_audio_format = user_audio_format
         elif (
-            owner_audio_format is not None and str(owner_audio_format).lower() != "none"
+            owner_audio_format is not None
+            and str(owner_audio_format).lower() != "none"
         ):
             self.compression_audio_format = owner_audio_format
         else:
@@ -2482,10 +2524,14 @@ class TaskConfig:
         user_image_format = self.user_dict.get("COMPRESSION_IMAGE_FORMAT")
         owner_image_format = getattr(Config, "COMPRESSION_IMAGE_FORMAT", None)
 
-        if user_image_format is not None and str(user_image_format).lower() != "none":
+        if (
+            user_image_format is not None
+            and str(user_image_format).lower() != "none"
+        ):
             self.compression_image_format = user_image_format
         elif (
-            owner_image_format is not None and str(owner_image_format).lower() != "none"
+            owner_image_format is not None
+            and str(owner_image_format).lower() != "none"
         ):
             self.compression_image_format = owner_image_format
         else:
@@ -2506,7 +2552,9 @@ class TaskConfig:
         ):
             self.compression_document_format = owner_document_format
         else:
-            self.compression_document_format = "none"  # Default format (keep original)
+            self.compression_document_format = (
+                "none"  # Default format (keep original)
+            )
 
         # Subtitle format
         user_subtitle_format = self.user_dict.get("COMPRESSION_SUBTITLE_FORMAT")
@@ -2523,7 +2571,9 @@ class TaskConfig:
         ):
             self.compression_subtitle_format = owner_subtitle_format
         else:
-            self.compression_subtitle_format = "none"  # Default format (keep original)
+            self.compression_subtitle_format = (
+                "none"  # Default format (keep original)
+            )
 
         # Archive format
         user_archive_format = self.user_dict.get("COMPRESSION_ARCHIVE_FORMAT")
@@ -2540,7 +2590,9 @@ class TaskConfig:
         ):
             self.compression_archive_format = owner_archive_format
         else:
-            self.compression_archive_format = "none"  # Default format (keep original)
+            self.compression_archive_format = (
+                "none"  # Default format (keep original)
+            )
 
         # Set compression presets based on command line flags or settings
         if hasattr(self, "video_preset") and self.video_preset:
@@ -2552,7 +2604,9 @@ class TaskConfig:
             and self.user_dict["COMPRESSION_VIDEO_PRESET"] != "none"
             and self.user_dict["COMPRESSION_VIDEO_PRESET"].lower() != "none"
         ):
-            self.compression_video_preset = self.user_dict["COMPRESSION_VIDEO_PRESET"]
+            self.compression_video_preset = self.user_dict[
+                "COMPRESSION_VIDEO_PRESET"
+            ]
         elif (
             self.compression_enabled
             and hasattr(Config, "COMPRESSION_VIDEO_PRESET")
@@ -2573,7 +2627,9 @@ class TaskConfig:
             and self.user_dict["COMPRESSION_AUDIO_PRESET"] != "none"
             and self.user_dict["COMPRESSION_AUDIO_PRESET"].lower() != "none"
         ):
-            self.compression_audio_preset = self.user_dict["COMPRESSION_AUDIO_PRESET"]
+            self.compression_audio_preset = self.user_dict[
+                "COMPRESSION_AUDIO_PRESET"
+            ]
         elif (
             self.compression_enabled
             and hasattr(Config, "COMPRESSION_AUDIO_PRESET")
@@ -2594,7 +2650,9 @@ class TaskConfig:
             and self.user_dict["COMPRESSION_IMAGE_PRESET"] != "none"
             and self.user_dict["COMPRESSION_IMAGE_PRESET"].lower() != "none"
         ):
-            self.compression_image_preset = self.user_dict["COMPRESSION_IMAGE_PRESET"]
+            self.compression_image_preset = self.user_dict[
+                "COMPRESSION_IMAGE_PRESET"
+            ]
         elif (
             self.compression_enabled
             and hasattr(Config, "COMPRESSION_IMAGE_PRESET")
@@ -2700,7 +2758,8 @@ class TaskConfig:
             # Check for video convert settings
             user_video_format = self.user_dict.get("CONVERT_VIDEO_FORMAT", "")
             owner_video_format = (
-                hasattr(Config, "CONVERT_VIDEO_FORMAT") and Config.CONVERT_VIDEO_FORMAT
+                hasattr(Config, "CONVERT_VIDEO_FORMAT")
+                and Config.CONVERT_VIDEO_FORMAT
             )
 
             # Check if user has video convert enabled
@@ -2738,7 +2797,8 @@ class TaskConfig:
             # Check for audio convert settings
             user_audio_format = self.user_dict.get("CONVERT_AUDIO_FORMAT", "")
             owner_audio_format = (
-                hasattr(Config, "CONVERT_AUDIO_FORMAT") and Config.CONVERT_AUDIO_FORMAT
+                hasattr(Config, "CONVERT_AUDIO_FORMAT")
+                and Config.CONVERT_AUDIO_FORMAT
             )
 
             # Check if user has audio convert enabled
@@ -2812,7 +2872,10 @@ class TaskConfig:
 
         self.user_transmission = TgClient.IS_PREMIUM_USER and (
             self.user_dict.get("USER_TRANSMISSION")
-            or (Config.USER_TRANSMISSION and "USER_TRANSMISSION" not in self.user_dict)
+            or (
+                Config.USER_TRANSMISSION
+                and "USER_TRANSMISSION" not in self.user_dict
+            )
         )
 
         if self.user_dict.get("UPLOAD_PATHS", False):
@@ -2859,7 +2922,9 @@ class TaskConfig:
                     self.up_dest = Config.RCLONE_PATH
                 else:
                     self.up_dest = ""
-            elif (not self.up_dest and default_upload == "gd") or self.up_dest == "gd":
+            elif (
+                not self.up_dest and default_upload == "gd"
+            ) or self.up_dest == "gd":
                 self.up_dest = self.user_dict.get("GDRIVE_ID") or Config.GDRIVE_ID
             if not self.up_dest:
                 raise ValueError("No Upload Destination!")
@@ -3022,7 +3087,8 @@ class TaskConfig:
             # Always use owner's session for max split size calculation, not user's own session
             self.max_split_size = (
                 TgClient.MAX_SPLIT_SIZE
-                if hasattr(Config, "USER_SESSION_STRING") and Config.USER_SESSION_STRING
+                if hasattr(Config, "USER_SESSION_STRING")
+                and Config.USER_SESSION_STRING
                 else 2097152000
             )
 
@@ -3055,7 +3121,10 @@ class TaskConfig:
                     if self.as_med
                     else (
                         self.user_dict.get("AS_DOCUMENT", False)
-                        or (Config.AS_DOCUMENT and "AS_DOCUMENT" not in self.user_dict)
+                        or (
+                            Config.AS_DOCUMENT
+                            and "AS_DOCUMENT" not in self.user_dict
+                        )
                     )
                 )
 
@@ -3284,7 +3353,8 @@ class TaskConfig:
             ):
                 for file_ in files:
                     if is_first_archive_split(file_) or (
-                        is_archive(file_) and not file_.strip().lower().endswith(".rar")
+                        is_archive(file_)
+                        and not file_.strip().lower().endswith(".rar")
                     ):
                         f_path = ospath.join(dirpath, file_)
                         self.files_to_proceed.append(f_path)
@@ -3335,7 +3405,9 @@ class TaskConfig:
 
         # Check if ffmpeg_cmds is empty or None
         if not self.ffmpeg_cmds:
-            LOGGER.warning("FFmpeg commands list is empty or None, nothing to process")
+            LOGGER.warning(
+                "FFmpeg commands list is empty or None, nothing to process"
+            )
             return dl_path
 
         # Process each FFmpeg command with error handling for unclosed quotations
@@ -3357,7 +3429,9 @@ class TaskConfig:
                     try:
                         # Try again with the fixed command
                         parts = [
-                            part.strip() for part in split(fixed_item) if part.strip()
+                            part.strip()
+                            for part in split(fixed_item)
+                            if part.strip()
                         ]
                         cmds.append(parts)
                         LOGGER.debug(
@@ -3469,7 +3543,9 @@ class TaskConfig:
                         for i, part in enumerate(parts):
                             if part == "-i" and i + 1 < len(parts):
                                 input_file = parts[i + 1]
-                                index = -1  # Special marker for bash wrapped commands
+                                index = (
+                                    -1
+                                )  # Special marker for bash wrapped commands
                                 break
                         else:
                             # Couldn't find -i parameter, use default
@@ -3496,7 +3572,9 @@ class TaskConfig:
                     ext = ospath.splitext(input_file)[-1].lower()
                 if await aiopath.isfile(dl_path):
                     is_video, is_audio, _ = await get_document_type(dl_path)
-                    if (not is_video and not is_audio) or (is_video and ext == "audio"):
+                    if (not is_video and not is_audio) or (
+                        is_video and ext == "audio"
+                    ):
                         break
                     if (is_audio and not is_video and ext == "video") or (
                         ext
@@ -3742,9 +3820,7 @@ class TaskConfig:
                                 if len(res) == 1:
                                     file_name = ospath.basename(res[0])
                                     if file_name.startswith(
-                                        "ffmpeg"
-                                    ) or file_name.startswith(
-                                        "xtra"
+                                        ("ffmpeg", "xtra")
                                     ):  # Check for both ffmpeg and xtra
                                         newname = file_name.split(".", 1)[-1]
                                         newres = ospath.join(dirpath, newname)
@@ -3959,187 +4035,186 @@ class TaskConfig:
                 # For flag-based conversion without -del, we'll still delete the original
                 # This ensures consistent behavior with settings-based conversion
                 delete_original = True
-                LOGGER.warning("Flag-based video conversion without -del flag detected")
+                LOGGER.warning(
+                    "Flag-based video conversion without -del flag detected"
+                )
                 LOGGER.warning(
                     "Setting delete_original=True for all video conversions for consistency"
                 )
-        else:
-            # If convert_video is not set via command line, check if it's enabled in settings
-            if convert_enabled:
-                # Determine if video convert is enabled based on priority
-                video_enabled = False
-                if "CONVERT_VIDEO_ENABLED" in self.user_dict:
-                    # User has explicitly set video convert enabled/disabled
-                    video_enabled = user_video_enabled
-                else:
-                    # User hasn't set video convert enabled/disabled - use owner settings
-                    video_enabled = owner_video_enabled
+        # If convert_video is not set via command line, check if it's enabled in settings
+        elif convert_enabled:
+            # Determine if video convert is enabled based on priority
+            video_enabled = False
+            if "CONVERT_VIDEO_ENABLED" in self.user_dict:
+                # User has explicitly set video convert enabled/disabled
+                video_enabled = user_video_enabled
+            else:
+                # User hasn't set video convert enabled/disabled - use owner settings
+                video_enabled = owner_video_enabled
 
-                if video_enabled:
-                    # Get video format from settings
-                    user_video_format = self.user_dict.get("CONVERT_VIDEO_FORMAT", "")
-                    owner_video_format = (
-                        Config.CONVERT_VIDEO_FORMAT
-                        if hasattr(Config, "CONVERT_VIDEO_FORMAT")
-                        else "mp4"
+            if video_enabled:
+                # Get video format from settings
+                user_video_format = self.user_dict.get("CONVERT_VIDEO_FORMAT", "")
+                owner_video_format = (
+                    Config.CONVERT_VIDEO_FORMAT
+                    if hasattr(Config, "CONVERT_VIDEO_FORMAT")
+                    else "mp4"
+                )
+
+                # Check if format is set to "None" (case-insensitive)
+                if user_video_format and (user_video_format.lower() == "none"):
+                    LOGGER.debug(
+                        "User has set video format to None, skipping video conversion"
+                    )
+                    vext = ""
+                elif (
+                    not user_video_format
+                    and owner_video_format
+                    and (owner_video_format.lower() == "none")
+                ):
+                    LOGGER.debug(
+                        "Owner has set video format to None, skipping video conversion"
+                    )
+                    vext = ""
+                else:
+                    # Use user format if set, otherwise use owner format
+                    vext = user_video_format or owner_video_format
+                    vstatus = ""
+                    LOGGER.debug(f"Using video format from settings: {vext}")
+
+                    # Get video codec from settings
+                    user_video_codec = self.user_dict.get("CONVERT_VIDEO_CODEC", "")
+                    owner_video_codec = (
+                        Config.CONVERT_VIDEO_CODEC
+                        if hasattr(Config, "CONVERT_VIDEO_CODEC")
+                        else "libx264"
                     )
 
-                    # Check if format is set to "None" (case-insensitive)
-                    if user_video_format and (user_video_format.lower() == "none"):
+                    # Determine which codec to use based on priority
+                    if user_video_codec and user_video_codec.lower() != "none":
+                        self.convert_video_codec = user_video_codec
                         LOGGER.debug(
-                            "User has set video format to None, skipping video conversion"
+                            f"Using user's video codec: {self.convert_video_codec}"
                         )
-                        vext = ""
-                    elif (
-                        not user_video_format
-                        and owner_video_format
-                        and (owner_video_format.lower() == "none")
-                    ):
+                    elif owner_video_codec and owner_video_codec.lower() != "none":
+                        self.convert_video_codec = owner_video_codec
                         LOGGER.debug(
-                            "Owner has set video format to None, skipping video conversion"
+                            f"Using owner's video codec: {self.convert_video_codec}"
                         )
-                        vext = ""
                     else:
-                        # Use user format if set, otherwise use owner format
-                        vext = user_video_format or owner_video_format
-                        vstatus = ""
-                        LOGGER.debug(f"Using video format from settings: {vext}")
+                        self.convert_video_codec = None
+                        LOGGER.debug("No video codec specified, using default")
 
-                        # Get video codec from settings
-                        user_video_codec = self.user_dict.get("CONVERT_VIDEO_CODEC", "")
-                        owner_video_codec = (
-                            Config.CONVERT_VIDEO_CODEC
-                            if hasattr(Config, "CONVERT_VIDEO_CODEC")
-                            else "libx264"
+                    # Get video CRF from settings
+                    user_video_crf = self.user_dict.get("CONVERT_VIDEO_CRF", 0)
+                    owner_video_crf = (
+                        Config.CONVERT_VIDEO_CRF
+                        if hasattr(Config, "CONVERT_VIDEO_CRF")
+                        else 23
+                    )
+
+                    # Determine which CRF to use based on priority
+                    if user_video_crf and user_video_crf != 0:
+                        self.convert_video_crf = user_video_crf
+                        LOGGER.debug(
+                            f"Using user's video CRF: {self.convert_video_crf}"
+                        )
+                    elif owner_video_crf and owner_video_crf != 0:
+                        self.convert_video_crf = owner_video_crf
+                        LOGGER.debug(
+                            f"Using owner's video CRF: {self.convert_video_crf}"
+                        )
+                    else:
+                        self.convert_video_crf = None
+                        LOGGER.debug("No video CRF specified, using default")
+
+                    # Get video preset from settings
+                    user_video_preset = self.user_dict.get(
+                        "CONVERT_VIDEO_PRESET", ""
+                    )
+                    owner_video_preset = (
+                        Config.CONVERT_VIDEO_PRESET
+                        if hasattr(Config, "CONVERT_VIDEO_PRESET")
+                        else "medium"
+                    )
+
+                    # Determine which preset to use based on priority
+                    if user_video_preset and user_video_preset.lower() != "none":
+                        self.convert_video_preset = user_video_preset
+                        LOGGER.debug(
+                            f"Using user's video preset: {self.convert_video_preset}"
+                        )
+                    elif owner_video_preset and owner_video_preset.lower() != "none":
+                        self.convert_video_preset = owner_video_preset
+                        LOGGER.debug(
+                            f"Using owner's video preset: {self.convert_video_preset}"
+                        )
+                    else:
+                        self.convert_video_preset = None
+                        LOGGER.debug("No video preset specified, using default")
+
+                    # Get video maintain quality setting
+                    user_video_maintain_quality = self.user_dict.get(
+                        "CONVERT_VIDEO_MAINTAIN_QUALITY", False
+                    )
+                    owner_video_maintain_quality = (
+                        Config.CONVERT_VIDEO_MAINTAIN_QUALITY
+                        if hasattr(Config, "CONVERT_VIDEO_MAINTAIN_QUALITY")
+                        else False
+                    )
+
+                    # Determine which maintain quality setting to use based on priority
+                    if "CONVERT_VIDEO_MAINTAIN_QUALITY" in self.user_dict:
+                        self.convert_video_maintain_quality = (
+                            user_video_maintain_quality
+                        )
+                        LOGGER.debug(
+                            f"Using user's video maintain quality: {self.convert_video_maintain_quality}"
+                        )
+                    else:
+                        self.convert_video_maintain_quality = (
+                            owner_video_maintain_quality
+                        )
+                        LOGGER.debug(
+                            f"Using owner's video maintain quality: {self.convert_video_maintain_quality}"
                         )
 
-                        # Determine which codec to use based on priority
-                        if user_video_codec and user_video_codec.lower() != "none":
-                            self.convert_video_codec = user_video_codec
-                            LOGGER.debug(
-                                f"Using user's video codec: {self.convert_video_codec}"
-                            )
-                        elif owner_video_codec and owner_video_codec.lower() != "none":
-                            self.convert_video_codec = owner_video_codec
-                            LOGGER.debug(
-                                f"Using owner's video codec: {self.convert_video_codec}"
-                            )
-                        else:
-                            self.convert_video_codec = None
-                            LOGGER.debug("No video codec specified, using default")
-
-                        # Get video CRF from settings
-                        user_video_crf = self.user_dict.get("CONVERT_VIDEO_CRF", 0)
-                        owner_video_crf = (
-                            Config.CONVERT_VIDEO_CRF
-                            if hasattr(Config, "CONVERT_VIDEO_CRF")
-                            else 23
+                    # Set delete_original to True when convert is enabled through settings
+                    # and a valid format is specified
+                    if vext:
+                        # Force delete_original to True for settings-based conversion
+                        delete_original = True
+                        LOGGER.info(
+                            "Settings-based video conversion will delete original files after conversion"
                         )
-
-                        # Determine which CRF to use based on priority
-                        if user_video_crf and user_video_crf != 0:
-                            self.convert_video_crf = user_video_crf
-                            LOGGER.debug(
-                                f"Using user's video CRF: {self.convert_video_crf}"
-                            )
-                        elif owner_video_crf and owner_video_crf != 0:
-                            self.convert_video_crf = owner_video_crf
-                            LOGGER.debug(
-                                f"Using owner's video CRF: {self.convert_video_crf}"
-                            )
-                        else:
-                            self.convert_video_crf = None
-                            LOGGER.debug("No video CRF specified, using default")
-
-                        # Get video preset from settings
-                        user_video_preset = self.user_dict.get(
-                            "CONVERT_VIDEO_PRESET", ""
+                        # Add more detailed logging
+                        LOGGER.debug(
+                            f"Video conversion settings: Format={vext}, Delete Original=True"
                         )
-                        owner_video_preset = (
-                            Config.CONVERT_VIDEO_PRESET
-                            if hasattr(Config, "CONVERT_VIDEO_PRESET")
-                            else "medium"
+                        # Add a warning log to make it more visible
+                        LOGGER.warning(
+                            f"IMPORTANT: Setting delete_original=True for video conversion with format {vext}"
                         )
-
-                        # Determine which preset to use based on priority
-                        if user_video_preset and user_video_preset.lower() != "none":
-                            self.convert_video_preset = user_video_preset
-                            LOGGER.debug(
-                                f"Using user's video preset: {self.convert_video_preset}"
-                            )
-                        elif (
-                            owner_video_preset and owner_video_preset.lower() != "none"
-                        ):
-                            self.convert_video_preset = owner_video_preset
-                            LOGGER.debug(
-                                f"Using owner's video preset: {self.convert_video_preset}"
-                            )
-                        else:
-                            self.convert_video_preset = None
-                            LOGGER.debug("No video preset specified, using default")
-
-                        # Get video maintain quality setting
-                        user_video_maintain_quality = self.user_dict.get(
-                            "CONVERT_VIDEO_MAINTAIN_QUALITY", False
+                        # Add a flag to indicate this is a settings-based conversion
+                        self.is_settings_based_video_conversion = True
+                        self.is_settings_based_conversion = True
+                        # Force delete_original to True for settings-based conversion
+                        delete_original = True
+                        LOGGER.warning(
+                            f"Set is_settings_based_video_conversion flag to {self.is_settings_based_video_conversion}"
                         )
-                        owner_video_maintain_quality = (
-                            Config.CONVERT_VIDEO_MAINTAIN_QUALITY
-                            if hasattr(Config, "CONVERT_VIDEO_MAINTAIN_QUALITY")
-                            else False
+                        LOGGER.warning(
+                            f"Set global is_settings_based_conversion flag to: {self.is_settings_based_conversion}"
                         )
-
-                        # Determine which maintain quality setting to use based on priority
-                        if "CONVERT_VIDEO_MAINTAIN_QUALITY" in self.user_dict:
-                            self.convert_video_maintain_quality = (
-                                user_video_maintain_quality
-                            )
-                            LOGGER.debug(
-                                f"Using user's video maintain quality: {self.convert_video_maintain_quality}"
-                            )
-                        else:
-                            self.convert_video_maintain_quality = (
-                                owner_video_maintain_quality
-                            )
-                            LOGGER.debug(
-                                f"Using owner's video maintain quality: {self.convert_video_maintain_quality}"
-                            )
-
-                        # Set delete_original to True when convert is enabled through settings
-                        # and a valid format is specified
-                        if vext:
-                            # Force delete_original to True for settings-based conversion
-                            delete_original = True
-                            LOGGER.info(
-                                "Settings-based video conversion will delete original files after conversion"
-                            )
-                            # Add more detailed logging
-                            LOGGER.debug(
-                                f"Video conversion settings: Format={vext}, Delete Original=True"
-                            )
-                            # Add a warning log to make it more visible
-                            LOGGER.warning(
-                                f"IMPORTANT: Setting delete_original=True for video conversion with format {vext}"
-                            )
-                            # Add a flag to indicate this is a settings-based conversion
-                            self.is_settings_based_video_conversion = True
-                            self.is_settings_based_conversion = True
-                            # Force delete_original to True for settings-based conversion
-                            delete_original = True
-                            LOGGER.warning(
-                                f"Set is_settings_based_video_conversion flag to {self.is_settings_based_video_conversion}"
-                            )
-                            LOGGER.warning(
-                                f"Set global is_settings_based_conversion flag to: {self.is_settings_based_conversion}"
-                            )
-                            LOGGER.warning(
-                                "IMPORTANT: Forcing delete_original=True for settings-based video conversion"
-                            )
-                else:
-                    vext = ""
-                    vstatus = ""
+                        LOGGER.warning(
+                            "IMPORTANT: Forcing delete_original=True for settings-based video conversion"
+                        )
             else:
                 vext = ""
                 vstatus = ""
+        else:
+            vext = ""
+            vstatus = ""
 
         faext = []
         if self.convert_audio:
@@ -4169,214 +4244,214 @@ class TaskConfig:
                 # For flag-based conversion without -del, we'll still delete the original
                 # This ensures consistent behavior with settings-based conversion
                 delete_original = True
-                LOGGER.warning("Flag-based audio conversion without -del flag detected")
+                LOGGER.warning(
+                    "Flag-based audio conversion without -del flag detected"
+                )
                 LOGGER.warning(
                     "Setting delete_original=True for all audio conversions for consistency"
                 )
-        else:
-            # If convert_audio is not set via command line, check if it's enabled in settings
-            if convert_enabled:
-                # Determine if audio convert is enabled based on priority
-                audio_enabled = False
-                if "CONVERT_AUDIO_ENABLED" in self.user_dict:
-                    # User has explicitly set audio convert enabled/disabled
-                    audio_enabled = user_audio_enabled
-                else:
-                    # User hasn't set audio convert enabled/disabled - use owner settings
-                    audio_enabled = owner_audio_enabled
+        # If convert_audio is not set via command line, check if it's enabled in settings
+        elif convert_enabled:
+            # Determine if audio convert is enabled based on priority
+            audio_enabled = False
+            if "CONVERT_AUDIO_ENABLED" in self.user_dict:
+                # User has explicitly set audio convert enabled/disabled
+                audio_enabled = user_audio_enabled
+            else:
+                # User hasn't set audio convert enabled/disabled - use owner settings
+                audio_enabled = owner_audio_enabled
 
-                if audio_enabled:
-                    # Get audio format from settings
-                    user_audio_format = self.user_dict.get("CONVERT_AUDIO_FORMAT", "")
-                    owner_audio_format = (
-                        Config.CONVERT_AUDIO_FORMAT
-                        if hasattr(Config, "CONVERT_AUDIO_FORMAT")
-                        else "mp3"
+            if audio_enabled:
+                # Get audio format from settings
+                user_audio_format = self.user_dict.get("CONVERT_AUDIO_FORMAT", "")
+                owner_audio_format = (
+                    Config.CONVERT_AUDIO_FORMAT
+                    if hasattr(Config, "CONVERT_AUDIO_FORMAT")
+                    else "mp3"
+                )
+
+                # Check if format is set to "None" (case-insensitive)
+                if user_audio_format and (user_audio_format.lower() == "none"):
+                    LOGGER.debug(
+                        "User has set audio format to None, skipping audio conversion"
+                    )
+                    aext = ""
+                elif (
+                    not user_audio_format
+                    and owner_audio_format
+                    and (owner_audio_format.lower() == "none")
+                ):
+                    LOGGER.debug(
+                        "Owner has set audio format to None, skipping audio conversion"
+                    )
+                    aext = ""
+                else:
+                    # Use user format if set, otherwise use owner format
+                    aext = user_audio_format or owner_audio_format
+                    astatus = ""
+                    LOGGER.debug(f"Using audio format from settings: {aext}")
+
+                    # Get audio codec from settings
+                    user_audio_codec = self.user_dict.get("CONVERT_AUDIO_CODEC", "")
+                    owner_audio_codec = (
+                        Config.CONVERT_AUDIO_CODEC
+                        if hasattr(Config, "CONVERT_AUDIO_CODEC")
+                        else "libmp3lame"
                     )
 
-                    # Check if format is set to "None" (case-insensitive)
-                    if user_audio_format and (user_audio_format.lower() == "none"):
+                    # Determine which codec to use based on priority
+                    if user_audio_codec and user_audio_codec.lower() != "none":
+                        self.convert_audio_codec = user_audio_codec
                         LOGGER.debug(
-                            "User has set audio format to None, skipping audio conversion"
+                            f"Using user's audio codec: {self.convert_audio_codec}"
                         )
-                        aext = ""
-                    elif (
-                        not user_audio_format
-                        and owner_audio_format
-                        and (owner_audio_format.lower() == "none")
-                    ):
+                    elif owner_audio_codec and owner_audio_codec.lower() != "none":
+                        self.convert_audio_codec = owner_audio_codec
                         LOGGER.debug(
-                            "Owner has set audio format to None, skipping audio conversion"
+                            f"Using owner's audio codec: {self.convert_audio_codec}"
                         )
-                        aext = ""
                     else:
-                        # Use user format if set, otherwise use owner format
-                        aext = user_audio_format or owner_audio_format
-                        astatus = ""
-                        LOGGER.debug(f"Using audio format from settings: {aext}")
+                        self.convert_audio_codec = None
+                        LOGGER.debug("No audio codec specified, using default")
 
-                        # Get audio codec from settings
-                        user_audio_codec = self.user_dict.get("CONVERT_AUDIO_CODEC", "")
-                        owner_audio_codec = (
-                            Config.CONVERT_AUDIO_CODEC
-                            if hasattr(Config, "CONVERT_AUDIO_CODEC")
-                            else "libmp3lame"
+                    # Get audio bitrate from settings
+                    user_audio_bitrate = self.user_dict.get(
+                        "CONVERT_AUDIO_BITRATE", ""
+                    )
+                    owner_audio_bitrate = (
+                        Config.CONVERT_AUDIO_BITRATE
+                        if hasattr(Config, "CONVERT_AUDIO_BITRATE")
+                        else "192k"
+                    )
+
+                    # Determine which bitrate to use based on priority
+                    if user_audio_bitrate and user_audio_bitrate.lower() != "none":
+                        self.convert_audio_bitrate = user_audio_bitrate
+                        LOGGER.debug(
+                            f"Using user's audio bitrate: {self.convert_audio_bitrate}"
                         )
-
-                        # Determine which codec to use based on priority
-                        if user_audio_codec and user_audio_codec.lower() != "none":
-                            self.convert_audio_codec = user_audio_codec
-                            LOGGER.debug(
-                                f"Using user's audio codec: {self.convert_audio_codec}"
-                            )
-                        elif owner_audio_codec and owner_audio_codec.lower() != "none":
-                            self.convert_audio_codec = owner_audio_codec
-                            LOGGER.debug(
-                                f"Using owner's audio codec: {self.convert_audio_codec}"
-                            )
-                        else:
-                            self.convert_audio_codec = None
-                            LOGGER.debug("No audio codec specified, using default")
-
-                        # Get audio bitrate from settings
-                        user_audio_bitrate = self.user_dict.get(
-                            "CONVERT_AUDIO_BITRATE", ""
+                    elif (
+                        owner_audio_bitrate and owner_audio_bitrate.lower() != "none"
+                    ):
+                        self.convert_audio_bitrate = owner_audio_bitrate
+                        LOGGER.debug(
+                            f"Using owner's audio bitrate: {self.convert_audio_bitrate}"
                         )
-                        owner_audio_bitrate = (
-                            Config.CONVERT_AUDIO_BITRATE
-                            if hasattr(Config, "CONVERT_AUDIO_BITRATE")
-                            else "192k"
+                    else:
+                        self.convert_audio_bitrate = None
+                        LOGGER.debug("No audio bitrate specified, using default")
+
+                    # Get audio channels from settings
+                    user_audio_channels = self.user_dict.get(
+                        "CONVERT_AUDIO_CHANNELS", 0
+                    )
+                    owner_audio_channels = (
+                        Config.CONVERT_AUDIO_CHANNELS
+                        if hasattr(Config, "CONVERT_AUDIO_CHANNELS")
+                        else 2
+                    )
+
+                    # Determine which channels to use based on priority
+                    if user_audio_channels and user_audio_channels != 0:
+                        self.convert_audio_channels = user_audio_channels
+                        LOGGER.debug(
+                            f"Using user's audio channels: {self.convert_audio_channels}"
                         )
-
-                        # Determine which bitrate to use based on priority
-                        if user_audio_bitrate and user_audio_bitrate.lower() != "none":
-                            self.convert_audio_bitrate = user_audio_bitrate
-                            LOGGER.debug(
-                                f"Using user's audio bitrate: {self.convert_audio_bitrate}"
-                            )
-                        elif (
-                            owner_audio_bitrate
-                            and owner_audio_bitrate.lower() != "none"
-                        ):
-                            self.convert_audio_bitrate = owner_audio_bitrate
-                            LOGGER.debug(
-                                f"Using owner's audio bitrate: {self.convert_audio_bitrate}"
-                            )
-                        else:
-                            self.convert_audio_bitrate = None
-                            LOGGER.debug("No audio bitrate specified, using default")
-
-                        # Get audio channels from settings
-                        user_audio_channels = self.user_dict.get(
-                            "CONVERT_AUDIO_CHANNELS", 0
+                    elif owner_audio_channels and owner_audio_channels != 0:
+                        self.convert_audio_channels = owner_audio_channels
+                        LOGGER.debug(
+                            f"Using owner's audio channels: {self.convert_audio_channels}"
                         )
-                        owner_audio_channels = (
-                            Config.CONVERT_AUDIO_CHANNELS
-                            if hasattr(Config, "CONVERT_AUDIO_CHANNELS")
-                            else 2
+                    else:
+                        self.convert_audio_channels = None
+                        LOGGER.debug("No audio channels specified, using default")
+
+                    # Get audio sampling from settings
+                    user_audio_sampling = self.user_dict.get(
+                        "CONVERT_AUDIO_SAMPLING", 0
+                    )
+                    owner_audio_sampling = (
+                        Config.CONVERT_AUDIO_SAMPLING
+                        if hasattr(Config, "CONVERT_AUDIO_SAMPLING")
+                        else 44100
+                    )
+
+                    # Determine which sampling to use based on priority
+                    if user_audio_sampling and user_audio_sampling != 0:
+                        self.convert_audio_sampling = user_audio_sampling
+                        LOGGER.debug(
+                            f"Using user's audio sampling: {self.convert_audio_sampling}"
                         )
-
-                        # Determine which channels to use based on priority
-                        if user_audio_channels and user_audio_channels != 0:
-                            self.convert_audio_channels = user_audio_channels
-                            LOGGER.debug(
-                                f"Using user's audio channels: {self.convert_audio_channels}"
-                            )
-                        elif owner_audio_channels and owner_audio_channels != 0:
-                            self.convert_audio_channels = owner_audio_channels
-                            LOGGER.debug(
-                                f"Using owner's audio channels: {self.convert_audio_channels}"
-                            )
-                        else:
-                            self.convert_audio_channels = None
-                            LOGGER.debug("No audio channels specified, using default")
-
-                        # Get audio sampling from settings
-                        user_audio_sampling = self.user_dict.get(
-                            "CONVERT_AUDIO_SAMPLING", 0
+                    elif owner_audio_sampling and owner_audio_sampling != 0:
+                        self.convert_audio_sampling = owner_audio_sampling
+                        LOGGER.debug(
+                            f"Using owner's audio sampling: {self.convert_audio_sampling}"
                         )
-                        owner_audio_sampling = (
-                            Config.CONVERT_AUDIO_SAMPLING
-                            if hasattr(Config, "CONVERT_AUDIO_SAMPLING")
-                            else 44100
+                    else:
+                        self.convert_audio_sampling = None
+                        LOGGER.debug("No audio sampling specified, using default")
+
+                    # Get audio volume from settings
+                    user_audio_volume = self.user_dict.get(
+                        "CONVERT_AUDIO_VOLUME", 0.0
+                    )
+                    owner_audio_volume = (
+                        Config.CONVERT_AUDIO_VOLUME
+                        if hasattr(Config, "CONVERT_AUDIO_VOLUME")
+                        else 1.0
+                    )
+
+                    # Determine which volume to use based on priority
+                    if user_audio_volume and user_audio_volume != 0.0:
+                        self.convert_audio_volume = user_audio_volume
+                        LOGGER.debug(
+                            f"Using user's audio volume: {self.convert_audio_volume}"
                         )
-
-                        # Determine which sampling to use based on priority
-                        if user_audio_sampling and user_audio_sampling != 0:
-                            self.convert_audio_sampling = user_audio_sampling
-                            LOGGER.debug(
-                                f"Using user's audio sampling: {self.convert_audio_sampling}"
-                            )
-                        elif owner_audio_sampling and owner_audio_sampling != 0:
-                            self.convert_audio_sampling = owner_audio_sampling
-                            LOGGER.debug(
-                                f"Using owner's audio sampling: {self.convert_audio_sampling}"
-                            )
-                        else:
-                            self.convert_audio_sampling = None
-                            LOGGER.debug("No audio sampling specified, using default")
-
-                        # Get audio volume from settings
-                        user_audio_volume = self.user_dict.get(
-                            "CONVERT_AUDIO_VOLUME", 0.0
+                    elif owner_audio_volume and owner_audio_volume != 0.0:
+                        self.convert_audio_volume = owner_audio_volume
+                        LOGGER.debug(
+                            f"Using owner's audio volume: {self.convert_audio_volume}"
                         )
-                        owner_audio_volume = (
-                            Config.CONVERT_AUDIO_VOLUME
-                            if hasattr(Config, "CONVERT_AUDIO_VOLUME")
-                            else 1.0
+                    else:
+                        self.convert_audio_volume = None
+                        LOGGER.debug("No audio volume specified, using default")
+
+                    # Set delete_original to True when convert is enabled through settings
+                    # and a valid format is specified
+                    if aext:
+                        # Force delete_original to True for settings-based conversion
+                        delete_original = True
+                        LOGGER.info(
+                            "Settings-based audio conversion will delete original files after conversion"
                         )
-
-                        # Determine which volume to use based on priority
-                        if user_audio_volume and user_audio_volume != 0.0:
-                            self.convert_audio_volume = user_audio_volume
-                            LOGGER.debug(
-                                f"Using user's audio volume: {self.convert_audio_volume}"
-                            )
-                        elif owner_audio_volume and owner_audio_volume != 0.0:
-                            self.convert_audio_volume = owner_audio_volume
-                            LOGGER.debug(
-                                f"Using owner's audio volume: {self.convert_audio_volume}"
-                            )
-                        else:
-                            self.convert_audio_volume = None
-                            LOGGER.debug("No audio volume specified, using default")
-
-                        # Set delete_original to True when convert is enabled through settings
-                        # and a valid format is specified
-                        if aext:
-                            # Force delete_original to True for settings-based conversion
-                            delete_original = True
-                            LOGGER.info(
-                                "Settings-based audio conversion will delete original files after conversion"
-                            )
-                            # Add more detailed logging
-                            LOGGER.debug(
-                                f"Audio conversion settings: Format={aext}, Delete Original=True"
-                            )
-                            # Add a warning log to make it more visible
-                            LOGGER.warning(
-                                f"IMPORTANT: Setting delete_original=True for audio conversion with format {aext}"
-                            )
-                            # Add a flag to indicate this is a settings-based conversion
-                            self.is_settings_based_audio_conversion = True
-                            self.is_settings_based_conversion = True
-                            # Force delete_original to True for settings-based conversion
-                            delete_original = True
-                            LOGGER.warning(
-                                f"Set is_settings_based_audio_conversion flag to {self.is_settings_based_audio_conversion}"
-                            )
-                            LOGGER.warning(
-                                f"Set global is_settings_based_conversion flag to: {self.is_settings_based_conversion}"
-                            )
-                            LOGGER.warning(
-                                "IMPORTANT: Forcing delete_original=True for settings-based audio conversion"
-                            )
-                else:
-                    aext = ""
-                    astatus = ""
+                        # Add more detailed logging
+                        LOGGER.debug(
+                            f"Audio conversion settings: Format={aext}, Delete Original=True"
+                        )
+                        # Add a warning log to make it more visible
+                        LOGGER.warning(
+                            f"IMPORTANT: Setting delete_original=True for audio conversion with format {aext}"
+                        )
+                        # Add a flag to indicate this is a settings-based conversion
+                        self.is_settings_based_audio_conversion = True
+                        self.is_settings_based_conversion = True
+                        # Force delete_original to True for settings-based conversion
+                        delete_original = True
+                        LOGGER.warning(
+                            f"Set is_settings_based_audio_conversion flag to {self.is_settings_based_audio_conversion}"
+                        )
+                        LOGGER.warning(
+                            f"Set global is_settings_based_conversion flag to: {self.is_settings_based_conversion}"
+                        )
+                        LOGGER.warning(
+                            "IMPORTANT: Forcing delete_original=True for settings-based audio conversion"
+                        )
             else:
                 aext = ""
                 astatus = ""
+        else:
+            aext = ""
+            astatus = ""
 
         # Check for subtitle, document, and archive convert commands
         sext = ""
@@ -4392,7 +4467,9 @@ class TaskConfig:
         # Handle subtitle convert command
         if hasattr(self, "convert_subtitle") and self.convert_subtitle:
             # Clean up the convert_subtitle parameter by removing the -del flag if present
-            clean_convert_subtitle = self.convert_subtitle.replace("-del", "").strip()
+            clean_convert_subtitle = self.convert_subtitle.replace(
+                "-del", ""
+            ).strip()
             sdata = clean_convert_subtitle.split()
             sext = sdata[0].lower()
             if len(sdata) > 2:
@@ -4409,7 +4486,9 @@ class TaskConfig:
             # Check if -del flag is present in convert_subtitle
             if "-del" in self.convert_subtitle:
                 delete_original = True
-                LOGGER.warning("Flag-based subtitle conversion with -del flag detected")
+                LOGGER.warning(
+                    "Flag-based subtitle conversion with -del flag detected"
+                )
                 LOGGER.warning(
                     "Setting delete_original=True for flag-based subtitle conversion"
                 )
@@ -4423,99 +4502,98 @@ class TaskConfig:
                 LOGGER.warning(
                     "Setting delete_original=True for all subtitle conversions for consistency"
                 )
-        else:
-            # If convert_subtitle is not set via command line, check if it's enabled in settings
-            if convert_enabled:
-                # Determine if subtitle convert is enabled based on priority
-                subtitle_enabled = False
-                if "CONVERT_SUBTITLE_ENABLED" in self.user_dict:
-                    # User has explicitly set subtitle convert enabled/disabled
-                    subtitle_enabled = self.user_dict.get(
-                        "CONVERT_SUBTITLE_ENABLED", False
-                    )
-                else:
-                    # User hasn't set subtitle convert enabled/disabled - use owner settings
-                    subtitle_enabled = (
-                        Config.CONVERT_SUBTITLE_ENABLED
-                        if hasattr(Config, "CONVERT_SUBTITLE_ENABLED")
-                        else False
-                    )
+        # If convert_subtitle is not set via command line, check if it's enabled in settings
+        elif convert_enabled:
+            # Determine if subtitle convert is enabled based on priority
+            subtitle_enabled = False
+            if "CONVERT_SUBTITLE_ENABLED" in self.user_dict:
+                # User has explicitly set subtitle convert enabled/disabled
+                subtitle_enabled = self.user_dict.get(
+                    "CONVERT_SUBTITLE_ENABLED", False
+                )
+            else:
+                # User hasn't set subtitle convert enabled/disabled - use owner settings
+                subtitle_enabled = (
+                    Config.CONVERT_SUBTITLE_ENABLED
+                    if hasattr(Config, "CONVERT_SUBTITLE_ENABLED")
+                    else False
+                )
 
-                if subtitle_enabled:
-                    # Get subtitle format from settings
-                    user_subtitle_format = self.user_dict.get(
-                        "CONVERT_SUBTITLE_FORMAT", ""
-                    )
-                    owner_subtitle_format = (
-                        Config.CONVERT_SUBTITLE_FORMAT
-                        if hasattr(Config, "CONVERT_SUBTITLE_FORMAT")
-                        else "srt"
-                    )
+            if subtitle_enabled:
+                # Get subtitle format from settings
+                user_subtitle_format = self.user_dict.get(
+                    "CONVERT_SUBTITLE_FORMAT", ""
+                )
+                owner_subtitle_format = (
+                    Config.CONVERT_SUBTITLE_FORMAT
+                    if hasattr(Config, "CONVERT_SUBTITLE_FORMAT")
+                    else "srt"
+                )
 
-                    # Check if format is set to "None" (case-insensitive)
-                    if user_subtitle_format and (
-                        user_subtitle_format.lower() == "none"
-                    ):
-                        LOGGER.debug(
-                            "User has set subtitle format to None, skipping subtitle conversion"
-                        )
-                        sext = ""
-                    elif (
-                        not user_subtitle_format
-                        and owner_subtitle_format
-                        and (owner_subtitle_format.lower() == "none")
-                    ):
-                        LOGGER.debug(
-                            "Owner has set subtitle format to None, skipping subtitle conversion"
-                        )
-                        sext = ""
-                    else:
-                        # Use user format if set, otherwise use owner format
-                        sext = user_subtitle_format or owner_subtitle_format
-                        sstatus = ""
-                        LOGGER.debug(f"Using subtitle format from settings: {sext}")
-
-                        # Set delete_original to True when convert is enabled through settings
-                        # and a valid format is specified
-                        if sext:
-                            # Force delete_original to True for settings-based conversion
-                            delete_original = True
-                            LOGGER.info(
-                                "Settings-based subtitle conversion will delete original files after conversion"
-                            )
-                            # Add more detailed logging
-                            LOGGER.debug(
-                                f"Subtitle conversion settings: Format={sext}, Delete Original=True"
-                            )
-                            # Add a warning log to make it more visible
-                            LOGGER.warning(
-                                f"IMPORTANT: Setting delete_original=True for subtitle conversion with format {sext}"
-                            )
-                            # Add a flag to indicate this is a settings-based conversion
-                            self.is_settings_based_subtitle_conversion = True
-                            self.is_settings_based_conversion = True
-                            # Force delete_original to True for settings-based conversion
-                            delete_original = True
-                            LOGGER.warning(
-                                f"Set is_settings_based_subtitle_conversion flag to {self.is_settings_based_subtitle_conversion}"
-                            )
-                            LOGGER.warning(
-                                f"Set global is_settings_based_conversion flag to: {self.is_settings_based_conversion}"
-                            )
-                            LOGGER.warning(
-                                "IMPORTANT: Forcing delete_original=True for settings-based subtitle conversion"
-                            )
-                else:
+                # Check if format is set to "None" (case-insensitive)
+                if user_subtitle_format and (user_subtitle_format.lower() == "none"):
+                    LOGGER.debug(
+                        "User has set subtitle format to None, skipping subtitle conversion"
+                    )
                     sext = ""
+                elif (
+                    not user_subtitle_format
+                    and owner_subtitle_format
+                    and (owner_subtitle_format.lower() == "none")
+                ):
+                    LOGGER.debug(
+                        "Owner has set subtitle format to None, skipping subtitle conversion"
+                    )
+                    sext = ""
+                else:
+                    # Use user format if set, otherwise use owner format
+                    sext = user_subtitle_format or owner_subtitle_format
                     sstatus = ""
+                    LOGGER.debug(f"Using subtitle format from settings: {sext}")
+
+                    # Set delete_original to True when convert is enabled through settings
+                    # and a valid format is specified
+                    if sext:
+                        # Force delete_original to True for settings-based conversion
+                        delete_original = True
+                        LOGGER.info(
+                            "Settings-based subtitle conversion will delete original files after conversion"
+                        )
+                        # Add more detailed logging
+                        LOGGER.debug(
+                            f"Subtitle conversion settings: Format={sext}, Delete Original=True"
+                        )
+                        # Add a warning log to make it more visible
+                        LOGGER.warning(
+                            f"IMPORTANT: Setting delete_original=True for subtitle conversion with format {sext}"
+                        )
+                        # Add a flag to indicate this is a settings-based conversion
+                        self.is_settings_based_subtitle_conversion = True
+                        self.is_settings_based_conversion = True
+                        # Force delete_original to True for settings-based conversion
+                        delete_original = True
+                        LOGGER.warning(
+                            f"Set is_settings_based_subtitle_conversion flag to {self.is_settings_based_subtitle_conversion}"
+                        )
+                        LOGGER.warning(
+                            f"Set global is_settings_based_conversion flag to: {self.is_settings_based_conversion}"
+                        )
+                        LOGGER.warning(
+                            "IMPORTANT: Forcing delete_original=True for settings-based subtitle conversion"
+                        )
             else:
                 sext = ""
                 sstatus = ""
+        else:
+            sext = ""
+            sstatus = ""
 
         # Handle document convert command
         if hasattr(self, "convert_document") and self.convert_document:
             # Clean up the convert_document parameter by removing the -del flag if present
-            clean_convert_document = self.convert_document.replace("-del", "").strip()
+            clean_convert_document = self.convert_document.replace(
+                "-del", ""
+            ).strip()
             ddata = clean_convert_document.split()
             dext = ddata[0].lower()
             if len(ddata) > 2:
@@ -4532,7 +4610,9 @@ class TaskConfig:
             # Check if -del flag is present in convert_document
             if "-del" in self.convert_document:
                 delete_original = True
-                LOGGER.warning("Flag-based document conversion with -del flag detected")
+                LOGGER.warning(
+                    "Flag-based document conversion with -del flag detected"
+                )
                 LOGGER.warning(
                     "Setting delete_original=True for flag-based document conversion"
                 )
@@ -4546,94 +4626,91 @@ class TaskConfig:
                 LOGGER.warning(
                     "Setting delete_original=True for all document conversions for consistency"
                 )
-        else:
-            # If convert_document is not set via command line, check if it's enabled in settings
-            if convert_enabled:
-                # Determine if document convert is enabled based on priority
-                document_enabled = False
-                if "CONVERT_DOCUMENT_ENABLED" in self.user_dict:
-                    # User has explicitly set document convert enabled/disabled
-                    document_enabled = self.user_dict.get(
-                        "CONVERT_DOCUMENT_ENABLED", False
-                    )
-                else:
-                    # User hasn't set document convert enabled/disabled - use owner settings
-                    document_enabled = (
-                        Config.CONVERT_DOCUMENT_ENABLED
-                        if hasattr(Config, "CONVERT_DOCUMENT_ENABLED")
-                        else False
-                    )
+        # If convert_document is not set via command line, check if it's enabled in settings
+        elif convert_enabled:
+            # Determine if document convert is enabled based on priority
+            document_enabled = False
+            if "CONVERT_DOCUMENT_ENABLED" in self.user_dict:
+                # User has explicitly set document convert enabled/disabled
+                document_enabled = self.user_dict.get(
+                    "CONVERT_DOCUMENT_ENABLED", False
+                )
+            else:
+                # User hasn't set document convert enabled/disabled - use owner settings
+                document_enabled = (
+                    Config.CONVERT_DOCUMENT_ENABLED
+                    if hasattr(Config, "CONVERT_DOCUMENT_ENABLED")
+                    else False
+                )
 
-                if document_enabled:
-                    # Get document format from settings
-                    user_document_format = self.user_dict.get(
-                        "CONVERT_DOCUMENT_FORMAT", ""
-                    )
-                    owner_document_format = (
-                        Config.CONVERT_DOCUMENT_FORMAT
-                        if hasattr(Config, "CONVERT_DOCUMENT_FORMAT")
-                        else "pdf"
-                    )
+            if document_enabled:
+                # Get document format from settings
+                user_document_format = self.user_dict.get(
+                    "CONVERT_DOCUMENT_FORMAT", ""
+                )
+                owner_document_format = (
+                    Config.CONVERT_DOCUMENT_FORMAT
+                    if hasattr(Config, "CONVERT_DOCUMENT_FORMAT")
+                    else "pdf"
+                )
 
-                    # Check if format is set to "None" (case-insensitive)
-                    if user_document_format and (
-                        user_document_format.lower() == "none"
-                    ):
-                        LOGGER.debug(
-                            "User has set document format to None, skipping document conversion"
-                        )
-                        dext = ""
-                    elif (
-                        not user_document_format
-                        and owner_document_format
-                        and (owner_document_format.lower() == "none")
-                    ):
-                        LOGGER.debug(
-                            "Owner has set document format to None, skipping document conversion"
-                        )
-                        dext = ""
-                    else:
-                        # Use user format if set, otherwise use owner format
-                        dext = user_document_format or owner_document_format
-                        dstatus = ""
-                        LOGGER.debug(f"Using document format from settings: {dext}")
-
-                        # Set delete_original to True when convert is enabled through settings
-                        # and a valid format is specified
-                        if dext:
-                            # Force delete_original to True for settings-based conversion
-                            delete_original = True
-                            LOGGER.info(
-                                "Settings-based document conversion will delete original files after conversion"
-                            )
-                            # Add more detailed logging
-                            LOGGER.debug(
-                                f"Document conversion settings: Format={dext}, Delete Original=True"
-                            )
-                            # Add a warning log to make it more visible
-                            LOGGER.warning(
-                                f"IMPORTANT: Setting delete_original=True for document conversion with format {dext}"
-                            )
-                            # Add a flag to indicate this is a settings-based conversion
-                            self.is_settings_based_document_conversion = True
-                            self.is_settings_based_conversion = True
-                            # Force delete_original to True for settings-based conversion
-                            delete_original = True
-                            LOGGER.warning(
-                                f"Set is_settings_based_document_conversion flag to {self.is_settings_based_document_conversion}"
-                            )
-                            LOGGER.warning(
-                                f"Set global is_settings_based_conversion flag to: {self.is_settings_based_conversion}"
-                            )
-                            LOGGER.warning(
-                                "IMPORTANT: Forcing delete_original=True for settings-based document conversion"
-                            )
-                else:
+                # Check if format is set to "None" (case-insensitive)
+                if user_document_format and (user_document_format.lower() == "none"):
+                    LOGGER.debug(
+                        "User has set document format to None, skipping document conversion"
+                    )
                     dext = ""
+                elif (
+                    not user_document_format
+                    and owner_document_format
+                    and (owner_document_format.lower() == "none")
+                ):
+                    LOGGER.debug(
+                        "Owner has set document format to None, skipping document conversion"
+                    )
+                    dext = ""
+                else:
+                    # Use user format if set, otherwise use owner format
+                    dext = user_document_format or owner_document_format
                     dstatus = ""
+                    LOGGER.debug(f"Using document format from settings: {dext}")
+
+                    # Set delete_original to True when convert is enabled through settings
+                    # and a valid format is specified
+                    if dext:
+                        # Force delete_original to True for settings-based conversion
+                        delete_original = True
+                        LOGGER.info(
+                            "Settings-based document conversion will delete original files after conversion"
+                        )
+                        # Add more detailed logging
+                        LOGGER.debug(
+                            f"Document conversion settings: Format={dext}, Delete Original=True"
+                        )
+                        # Add a warning log to make it more visible
+                        LOGGER.warning(
+                            f"IMPORTANT: Setting delete_original=True for document conversion with format {dext}"
+                        )
+                        # Add a flag to indicate this is a settings-based conversion
+                        self.is_settings_based_document_conversion = True
+                        self.is_settings_based_conversion = True
+                        # Force delete_original to True for settings-based conversion
+                        delete_original = True
+                        LOGGER.warning(
+                            f"Set is_settings_based_document_conversion flag to {self.is_settings_based_document_conversion}"
+                        )
+                        LOGGER.warning(
+                            f"Set global is_settings_based_conversion flag to: {self.is_settings_based_conversion}"
+                        )
+                        LOGGER.warning(
+                            "IMPORTANT: Forcing delete_original=True for settings-based document conversion"
+                        )
             else:
                 dext = ""
                 dstatus = ""
+        else:
+            dext = ""
+            dstatus = ""
 
         # Handle archive convert command
         if hasattr(self, "convert_archive") and self.convert_archive:
@@ -4655,7 +4732,9 @@ class TaskConfig:
             # Check if -del flag is present in convert_archive
             if "-del" in self.convert_archive:
                 delete_original = True
-                LOGGER.warning("Flag-based archive conversion with -del flag detected")
+                LOGGER.warning(
+                    "Flag-based archive conversion with -del flag detected"
+                )
                 LOGGER.warning(
                     "Setting delete_original=True for flag-based archive conversion"
                 )
@@ -4669,92 +4748,91 @@ class TaskConfig:
                 LOGGER.warning(
                     "Setting delete_original=True for all archive conversions for consistency"
                 )
-        else:
-            # If convert_archive is not set via command line, check if it's enabled in settings
-            if convert_enabled:
-                # Determine if archive convert is enabled based on priority
-                archive_enabled = False
-                if "CONVERT_ARCHIVE_ENABLED" in self.user_dict:
-                    # User has explicitly set archive convert enabled/disabled
-                    archive_enabled = self.user_dict.get(
-                        "CONVERT_ARCHIVE_ENABLED", False
-                    )
-                else:
-                    # User hasn't set archive convert enabled/disabled - use owner settings
-                    archive_enabled = (
-                        Config.CONVERT_ARCHIVE_ENABLED
-                        if hasattr(Config, "CONVERT_ARCHIVE_ENABLED")
-                        else False
-                    )
+        # If convert_archive is not set via command line, check if it's enabled in settings
+        elif convert_enabled:
+            # Determine if archive convert is enabled based on priority
+            archive_enabled = False
+            if "CONVERT_ARCHIVE_ENABLED" in self.user_dict:
+                # User has explicitly set archive convert enabled/disabled
+                archive_enabled = self.user_dict.get(
+                    "CONVERT_ARCHIVE_ENABLED", False
+                )
+            else:
+                # User hasn't set archive convert enabled/disabled - use owner settings
+                archive_enabled = (
+                    Config.CONVERT_ARCHIVE_ENABLED
+                    if hasattr(Config, "CONVERT_ARCHIVE_ENABLED")
+                    else False
+                )
 
-                if archive_enabled:
-                    # Get archive format from settings
-                    user_archive_format = self.user_dict.get(
-                        "CONVERT_ARCHIVE_FORMAT", ""
-                    )
-                    owner_archive_format = (
-                        Config.CONVERT_ARCHIVE_FORMAT
-                        if hasattr(Config, "CONVERT_ARCHIVE_FORMAT")
-                        else "zip"
-                    )
+            if archive_enabled:
+                # Get archive format from settings
+                user_archive_format = self.user_dict.get(
+                    "CONVERT_ARCHIVE_FORMAT", ""
+                )
+                owner_archive_format = (
+                    Config.CONVERT_ARCHIVE_FORMAT
+                    if hasattr(Config, "CONVERT_ARCHIVE_FORMAT")
+                    else "zip"
+                )
 
-                    # Check if format is set to "None" (case-insensitive)
-                    if user_archive_format and (user_archive_format.lower() == "none"):
-                        LOGGER.debug(
-                            "User has set archive format to None, skipping archive conversion"
-                        )
-                        rext = ""
-                    elif (
-                        not user_archive_format
-                        and owner_archive_format
-                        and (owner_archive_format.lower() == "none")
-                    ):
-                        LOGGER.debug(
-                            "Owner has set archive format to None, skipping archive conversion"
-                        )
-                        rext = ""
-                    else:
-                        # Use user format if set, otherwise use owner format
-                        rext = user_archive_format or owner_archive_format
-                        rstatus = ""
-                        LOGGER.debug(f"Using archive format from settings: {rext}")
-
-                        # Set delete_original to True when convert is enabled through settings
-                        # and a valid format is specified
-                        if rext:
-                            # Force delete_original to True for settings-based conversion
-                            delete_original = True
-                            LOGGER.info(
-                                "Settings-based archive conversion will delete original files after conversion"
-                            )
-                            # Add more detailed logging
-                            LOGGER.debug(
-                                f"Archive conversion settings: Format={rext}, Delete Original=True"
-                            )
-                            # Add a warning log to make it more visible
-                            LOGGER.warning(
-                                f"IMPORTANT: Setting delete_original=True for archive conversion with format {rext}"
-                            )
-                            # Add a flag to indicate this is a settings-based conversion
-                            self.is_settings_based_archive_conversion = True
-                            self.is_settings_based_conversion = True
-                            # Force delete_original to True for settings-based conversion
-                            delete_original = True
-                            LOGGER.warning(
-                                f"Set is_settings_based_archive_conversion flag to {self.is_settings_based_archive_conversion}"
-                            )
-                            LOGGER.warning(
-                                f"Set global is_settings_based_conversion flag to: {self.is_settings_based_conversion}"
-                            )
-                            LOGGER.warning(
-                                "IMPORTANT: Forcing delete_original=True for settings-based archive conversion"
-                            )
-                else:
+                # Check if format is set to "None" (case-insensitive)
+                if user_archive_format and (user_archive_format.lower() == "none"):
+                    LOGGER.debug(
+                        "User has set archive format to None, skipping archive conversion"
+                    )
                     rext = ""
+                elif (
+                    not user_archive_format
+                    and owner_archive_format
+                    and (owner_archive_format.lower() == "none")
+                ):
+                    LOGGER.debug(
+                        "Owner has set archive format to None, skipping archive conversion"
+                    )
+                    rext = ""
+                else:
+                    # Use user format if set, otherwise use owner format
+                    rext = user_archive_format or owner_archive_format
                     rstatus = ""
+                    LOGGER.debug(f"Using archive format from settings: {rext}")
+
+                    # Set delete_original to True when convert is enabled through settings
+                    # and a valid format is specified
+                    if rext:
+                        # Force delete_original to True for settings-based conversion
+                        delete_original = True
+                        LOGGER.info(
+                            "Settings-based archive conversion will delete original files after conversion"
+                        )
+                        # Add more detailed logging
+                        LOGGER.debug(
+                            f"Archive conversion settings: Format={rext}, Delete Original=True"
+                        )
+                        # Add a warning log to make it more visible
+                        LOGGER.warning(
+                            f"IMPORTANT: Setting delete_original=True for archive conversion with format {rext}"
+                        )
+                        # Add a flag to indicate this is a settings-based conversion
+                        self.is_settings_based_archive_conversion = True
+                        self.is_settings_based_conversion = True
+                        # Force delete_original to True for settings-based conversion
+                        delete_original = True
+                        LOGGER.warning(
+                            f"Set is_settings_based_archive_conversion flag to {self.is_settings_based_archive_conversion}"
+                        )
+                        LOGGER.warning(
+                            f"Set global is_settings_based_conversion flag to: {self.is_settings_based_conversion}"
+                        )
+                        LOGGER.warning(
+                            "IMPORTANT: Forcing delete_original=True for settings-based archive conversion"
+                        )
             else:
                 rext = ""
                 rstatus = ""
+        else:
+            rext = ""
+            rstatus = ""
 
         self.files_to_proceed = {}
         all_files = []
@@ -4775,7 +4853,14 @@ class TaskConfig:
             file_ext = ospath.splitext(f_path)[1].lower()
 
             # Define supported file extensions for different media types
-            supported_subtitle_exts = [".srt", ".ass", ".ssa", ".vtt", ".sub", ".sbv"]
+            supported_subtitle_exts = [
+                ".srt",
+                ".ass",
+                ".ssa",
+                ".vtt",
+                ".sub",
+                ".sbv",
+            ]
             supported_document_exts = [
                 ".pdf",
                 ".doc",
@@ -4807,7 +4892,10 @@ class TaskConfig:
                 and vext.lower() != "none"
                 and not f_path.strip().lower().endswith(f".{vext}")
                 and (
-                    (vstatus == "+" and f_path.strip().lower().endswith(tuple(fvext)))
+                    (
+                        vstatus == "+"
+                        and f_path.strip().lower().endswith(tuple(fvext))
+                    )
                     or (
                         vstatus == "-"
                         and not f_path.strip().lower().endswith(tuple(fvext))
@@ -4825,7 +4913,10 @@ class TaskConfig:
                 and not is_video
                 and not f_path.strip().lower().endswith(f".{aext}")
                 and (
-                    (astatus == "+" and f_path.strip().lower().endswith(tuple(faext)))
+                    (
+                        astatus == "+"
+                        and f_path.strip().lower().endswith(tuple(faext))
+                    )
                     or (
                         astatus == "-"
                         and not f_path.strip().lower().endswith(tuple(faext))
@@ -4842,7 +4933,10 @@ class TaskConfig:
                 and sext.lower() != "none"
                 and not f_path.strip().lower().endswith(f".{sext}")
                 and (
-                    (sstatus == "+" and f_path.strip().lower().endswith(tuple(fsext)))
+                    (
+                        sstatus == "+"
+                        and f_path.strip().lower().endswith(tuple(fsext))
+                    )
                     or (
                         sstatus == "-"
                         and not f_path.strip().lower().endswith(tuple(fsext))
@@ -4859,7 +4953,10 @@ class TaskConfig:
                 and dext.lower() != "none"
                 and not f_path.strip().lower().endswith(f".{dext}")
                 and (
-                    (dstatus == "+" and f_path.strip().lower().endswith(tuple(fdext)))
+                    (
+                        dstatus == "+"
+                        and f_path.strip().lower().endswith(tuple(fdext))
+                    )
                     or (
                         dstatus == "-"
                         and not f_path.strip().lower().endswith(tuple(fdext))
@@ -4876,7 +4973,10 @@ class TaskConfig:
                 and rext.lower() != "none"
                 and not f_path.strip().lower().endswith(f".{rext}")
                 and (
-                    (rstatus == "+" and f_path.strip().lower().endswith(tuple(frext)))
+                    (
+                        rstatus == "+"
+                        and f_path.strip().lower().endswith(tuple(frext))
+                    )
                     or (
                         rstatus == "-"
                         and not f_path.strip().lower().endswith(tuple(frext))
@@ -4993,7 +5093,9 @@ class TaskConfig:
 
     async def generate_sample_video(self, dl_path, gid):
         data = (
-            self.sample_video.split(":") if isinstance(self.sample_video, str) else ""
+            self.sample_video.split(":")
+            if isinstance(self.sample_video, str)
+            else ""
         )
         if data:
             sample_duration = int(data[0]) if data[0] else 60
@@ -5048,7 +5150,9 @@ class TaskConfig:
                         except FileExistsError:
                             LOGGER.warning(f"Folder already exists: {new_folder}")
                             # Try with a different folder name
-                            new_folder = f"{ospath.splitext(f_path)[0]}_{int(time())}"
+                            new_folder = (
+                                f"{ospath.splitext(f_path)[0]}_{int(time())}"
+                            )
                             await makedirs(new_folder, exist_ok=True)
                             await gather(
                                 move(f_path, f"{new_folder}/{file_}"),
@@ -5074,7 +5178,9 @@ class TaskConfig:
 
             # Process all files in the directory recursively
             processed_files = 0
-            for dirpath, _, files in await sync_to_async(walk, dl_path, topdown=False):
+            for dirpath, _, files in await sync_to_async(
+                walk, dl_path, topdown=False
+            ):
                 for file_ in files:
                     if self.is_cancelled:
                         return dl_path
@@ -5134,14 +5240,13 @@ class TaskConfig:
                     self.compression_subtitle_preset = self.subtitle_preset
                 return await self.compress_subtitle_file(dl_path, gid)
             # Otherwise check if it's enabled in settings
-            elif self.compression_subtitle_enabled:
+            if self.compression_subtitle_enabled:
                 LOGGER.info("Compressing subtitle file")
                 return await self.compress_subtitle_file(dl_path, gid)
-            else:
-                return dl_path
+            return dl_path
 
         # Check if file is a video
-        elif (mime_type and mime_type.startswith("video/")) or file_ext in [
+        if (mime_type and mime_type.startswith("video/")) or file_ext in [
             ".mp4",
             ".mkv",
             ".avi",
@@ -5160,14 +5265,13 @@ class TaskConfig:
                     self.compression_video_preset = self.video_preset
                 return await self.compress_video_file(dl_path, gid)
             # Otherwise check if it's enabled in settings
-            elif self.compression_video_enabled:
+            if self.compression_video_enabled:
                 LOGGER.info("Compressing video file")
                 return await self.compress_video_file(dl_path, gid)
-            else:
-                return dl_path
+            return dl_path
 
         # Check if file is an audio
-        elif (mime_type and mime_type.startswith("audio/")) or file_ext in [
+        if (mime_type and mime_type.startswith("audio/")) or file_ext in [
             ".mp3",
             ".wav",
             ".flac",
@@ -5184,14 +5288,13 @@ class TaskConfig:
                     self.compression_audio_preset = self.audio_preset
                 return await self.compress_audio_file(dl_path, gid)
             # Otherwise check if it's enabled in settings
-            elif self.compression_audio_enabled:
+            if self.compression_audio_enabled:
                 LOGGER.info("Compressing audio file")
                 return await self.compress_audio_file(dl_path, gid)
-            else:
-                return dl_path
+            return dl_path
 
         # Check if file is an image
-        elif (mime_type and mime_type.startswith("image/")) or file_ext in [
+        if (mime_type and mime_type.startswith("image/")) or file_ext in [
             ".jpg",
             ".jpeg",
             ".png",
@@ -5209,14 +5312,13 @@ class TaskConfig:
                     self.compression_image_preset = self.image_preset
                 return await self.compress_image_file(dl_path, gid)
             # Otherwise check if it's enabled in settings
-            elif self.compression_image_enabled:
+            if self.compression_image_enabled:
                 LOGGER.info("Compressing image file")
                 return await self.compress_image_file(dl_path, gid)
-            else:
-                return dl_path
+            return dl_path
 
         # Check if file is a document
-        elif (mime_type and mime_type.startswith("application/pdf")) or file_ext in [
+        if (mime_type and mime_type.startswith("application/pdf")) or file_ext in [
             ".pdf",
             ".doc",
             ".docx",
@@ -5233,14 +5335,13 @@ class TaskConfig:
                     self.compression_document_preset = self.document_preset
                 return await self.compress_document_file(dl_path, gid)
             # Otherwise check if it's enabled in settings
-            elif self.compression_document_enabled:
+            if self.compression_document_enabled:
                 LOGGER.info("Compressing document file")
                 return await self.compress_document_file(dl_path, gid)
-            else:
-                return dl_path
+            return dl_path
 
         # Check if file is an archive
-        elif file_ext in [".zip", ".rar", ".7z", ".tar", ".gz", ".bz2", ".xz"]:
+        if file_ext in [".zip", ".rar", ".7z", ".tar", ".gz", ".bz2", ".xz"]:
             # Check if archive compression is enabled by command-line flag
             if hasattr(self, "compress_archive") and self.compress_archive:
                 LOGGER.info("Compressing archive file")
@@ -5249,16 +5350,14 @@ class TaskConfig:
                     self.compression_archive_preset = self.archive_preset
                 return await self.compress_archive_file(dl_path, gid)
             # Otherwise check if it's enabled in settings
-            elif self.compression_archive_enabled:
+            if self.compression_archive_enabled:
                 LOGGER.info("Compressing archive file")
                 return await self.compress_archive_file(dl_path, gid)
-            else:
-                return dl_path
+            return dl_path
 
         # If no specific compression is enabled or file type doesn't match, use 7z compression
-        else:
-            LOGGER.info("Using default compression")
-            return await self.compress_with_7z(dl_path, gid)
+        LOGGER.info("Using default compression")
+        return await self.compress_with_7z(dl_path, gid)
 
     async def compress_with_7z(self, dl_path, gid):
         pswd = self.compress if isinstance(self.compress, str) else ""
@@ -5323,10 +5422,9 @@ class TaskConfig:
 
         # Validate the video file using ffprobe
         try:
-            import subprocess
-
             # Check if xtra binary exists
             import shutil
+            import subprocess
 
             xtra_path = shutil.which("xtra")
             ffprobe_cmd = [
@@ -5349,7 +5447,7 @@ class TaskConfig:
 
             # Run ffprobe to check if the file is a valid video
             process = subprocess.run(
-                ffprobe_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True
+                ffprobe_cmd, capture_output=True, text=True, check=False
             )
 
             if process.returncode != 0:
@@ -5411,10 +5509,14 @@ class TaskConfig:
         user_pixel_format = self.user_dict.get("COMPRESSION_VIDEO_PIXEL_FORMAT")
         owner_pixel_format = getattr(Config, "COMPRESSION_VIDEO_PIXEL_FORMAT", None)
 
-        if user_pixel_format is not None and str(user_pixel_format).lower() != "none":
+        if (
+            user_pixel_format is not None
+            and str(user_pixel_format).lower() != "none"
+        ):
             pixel_format = user_pixel_format
         elif (
-            owner_pixel_format is not None and str(owner_pixel_format).lower() != "none"
+            owner_pixel_format is not None
+            and str(owner_pixel_format).lower() != "none"
         ):
             pixel_format = owner_pixel_format
         else:
@@ -5503,7 +5605,7 @@ class TaskConfig:
                     return dl_path
 
             # Create subprocess with pipes
-            from asyncio.subprocess import create_subprocess_exec, PIPE
+            from asyncio.subprocess import PIPE, create_subprocess_exec
 
             self.subproc = await create_subprocess_exec(
                 *ffmpeg_cmd,
@@ -5531,26 +5633,25 @@ class TaskConfig:
             comp_size = await get_path_size(out_path)
 
             if comp_size < orig_size:
-                LOGGER.info(f"Compression successful: {orig_size} -> {comp_size} bytes")
+                LOGGER.info(
+                    f"Compression successful: {orig_size} -> {comp_size} bytes"
+                )
                 # Remove original file if compression was successful or delete_original is set
                 if self.compression_delete_original:
                     await remove(dl_path)
                     return out_path
-                else:
-                    await remove(dl_path)
-                    return out_path
-            else:
-                LOGGER.info("Compressed file is not smaller than original")
-                # Check if we should still delete the original
-                if self.compression_delete_original:
-                    await remove(dl_path)
-                    return out_path
-                else:
-                    await remove(out_path)
-                    return dl_path
+                await remove(dl_path)
+                return out_path
+            LOGGER.info("Compressed file is not smaller than original")
+            # Check if we should still delete the original
+            if self.compression_delete_original:
+                await remove(dl_path)
+                return out_path
+            await remove(out_path)
+            return dl_path
 
         except Exception as e:
-            LOGGER.error(f"Error during video compression: {str(e)}")
+            LOGGER.error(f"Error during video compression: {e!s}")
             return dl_path
 
     async def compress_audio_file(self, dl_path, gid):
@@ -5594,10 +5695,9 @@ class TaskConfig:
 
         # Validate the audio file using ffprobe
         try:
-            import subprocess
-
             # Check if xtra binary exists
             import shutil
+            import subprocess
 
             xtra_path = shutil.which("xtra")
             ffprobe_cmd = [
@@ -5620,7 +5720,7 @@ class TaskConfig:
 
             # Run ffprobe to check if the file is a valid audio
             process = subprocess.run(
-                ffprobe_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True
+                ffprobe_cmd, capture_output=True, text=True, check=False
             )
 
             if process.returncode != 0:
@@ -5690,7 +5790,9 @@ class TaskConfig:
                 else:
                     bitrate = "96k"  # Default for fast preset
             except (ValueError, TypeError):
-                bitrate = "96k"  # Default for fast preset if bitrate is None or invalid
+                bitrate = (
+                    "96k"  # Default for fast preset if bitrate is None or invalid
+                )
         elif preset == "medium":
             # Use default bitrate
             if not isinstance(bitrate, str) or "k" not in bitrate:
@@ -5835,7 +5937,7 @@ class TaskConfig:
                     return dl_path
 
             # Create subprocess with pipes
-            from asyncio.subprocess import create_subprocess_exec, PIPE
+            from asyncio.subprocess import PIPE, create_subprocess_exec
 
             self.subproc = await create_subprocess_exec(
                 *ffmpeg_cmd,
@@ -5878,26 +5980,23 @@ class TaskConfig:
                     )
                     await remove(dl_path)
                     return out_path
-                else:
-                    LOGGER.info("Removing original file as compression was successful")
-                    await remove(dl_path)
-                    return out_path
-            else:
-                LOGGER.info("Compressed file is not smaller than original")
-                # Check if we should still delete the original
-                if self.compression_delete_original:
-                    LOGGER.info(
-                        "Deleting original file as requested by delete_original setting"
-                    )
-                    await remove(dl_path)
-                    return out_path
-                else:
-                    LOGGER.info("Keeping original file and removing compressed file")
-                    await remove(out_path)
-                    return dl_path
+                LOGGER.info("Removing original file as compression was successful")
+                await remove(dl_path)
+                return out_path
+            LOGGER.info("Compressed file is not smaller than original")
+            # Check if we should still delete the original
+            if self.compression_delete_original:
+                LOGGER.info(
+                    "Deleting original file as requested by delete_original setting"
+                )
+                await remove(dl_path)
+                return out_path
+            LOGGER.info("Keeping original file and removing compressed file")
+            await remove(out_path)
+            return dl_path
 
         except Exception as e:
-            LOGGER.error(f"Error during audio compression: {str(e)}")
+            LOGGER.error(f"Error during audio compression: {e!s}")
             return dl_path
 
     async def compress_image_file(self, dl_path, gid):
@@ -5948,8 +6047,8 @@ class TaskConfig:
         # Validate the image file
         try:
             # Check if the file is a valid image by trying to read its dimensions
-            import subprocess
             import shutil
+            import subprocess
 
             # For SVG files, we need special handling
             if file_ext == ".svg":
@@ -5975,9 +6074,9 @@ class TaskConfig:
                     try:
                         process = subprocess.run(
                             convert_cmd,
-                            stdout=subprocess.PIPE,
-                            stderr=subprocess.PIPE,
+                            capture_output=True,
                             text=True,
+                            check=False,
                         )
                         if process.returncode == 0:
                             # Conversion successful
@@ -6014,7 +6113,7 @@ class TaskConfig:
 
             # Run ffprobe to check if the file is a valid image
             process = subprocess.run(
-                ffprobe_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True
+                ffprobe_cmd, capture_output=True, text=True, check=False
             )
 
             if process.returncode != 0:
@@ -6029,9 +6128,9 @@ class TaskConfig:
                         try:
                             process = subprocess.run(
                                 convert_cmd,
-                                stdout=subprocess.PIPE,
-                                stderr=subprocess.PIPE,
+                                capture_output=True,
                                 text=True,
+                                check=False,
                             )
                             if process.returncode == 0:
                                 # Conversion successful
@@ -6047,7 +6146,9 @@ class TaskConfig:
             # Check if the image has valid dimensions
             try:
                 dimensions = process.stdout.strip().split(",")
-                if len(dimensions) != 2 or not all(dim.isdigit() for dim in dimensions):
+                if len(dimensions) != 2 or not all(
+                    dim.isdigit() for dim in dimensions
+                ):
                     LOGGER.error(f"Image has invalid dimensions: {process.stdout}")
                     return dl_path
 
@@ -6102,7 +6203,9 @@ class TaskConfig:
                 # Use default quality
                 pass
             elif preset == "slow":
-                quality = min(quality + 10, 100)  # Higher quality for slower encoding
+                quality = min(
+                    quality + 10, 100
+                )  # Higher quality for slower encoding
 
             # Ensure quality is within valid range
             quality = max(1, min(quality, 100))
@@ -6144,7 +6247,7 @@ class TaskConfig:
                 ]
             )
         # For JPEG output
-        elif out_ext == ".jpg" or out_ext == ".jpeg":
+        elif out_ext in {".jpg", ".jpeg"}:
             # For JPEG output, use quality parameter
             ffmpeg_cmd.extend(
                 [
@@ -6191,7 +6294,7 @@ class TaskConfig:
                 ]
             )
         # For TIFF output
-        elif out_ext == ".tiff" or out_ext == ".tif":
+        elif out_ext in {".tiff", ".tif"}:
             # Convert TIFF to PNG for better compression
             out_path = f"{ospath.splitext(out_path)[0]}.png"
             ffmpeg_cmd.extend(
@@ -6257,7 +6360,7 @@ class TaskConfig:
                     return dl_path
 
             # Create subprocess with pipes
-            from asyncio.subprocess import create_subprocess_exec, PIPE
+            from asyncio.subprocess import PIPE, create_subprocess_exec
 
             self.subproc = await create_subprocess_exec(
                 *ffmpeg_cmd,
@@ -6300,26 +6403,23 @@ class TaskConfig:
                     )
                     await remove(dl_path)
                     return out_path
-                else:
-                    LOGGER.info("Removing original file as compression was successful")
-                    await remove(dl_path)
-                    return out_path
-            else:
-                LOGGER.info("Compressed file is not smaller than original")
-                # Check if we should still delete the original
-                if self.compression_delete_original:
-                    LOGGER.info(
-                        "Deleting original file as requested by delete_original setting"
-                    )
-                    await remove(dl_path)
-                    return out_path
-                else:
-                    LOGGER.info("Keeping original file and removing compressed file")
-                    await remove(out_path)
-                    return dl_path
+                LOGGER.info("Removing original file as compression was successful")
+                await remove(dl_path)
+                return out_path
+            LOGGER.info("Compressed file is not smaller than original")
+            # Check if we should still delete the original
+            if self.compression_delete_original:
+                LOGGER.info(
+                    "Deleting original file as requested by delete_original setting"
+                )
+                await remove(dl_path)
+                return out_path
+            LOGGER.info("Keeping original file and removing compressed file")
+            await remove(out_path)
+            return dl_path
 
         except Exception as e:
-            LOGGER.error(f"Error during image compression: {str(e)}")
+            LOGGER.error(f"Error during image compression: {e!s}")
             return dl_path
 
     async def compress_document_file(self, dl_path, gid):
@@ -6424,8 +6524,7 @@ class TaskConfig:
                     return await self._compress_document_with_ffmpeg(
                         dl_path, out_path, gid
                     )
-                else:
-                    LOGGER.debug(f"Found {gs_binary} binary at: {gs_path}")
+                LOGGER.debug(f"Found {gs_binary} binary at: {gs_path}")
 
                 # Log the full command for debugging
                 LOGGER.debug(f"Ghostscript command: {' '.join(gs_cmd)}")
@@ -6453,8 +6552,7 @@ class TaskConfig:
                 try:
                     process = subprocess.run(
                         gs_cmd,
-                        stdout=subprocess.PIPE,
-                        stderr=subprocess.PIPE,
+                        capture_output=True,
                         text=True,
                         check=False,
                     )
@@ -6487,32 +6585,29 @@ class TaskConfig:
                         )
                         await remove(dl_path)
                         return out_path
-                    else:
-                        LOGGER.info(
-                            "Removing original file as compression was successful"
-                        )
-                        await remove(dl_path)
-                        return out_path
-                else:
-                    LOGGER.info("Compressed file is not smaller than original")
-                    # Check if we should still delete the original
-                    if self.compression_delete_original:
-                        LOGGER.info(
-                            "Deleting original file as requested by delete_original setting"
-                        )
-                        await remove(dl_path)
-                        return out_path
-                    else:
-                        LOGGER.info(
-                            "Keeping original file and removing compressed file"
-                        )
-                        await remove(out_path)
-                        return dl_path
+                    LOGGER.info(
+                        "Removing original file as compression was successful"
+                    )
+                    await remove(dl_path)
+                    return out_path
+                LOGGER.info("Compressed file is not smaller than original")
+                # Check if we should still delete the original
+                if self.compression_delete_original:
+                    LOGGER.info(
+                        "Deleting original file as requested by delete_original setting"
+                    )
+                    await remove(dl_path)
+                    return out_path
+                LOGGER.info("Keeping original file and removing compressed file")
+                await remove(out_path)
+                return dl_path
 
             except Exception as e:
-                LOGGER.error(f"Error during PDF compression: {str(e)}")
+                LOGGER.error(f"Error during PDF compression: {e!s}")
                 LOGGER.info("Falling back to FFmpeg for PDF compression")
-                return await self._compress_document_with_ffmpeg(dl_path, out_path, gid)
+                return await self._compress_document_with_ffmpeg(
+                    dl_path, out_path, gid
+                )
         elif file_ext in [
             ".doc",
             ".docx",
@@ -6525,7 +6620,9 @@ class TaskConfig:
             ".odp",
         ]:
             # For office documents, try to convert to PDF first, then compress
-            LOGGER.info(f"Converting office document {file_ext} to PDF for compression")
+            LOGGER.info(
+                f"Converting office document {file_ext} to PDF for compression"
+            )
 
             # Use specified format if available
             if (
@@ -6570,13 +6667,15 @@ class TaskConfig:
 
                     process = subprocess.run(
                         libreoffice_cmd,
-                        stdout=subprocess.PIPE,
-                        stderr=subprocess.PIPE,
+                        capture_output=True,
                         text=True,
+                        check=False,
                     )
 
                     if process.returncode != 0:
-                        LOGGER.error(f"LibreOffice conversion failed: {process.stderr}")
+                        LOGGER.error(
+                            f"LibreOffice conversion failed: {process.stderr}"
+                        )
                         # Fall back to 7z compression
                         return await self._compress_document_with_7z(dl_path, gid)
 
@@ -6605,15 +6704,14 @@ class TaskConfig:
                             await remove(dl_path)
 
                         return compressed_path
-                    else:
-                        LOGGER.error(
-                            "LibreOffice conversion failed: output file not found"
-                        )
-                        # Fall back to 7z compression
-                        return await self._compress_document_with_7z(dl_path, gid)
+                    LOGGER.error(
+                        "LibreOffice conversion failed: output file not found"
+                    )
+                    # Fall back to 7z compression
+                    return await self._compress_document_with_7z(dl_path, gid)
 
                 except Exception as e:
-                    LOGGER.error(f"Error during LibreOffice conversion: {str(e)}")
+                    LOGGER.error(f"Error during LibreOffice conversion: {e!s}")
                     # Fall back to 7z compression
                     return await self._compress_document_with_7z(dl_path, gid)
             else:
@@ -6669,7 +6767,7 @@ class TaskConfig:
 
         try:
             # Create subprocess with pipes
-            from asyncio.subprocess import create_subprocess_exec, PIPE
+            from asyncio.subprocess import PIPE, create_subprocess_exec
 
             self.subproc = await create_subprocess_exec(
                 *ffmpeg_cmd,
@@ -6711,26 +6809,23 @@ class TaskConfig:
                     )
                     await remove(dl_path)
                     return out_path
-                else:
-                    LOGGER.info("Removing original file as compression was successful")
-                    await remove(dl_path)
-                    return out_path
-            else:
-                LOGGER.info("Compressed file is not smaller than original")
-                # Check if we should still delete the original
-                if self.compression_delete_original:
-                    LOGGER.info(
-                        "Deleting original file as requested by delete_original setting"
-                    )
-                    await remove(dl_path)
-                    return out_path
-                else:
-                    LOGGER.info("Keeping original file and removing compressed file")
-                    await remove(out_path)
-                    return dl_path
+                LOGGER.info("Removing original file as compression was successful")
+                await remove(dl_path)
+                return out_path
+            LOGGER.info("Compressed file is not smaller than original")
+            # Check if we should still delete the original
+            if self.compression_delete_original:
+                LOGGER.info(
+                    "Deleting original file as requested by delete_original setting"
+                )
+                await remove(dl_path)
+                return out_path
+            LOGGER.info("Keeping original file and removing compressed file")
+            await remove(out_path)
+            return dl_path
 
         except Exception as e:
-            LOGGER.error(f"Error during FFmpeg PDF compression: {str(e)}")
+            LOGGER.error(f"Error during FFmpeg PDF compression: {e!s}")
             return dl_path
 
     async def _compress_document_with_7z(self, dl_path, gid):
@@ -6789,7 +6884,7 @@ class TaskConfig:
                 self.is_cancelled = False
 
             # Create subprocess with pipes
-            from asyncio.subprocess import create_subprocess_exec, PIPE
+            from asyncio.subprocess import PIPE, create_subprocess_exec
 
             self.subproc = await create_subprocess_exec(
                 *sevenzip_cmd,
@@ -6829,26 +6924,23 @@ class TaskConfig:
                     )
                     await remove(dl_path)
                     return out_path
-                else:
-                    LOGGER.info("Removing original file as compression was successful")
-                    await remove(dl_path)
-                    return out_path
-            else:
-                LOGGER.info("Compressed file is not smaller than original")
-                # Check if we should still delete the original
-                if self.compression_delete_original:
-                    LOGGER.info(
-                        "Deleting original file as requested by delete_original setting"
-                    )
-                    await remove(dl_path)
-                    return out_path
-                else:
-                    LOGGER.info("Keeping original file and removing compressed file")
-                    await remove(out_path)
-                    return dl_path
+                LOGGER.info("Removing original file as compression was successful")
+                await remove(dl_path)
+                return out_path
+            LOGGER.info("Compressed file is not smaller than original")
+            # Check if we should still delete the original
+            if self.compression_delete_original:
+                LOGGER.info(
+                    "Deleting original file as requested by delete_original setting"
+                )
+                await remove(dl_path)
+                return out_path
+            LOGGER.info("Keeping original file and removing compressed file")
+            await remove(out_path)
+            return dl_path
 
         except Exception as e:
-            LOGGER.error(f"Error during document compression: {str(e)}")
+            LOGGER.error(f"Error during document compression: {e!s}")
             return dl_path
 
     async def compress_subtitle_file(self, dl_path, gid):
@@ -6943,7 +7035,7 @@ class TaskConfig:
                 # Add format-specific options
                 if out_ext == ".srt":
                     ffmpeg_cmd.extend(["-c:s", "srt"])
-                elif out_ext == ".ass" or out_ext == ".ssa":
+                elif out_ext in {".ass", ".ssa"}:
                     ffmpeg_cmd.extend(["-c:s", "ass"])
                 elif out_ext == ".vtt":
                     ffmpeg_cmd.extend(["-c:s", "webvtt"])
@@ -6970,7 +7062,7 @@ class TaskConfig:
                         return dl_path
 
                 # Create subprocess with pipes
-                from asyncio.subprocess import create_subprocess_exec, PIPE
+                from asyncio.subprocess import PIPE, create_subprocess_exec
 
                 self.subproc = await create_subprocess_exec(
                     *ffmpeg_cmd,
@@ -6998,7 +7090,9 @@ class TaskConfig:
                     return dl_path
             else:
                 # For simple encoding change without format conversion
-                return await self._compress_subtitle_text(dl_path, out_path, encoding)
+                return await self._compress_subtitle_text(
+                    dl_path, out_path, encoding
+                )
 
             # Check if compressed file is smaller
             orig_size = await get_path_size(dl_path)
@@ -7015,32 +7109,28 @@ class TaskConfig:
                     )
                     await remove(dl_path)
                     return out_path
-                else:
-                    LOGGER.info("Removing original file as compression was successful")
-                    await remove(dl_path)
-                    return out_path
-            else:
-                LOGGER.info("Compressed file is not smaller than original")
-                # Check if we should still delete the original
-                if self.compression_delete_original:
-                    LOGGER.info(
-                        "Deleting original file as requested by delete_original setting"
-                    )
-                    await remove(dl_path)
-                    return out_path
-                else:
-                    LOGGER.info("Keeping original file and removing compressed file")
-                    await remove(out_path)
-                    return dl_path
+                LOGGER.info("Removing original file as compression was successful")
+                await remove(dl_path)
+                return out_path
+            LOGGER.info("Compressed file is not smaller than original")
+            # Check if we should still delete the original
+            if self.compression_delete_original:
+                LOGGER.info(
+                    "Deleting original file as requested by delete_original setting"
+                )
+                await remove(dl_path)
+                return out_path
+            LOGGER.info("Keeping original file and removing compressed file")
+            await remove(out_path)
+            return dl_path
 
         except Exception as e:
-            LOGGER.error(f"Error during subtitle compression: {str(e)}")
+            LOGGER.error(f"Error during subtitle compression: {e!s}")
             return dl_path
 
     async def _compress_subtitle_text(self, dl_path, out_path, encoding):
         """Helper method for simple text-based subtitle compression"""
         try:
-            import io
             import time
 
             # Create a simple FFmpeg object for status tracking
@@ -7056,21 +7146,17 @@ class TaskConfig:
                 LOGGER.warning(f"Could not set FFMpeg progress values: {e}")
 
             # Update progress to 25%
-            try:
+            with contextlib.suppress(Exception):
                 ffmpeg._progress_raw = 25
-            except Exception:
-                pass
             start_time = time.time()
 
             # Read the subtitle file
-            with io.open(dl_path, "r", encoding="utf-8", errors="replace") as f:
+            with open(dl_path, encoding="utf-8", errors="replace") as f:
                 content = f.read()
 
             # Update progress to 50%
-            try:
+            with contextlib.suppress(Exception):
                 ffmpeg._progress_raw = 50
-            except Exception:
-                pass
 
             # Get file size for progress tracking
             orig_size = await get_path_size(dl_path)
@@ -7084,7 +7170,7 @@ class TaskConfig:
                 LOGGER.debug(f"Could not update FFMpeg progress values: {e}")
 
             # Write the subtitle file with the specified encoding
-            with io.open(out_path, "w", encoding=encoding) as f:
+            with open(out_path, "w", encoding=encoding) as f:
                 f.write(content)
 
             # Update progress to 100%
@@ -7113,26 +7199,23 @@ class TaskConfig:
                     )
                     await remove(dl_path)
                     return out_path
-                else:
-                    LOGGER.info("Removing original file as compression was successful")
-                    await remove(dl_path)
-                    return out_path
-            else:
-                LOGGER.info("Compressed file is not smaller than original")
-                # Check if we should still delete the original
-                if self.compression_delete_original:
-                    LOGGER.info(
-                        "Deleting original file as requested by delete_original setting"
-                    )
-                    await remove(dl_path)
-                    return out_path
-                else:
-                    LOGGER.info("Keeping original file and removing compressed file")
-                    await remove(out_path)
-                    return dl_path
+                LOGGER.info("Removing original file as compression was successful")
+                await remove(dl_path)
+                return out_path
+            LOGGER.info("Compressed file is not smaller than original")
+            # Check if we should still delete the original
+            if self.compression_delete_original:
+                LOGGER.info(
+                    "Deleting original file as requested by delete_original setting"
+                )
+                await remove(dl_path)
+                return out_path
+            LOGGER.info("Keeping original file and removing compressed file")
+            await remove(out_path)
+            return dl_path
 
         except Exception as e:
-            LOGGER.error(f"Error during subtitle text compression: {str(e)}")
+            LOGGER.error(f"Error during subtitle text compression: {e!s}")
             return dl_path
 
     async def compress_archive_file(self, dl_path, gid):
@@ -7171,16 +7254,15 @@ class TaskConfig:
                 LOGGER.info(
                     f"Converting from {file_ext} to .{self.compression_archive_format.lower()} as requested"
                 )
+            # If the user wants to delete the original regardless of compression
+            elif self.compression_delete_original:
+                LOGGER.info(
+                    "Keeping original file as it's already compressed, but marking as deleted due to delete_original setting"
+                )
+                return dl_path
             else:
-                # If the user wants to delete the original regardless of compression
-                if self.compression_delete_original:
-                    LOGGER.info(
-                        "Keeping original file as it's already compressed, but marking as deleted due to delete_original setting"
-                    )
-                    return dl_path
-                else:
-                    LOGGER.info("Skipping compression for already compressed archive")
-                    return dl_path
+                LOGGER.info("Skipping compression for already compressed archive")
+                return dl_path
 
         # Use specified format if available
         if (
@@ -7307,28 +7389,24 @@ class TaskConfig:
                     )
                     await remove(dl_path)
                     return out_path
-                else:
-                    LOGGER.info("Removing original file as compression was successful")
-                    await remove(dl_path)
-                    return out_path
-            else:
-                LOGGER.info("Converted archive is not smaller than original")
-                # Check if we should still delete the original
-                if self.compression_delete_original:
-                    LOGGER.info(
-                        "Deleting original file as requested by delete_original setting"
-                    )
-                    await remove(dl_path)
-                    return out_path
-                else:
-                    LOGGER.info("Keeping original file and removing converted file")
-                    await remove(out_path)
-                    return dl_path
-        else:
-            # Direct compression without extraction
-            return await self._compress_archive_directly(
-                dl_path, out_path, level, method, gid
-            )
+                LOGGER.info("Removing original file as compression was successful")
+                await remove(dl_path)
+                return out_path
+            LOGGER.info("Converted archive is not smaller than original")
+            # Check if we should still delete the original
+            if self.compression_delete_original:
+                LOGGER.info(
+                    "Deleting original file as requested by delete_original setting"
+                )
+                await remove(dl_path)
+                return out_path
+            LOGGER.info("Keeping original file and removing converted file")
+            await remove(out_path)
+            return dl_path
+        # Direct compression without extraction
+        return await self._compress_archive_directly(
+            dl_path, out_path, level, method, gid
+        )
 
     async def _extract_archive_for_conversion(self, archive_path, extract_dir, gid):
         """Helper method to extract an archive for format conversion"""
@@ -7366,7 +7444,7 @@ class TaskConfig:
 
         try:
             # Create subprocess with pipes
-            from asyncio.subprocess import create_subprocess_exec, PIPE
+            from asyncio.subprocess import PIPE, create_subprocess_exec
 
             self.subproc = await create_subprocess_exec(
                 *sevenz_cmd,
@@ -7390,12 +7468,16 @@ class TaskConfig:
             return True
 
         except Exception as e:
-            LOGGER.error(f"Error during archive extraction: {str(e)}")
+            LOGGER.error(f"Error during archive extraction: {e!s}")
             return False
 
-    async def _compress_directory(self, directory_path, out_path, level, method, gid):
+    async def _compress_directory(
+        self, directory_path, out_path, level, method, gid
+    ):
         """Helper method to compress a directory to an archive"""
-        LOGGER.info(f"Compressing directory to archive: {directory_path} to {out_path}")
+        LOGGER.info(
+            f"Compressing directory to archive: {directory_path} to {out_path}"
+        )
 
         # Check if 7z binary exists
         import shutil
@@ -7433,7 +7515,7 @@ class TaskConfig:
 
         try:
             # Create subprocess with pipes
-            from asyncio.subprocess import create_subprocess_exec, PIPE
+            from asyncio.subprocess import PIPE, create_subprocess_exec
 
             self.subproc = await create_subprocess_exec(
                 *sevenz_cmd,
@@ -7457,10 +7539,12 @@ class TaskConfig:
             return True
 
         except Exception as e:
-            LOGGER.error(f"Error during directory compression: {str(e)}")
+            LOGGER.error(f"Error during directory compression: {e!s}")
             return False
 
-    async def _compress_archive_directly(self, dl_path, out_path, level, method, gid):
+    async def _compress_archive_directly(
+        self, dl_path, out_path, level, method, gid
+    ):
         """Helper method to compress an archive directly without extraction"""
         # Build 7z command
         sevenz_binary = "7z"
@@ -7499,14 +7583,13 @@ class TaskConfig:
             if not sevenz_path:
                 LOGGER.error(f"{sevenz_binary} binary not found in PATH")
                 return dl_path
-            else:
-                LOGGER.debug(f"Found {sevenz_binary} binary at: {sevenz_path}")
+            LOGGER.debug(f"Found {sevenz_binary} binary at: {sevenz_path}")
 
             # Log the full command for debugging
             LOGGER.debug(f"7z command: {' '.join(sevenz_cmd)}")
 
             # Create subprocess with pipes
-            from asyncio.subprocess import create_subprocess_exec, PIPE
+            from asyncio.subprocess import PIPE, create_subprocess_exec
 
             self.subproc = await create_subprocess_exec(
                 *sevenz_cmd,
@@ -7546,26 +7629,23 @@ class TaskConfig:
                     )
                     await remove(dl_path)
                     return out_path
-                else:
-                    LOGGER.info("Removing original file as compression was successful")
-                    await remove(dl_path)
-                    return out_path
-            else:
-                LOGGER.info("Compressed file is not smaller than original")
-                # Check if we should still delete the original
-                if self.compression_delete_original:
-                    LOGGER.info(
-                        "Deleting original file as requested by delete_original setting"
-                    )
-                    await remove(dl_path)
-                    return out_path
-                else:
-                    LOGGER.info("Keeping original file and removing compressed file")
-                    await remove(out_path)
-                    return dl_path
+                LOGGER.info("Removing original file as compression was successful")
+                await remove(dl_path)
+                return out_path
+            LOGGER.info("Compressed file is not smaller than original")
+            # Check if we should still delete the original
+            if self.compression_delete_original:
+                LOGGER.info(
+                    "Deleting original file as requested by delete_original setting"
+                )
+                await remove(dl_path)
+                return out_path
+            LOGGER.info("Keeping original file and removing compressed file")
+            await remove(out_path)
+            return dl_path
 
         except Exception as e:
-            LOGGER.error(f"Error during archive compression: {str(e)}")
+            LOGGER.error(f"Error during archive compression: {e!s}")
             return dl_path
 
     async def proceed_split(self, dl_path, gid):
@@ -7836,17 +7916,16 @@ class TaskConfig:
             # Check if the file is supported
             if is_video and ext in supported_video_exts:
                 return True, "video"
-            elif is_audio and not is_video and ext in supported_audio_exts:
+            if is_audio and not is_video and ext in supported_audio_exts:
                 return True, "audio"
-            elif is_image and ext in supported_image_exts:
+            if is_image and ext in supported_image_exts:
                 return True, "image"
-            elif ext in supported_subtitle_exts:
+            if ext in supported_subtitle_exts:
                 return True, "subtitle"
-            elif ext in supported_document_exts:
+            if ext in supported_document_exts:
                 # For document files, we don't need to check if it's a media file
                 return True, "document"
-            else:
-                return False, ""
+            return False, ""
 
         ffmpeg = FFMpeg(self)
         checked = False
@@ -7909,7 +7988,9 @@ class TaskConfig:
                         res = await ffmpeg.metadata_watermark_cmds(cmd, dl_path)
                         if res:
                             os.replace(temp_file, dl_path)
-                            LOGGER.info(f"Successfully applied metadata to {dl_path}")
+                            LOGGER.info(
+                                f"Successfully applied metadata to {dl_path}"
+                            )
                         elif await aiopath.exists(temp_file):
                             os.remove(temp_file)
                             LOGGER.warning(f"Failed to apply metadata to {dl_path}")
@@ -7964,7 +8045,9 @@ class TaskConfig:
                         continue
 
                     self.proceed_count += 1
-                    LOGGER.info(f"Applying metadata to {media_type} file: {file_path}")
+                    LOGGER.info(
+                        f"Applying metadata to {media_type} file: {file_path}"
+                    )
 
                     cmd, temp_file = await get_metadata_cmd(
                         file_path,
@@ -8009,10 +8092,14 @@ class TaskConfig:
 
                         if res:
                             os.replace(temp_file, file_path)
-                            LOGGER.info(f"Successfully applied metadata to {file_path}")
+                            LOGGER.info(
+                                f"Successfully applied metadata to {file_path}"
+                            )
                         elif await aiopath.exists(temp_file):
                             os.remove(temp_file)
-                            LOGGER.warning(f"Failed to apply metadata to {file_path}")
+                            LOGGER.warning(
+                                f"Failed to apply metadata to {file_path}"
+                            )
                     else:
                         LOGGER.warning(
                             f"Failed to generate metadata command for {file_path}"
@@ -8072,7 +8159,9 @@ class TaskConfig:
 
         # Filter files based on merge flags
         if merge_video_only:
-            LOGGER.info("Merge flag: -merge-video detected, only merging video files")
+            LOGGER.info(
+                "Merge flag: -merge-video detected, only merging video files"
+            )
             if not analysis["video_files"]:
                 LOGGER.info("Merge not applied: no video files found")
                 return dl_path
@@ -8098,7 +8187,9 @@ class TaskConfig:
                     "Single video codec group detected. Using concat_demuxer approach."
                 )
         elif merge_audio_only:
-            LOGGER.info("Merge flag: -merge-audio detected, only merging audio files")
+            LOGGER.info(
+                "Merge flag: -merge-audio detected, only merging audio files"
+            )
             if not analysis["audio_files"]:
                 LOGGER.info("Merge not applied: no audio files found")
                 return dl_path
@@ -8152,7 +8243,9 @@ class TaskConfig:
                     "Single subtitle format group detected. Using concat_demuxer approach."
                 )
         elif merge_image_only:
-            LOGGER.info("Merge flag: -merge-image detected, only merging image files")
+            LOGGER.info(
+                "Merge flag: -merge-image detected, only merging image files"
+            )
             if not analysis["image_files"]:
                 LOGGER.info("Merge not applied: no image files found")
                 return dl_path
@@ -8201,7 +8294,9 @@ class TaskConfig:
                 return dl_path
             # Set approach to mixed to preserve all video and audio tracks
             analysis["recommended_approach"] = "mixed"
-            LOGGER.info("Using mixed approach to preserve all video and audio tracks")
+            LOGGER.info(
+                "Using mixed approach to preserve all video and audio tracks"
+            )
 
         # Determine which approach to use based on settings and analysis
         approach = analysis["recommended_approach"]
@@ -8267,7 +8362,10 @@ class TaskConfig:
                             if self.merge_remove_original:
                                 for f in all_files:
                                     try:
-                                        if await aiopath.exists(f) and f != output_file:
+                                        if (
+                                            await aiopath.exists(f)
+                                            and f != output_file
+                                        ):
                                             LOGGER.debug(
                                                 f"Removing original file after merge: {f}"
                                             )
@@ -8305,7 +8403,10 @@ class TaskConfig:
                             if self.merge_remove_original:
                                 for f in all_files:
                                     try:
-                                        if await aiopath.exists(f) and f != output_file:
+                                        if (
+                                            await aiopath.exists(f)
+                                            and f != output_file
+                                        ):
                                             LOGGER.debug(
                                                 f"Removing original file after merge: {f}"
                                             )
@@ -8340,9 +8441,9 @@ class TaskConfig:
                         columns = 3
 
                     # Get output format from first image or default to jpg
-                    first_ext = os.path.splitext(analysis["image_files"][0])[1].lower()[
-                        1:
-                    ]
+                    first_ext = os.path.splitext(analysis["image_files"][0])[
+                        1
+                    ].lower()[1:]
                     output_format = (
                         first_ext if first_ext in ["jpg", "jpeg", "png"] else "jpg"
                     )
@@ -8368,7 +8469,9 @@ class TaskConfig:
                                     )
                                     await remove(f)
                             except Exception as e:
-                                LOGGER.error(f"Error removing original file {f}: {e!s}")
+                                LOGGER.error(
+                                    f"Error removing original file {f}: {e!s}"
+                                )
                         return output_file
                     LOGGER.warning("Image merge failed")
                     return dl_path
@@ -8384,7 +8487,9 @@ class TaskConfig:
 
                 # Check if we have PDF files
                 pdf_files = [
-                    f for f in analysis["document_files"] if f.lower().endswith(".pdf")
+                    f
+                    for f in analysis["document_files"]
+                    if f.lower().endswith(".pdf")
                 ]
 
                 if pdf_files:
@@ -8402,7 +8507,9 @@ class TaskConfig:
                                     )
                                     await remove(f)
                             except Exception as e:
-                                LOGGER.error(f"Error removing original file {f}: {e!s}")
+                                LOGGER.error(
+                                    f"Error removing original file {f}: {e!s}"
+                                )
                         return output_file
                     LOGGER.warning("Document merge failed")
                     return dl_path
@@ -8482,7 +8589,9 @@ class TaskConfig:
 
                 # If filter complex failed or is not enabled, try concat demuxer
                 if self.concat_demuxer_enabled:
-                    LOGGER.debug("Trying concat demuxer approach (user/owner setting)")
+                    LOGGER.debug(
+                        "Trying concat demuxer approach (user/owner setting)"
+                    )
 
                     if self.merge_audio and analysis["audio_files"]:
                         LOGGER.debug("Using concat demuxer for audio files")
@@ -8534,7 +8643,9 @@ class TaskConfig:
                 # For same file types, try concat demuxer first if enabled
                 if approach == "concat_demuxer" and self.concat_demuxer_enabled:
                     # All files are of the same type, use concat demuxer
-                    LOGGER.debug("Trying concat demuxer approach (user/owner setting)")
+                    LOGGER.debug(
+                        "Trying concat demuxer approach (user/owner setting)"
+                    )
                     if analysis["video_files"]:
                         LOGGER.debug("Using concat demuxer for video files")
                         cmd, output_file = await get_merge_concat_demuxer_cmd(
@@ -8622,7 +8733,9 @@ class TaskConfig:
                             1
                         ].lower()[1:]
                         output_format = (
-                            first_ext if first_ext in ["jpg", "jpeg", "png"] else "jpg"
+                            first_ext
+                            if first_ext in ["jpg", "jpeg", "png"]
+                            else "jpg"
                         )
 
                         LOGGER.debug(
@@ -8657,7 +8770,9 @@ class TaskConfig:
                             output_file = await merge_documents(pdf_files)
 
                             if output_file and await aiopath.exists(output_file):
-                                LOGGER.info(f"Document merge successful: {output_file}")
+                                LOGGER.info(
+                                    f"Document merge successful: {output_file}"
+                                )
                                 return output_file
                             LOGGER.warning("Document merge failed")
                             return dl_path
@@ -8772,7 +8887,9 @@ class TaskConfig:
                     for f in analysis["video_files"]:
                         try:
                             if await aiopath.exists(f) and f != output_file:
-                                LOGGER.debug(f"Removing original file after merge: {f}")
+                                LOGGER.debug(
+                                    f"Removing original file after merge: {f}"
+                                )
                                 await remove(f)
                         except Exception as e:
                             LOGGER.error(f"Error removing original file {f}: {e!s}")
@@ -8841,7 +8958,9 @@ class TaskConfig:
             "maintain_quality": "user"
             if "WATERMARK_MAINTAIN_QUALITY" in self.user_dict
             else (
-                "owner" if hasattr(Config, "WATERMARK_MAINTAIN_QUALITY") else "default"
+                "owner"
+                if hasattr(Config, "WATERMARK_MAINTAIN_QUALITY")
+                else "default"
             ),
             "opacity": "user"
             if "WATERMARK_OPACITY" in self.user_dict
@@ -8999,7 +9118,9 @@ class TaskConfig:
             return dl_path
 
         # Log extract settings
-        LOGGER.info(f"Extract settings: delete_original={self.extract_delete_original}")
+        LOGGER.info(
+            f"Extract settings: delete_original={self.extract_delete_original}"
+        )
 
         # Log video extract settings
         if self.extract_video_enabled:
@@ -9092,24 +9213,34 @@ class TaskConfig:
 
         # Get additional video settings
         video_quality = (
-            self.extract_video_quality if self.extract_video_quality != "none" else None
+            self.extract_video_quality
+            if self.extract_video_quality != "none"
+            else None
         )
         video_preset = (
-            self.extract_video_preset if self.extract_video_preset != "none" else None
+            self.extract_video_preset
+            if self.extract_video_preset != "none"
+            else None
         )
         video_bitrate = (
-            self.extract_video_bitrate if self.extract_video_bitrate != "none" else None
+            self.extract_video_bitrate
+            if self.extract_video_bitrate != "none"
+            else None
         )
         video_resolution = (
             self.extract_video_resolution
             if self.extract_video_resolution != "none"
             else None
         )
-        video_fps = self.extract_video_fps if self.extract_video_fps != "none" else None
+        video_fps = (
+            self.extract_video_fps if self.extract_video_fps != "none" else None
+        )
 
         # Get additional audio settings
         audio_bitrate = (
-            self.extract_audio_bitrate if self.extract_audio_bitrate != "none" else None
+            self.extract_audio_bitrate
+            if self.extract_audio_bitrate != "none"
+            else None
         )
         audio_channels = (
             self.extract_audio_channels
@@ -9122,7 +9253,9 @@ class TaskConfig:
             else None
         )
         audio_volume = (
-            self.extract_audio_volume if self.extract_audio_volume != "none" else None
+            self.extract_audio_volume
+            if self.extract_audio_volume != "none"
+            else None
         )
 
         # Get additional subtitle settings
@@ -9137,7 +9270,9 @@ class TaskConfig:
             else None
         )
         subtitle_font = (
-            self.extract_subtitle_font if self.extract_subtitle_font != "none" else None
+            self.extract_subtitle_font
+            if self.extract_subtitle_font != "none"
+            else None
         )
         subtitle_font_size = (
             self.extract_subtitle_font_size
@@ -9270,7 +9405,9 @@ class TaskConfig:
                     LOGGER.debug(f"Extracted file: {file}")
 
                 # If original file was deleted, return the directory instead
-                if self.extract_delete_original and not await aiopath.exists(dl_path):
+                if self.extract_delete_original and not await aiopath.exists(
+                    dl_path
+                ):
                     LOGGER.info(
                         f"Original file was deleted, returning directory: {output_dir}"
                     )
@@ -9851,7 +9988,7 @@ class TaskConfig:
             try:
                 start_page = int(start_page_str)
                 # Handle special case for end page
-                if end_page_str == "999" or end_page_str == "999:59:59":
+                if end_page_str in {"999", "999:59:59"}:
                     end_page = None  # Will be set to the last page
                 else:
                     end_page = int(end_page_str)
@@ -9872,7 +10009,9 @@ class TaskConfig:
                 total_pages = len(pdf.pages)
 
                 # Adjust page numbers (convert from 1-based to 0-based)
-                start_page = max(0, start_page - 1)  # Ensure start_page is at least 0
+                start_page = max(
+                    0, start_page - 1
+                )  # Ensure start_page is at least 0
                 if end_page is None:
                     end_page = total_pages - 1
                 else:
@@ -9898,11 +10037,12 @@ class TaskConfig:
                 LOGGER.info(
                     f"Successfully trimmed PDF file: {input_file} -> {output_file}"
                 )
-                LOGGER.info(f"Extracted {end_page - start_page + 1} pages from the PDF")
+                LOGGER.info(
+                    f"Extracted {end_page - start_page + 1} pages from the PDF"
+                )
                 return True
-            else:
-                LOGGER.error(f"Failed to create output PDF file: {output_file}")
-                return False
+            LOGGER.error(f"Failed to create output PDF file: {output_file}")
+            return False
 
         except Exception as e:
             LOGGER.error(f"Error trimming PDF file: {e}")
@@ -9943,11 +10083,10 @@ class TaskConfig:
                     hours, minutes, seconds = parts
                     # Handle milliseconds if present
                     return int(hours) * 3600 + int(minutes) * 60 + float(seconds)
-                elif len(parts) == 2:
+                if len(parts) == 2:
                     minutes, seconds = parts
                     return int(minutes) * 60 + float(seconds)
-                else:
-                    raise ValueError(f"Invalid time format: {time_str}")
+                raise ValueError(f"Invalid time format: {time_str}")
 
             # Convert SRT timestamp to seconds
             def srt_time_to_seconds(time_str):
@@ -9968,9 +10107,7 @@ class TaskConfig:
                 seconds = seconds % 60
                 whole_seconds = int(seconds)
                 milliseconds = int((seconds - whole_seconds) * 1000)
-                return (
-                    f"{hours:02d}:{minutes:02d}:{whole_seconds:02d},{milliseconds:03d}"
-                )
+                return f"{hours:02d}:{minutes:02d}:{whole_seconds:02d},{milliseconds:03d}"
 
             start_seconds = time_to_seconds(start_time_str)
             end_seconds = (
@@ -9987,7 +10124,7 @@ class TaskConfig:
                 return False
 
             # Read the input file
-            with open(input_file, "r", encoding="utf-8", errors="ignore") as f:
+            with open(input_file, encoding="utf-8", errors="ignore") as f:
                 content = f.read()
 
             # Parse the SRT file
@@ -10010,8 +10147,7 @@ class TaskConfig:
                         # Check if this subtitle is within our trim range
                         if end_sec >= start_seconds and start_sec <= end_seconds:
                             # Adjust times if needed
-                            if start_sec < start_seconds:
-                                start_sec = start_seconds
+                            start_sec = max(start_sec, start_seconds)
                             if end_sec > end_seconds and end_seconds != float("inf"):
                                 end_sec = end_seconds
 
@@ -10046,14 +10182,11 @@ class TaskConfig:
                 )
                 LOGGER.info(f"Kept {len(subtitles)} subtitles in the trimmed file")
                 return True
-            else:
-                LOGGER.warning(
-                    f"No subtitles found in the trim range for: {input_file}"
-                )
-                # Create an empty file to avoid errors
-                with open(output_file, "w", encoding="utf-8") as f:
-                    f.write("")
-                return True
+            LOGGER.warning(f"No subtitles found in the trim range for: {input_file}")
+            # Create an empty file to avoid errors
+            with open(output_file, "w", encoding="utf-8") as f:
+                f.write("")
+            return True
 
         except Exception as e:
             LOGGER.error(f"Error trimming SRT file: {e}")

@@ -136,7 +136,9 @@ class TelegramUploader:
                     disable_web_page_preview=True,
                     disable_notification=True,
                 )
-                LOGGER.debug(f"Sent command message to owner's dump: {Config.LEECH_DUMP_CHAT}")
+                LOGGER.debug(
+                    f"Sent command message to owner's dump: {Config.LEECH_DUMP_CHAT}"
+                )
                 # Store this message for potential deletion later
                 self.log_msg = owner_dump_msg
             except Exception as e:
@@ -164,7 +166,7 @@ class TelegramUploader:
                     )
                     self._is_private = self._sent_msg.chat.type.name == "PRIVATE"
                 # Don't overwrite the log_msg if we already set it to the owner's dump message
-                if not hasattr(self, 'log_msg') or self.log_msg is None:
+                if not hasattr(self, "log_msg") or self.log_msg is None:
                     self.log_msg = self._sent_msg
             except Exception as e:
                 await self._listener.on_upload_error(str(e))
@@ -188,6 +190,7 @@ class TelegramUploader:
     async def _prepare_file(self, file_, dirpath):
         import gc
         import re
+
         from bot.helper.ext_utils.font_utils import apply_font_style
         from bot.helper.ext_utils.template_processor import process_template
 
@@ -280,10 +283,14 @@ class TelegramUploader:
                 if self._lfont:
                     # Apply the font style to the display name (with prefix/suffix/filename)
                     try:
-                        styled_name = await apply_font_style(display_name, self._lfont)
+                        styled_name = await apply_font_style(
+                            display_name, self._lfont
+                        )
                         # Set the caption to the styled name
                         cap_mono = styled_name
-                        LOGGER.info(f"Applied font style '{self._lfont}' to filename")
+                        LOGGER.info(
+                            f"Applied font style '{self._lfont}' to filename"
+                        )
                     except Exception as e:
                         LOGGER.error(f"Error applying font style: {e}")
                         # If font styling fails, use the display name with HTML formatting
@@ -337,7 +344,9 @@ class TelegramUploader:
                 if not self._lcaption and cap_mono:
                     if self._lfont:
                         try:
-                            cap_mono = await apply_font_style(display_name, self._lfont)
+                            cap_mono = await apply_font_style(
+                                display_name, self._lfont
+                            )
                         except Exception:
                             cap_mono = f"<code>{display_name}</code>"
                     else:
@@ -451,8 +460,8 @@ class TelegramUploader:
             elif self._lfilename or self._lprefix or self._lsuffix:
                 # If leech filename, prefix, or suffix is set but no caption, use the modified filename as caption
                 # Extract the base filename without part numbers
-                import re
                 import os
+                import re
 
                 # Get the actual filename that was used (after all modifications)
                 # First, try to find a message in the group that has already been sent
@@ -462,7 +471,7 @@ class TelegramUploader:
                         if hasattr(msg_item, "document") and msg_item.document:
                             actual_filename = msg_item.document.file_name
                             break
-                        elif hasattr(msg_item, "video") and msg_item.video:
+                        if hasattr(msg_item, "video") and msg_item.video:
                             actual_filename = msg_item.video.file_name
                             break
 
@@ -489,10 +498,16 @@ class TelegramUploader:
                             ext = ext[1:]  # Remove the dot
 
                         # Extract potential season/episode info from filename
-                        season_match = re.search(r"S([0-9]{1,2})", name, re.IGNORECASE)
-                        episode_match = re.search(r"E([0-9]{1,2})", name, re.IGNORECASE)
+                        season_match = re.search(
+                            r"S([0-9]{1,2})", name, re.IGNORECASE
+                        )
+                        episode_match = re.search(
+                            r"E([0-9]{1,2})", name, re.IGNORECASE
+                        )
                         quality_match = re.search(
-                            r"(\d{3,4}p|\d+k|4K|8K|HD|FHD|UHD|HDR)", name, re.IGNORECASE
+                            r"(\d{3,4}p|\d+k|4K|8K|HD|FHD|UHD|HDR)",
+                            name,
+                            re.IGNORECASE,
                         )
 
                         # Populate metadata dictionary
@@ -500,8 +515,12 @@ class TelegramUploader:
                             "filename": name,
                             "ext": ext,
                             "season": season_match.group(1) if season_match else "",
-                            "episode": episode_match.group(1) if episode_match else "",
-                            "quality": quality_match.group(1) if quality_match else "",
+                            "episode": episode_match.group(1)
+                            if episode_match
+                            else "",
+                            "quality": quality_match.group(1)
+                            if quality_match
+                            else "",
                         }
 
                         # Process the template with file metadata
@@ -522,10 +541,17 @@ class TelegramUploader:
                             # Set the group caption to use the modified filename
                             if self._lfont:
                                 try:
-                                    from bot.helper.ext_utils.font_utils import apply_font_style
-                                    group_caption = await apply_font_style(actual_filename, self._lfont)
+                                    from bot.helper.ext_utils.font_utils import (
+                                        apply_font_style,
+                                    )
+
+                                    group_caption = await apply_font_style(
+                                        actual_filename, self._lfont
+                                    )
                                 except Exception as e:
-                                    LOGGER.error(f"Error applying font style to media group caption: {e}")
+                                    LOGGER.error(
+                                        f"Error applying font style to media group caption: {e}"
+                                    )
                                     group_caption = f"<code>{actual_filename}</code>"
                             else:
                                 group_caption = f"<code>{actual_filename}</code>"
@@ -563,7 +589,9 @@ class TelegramUploader:
                     if not isinstance(msg, Message):
                         try:
                             if self._listener.hybrid_leech or not self._user_session:
-                                batch[index] = await self._listener.client.get_messages(
+                                batch[
+                                    index
+                                ] = await self._listener.client.get_messages(
                                     chat_id=msg[0],
                                     message_ids=msg[1],
                                 )
@@ -573,7 +601,9 @@ class TelegramUploader:
                                     message_ids=msg[1],
                                 )
                         except Exception as e:
-                            LOGGER.error(f"Error getting message for media group: {e}")
+                            LOGGER.error(
+                                f"Error getting message for media group: {e}"
+                            )
                             continue
 
                 # Create InputMedia objects for this batch
@@ -644,10 +674,17 @@ class TelegramUploader:
                                 # If we have a processed filename but no template, use it
                                 if self._lfont:
                                     try:
-                                        from bot.helper.ext_utils.font_utils import apply_font_style
-                                        caption = await apply_font_style(actual_filename, self._lfont)
+                                        from bot.helper.ext_utils.font_utils import (
+                                            apply_font_style,
+                                        )
+
+                                        caption = await apply_font_style(
+                                            actual_filename, self._lfont
+                                        )
                                     except Exception as e:
-                                        LOGGER.error(f"Error applying font style to caption: {e}")
+                                        LOGGER.error(
+                                            f"Error applying font style to caption: {e}"
+                                        )
                                         caption = f"<code>{actual_filename}</code>"
                                 else:
                                     caption = f"<code>{actual_filename}</code>"
@@ -689,30 +726,31 @@ class TelegramUploader:
                     if self._listener.up_dest:
                         primary_dest = self._listener.up_dest
                         thread_id = self._listener.chat_thread_id
-                        LOGGER.info(f"Using user-specified destination for media group: {primary_dest}")
+                        LOGGER.info(
+                            f"Using user-specified destination for media group: {primary_dest}"
+                        )
+                    # Use the original message's chat as the primary destination
+                    # This matches how regular files are handled in _msg_to_reply()
+                    elif self._user_session:
+                        # For user session, we'll send to the original chat
+                        primary_dest = self._listener.message.chat.id
                     else:
-                        # Use the original message's chat as the primary destination
-                        # This matches how regular files are handled in _msg_to_reply()
-                        if self._user_session:
-                            # For user session, we'll send to the original chat
-                            primary_dest = self._listener.message.chat.id
-                        else:
-                            # For bot session, we'll reply to the original message
-                            reply_to = (
-                                msgs[0].reply_to_message
-                                if msgs and hasattr(msgs[0], "reply_to_message")
-                                else None
+                        # For bot session, we'll reply to the original message
+                        reply_to = (
+                            msgs[0].reply_to_message
+                            if msgs and hasattr(msgs[0], "reply_to_message")
+                            else None
+                        )
+                        if reply_to:
+                            # We'll reply to the original message
+                            msgs_list = await reply_to.reply_media_group(
+                                media=input_media_list,
+                                quote=True,
+                                disable_notification=True,
                             )
-                            if reply_to:
-                                # We'll reply to the original message
-                                msgs_list = await reply_to.reply_media_group(
-                                    media=input_media_list,
-                                    quote=True,
-                                    disable_notification=True,
-                                )
-                            else:
-                                # Fallback to sending in the original chat
-                                primary_dest = self._listener.message.chat.id
+                        else:
+                            # Fallback to sending in the original chat
+                            primary_dest = self._listener.message.chat.id
 
                     # If we have a primary destination (not handled by reply above)
                     if primary_dest is not None:
@@ -739,7 +777,10 @@ class TelegramUploader:
                     for msg in msgs_copy:
                         try:
                             if isinstance(msg, Message):
-                                if hasattr(msg, "link") and msg.link in self._msgs_dict:
+                                if (
+                                    hasattr(msg, "link")
+                                    and msg.link in self._msgs_dict
+                                ):
                                     del self._msgs_dict[msg.link]
                                 await delete_message(msg)
                             # If it's a list [chat_id, message_id], we need to get the message object first
@@ -754,8 +795,8 @@ class TelegramUploader:
                     # Update message dictionary
                     if self._listener.is_super_chat or self._listener.up_dest:
                         # Get the actual filename without part numbers
-                        import re
                         import os
+                        import re
 
                         # Extract the base filename without part numbers
                         base_name = re.sub(r"\.part\d+(\..*)?$", "", subkey)
@@ -779,7 +820,10 @@ class TelegramUploader:
                     for msg in msgs_copy:
                         try:
                             if isinstance(msg, Message):
-                                if hasattr(msg, "link") and msg.link in self._msgs_dict:
+                                if (
+                                    hasattr(msg, "link")
+                                    and msg.link in self._msgs_dict
+                                ):
                                     del self._msgs_dict[msg.link]
                                 await delete_message(msg)
                             # If it's a list [chat_id, message_id], we can't delete it directly
@@ -838,7 +882,9 @@ class TelegramUploader:
                     limit_in_gb = telegram_limit / (1024 * 1024 * 1024)
 
                     if f_size > telegram_limit:
-                        premium_status = "premium" if TgClient.IS_PREMIUM_USER else "non-premium"
+                        premium_status = (
+                            "premium" if TgClient.IS_PREMIUM_USER else "non-premium"
+                        )
                         LOGGER.error(
                             f"Can't upload files bigger than {limit_in_gb:.1f} GiB ({premium_status} account). Path: {self._up_path}",
                         )
@@ -850,12 +896,16 @@ class TelegramUploader:
                     # Prepare the file (apply prefix, suffix, font style, etc.)
                     cap_mono = await self._prepare_file(file_, dirpath)
                     if self._last_msg_in_group:
-                        group_lists = [x for v in self._media_dict.values() for x in v]
+                        group_lists = [
+                            x for v in self._media_dict.values() for x in v
+                        ]
                         match = re_match(
                             r".+(?=\.0*\d+$)|.+(?=\.part\d+\..+$)",
                             f_path,
                         )
-                        if not match or (match and match.group(0) not in group_lists):
+                        if not match or (
+                            match and match.group(0) not in group_lists
+                        ):
                             for key, value in list(self._media_dict.items()):
                                 for subkey, msgs in list(value.items()):
                                     if len(msgs) > 1:
@@ -864,7 +914,10 @@ class TelegramUploader:
                                             key,
                                             msgs,
                                         )
-                    if self._listener.hybrid_leech and self._listener.user_transmission:
+                    if (
+                        self._listener.hybrid_leech
+                        and self._listener.user_transmission
+                    ):
                         self._user_session = f_size > 2097152000
                         if self._user_session:
                             self._sent_msg = await TgClient.user.get_messages(
@@ -872,9 +925,11 @@ class TelegramUploader:
                                 message_ids=self._sent_msg.id,
                             )
                         else:
-                            self._sent_msg = await self._listener.client.get_messages(
-                                chat_id=self._sent_msg.chat.id,
-                                message_ids=self._sent_msg.id,
+                            self._sent_msg = (
+                                await self._listener.client.get_messages(
+                                    chat_id=self._sent_msg.chat.id,
+                                    message_ids=self._sent_msg.id,
+                                )
                             )
                     self._last_msg_in_group = False
                     self._last_uploaded = 0
@@ -903,7 +958,6 @@ class TelegramUploader:
                         return
                 # Don't delete the file here - it will be cleaned up by task_listener.py
                 # This ensures MediaInfo generation and upload can complete before the file is deleted
-                pass
         # Process any remaining media groups at the end of the task
         try:
             for key, value in list(self._media_dict.items()):
@@ -919,7 +973,9 @@ class TelegramUploader:
                             )
                             # Log the subkey to help with debugging
                             if self._lfilename:
-                                LOGGER.debug(f"Using leech filename template for media group: {subkey}")
+                                LOGGER.debug(
+                                    f"Using leech filename template for media group: {subkey}"
+                                )
 
                             await self._send_media_group(subkey, key, msgs_copy)
                         except Exception as e:
@@ -970,7 +1026,9 @@ class TelegramUploader:
 
         # Generate MediaInfo right before uploading the file
         # Check if MediaInfo is enabled for this user
-        user_mediainfo_enabled = self._listener.user_dict.get("MEDIAINFO_ENABLED", None)
+        user_mediainfo_enabled = self._listener.user_dict.get(
+            "MEDIAINFO_ENABLED", None
+        )
         if user_mediainfo_enabled is None:
             user_mediainfo_enabled = Config.MEDIAINFO_ENABLED
 
@@ -981,22 +1039,33 @@ class TelegramUploader:
 
             try:
                 # Generate MediaInfo for the file
-                self._listener.mediainfo_link = await gen_mediainfo(None, media_path=self._up_path, silent=True)
+                self._listener.mediainfo_link = await gen_mediainfo(
+                    None, media_path=self._up_path, silent=True
+                )
 
                 # Check if MediaInfo was successfully generated
-                if self._listener.mediainfo_link and self._listener.mediainfo_link.strip():
+                if (
+                    self._listener.mediainfo_link
+                    and self._listener.mediainfo_link.strip()
+                ):
                     LOGGER.info(f"Generated MediaInfo for file: {self._up_path}")
 
                     # File should exist after MediaInfo generation since we've fixed the cleanup timing
                     if not await aiopath.exists(self._up_path):
-                        LOGGER.error(f"File disappeared after MediaInfo generation: {self._up_path}")
-                        LOGGER.error("This is unexpected since cleanup should happen after task completion.")
+                        LOGGER.error(
+                            f"File disappeared after MediaInfo generation: {self._up_path}"
+                        )
+                        LOGGER.error(
+                            "This is unexpected since cleanup should happen after task completion."
+                        )
                         self._is_corrupted = True
                         return None
                 else:
                     # Set mediainfo_link to None if it's empty or None
                     self._listener.mediainfo_link = None
-                    LOGGER.info("MediaInfo generation skipped or failed. Proceeding with upload...")
+                    LOGGER.info(
+                        "MediaInfo generation skipped or failed. Proceeding with upload..."
+                    )
             except Exception as e:
                 # Set mediainfo_link to None on error
                 self._listener.mediainfo_link = None
@@ -1113,8 +1182,13 @@ class TelegramUploader:
                 not self._listener.is_cancelled
                 and self._media_group
                 and self._sent_msg is not None
-                and (hasattr(self._sent_msg, 'video') and self._sent_msg.video or
-                     hasattr(self._sent_msg, 'document') and self._sent_msg.document)
+                and (
+                    (hasattr(self._sent_msg, "video") and self._sent_msg.video)
+                    or (
+                        hasattr(self._sent_msg, "document")
+                        and self._sent_msg.document
+                    )
+                )
             ):
                 key = "documents" if self._sent_msg.document else "videos"
                 if match := re_match(r".+(?=\.0*\d+$)|.+(?=\.part\d+\..+$)", o_path):
@@ -1159,7 +1233,9 @@ class TelegramUploader:
             err_type = "RPCError: " if isinstance(err, RPCError) else ""
             LOGGER.error(f"{err_type}{err}. Path: {self._up_path}")
             # Check if key is defined before using it
-            if isinstance(err, BadRequest) and ('key' in locals() and key != "documents"):
+            if isinstance(err, BadRequest) and (
+                "key" in locals() and key != "documents"
+            ):
                 LOGGER.error(f"Retrying As Document. Path: {self._up_path}")
                 return await self._upload_file(cap_mono, file, o_path, True)
             raise err
@@ -1170,15 +1246,25 @@ class TelegramUploader:
             return
 
         # Check if the first message exists and has a chat attribute
-        if not msgs_list[0] or not hasattr(msgs_list[0], 'chat') or msgs_list[0].chat is None:
-            LOGGER.error("Cannot copy media group: First message is None or has no chat attribute")
+        if (
+            not msgs_list[0]
+            or not hasattr(msgs_list[0], "chat")
+            or msgs_list[0].chat is None
+        ):
+            LOGGER.error(
+                "Cannot copy media group: First message is None or has no chat attribute"
+            )
             return
 
         # Use the first message in the group to determine the source chat
         source_chat_id = msgs_list[0].chat.id
 
         # Skip copying if we're already in the user's PM and no other destinations are needed
-        if source_chat_id == self._user_id and not self._user_dump and not Config.LEECH_DUMP_CHAT:
+        if (
+            source_chat_id == self._user_id
+            and not self._user_dump
+            and not Config.LEECH_DUMP_CHAT
+        ):
             return
 
         # Determine the destinations based on user settings
@@ -1200,7 +1286,10 @@ class TelegramUploader:
             # Case 1: If user didn't set any dump and owner has premium or non-premium string
             if not self._user_dump:
                 # Send to owner leech dump and bot PM
-                if Config.LEECH_DUMP_CHAT and source_chat_id != Config.LEECH_DUMP_CHAT:
+                if (
+                    Config.LEECH_DUMP_CHAT
+                    and source_chat_id != Config.LEECH_DUMP_CHAT
+                ):
                     destinations.append(Config.LEECH_DUMP_CHAT)
 
                 # Add user's PM if not already there
@@ -1213,7 +1302,10 @@ class TelegramUploader:
                 if source_chat_id != int(self._user_dump):
                     destinations.append(int(self._user_dump))
 
-                if Config.LEECH_DUMP_CHAT and source_chat_id != Config.LEECH_DUMP_CHAT:
+                if (
+                    Config.LEECH_DUMP_CHAT
+                    and source_chat_id != Config.LEECH_DUMP_CHAT
+                ):
                     destinations.append(Config.LEECH_DUMP_CHAT)
 
                 # Add user's PM if not already there
@@ -1223,7 +1315,10 @@ class TelegramUploader:
             # Case 3: If user set their own dump and owner has premium string
             elif self._user_dump and owner_has_premium:
                 # By default, send to owner leech dump and bot PM
-                if Config.LEECH_DUMP_CHAT and source_chat_id != Config.LEECH_DUMP_CHAT:
+                if (
+                    Config.LEECH_DUMP_CHAT
+                    and source_chat_id != Config.LEECH_DUMP_CHAT
+                ):
                     destinations.append(Config.LEECH_DUMP_CHAT)
 
                 # Add user's PM if not already there
@@ -1240,7 +1335,9 @@ class TelegramUploader:
 
         # Log the destinations for debugging
         if destinations:
-            LOGGER.debug(f"Copying media group to additional destinations: {destinations}")
+            LOGGER.debug(
+                f"Copying media group to additional destinations: {destinations}"
+            )
 
         # Copy the media group to each destination
         for dest in destinations:
@@ -1251,7 +1348,9 @@ class TelegramUploader:
                     if hasattr(msg, "video") and msg.video:
                         media_ids.append(InputMediaVideo(media=msg.video.file_id))
                     elif hasattr(msg, "document") and msg.document:
-                        media_ids.append(InputMediaDocument(media=msg.document.file_id))
+                        media_ids.append(
+                            InputMediaDocument(media=msg.document.file_id)
+                        )
                     elif hasattr(msg, "photo") and msg.photo:
                         media_ids.append(InputMediaPhoto(media=msg.photo.file_id))
 
@@ -1272,9 +1371,13 @@ class TelegramUploader:
                         media=media_ids,
                         disable_notification=True,
                     )
-                LOGGER.debug(f"Successfully copied media group to destination: {dest}")
+                LOGGER.debug(
+                    f"Successfully copied media group to destination: {dest}"
+                )
             except Exception as e:
-                LOGGER.error(f"Failed to copy media group to destination {dest}: {e}")
+                LOGGER.error(
+                    f"Failed to copy media group to destination {dest}: {e}"
+                )
                 # Continue with other destinations even if one fails
 
     async def _copy_message(self):
@@ -1301,7 +1404,11 @@ class TelegramUploader:
             LOGGER.error(f"Failed to copy message after {retries} attempts")
 
         # Skip copying if we're already in the user's PM and no other destinations are needed
-        if self._sent_msg.chat.id == self._user_id and not self._user_dump and not Config.LEECH_DUMP_CHAT:
+        if (
+            self._sent_msg.chat.id == self._user_id
+            and not self._user_dump
+            and not Config.LEECH_DUMP_CHAT
+        ):
             return
 
         # Determine the destinations based on user settings
@@ -1324,7 +1431,10 @@ class TelegramUploader:
             # Case 1: If user didn't set any dump and owner has premium or non-premium string
             if not self._user_dump:
                 # Send to owner leech dump and bot PM
-                if Config.LEECH_DUMP_CHAT and self._sent_msg.chat.id != Config.LEECH_DUMP_CHAT:
+                if (
+                    Config.LEECH_DUMP_CHAT
+                    and self._sent_msg.chat.id != Config.LEECH_DUMP_CHAT
+                ):
                     destinations.append(Config.LEECH_DUMP_CHAT)
 
                 # Add user's PM if not already there
@@ -1337,7 +1447,10 @@ class TelegramUploader:
                 if self._sent_msg.chat.id != int(self._user_dump):
                     destinations.append(int(self._user_dump))
 
-                if Config.LEECH_DUMP_CHAT and self._sent_msg.chat.id != Config.LEECH_DUMP_CHAT:
+                if (
+                    Config.LEECH_DUMP_CHAT
+                    and self._sent_msg.chat.id != Config.LEECH_DUMP_CHAT
+                ):
                     destinations.append(Config.LEECH_DUMP_CHAT)
 
                 # Add user's PM if not already there
@@ -1347,7 +1460,10 @@ class TelegramUploader:
             # Case 3: If user set their own dump and owner has premium string
             elif self._user_dump and owner_has_premium:
                 # By default, send to owner leech dump and bot PM
-                if Config.LEECH_DUMP_CHAT and self._sent_msg.chat.id != Config.LEECH_DUMP_CHAT:
+                if (
+                    Config.LEECH_DUMP_CHAT
+                    and self._sent_msg.chat.id != Config.LEECH_DUMP_CHAT
+                ):
                     destinations.append(Config.LEECH_DUMP_CHAT)
 
                 # Add user's PM if not already there
@@ -1364,7 +1480,9 @@ class TelegramUploader:
 
         # Log the destinations for debugging
         if destinations:
-            LOGGER.debug(f"Copying message to additional destinations: {destinations}")
+            LOGGER.debug(
+                f"Copying message to additional destinations: {destinations}"
+            )
 
         # Copy to each destination
         for dest in destinations:

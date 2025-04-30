@@ -1,7 +1,6 @@
 from asyncio import (
     create_subprocess_exec,
     create_subprocess_shell,
-    create_task,
     gather,
     sleep,
 )
@@ -49,7 +48,6 @@ from bot.helper.ext_utils.task_manager import start_from_queued
 from bot.helper.mirror_leech_utils.rclone_utils.serve import rclone_serve_booter
 from bot.helper.telegram_helper.button_build import ButtonMaker
 from bot.helper.telegram_helper.message_utils import (
-    auto_delete_message,
     delete_message,
     edit_message,
     send_file,
@@ -460,7 +458,9 @@ async def update_private_file(_, message, pre_message):
         elif file_name in [".netrc", "netrc"]:
             await (await create_subprocess_exec("touch", ".netrc")).wait()
             await (await create_subprocess_exec("chmod", "600", ".netrc")).wait()
-            await (await create_subprocess_exec("cp", ".netrc", "/root/.netrc")).wait()
+            await (
+                await create_subprocess_exec("cp", ".netrc", "/root/.netrc")
+            ).wait()
         await delete_message(message)
     elif doc := message.document:
         file_name = doc.file_name
@@ -509,7 +509,9 @@ async def update_private_file(_, message, pre_message):
                 await rename("netrc", ".netrc")
                 file_name = ".netrc"
             await (await create_subprocess_exec("chmod", "600", ".netrc")).wait()
-            await (await create_subprocess_exec("cp", ".netrc", "/root/.netrc")).wait()
+            await (
+                await create_subprocess_exec("cp", ".netrc", "/root/.netrc")
+            ).wait()
         elif file_name == "config.py":
             await load_config()
         await delete_message(message)
@@ -604,7 +606,9 @@ async def edit_bot_settings(client, query):
             await TorrentManager.change_aria2_option("bt-stop-timeout", "0")
             await database.update_aria2("bt-stop-timeout", "0")
         elif data[2] == "BASE_URL":
-            await (await create_subprocess_exec("pkill", "-9", "-f", "gunicorn")).wait()
+            await (
+                await create_subprocess_exec("pkill", "-9", "-f", "gunicorn")
+            ).wait()
         elif data[2] == "BASE_URL_PORT":
             value = 80
             if Config.BASE_URL:

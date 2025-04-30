@@ -141,7 +141,9 @@ async def main():
 
     # Initial garbage collection and memory usage logging
     LOGGER.info("Performing initial garbage collection...")
-    smart_garbage_collection(aggressive=True)  # Use aggressive mode for initial cleanup
+    smart_garbage_collection(
+        aggressive=True
+    )  # Use aggressive mode for initial cleanup
     log_memory_usage()
 
 

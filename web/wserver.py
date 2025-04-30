@@ -377,7 +377,9 @@ async def protected_proxy(
 async def sabnzbd_proxy(path: str = "", request: Request = None):
     # Get username and password from query params or cookies
     username = (
-        request.query_params.get("user") or request.cookies.get("nzb_user") or "admin"
+        request.query_params.get("user")
+        or request.cookies.get("nzb_user")
+        or "admin"
     )
     password = (
         request.query_params.get("pass")
@@ -404,7 +406,9 @@ async def sabnzbd_proxy(path: str = "", request: Request = None):
 async def qbittorrent_proxy(path: str = "", request: Request = None):
     # Get username and password from query params or cookies
     username = (
-        request.query_params.get("user") or request.cookies.get("qbit_user") or "admin"
+        request.query_params.get("user")
+        or request.cookies.get("qbit_user")
+        or "admin"
     )
     password = request.query_params.get("pass") or request.cookies.get("qbit_pass")
 

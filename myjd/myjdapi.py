@@ -61,7 +61,7 @@ class Config:
             return await self.device.action(f"{self.url}/list", params)
         return await self.device.action(f"{self.url}/list")
 
-    async def listEnum(self, type):  # noqa: N802
+    async def listEnum(self, type):
         """
         :return:  List<EnumOption>
         """
@@ -79,7 +79,7 @@ class Config:
         params = [interface_name, storage, key]
         return await self.device.action(f"{self.url}/get", params)
 
-    async def getDefault(self, interfaceName, storage, key):  # noqa: N802, N803
+    async def getDefault(self, interfaceName, storage, key):
         """
         :param interfaceName:  a valid interface name from List<AdvancedConfigAPIEntry>
         :type: str:
@@ -123,7 +123,7 @@ class Config:
             ]
         return await self.device.action(f"{self.url}/query", params)
 
-    async def reset(self, interfaceName, storage, key):  # noqa: N803
+    async def reset(self, interfaceName, storage, key):
         """
         :param interfaceName:  a valid interface name from List<AdvancedConfigAPIEntry>
         :type: str:
@@ -216,13 +216,13 @@ class Extension:
     async def install(self, id):
         return await self.device.action(f"{self.url}/install", params=[id])
 
-    async def isInstalled(self, id):  # noqa: N802
+    async def isInstalled(self, id):
         return await self.device.action(f"{self.url}/isInstalled", params=[id])
 
-    async def isEnabled(self, id):  # noqa: N802
+    async def isEnabled(self, id):
         return await self.device.action(f"{self.url}/isEnabled", params=[id])
 
-    async def setEnabled(self, id, enabled):  # noqa: N802
+    async def setEnabled(self, id, enabled):
         return await self.device.action(
             f"{self.url}/setEnabled",
             params=[id, enabled],

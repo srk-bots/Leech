@@ -30,10 +30,15 @@ class CustomFilters:
         # Handle different types of updates
         if hasattr(update, "callback_query") and update.callback_query:
             # For callback query updates
-            if hasattr(update.callback_query, "message") and update.callback_query.message:
+            if (
+                hasattr(update.callback_query, "message")
+                and update.callback_query.message
+            ):
                 chat = update.callback_query.message.chat
             else:
-                LOGGER.warning("Callback query message is None in pm_or_authorized filter")
+                LOGGER.warning(
+                    "Callback query message is None in pm_or_authorized filter"
+                )
                 return False
         elif hasattr(update, "message") and update.message:
             # For message updates
@@ -42,7 +47,9 @@ class CustomFilters:
             # For other updates with chat attribute
             chat = update.chat
         else:
-            LOGGER.warning("Update missing required attributes in pm_or_authorized filter")
+            LOGGER.warning(
+                "Update missing required attributes in pm_or_authorized filter"
+            )
             return False
 
         # Allow access in private chats (bot PMs) without authorization
@@ -131,7 +138,10 @@ class CustomFilters:
         if hasattr(update, "callback_query") and update.callback_query:
             # For callback query updates
             user = update.callback_query.from_user
-            if hasattr(update.callback_query, "message") and update.callback_query.message:
+            if (
+                hasattr(update.callback_query, "message")
+                and update.callback_query.message
+            ):
                 chat = update.callback_query.message.chat
                 thread_id = (
                     update.callback_query.message.message_thread_id
@@ -140,7 +150,9 @@ class CustomFilters:
                     else None
                 )
             else:
-                LOGGER.warning("Callback query message is None in authorized_user filter")
+                LOGGER.warning(
+                    "Callback query message is None in authorized_user filter"
+                )
                 return False
         elif hasattr(update, "message") and update.message:
             # For message updates
@@ -148,7 +160,8 @@ class CustomFilters:
             chat = update.message.chat
             thread_id = (
                 update.message.message_thread_id
-                if hasattr(update.message, "is_topic_message") and update.message.is_topic_message
+                if hasattr(update.message, "is_topic_message")
+                and update.message.is_topic_message
                 else None
             )
         elif hasattr(update, "chat") and update.chat:
@@ -161,7 +174,9 @@ class CustomFilters:
                 else None
             )
         else:
-            LOGGER.warning("Update missing required attributes in authorized_user filter")
+            LOGGER.warning(
+                "Update missing required attributes in authorized_user filter"
+            )
             return False
 
         # Safely get user and handle None case

@@ -1,4 +1,5 @@
 import asyncio
+import contextlib
 import json
 import os
 import os.path
@@ -107,10 +108,9 @@ async def get_watermark_cmd(
         tuple: FFmpeg command and temporary output file path, or None, None if not supported
     """
     # Import the function to determine media type
-    from bot.helper.ext_utils.media_utils import get_media_type_for_watermark
-
     # Resource manager removed
     from bot.helper.ext_utils.bot_utils import cmd_exec
+    from bot.helper.ext_utils.media_utils import get_media_type_for_watermark
 
     # Determine the media type
     media_type = await get_media_type_for_watermark(file)
@@ -401,11 +401,17 @@ async def get_watermark_cmd(
                 beep_volume = (
                     beep_volume * 1.2
                 )  # Louder for bottom positions (but cap at 1.0)
-                beep_volume = min(beep_volume, 1.0)  # Ensure volume doesn't exceed 1.0
+                beep_volume = min(
+                    beep_volume, 1.0
+                )  # Ensure volume doesn't exceed 1.0
             elif position == "center":
                 beep_frequency = 1200  # Medium pitch for center position
-                beep_volume = beep_volume * 1.1  # Slightly louder for center position
-                beep_volume = min(beep_volume, 1.0)  # Ensure volume doesn't exceed 1.0
+                beep_volume = (
+                    beep_volume * 1.1
+                )  # Slightly louder for center position
+                beep_volume = min(
+                    beep_volume, 1.0
+                )  # Ensure volume doesn't exceed 1.0
 
             # Adjust parameters based on color
             if color.lower() == "red":
@@ -524,7 +530,9 @@ async def get_watermark_cmd(
     elif media_type == "video_with_subtitle":
         # For videos with subtitle streams, we should handle them as regular videos
         # but skip the subtitle watermarking
-        LOGGER.debug(f"Detected video with subtitle streams: {os.path.basename(file)}")
+        LOGGER.debug(
+            f"Detected video with subtitle streams: {os.path.basename(file)}"
+        )
 
         # Use the same code as for regular videos, but make sure we don't modify subtitle streams
         # First, select only the main video stream (usually the first one)
@@ -574,7 +582,7 @@ async def get_watermark_cmd(
 
         try:
             # Read the subtitle file
-            with open(file, "r", encoding="utf-8", errors="ignore") as f:
+            with open(file, encoding="utf-8", errors="ignore") as f:
                 content = f.read()
 
             # Create a temporary file for the modified subtitles
@@ -646,7 +654,9 @@ async def get_watermark_cmd(
 
                         # Prepare watermark text - use subtitle_watermark_text if provided
                         watermark_text = (
-                            subtitle_watermark_text if subtitle_watermark_text else key
+                            subtitle_watermark_text
+                            if subtitle_watermark_text
+                            else key
                         )
                         if abbreviated and len(watermark_text) > 10:
                             # Use abbreviated version for lower opacity
@@ -662,7 +672,11 @@ async def get_watermark_cmd(
                         )
 
                         # Add watermark based on position
-                        if position in ["bottom_left", "bottom_right", "bottom_center"]:
+                        if position in [
+                            "bottom_left",
+                            "bottom_right",
+                            "bottom_center",
+                        ]:
                             # Add at the end
                             watermarked_text = f"{text}\n{formatted_watermark}"
                         elif position in ["top_left", "top_right", "top_center"]:
@@ -698,7 +712,7 @@ async def get_watermark_cmd(
                     # but keep the temp_file for the result
                     return None, temp_file
 
-                elif file_ext.lower() in [".ass", ".ssa"]:
+                if file_ext.lower() in [".ass", ".ssa"]:
                     # For ASS/SSA files, add the watermark to the style or as a separate line
                     # This is more complex and would require a proper ASS parser
                     import re
@@ -796,68 +810,67 @@ async def get_watermark_cmd(
                     )
                     return None, temp_file
 
-                else:
-                    # For other subtitle formats, try to add watermark based on common patterns
-                    # WebVTT format
-                    if file_ext.lower() == ".vtt":
-                        import re
+                # For other subtitle formats, try to add watermark based on common patterns
+                # WebVTT format
+                if file_ext.lower() == ".vtt":
+                    import re
 
-                        # Pattern for WebVTT cues
-                        pattern = r"(\d{2}:\d{2}:\d{2}\.\d{3}\s-->\s\d{2}:\d{2}:\d{2}\.\d{3}.*?\n)(.*?)(?=\n\n|\Z)"
+                    # Pattern for WebVTT cues
+                    pattern = r"(\d{2}:\d{2}:\d{2}\.\d{3}\s-->\s\d{2}:\d{2}:\d{2}\.\d{3}.*?\n)(.*?)(?=\n\n|\Z)"
 
-                        # Function to add watermark to WebVTT cues
-                        def add_vtt_watermark(match):
-                            timing = match.group(1)
-                            text = match.group(2).strip()
+                    # Function to add watermark to WebVTT cues
+                    def add_vtt_watermark(match):
+                        timing = match.group(1)
+                        text = match.group(2).strip()
 
-                            # Add watermark based on position
-                            if position in [
-                                "bottom_left",
-                                "bottom_right",
-                                "bottom_center",
-                            ]:
-                                # Add at the end
-                                # Use subtitle_watermark_text if provided
-                                watermark_text = (
-                                    subtitle_watermark_text
-                                    if subtitle_watermark_text
-                                    else key
-                                )
-                                watermarked_text = f"{text}\n{watermark_style}[{watermark_text}]{watermark_style}"
-                            else:
-                                # Add at the beginning
-                                # Use subtitle_watermark_text if provided
-                                watermark_text = (
-                                    subtitle_watermark_text
-                                    if subtitle_watermark_text
-                                    else key
-                                )
-                                watermarked_text = f"{watermark_style}[{watermark_text}]{watermark_style}\n{text}"
+                        # Add watermark based on position
+                        if position in [
+                            "bottom_left",
+                            "bottom_right",
+                            "bottom_center",
+                        ]:
+                            # Add at the end
+                            # Use subtitle_watermark_text if provided
+                            watermark_text = (
+                                subtitle_watermark_text
+                                if subtitle_watermark_text
+                                else key
+                            )
+                            watermarked_text = f"{text}\n{watermark_style}[{watermark_text}]{watermark_style}"
+                        else:
+                            # Add at the beginning
+                            # Use subtitle_watermark_text if provided
+                            watermark_text = (
+                                subtitle_watermark_text
+                                if subtitle_watermark_text
+                                else key
+                            )
+                            watermarked_text = f"{watermark_style}[{watermark_text}]{watermark_style}\n{text}"
 
-                            return f"{timing}{watermarked_text}\n\n"
+                        return f"{timing}{watermarked_text}\n\n"
 
-                        # Apply the watermark
-                        watermarked_content = re.sub(
-                            pattern, add_vtt_watermark, content, flags=re.DOTALL
-                        )
-                        f.write(watermarked_content)
-
-                        LOGGER.debug(
-                            f"Added watermark to WebVTT file: {os.path.basename(file)}"
-                        )
-                        return None, temp_file
-
-                    # For other formats, just add a comment if possible
-                    # Use subtitle_watermark_text if provided
-                    watermark_text = (
-                        subtitle_watermark_text if subtitle_watermark_text else key
+                    # Apply the watermark
+                    watermarked_content = re.sub(
+                        pattern, add_vtt_watermark, content, flags=re.DOTALL
                     )
-                    f.write(f"# Watermarked with: {watermark_text}\n{content}")
+                    f.write(watermarked_content)
 
                     LOGGER.debug(
-                        f"Added watermark comment to subtitle file: {os.path.basename(file)}"
+                        f"Added watermark to WebVTT file: {os.path.basename(file)}"
                     )
                     return None, temp_file
+
+                # For other formats, just add a comment if possible
+                # Use subtitle_watermark_text if provided
+                watermark_text = (
+                    subtitle_watermark_text if subtitle_watermark_text else key
+                )
+                f.write(f"# Watermarked with: {watermark_text}\n{content}")
+
+                LOGGER.debug(
+                    f"Added watermark comment to subtitle file: {os.path.basename(file)}"
+                )
+                return None, temp_file
 
         except Exception as e:
             LOGGER.error(f"Error watermarking subtitle file: {e}")
@@ -1018,7 +1031,12 @@ async def get_metadata_cmd(
                 cmd.extend(["-metadata", f"title={title}"])
             if author:
                 cmd.extend(
-                    ["-metadata", f"artist={author}", "-metadata", f"author={author}"]
+                    [
+                        "-metadata",
+                        f"artist={author}",
+                        "-metadata",
+                        f"author={author}",
+                    ]
                 )
             if comment:
                 cmd.extend(["-metadata", f"comment={comment}"])
@@ -1046,7 +1064,7 @@ async def get_metadata_cmd(
             if file_ext == ".sub":
                 # For .sub files, we need to check if it's a SubRip or MicroDVD format
                 try:
-                    with open(file_path, "r", encoding="utf-8", errors="ignore") as f:
+                    with open(file_path, encoding="utf-8", errors="ignore") as f:
                         first_line = f.readline().strip()
 
                     # Check if it's MicroDVD format (starts with {number}{number})
@@ -1123,7 +1141,12 @@ async def get_metadata_cmd(
                 cmd.extend(["-metadata", f"title={title}"])
             if author:
                 cmd.extend(
-                    ["-metadata", f"artist={author}", "-metadata", f"author={author}"]
+                    [
+                        "-metadata",
+                        f"artist={author}",
+                        "-metadata",
+                        f"author={author}",
+                    ]
                 )
             if comment:
                 cmd.extend(["-metadata", f"comment={comment}"])
@@ -1210,7 +1233,7 @@ async def get_metadata_cmd(
         # in the metadata_watermark_cmds method
         return cmd, temp_file
 
-    elif file_ext in image_extensions:
+    if file_ext in image_extensions:
         LOGGER.info(
             f"Detected image file: {file_path}, using special handling for metadata"
         )
@@ -1252,7 +1275,12 @@ async def get_metadata_cmd(
                 cmd.extend(["-metadata", f"title={title}"])
             if author:
                 cmd.extend(
-                    ["-metadata", f"artist={author}", "-metadata", f"author={author}"]
+                    [
+                        "-metadata",
+                        f"artist={author}",
+                        "-metadata",
+                        f"author={author}",
+                    ]
                 )
             if comment:
                 cmd.extend(["-metadata", f"comment={comment}"])
@@ -1261,99 +1289,97 @@ async def get_metadata_cmd(
             cmd.extend(["-c", "copy", "-threads", "8", temp_file])
 
             return cmd, temp_file
-        else:
-            # For other image formats, try to use exiftool if available
-            try:
-                # Check if exiftool is available
-                result = await cmd_exec(["which", "exiftool"])
-                if result[0] and result[2] == 0:
-                    # exiftool is available, use it
-                    cmd = ["exiftool"]
+        # For other image formats, try to use exiftool if available
+        try:
+            # Check if exiftool is available
+            result = await cmd_exec(["which", "exiftool"])
+            if result[0] and result[2] == 0:
+                # exiftool is available, use it
+                cmd = ["exiftool"]
 
-                    # Add metadata
-                    if title:
-                        cmd.extend(["-Title=" + title])
-                    if author:
-                        cmd.extend(["-Artist=" + author, "-Author=" + author])
-                    if comment:
-                        cmd.extend(["-Comment=" + comment])
-
-                    # Add output file
-                    cmd.extend(["-o", temp_file, file_path])
-
-                    return cmd, temp_file
-                else:
-                    # exiftool not available, fall back to FFmpeg
-                    LOGGER.warning(
-                        "exiftool not found, falling back to FFmpeg for image metadata"
-                    )
-                    cmd = [
-                        "xtra",
-                        "-hide_banner",
-                        "-loglevel",
-                        "error",
-                        "-progress",
-                        "pipe:1",
-                        "-i",
-                        file_path,
-                        "-map_metadata",
-                        "-1",  # Remove existing metadata
-                    ]
-
-                    # Add global metadata
-                    if title:
-                        cmd.extend(["-metadata", f"title={title}"])
-                    if author:
-                        cmd.extend(
-                            [
-                                "-metadata",
-                                f"artist={author}",
-                                "-metadata",
-                                f"author={author}",
-                            ]
-                        )
-                    if comment:
-                        cmd.extend(["-metadata", f"comment={comment}"])
-
-                    # Finish the command
-                    cmd.extend(["-c", "copy", "-threads", "8", temp_file])
-
-                    return cmd, temp_file
-            except Exception as e:
-                LOGGER.error(f"Error checking for exiftool: {e}")
-                # Fall back to FFmpeg
-                cmd = [
-                    "xtra",
-                    "-hide_banner",
-                    "-loglevel",
-                    "error",
-                    "-progress",
-                    "pipe:1",
-                    "-i",
-                    file_path,
-                    "-map_metadata",
-                    "-1",  # Remove existing metadata
-                ]
-
-                # Add global metadata
+                # Add metadata
                 if title:
-                    cmd.extend(["-metadata", f"title={title}"])
+                    cmd.extend(["-Title=" + title])
                 if author:
-                    cmd.extend(
-                        [
-                            "-metadata",
-                            f"artist={author}",
-                            "-metadata",
-                            f"author={author}",
-                        ]
-                    )
+                    cmd.extend(["-Artist=" + author, "-Author=" + author])
                 if comment:
-                    cmd.extend(["-metadata", f"comment={comment}"])
+                    cmd.extend(["-Comment=" + comment])
 
-                # Finish the command
-                cmd.extend(["-c", "copy", "-threads", "8", temp_file])
+                # Add output file
+                cmd.extend(["-o", temp_file, file_path])
 
                 return cmd, temp_file
+            # exiftool not available, fall back to FFmpeg
+            LOGGER.warning(
+                "exiftool not found, falling back to FFmpeg for image metadata"
+            )
+            cmd = [
+                "xtra",
+                "-hide_banner",
+                "-loglevel",
+                "error",
+                "-progress",
+                "pipe:1",
+                "-i",
+                file_path,
+                "-map_metadata",
+                "-1",  # Remove existing metadata
+            ]
+
+            # Add global metadata
+            if title:
+                cmd.extend(["-metadata", f"title={title}"])
+            if author:
+                cmd.extend(
+                    [
+                        "-metadata",
+                        f"artist={author}",
+                        "-metadata",
+                        f"author={author}",
+                    ]
+                )
+            if comment:
+                cmd.extend(["-metadata", f"comment={comment}"])
+
+            # Finish the command
+            cmd.extend(["-c", "copy", "-threads", "8", temp_file])
+
+            return cmd, temp_file
+        except Exception as e:
+            LOGGER.error(f"Error checking for exiftool: {e}")
+            # Fall back to FFmpeg
+            cmd = [
+                "xtra",
+                "-hide_banner",
+                "-loglevel",
+                "error",
+                "-progress",
+                "pipe:1",
+                "-i",
+                file_path,
+                "-map_metadata",
+                "-1",  # Remove existing metadata
+            ]
+
+            # Add global metadata
+            if title:
+                cmd.extend(["-metadata", f"title={title}"])
+            if author:
+                cmd.extend(
+                    [
+                        "-metadata",
+                        f"artist={author}",
+                        "-metadata",
+                        f"author={author}",
+                    ]
+                )
+            if comment:
+                cmd.extend(["-metadata", f"comment={comment}"])
+
+            # Finish the command
+            cmd.extend(["-c", "copy", "-threads", "8", temp_file])
+
+            return cmd, temp_file
 
     # For other files, get stream information
     streams = await get_streams(file_path)
@@ -1381,7 +1407,9 @@ async def get_metadata_cmd(
     # metadata_all takes priority over all other settings
     if metadata_all:
         # Use metadata_all for all fields
-        global_title_value = global_author_value = global_comment_value = metadata_all
+        global_title_value = global_author_value = global_comment_value = (
+            metadata_all
+        )
         video_title_value = video_author_value = video_comment_value = metadata_all
         audio_title_value = audio_author_value = audio_comment_value = metadata_all
         subtitle_title_value = subtitle_author_value = subtitle_comment_value = (
@@ -1396,15 +1424,21 @@ async def get_metadata_cmd(
         # Video track metadata (fallback to global values if not provided)
         video_title_value = video_title if video_title else global_title_value
         video_author_value = video_author if video_author else global_author_value
-        video_comment_value = video_comment if video_comment else global_comment_value
+        video_comment_value = (
+            video_comment if video_comment else global_comment_value
+        )
 
         # Audio track metadata (fallback to global values if not provided)
         audio_title_value = audio_title if audio_title else global_title_value
         audio_author_value = audio_author if audio_author else global_author_value
-        audio_comment_value = audio_comment if audio_comment else global_comment_value
+        audio_comment_value = (
+            audio_comment if audio_comment else global_comment_value
+        )
 
         # Subtitle track metadata (fallback to global values if not provided)
-        subtitle_title_value = subtitle_title if subtitle_title else global_title_value
+        subtitle_title_value = (
+            subtitle_title if subtitle_title else global_title_value
+        )
         subtitle_author_value = (
             subtitle_author if subtitle_author else global_author_value
         )
@@ -1484,7 +1518,9 @@ async def get_metadata_cmd(
                 continue
 
             # Add video metadata
-            cmd.extend([f"-metadata:s:v:{video_index}", f"title={video_title_value}"])
+            cmd.extend(
+                [f"-metadata:s:v:{video_index}", f"title={video_title_value}"]
+            )
 
             if video_author_value:
                 cmd.extend(
@@ -1493,7 +1529,10 @@ async def get_metadata_cmd(
 
             if video_comment_value:
                 cmd.extend(
-                    [f"-metadata:s:v:{video_index}", f"comment={video_comment_value}"]
+                    [
+                        f"-metadata:s:v:{video_index}",
+                        f"comment={video_comment_value}",
+                    ]
                 )
 
             # Preserve language tag if it exists
@@ -1509,7 +1548,9 @@ async def get_metadata_cmd(
 
         elif stream_type == "audio":
             # Add audio metadata
-            cmd.extend([f"-metadata:s:a:{audio_index}", f"title={audio_title_value}"])
+            cmd.extend(
+                [f"-metadata:s:a:{audio_index}", f"title={audio_title_value}"]
+            )
 
             if audio_author_value:
                 cmd.extend(
@@ -1518,7 +1559,10 @@ async def get_metadata_cmd(
 
             if audio_comment_value:
                 cmd.extend(
-                    [f"-metadata:s:a:{audio_index}", f"comment={audio_comment_value}"]
+                    [
+                        f"-metadata:s:a:{audio_index}",
+                        f"comment={audio_comment_value}",
+                    ]
                 )
 
             # Preserve language tag if it exists
@@ -2298,7 +2342,9 @@ async def get_merge_filter_complex_cmd(files, media_type, output_format=None):
                             if filter_complex and not filter_complex.endswith(";"):
                                 filter_complex += ";"
                             audio_filter = (
-                                "".join([f"[{i}:a:{idx}]" for i, idx in track_inputs])
+                                "".join(
+                                    [f"[{i}:a:{idx}]" for i, idx in track_inputs]
+                                )
                                 + f"concat=n={len(track_inputs)}:v=0:a=1[outa{track_pos}]"
                             )
                             filter_complex += audio_filter
@@ -2780,7 +2826,9 @@ async def get_merge_mixed_cmd(
                 f.write(f"file '{escaped_path}'\n")
 
         # Create a temporary merged video file
-        temp_video_output = os.path.join(base_dir, f"temp_merged_video.{output_format}")
+        temp_video_output = os.path.join(
+            base_dir, f"temp_merged_video.{output_format}"
+        )
         video_cmd = [
             "xtra",
             "-hide_banner",
@@ -2962,7 +3010,9 @@ async def get_merge_mixed_cmd(
                                                 data["format"]["duration"]
                                             )
                                 except Exception as e:
-                                    LOGGER.warning(f"Error getting video duration: {e}")
+                                    LOGGER.warning(
+                                        f"Error getting video duration: {e}"
+                                    )
 
                     # If we have video duration, create a temporary subtitle file with correct duration
                     if video_duration:
@@ -3053,7 +3103,9 @@ async def get_merge_mixed_cmd(
                                         f"Created adjusted subtitle file with scale factor {scale_factor}"
                                     )
                         except Exception as e:
-                            LOGGER.warning(f"Error adjusting subtitle timestamps: {e}")
+                            LOGGER.warning(
+                                f"Error adjusting subtitle timestamps: {e}"
+                            )
 
                         # Add input with the adjusted subtitle file
                         input_args.extend(["-i", sub_file])
@@ -3262,9 +3314,7 @@ async def get_merge_mixed_cmd(
                                 new_s = int(total_seconds % 60)
                                 new_ms = int((total_seconds * 1000) % 1000)
 
-                                return (
-                                    f"{new_h:02d}:{new_m:02d}:{new_s:02d},{new_ms:03d}"
-                                )
+                                return f"{new_h:02d}:{new_m:02d}:{new_s:02d},{new_ms:03d}"
 
                             # Adjust all timestamps in the subtitle file
                             adjusted_content = re.sub(
@@ -3777,9 +3827,9 @@ async def get_convert_cmd(
             if maintain_quality:
                 if output_format.lower() == "mp3":
                     audio_bitrate = "320k"
-                elif output_format.lower() == "aac":
-                    audio_bitrate = "256k"
-                elif output_format.lower() == "ogg":
+                elif (
+                    output_format.lower() == "aac" or output_format.lower() == "ogg"
+                ):
                     audio_bitrate = "256k"
                 elif output_format.lower() == "opus":
                     audio_bitrate = "192k"
@@ -3790,7 +3840,9 @@ async def get_convert_cmd(
                     "-c:a",
                     audio_codec,
                     "-b:a",
-                    audio_bitrate if audio_codec not in ["flac", "pcm_s16le"] else "",
+                    audio_bitrate
+                    if audio_codec not in ["flac", "pcm_s16le"]
+                    else "",
                     "-map",
                     "0:a",
                     "-threads",
@@ -3891,6 +3943,7 @@ async def get_trim_cmd(
     """
     # Import necessary modules
     import os
+
     from bot import LOGGER
     from bot.helper.aeon_utils.media_utils import get_streams
     from bot.helper.ext_utils.media_utils import get_media_type
@@ -3963,7 +4016,7 @@ async def get_trim_cmd(
             )
 
         # If start_time is empty or "00:00:00", set it to None (beginning of file)
-        if start_time == "" or start_time == "00:00:00":
+        if start_time in {"", "00:00:00"}:
             start_time = "00:00:00"
 
         # If end_time is empty, set it to None (end of file)
@@ -4085,26 +4138,27 @@ async def get_trim_cmd(
 
             # For HEVC/10-bit MKV files, always use copy codec for better compatibility
             if is_hevc_10bit:
-                LOGGER.info(f"Detected HEVC/10-bit MKV file, using copy codec: {file}")
+                LOGGER.info(
+                    f"Detected HEVC/10-bit MKV file, using copy codec: {file}"
+                )
+                cmd.extend(["-c:v", "copy"])
+            # Check if video_codec is "none" (case-insensitive) or None
+            elif not video_codec or video_codec.lower() == "none":
+                # Use copy codec as default when none is specified
                 cmd.extend(["-c:v", "copy"])
             else:
-                # Check if video_codec is "none" (case-insensitive) or None
-                if not video_codec or video_codec.lower() == "none":
-                    # Use copy codec as default when none is specified
-                    cmd.extend(["-c:v", "copy"])
-                else:
-                    cmd.extend(["-c:v", video_codec])
+                cmd.extend(["-c:v", video_codec])
 
-                    if video_codec != "copy":
-                        # Check if video_preset is "none" (case-insensitive) or None
-                        if video_preset and video_preset.lower() != "none":
-                            cmd.extend(["-preset", video_preset])
-                        # Ensure even dimensions for encoded video
-                        cmd.extend(["-vf", "scale=trunc(iw/2)*2:trunc(ih/2)*2"])
-                        # Ensure compatible pixel format
-                        cmd.extend(["-pix_fmt", "yuv420p"])
-                        # Add quality parameter for better results
-                        cmd.extend(["-crf", "23"])
+                if video_codec != "copy":
+                    # Check if video_preset is "none" (case-insensitive) or None
+                    if video_preset and video_preset.lower() != "none":
+                        cmd.extend(["-preset", video_preset])
+                    # Ensure even dimensions for encoded video
+                    cmd.extend(["-vf", "scale=trunc(iw/2)*2:trunc(ih/2)*2"])
+                    # Ensure compatible pixel format
+                    cmd.extend(["-pix_fmt", "yuv420p"])
+                    # Add quality parameter for better results
+                    cmd.extend(["-crf", "23"])
 
         # Add audio codec parameters
         if has_audio:
@@ -4161,7 +4215,9 @@ async def get_trim_cmd(
             if video_codec == "copy":
                 cmd.extend(["-c:v", "copy"])
             else:
-                cmd.extend(["-c:v", "libx265", "-crf", "28", "-preset", video_preset])
+                cmd.extend(
+                    ["-c:v", "libx265", "-crf", "28", "-preset", video_preset]
+                )
 
             # Add MP4 container flags
             cmd.extend(["-movflags", "+faststart"])
@@ -4258,19 +4314,28 @@ async def get_trim_cmd(
                 try:
                     quality_val = int(image_quality)
                     cmd.extend(
-                        ["-compression_level", str(min(9, 9 - int(quality_val * 0.09)))]
+                        [
+                            "-compression_level",
+                            str(min(9, 9 - int(quality_val * 0.09))),
+                        ]
                     )
                 except (ValueError, TypeError):
-                    cmd.extend(["-compression_level", "0"])  # Default to best quality
+                    cmd.extend(
+                        ["-compression_level", "0"]
+                    )  # Default to best quality
         # For SVG files
         elif file_ext == ".svg":
             # SVG files need special handling - convert to PNG first
-            LOGGER.warning(f"SVG files are not directly supported for trimming: {file}")
+            LOGGER.warning(
+                f"SVG files are not directly supported for trimming: {file}"
+            )
             return None, None
         # For PSD files
         elif file_ext == ".psd":
             # PSD files need special handling
-            LOGGER.warning(f"PSD files are not directly supported for trimming: {file}")
+            LOGGER.warning(
+                f"PSD files are not directly supported for trimming: {file}"
+            )
             return None, None
         # For GIF files
         elif file_ext == ".gif":
@@ -4281,11 +4346,11 @@ async def get_trim_cmd(
                 # Try to get the number of frames
                 nb_frames = 1
                 for stream in streams:
-                    if stream.get("codec_type") == "video" and stream.get("nb_frames"):
-                        try:
+                    if stream.get("codec_type") == "video" and stream.get(
+                        "nb_frames"
+                    ):
+                        with contextlib.suppress(ValueError, TypeError):
                             nb_frames = int(stream.get("nb_frames"))
-                        except (ValueError, TypeError):
-                            pass
 
                 # If it's an animated GIF (more than 1 frame)
                 if nb_frames > 1:
@@ -4408,7 +4473,7 @@ async def get_trim_cmd(
                 temp_file,
             ]
             return cmd, temp_file
-        elif file_ext == ".vtt":
+        if file_ext == ".vtt":
             # For VTT files, we'll use a similar approach to SRT
             # First convert to SRT, then trim, then convert back to VTT
             LOGGER.info(f"Using custom VTT trimming approach for {file}")
@@ -4459,15 +4524,14 @@ async def get_trim_cmd(
                 LOGGER.error(f"Error in VTT trimming: {e}")
                 # Fallback to standard approach
                 cmd.extend(["-c:s", "copy", "-f", subtitle_format])
+        # For other subtitle formats, try the standard approach
+        # Check if subtitle_encoding is "none" (case-insensitive) or None
+        elif not subtitle_encoding or subtitle_encoding.lower() == "none":
+            # Use copy codec as default when none is specified
+            cmd.extend(["-c:s", "copy", "-f", subtitle_format])
         else:
-            # For other subtitle formats, try the standard approach
-            # Check if subtitle_encoding is "none" (case-insensitive) or None
-            if not subtitle_encoding or subtitle_encoding.lower() == "none":
-                # Use copy codec as default when none is specified
-                cmd.extend(["-c:s", "copy", "-f", subtitle_format])
-            else:
-                # For subtitle encoding, we typically use "copy" anyway
-                cmd.extend(["-c:s", "copy", "-f", subtitle_format])
+            # For subtitle encoding, we typically use "copy" anyway
+            cmd.extend(["-c:s", "copy", "-f", subtitle_format])
 
     elif media_type == "document":
         # For document files, we need to use a different approach
@@ -4488,12 +4552,9 @@ async def get_trim_cmd(
                 temp_file,
             ]
             return cmd, temp_file
-        else:
-            # For other document types, we can't use FFmpeg directly
-            LOGGER.warning(
-                f"Document trimming is not supported for this format: {file}"
-            )
-            return None, None
+        # For other document types, we can't use FFmpeg directly
+        LOGGER.warning(f"Document trimming is not supported for this format: {file}")
+        return None, None
 
     elif media_type == "archive":
         # For archive files, we can't use FFmpeg
@@ -4626,7 +4687,9 @@ async def get_compression_cmd(
     ):
         output_ext = f".{subtitle_format.lower()}"
     elif (
-        media_type == "archive" and archive_format and archive_format.lower() != "none"
+        media_type == "archive"
+        and archive_format
+        and archive_format.lower() != "none"
     ):
         output_ext = f".{archive_format.lower()}"
     else:
@@ -4765,13 +4828,17 @@ async def get_compression_cmd(
         if file_ext in [".jpg", ".jpeg"]:
             # For JPEG, use quality parameter
             quality_val = (
-                min(31, 31 - int(int(image_quality) * 0.31)) if image_quality > 0 else 1
+                min(31, 31 - int(int(image_quality) * 0.31))
+                if image_quality > 0
+                else 1
             )
             cmd.extend(["-q:v", str(quality_val)])
         elif file_ext in [".png", ".webp"]:
             # For PNG and WebP, use compression level
             compression_level = (
-                min(9, 9 - int(int(image_quality) * 0.09)) if image_quality > 0 else 0
+                min(9, 9 - int(int(image_quality) * 0.09))
+                if image_quality > 0
+                else 0
             )
             cmd.extend(["-compression_level", str(compression_level)])
         else:
@@ -4796,12 +4863,11 @@ async def get_compression_cmd(
                 temp_file,
             ]
             return cmd, temp_file
-        else:
-            # For other document types, we can't use FFmpeg directly
-            LOGGER.warning(
-                f"Document compression not supported for this format: {file_ext}"
-            )
-            return None, None
+        # For other document types, we can't use FFmpeg directly
+        LOGGER.warning(
+            f"Document compression not supported for this format: {file_ext}"
+        )
+        return None, None
 
     elif media_type == "subtitle":
         # For subtitle files
@@ -4816,9 +4882,8 @@ async def get_compression_cmd(
                 temp_file,
             ]
             return cmd, temp_file
-        else:
-            # For other subtitle formats, try standard approach
-            cmd.extend(["-c:s", "copy"])
+        # For other subtitle formats, try standard approach
+        cmd.extend(["-c:s", "copy"])
 
     elif media_type == "archive":
         # For archive files, we'll use a special approach
@@ -4896,7 +4961,9 @@ async def get_extract_cmd(
     temp_file = os.path.join(file_dir, f"{file_base}.extract.temp{file_ext}")
 
     # Check if any extraction option is enabled
-    if not (extract_video or extract_audio or extract_subtitle or extract_attachment):
+    if not (
+        extract_video or extract_audio or extract_subtitle or extract_attachment
+    ):
         LOGGER.warning("No extraction option is enabled")
         return [], temp_file
 
@@ -4951,10 +5018,9 @@ async def get_extract_cmd(
                         file_path,
                         f"EXTRACT_ATTACHMENT:{stream_index}:{output_path}",
                     ], temp_file
-                else:
-                    LOGGER.warning(
-                        f"Attachment index {attachment_index} out of range (0-{len(attachment_streams) - 1})"
-                    )
+                LOGGER.warning(
+                    f"Attachment index {attachment_index} out of range (0-{len(attachment_streams) - 1})"
+                )
             except ValueError:
                 LOGGER.error(f"Invalid attachment index: {attachment_index}")
         else:
@@ -4982,7 +5048,9 @@ async def get_extract_cmd(
                     # but we could use them for logging or future enhancements
 
                     # Determine output extension based on codec
-                    output_ext = "mp4" if video_codec in ["h264", "libx264"] else "mkv"
+                    output_ext = (
+                        "mp4" if video_codec in ["h264", "libx264"] else "mkv"
+                    )
                     output_file = os.path.join(
                         file_dir,
                         f"{file_base}.video.{stream.get('tags', {}).get('language', 'und')}.{stream_index}.{output_ext}",
@@ -5063,7 +5131,9 @@ async def get_extract_cmd(
 
                     # Determine output extension based on codec
                     output_ext = (
-                        "m4a" if audio_codec in ["aac", "libfdk_aac"] else audio_codec
+                        "m4a"
+                        if audio_codec in ["aac", "libfdk_aac"]
+                        else audio_codec
                     )
                     output_file = os.path.join(
                         file_dir,
@@ -5082,9 +5152,10 @@ async def get_extract_cmd(
 
                     # Add quality settings if not using copy codec
                     if audio_codec != "copy" and maintain_quality:
-                        if audio_codec in ["aac", "libfdk_aac"]:
-                            cmd.extend(["-b:a", "320k"])
-                        elif audio_codec == "mp3":
+                        if (
+                            audio_codec in ["aac", "libfdk_aac"]
+                            or audio_codec == "mp3"
+                        ):
                             cmd.extend(["-b:a", "320k"])
                         elif audio_codec in ["opus", "libopus"]:
                             cmd.extend(["-b:a", "192k"])
@@ -5123,9 +5194,7 @@ async def get_extract_cmd(
 
                 # Add quality settings if not using copy codec
                 if audio_codec != "copy" and maintain_quality:
-                    if audio_codec in ["aac", "libfdk_aac"]:
-                        cmd.extend(["-b:a", "320k"])
-                    elif audio_codec == "mp3":
+                    if audio_codec in ["aac", "libfdk_aac"] or audio_codec == "mp3":
                         cmd.extend(["-b:a", "320k"])
                     elif audio_codec in ["opus", "libopus"]:
                         cmd.extend(["-b:a", "192k"])
@@ -5213,9 +5282,8 @@ async def get_extract_cmd(
     if len(commands) == 1:
         # If there's only one command, return it directly
         return commands[0].split(), temp_file
-    elif len(commands) > 1:
+    if len(commands) > 1:
         # If there are multiple commands, return them as a special format
-        return ["EXTRACT_MULTI_COMMAND"] + commands, temp_file
-    else:
-        # No commands were generated
-        return [], temp_file
+        return ["EXTRACT_MULTI_COMMAND", *commands], temp_file
+    # No commands were generated
+    return [], temp_file

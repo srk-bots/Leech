@@ -20,11 +20,6 @@ from bot.helper.telegram_helper.message_utils import (
     delete_message,
     send_message,
 )
-from bot.helper.telegram_helper.message_utils import (
-    auto_delete_message,
-    delete_message,
-    send_message,
-)
 
 
 @new_task
