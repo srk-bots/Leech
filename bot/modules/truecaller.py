@@ -104,18 +104,36 @@ async def truecaller_lookup(_, message):
             try:
                 data = response.json()
 
-                # Format the response
-                msg = "✅ **Truecaller Lookup Result:**\n\n"
-                msg += f"📱 **Phone:** `{data.get('international_format', 'N/A')}`\n"
-                msg += f"🔄 **Carrier:** `{data.get('carrier', 'N/A')}`\n"
-                msg += f"🌍 **Country:** `{data.get('country', 'N/A')}`\n"
-                msg += f"📍 **Location:** `{data.get('location', 'N/A')}`\n"
-                msg += f"⏰ **Timezones:** `{data.get('timezones', 'N/A')}`\n"
-                msg += f"👤 **Truecaller Name:** `{data.get('Truecaller', 'N/A')}`\n"
+                # Format the response with beautiful styling
+                truecaller_name = data.get("Truecaller", "Unknown")
+
+                # Create a decorative header
+                msg = "┌─────────────────────────┐\n"
+                msg += "│   🔍 TRUECALLER LOOKUP   │\n"
+                msg += "└─────────────────────────┘\n\n"
+
+                # Add the name with special formatting if available
+                if truecaller_name != "Unknown" and truecaller_name != "N/A":
+                    msg += f"✨ **{truecaller_name}** ✨\n\n"
+
+                # Create a styled info box without fixed borders
+                msg += "┌─────── 📋 DETAILS ───────┐\n"
+                msg += (
+                    f"│ 📱 **Number:** `{data.get('international_format', 'N/A')}`\n"
+                )
+                msg += f"│ 🔄 **Carrier:** `{data.get('carrier', 'N/A')}`\n"
+                msg += f"│ 🌍 **Country:** `{data.get('country', 'N/A')}`\n"
+                msg += f"│ 📍 **Location:** `{data.get('location', 'N/A')}`\n"
+                msg += f"│ ⏰ **Timezone:** `{data.get('timezones', 'N/A')}`\n"
 
                 # Add other info if available
-                if data.get("Unknown"):
-                    msg += f"ℹ️ **Other Info:** `{data.get('Unknown', 'N/A')}`\n"
+                if data.get("Unknown") and data.get("Unknown") != "N/A":
+                    msg += f"│ ℹ️ **Other:** `{data.get('Unknown', 'N/A')}`\n"
+
+                msg += "└────────────────────────┘\n\n"
+
+                # Add a footer
+                msg += "ℹ️ _This message will be deleted in 5 minutes_"
 
                 # Update the status message with the result
                 await edit_message(status_msg, msg)
