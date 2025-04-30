@@ -51,7 +51,8 @@ async def select_format(_, query, obj):
     elif data[1] == "info":
         # For section headers, show a helpful message
         await query.answer(
-            "This is a section header. Please select a format below.", show_alert=True
+            "This is a section header. Please select a format below.",
+            show_alert=True,
         )
     elif data[1] == "section":
         # Handle section selection
@@ -60,7 +61,7 @@ async def select_format(_, query, obj):
             await obj.show_section(section)
         except Exception as e:
             LOGGER.error(f"Error in section selection: {e}")
-            await query.answer(f"Error: {str(e)}", show_alert=True)
+            await query.answer(f"Error: {e!s}", show_alert=True)
     elif data[1] == "aq":
         if data[2] == "back":
             await obj.audio_format()
@@ -156,14 +157,10 @@ class YtSelection:
                 # SD formats (144p, 240p, 360p, 480p) in ascending order
                 for i in ["144", "240", "360", "480"]:
                     # MP4 format with audio
-                    video_format = (
-                        f"bv*[height<=?{i}][ext=mp4]+ba[ext=m4a]/b[height<=?{i}]"
-                    )
                     b_data = f"{i}|mp4"
                     buttons.data_button(f"{i}p MP4", f"ytq {b_data}")
 
                     # WebM format with audio
-                    video_format = f"bv*[height<=?{i}][ext=webm]+ba/b[height<=?{i}]"
                     b_data = f"{i}|webm"
                     buttons.data_button(f"{i}p WebM", f"ytq {b_data}")
 
@@ -171,19 +168,14 @@ class YtSelection:
                 # HD formats (720p, 1080p) in ascending order
                 for i in ["720", "1080"]:
                     # MP4 format with audio
-                    video_format = (
-                        f"bv*[height<=?{i}][ext=mp4]+ba[ext=m4a]/b[height<=?{i}]"
-                    )
                     b_data = f"{i}|mp4"
                     buttons.data_button(f"{i}p MP4", f"ytq {b_data}")
 
                     # WebM format with audio
-                    video_format = f"bv*[height<=?{i}][ext=webm]+ba/b[height<=?{i}]"
                     b_data = f"{i}|webm"
                     buttons.data_button(f"{i}p WebM", f"ytq {b_data}")
 
                     # AV1 format with audio
-                    video_format = f"bv*[height<=?{i}][vcodec*=av01]+ba/b[height<=?{i}]"
                     b_data = f"{i}|av1"
                     buttons.data_button(f"{i}p AV1", f"ytq {b_data}")
 
@@ -191,87 +183,84 @@ class YtSelection:
                 # 4K formats (1440p, 2160p) in ascending order
                 for i in ["1440", "2160"]:
                     # MP4 format with audio
-                    video_format = (
-                        f"bv*[height<=?{i}][ext=mp4]+ba[ext=m4a]/b[height<=?{i}]"
-                    )
                     b_data = f"{i}|mp4"
                     buttons.data_button(f"{i}p MP4", f"ytq {b_data}")
 
                     # WebM format with audio
-                    video_format = f"bv*[height<=?{i}][ext=webm]+ba/b[height<=?{i}]"
                     b_data = f"{i}|webm"
                     buttons.data_button(f"{i}p WebM", f"ytq {b_data}")
 
                     # AV1 format with audio
-                    video_format = f"bv*[height<=?{i}][vcodec*=av01]+ba/b[height<=?{i}]"
                     b_data = f"{i}|av1"
                     buttons.data_button(f"{i}p AV1", f"ytq {b_data}")
 
-        else:
-            # For single videos, show available formats from the extracted info
-            if section in ["sd", "hd", "4k"]:
-                # Define resolution ranges for each section
-                if section == "sd":
-                    # SD: below 720p
-                    res_range = lambda r: r < 720
-                elif section == "hd":
-                    # HD: 720p to 1440p (exclusive)
-                    res_range = lambda r: 720 <= r < 1440
-                else:  # 4k
-                    # 4K: 1440p and above
-                    res_range = lambda r: r >= 1440
+        # For single videos, show available formats from the extracted info
+        elif section in ["sd", "hd", "4k"]:
+            # Define resolution ranges for each section
+            if section == "sd":
+                # SD: below 720p
+                def res_range(r):
+                    return r < 720
+            elif section == "hd":
+                # HD: 720p to 1440p (exclusive)
+                def res_range(r):
+                    return 720 <= r < 1440
+            else:  # 4k
+                # 4K: 1440p and above
+                def res_range(r):
+                    return r >= 1440
 
-                # Get all resolutions in this range
-                matching_resolutions = []
-                for r in self.formats.keys():
-                    # Check if the format name contains 'p' and has a number before it
-                    if "p" in r:
-                        try:
-                            # Try to extract the resolution number
-                            res_num = int(r.split("p")[0])
-                            # Check if it's in the desired range
-                            if res_range(res_num):
-                                matching_resolutions.append(r)
-                        except (ValueError, IndexError):
-                            # Skip formats that don't have a valid resolution number
-                            continue
-
-                # Sort resolutions in ascending order
-                def get_resolution(format_name):
+            # Get all resolutions in this range
+            matching_resolutions = []
+            for r in self.formats:
+                # Check if the format name contains 'p' and has a number before it
+                if "p" in r:
                     try:
-                        if "p" in format_name:
-                            return int(format_name.split("p")[0])
-                        return 0
+                        # Try to extract the resolution number
+                        res_num = int(r.split("p")[0])
+                        # Check if it's in the desired range
+                        if res_range(res_num):
+                            matching_resolutions.append(r)
                     except (ValueError, IndexError):
-                        return 0
+                        # Skip formats that don't have a valid resolution number
+                        continue
 
-                # Check if we found any matching resolutions
-                if not matching_resolutions:
-                    # No formats in this resolution range
-                    buttons.data_button(
-                        f"No {section.upper()} formats available", "ytq info"
-                    )
-                else:
-                    # Add formats in ascending order
-                    for b_name in sorted(matching_resolutions, key=get_resolution):
-                        try:
-                            tbr_dict = self.formats[b_name]
-                            if len(tbr_dict) == 1:
-                                tbr, v_list = next(iter(tbr_dict.items()))
-                                size_str = get_readable_file_size(v_list[0])
-                                # Highlight AV1 formats
-                                if "av1" in b_name.lower():
-                                    buttonName = f"🔸 {b_name} ({size_str})"
-                                else:
-                                    buttonName = f"{b_name} ({size_str})"
-                                buttons.data_button(
-                                    buttonName, f"ytq sub {b_name} {tbr}"
-                                )
+            # Sort resolutions in ascending order
+            def get_resolution(format_name):
+                try:
+                    if "p" in format_name:
+                        return int(format_name.split("p")[0])
+                    return 0
+                except (ValueError, IndexError):
+                    return 0
+
+            # Check if we found any matching resolutions
+            if not matching_resolutions:
+                # No formats in this resolution range
+                buttons.data_button(
+                    f"No {section.upper()} formats available", "ytq info"
+                )
+            else:
+                # Add formats in ascending order
+                for b_name in sorted(matching_resolutions, key=get_resolution):
+                    try:
+                        tbr_dict = self.formats[b_name]
+                        if len(tbr_dict) == 1:
+                            tbr, v_list = next(iter(tbr_dict.items()))
+                            size_str = get_readable_file_size(v_list[0])
+                            # Highlight AV1 formats
+                            if "av1" in b_name.lower():
+                                buttonName = f"🔸 {b_name} ({size_str})"
                             else:
-                                buttons.data_button(b_name, f"ytq dict {b_name}")
-                        except Exception as e:
-                            LOGGER.error(f"Error adding format button {b_name}: {e}")
-                            continue
+                                buttonName = f"{b_name} ({size_str})"
+                            buttons.data_button(
+                                buttonName, f"ytq sub {b_name} {tbr}"
+                            )
+                        else:
+                            buttons.data_button(b_name, f"ytq dict {b_name}")
+                    except Exception as e:
+                        LOGGER.error(f"Error adding format button {b_name}: {e}")
+                        continue
 
         # Audio options section is the same for both playlist and single videos
         if section == "audio":
@@ -303,7 +292,9 @@ class YtSelection:
             # SD formats
             for i in ["144", "240", "360", "480"]:
                 # MP4 format with audio
-                video_format = f"bv*[height<=?{i}][ext=mp4]+ba[ext=m4a]/b[height<=?{i}]"
+                video_format = (
+                    f"bv*[height<=?{i}][ext=mp4]+ba[ext=m4a]/b[height<=?{i}]"
+                )
                 b_data = f"{i}|mp4"
                 self.formats[b_data] = video_format
 
@@ -315,7 +306,9 @@ class YtSelection:
             # HD formats
             for i in ["720", "1080"]:
                 # MP4 format with audio
-                video_format = f"bv*[height<=?{i}][ext=mp4]+ba[ext=m4a]/b[height<=?{i}]"
+                video_format = (
+                    f"bv*[height<=?{i}][ext=mp4]+ba[ext=m4a]/b[height<=?{i}]"
+                )
                 b_data = f"{i}|mp4"
                 self.formats[b_data] = video_format
 
@@ -332,7 +325,9 @@ class YtSelection:
             # 4K formats
             for i in ["1440", "2160"]:
                 # MP4 format with audio
-                video_format = f"bv*[height<=?{i}][ext=mp4]+ba[ext=m4a]/b[height<=?{i}]"
+                video_format = (
+                    f"bv*[height<=?{i}][ext=mp4]+ba[ext=m4a]/b[height<=?{i}]"
+                )
                 b_data = f"{i}|mp4"
                 self.formats[b_data] = video_format
 
@@ -381,7 +376,9 @@ class YtSelection:
                         ):
                             if item.get("audio_ext") == "m4a":
                                 self._is_m4a = True
-                            b_name = f"{item.get('acodec') or format_id}-{item['ext']}"
+                            b_name = (
+                                f"{item.get('acodec') or format_id}-{item['ext']}"
+                            )
                             v_format = format_id
 
                             # Add to audio group
@@ -703,7 +700,9 @@ class YtDlp(TaskListener):
         self.metadata_subtitle_title = args["-metadata-subtitle-title"]
         self.metadata_subtitle_author = args["-metadata-subtitle-author"]
         self.metadata_subtitle_comment = args["-metadata-subtitle-comment"]
-        self.folder_name = f"/{args['-m']}".rstrip("/") if len(args["-m"]) > 0 else ""
+        self.folder_name = (
+            f"/{args['-m']}".rstrip("/") if len(args["-m"]) > 0 else ""
+        )
         self.bot_trans = args["-bt"]
         self.user_trans = args["-ut"]
         self.merge_video = args["-merge-video"]
@@ -853,7 +852,9 @@ class YtDlp(TaskListener):
                 or "This video is unavailable" in msg
                 or "Sign in to confirm" in msg
             ):
-                LOGGER.warning("YouTube extraction failed, trying with Android client")
+                LOGGER.warning(
+                    "YouTube extraction failed, trying with Android client"
+                )
                 try:
                     # Try with Android client
                     if (
@@ -866,7 +867,7 @@ class YtDlp(TaskListener):
 
                     result = await sync_to_async(extract_info, self.link, options)
                 except Exception as e2:
-                    LOGGER.warning(f"Android client failed too: {str(e2)}")
+                    LOGGER.warning(f"Android client failed too: {e2!s}")
                     try:
                         # Last resort: try with web client
                         if (
@@ -877,8 +878,10 @@ class YtDlp(TaskListener):
                                 "web"
                             ]
 
-                        result = await sync_to_async(extract_info, self.link, options)
-                    except Exception as e3:
+                        result = await sync_to_async(
+                            extract_info, self.link, options
+                        )
+                    except Exception:
                         # All clients failed, report the original error
                         msg = f"{msg}\n\nTried multiple YouTube clients but all failed. This might be due to the YouTube SSAP experiment or region restrictions."
                         try:

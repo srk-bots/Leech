@@ -203,7 +203,6 @@ DEFAULT_VALUES = {
     "CONVERT_ENABLED": False,
     "CONVERT_PRIORITY": 3,
     "CONVERT_DELETE_ORIGINAL": False,
-
     # Video Convert Settings
     "CONVERT_VIDEO_ENABLED": False,
     "CONVERT_VIDEO_FORMAT": "none",
@@ -214,7 +213,6 @@ DEFAULT_VALUES = {
     "CONVERT_VIDEO_MAINTAIN_QUALITY": True,
     "CONVERT_VIDEO_RESOLUTION": "none",
     "CONVERT_VIDEO_FPS": "none",
-
     # Audio Convert Settings
     "CONVERT_AUDIO_ENABLED": False,
     "CONVERT_AUDIO_FORMAT": "none",
@@ -223,19 +221,16 @@ DEFAULT_VALUES = {
     "CONVERT_AUDIO_CHANNELS": 0,
     "CONVERT_AUDIO_SAMPLING": 0,
     "CONVERT_AUDIO_VOLUME": 0.0,
-
     # Subtitle Convert Settings
     "CONVERT_SUBTITLE_ENABLED": False,
     "CONVERT_SUBTITLE_FORMAT": "none",
     "CONVERT_SUBTITLE_ENCODING": "none",
     "CONVERT_SUBTITLE_LANGUAGE": "none",
-
     # Document Convert Settings
     "CONVERT_DOCUMENT_ENABLED": False,
     "CONVERT_DOCUMENT_FORMAT": "none",
     "CONVERT_DOCUMENT_QUALITY": 0,
     "CONVERT_DOCUMENT_DPI": 0,
-
     # Archive Convert Settings
     "CONVERT_ARCHIVE_ENABLED": False,
     "CONVERT_ARCHIVE_FORMAT": "none",
@@ -288,10 +283,8 @@ async def get_buttons(key=None, edit_type=None, page=0, user_id=None):
             or key in ["CONCAT_DEMUXER_ENABLED", "FILTER_COMPLEX_ENABLED"]
         ):
             msg = ""
-            if (
-                key.startswith("WATERMARK_")
-                or key.startswith("AUDIO_WATERMARK_")
-                or key.startswith("SUBTITLE_WATERMARK_")
+            if key.startswith(
+                ("WATERMARK_", "AUDIO_WATERMARK_", "SUBTITLE_WATERMARK_")
             ):
                 buttons.data_button("Back", "botset mediatools_watermark")
             elif key.startswith("METADATA_"):
@@ -342,7 +335,9 @@ async def get_buttons(key=None, edit_type=None, page=0, user_id=None):
                 "COMPRESSION_ARCHIVE_ENABLED",
                 "TASK_MONITOR_ENABLED",
             }:
-                help_text = "Send 'true' to enable or 'false' to disable this feature."
+                help_text = (
+                    "Send 'true' to enable or 'false' to disable this feature."
+                )
             elif key == "WATERMARK_KEY":
                 help_text = "Send your text which will be added as watermark in all media files."
             elif key == "AUDIO_WATERMARK_TEXT":
@@ -399,18 +394,34 @@ async def get_buttons(key=None, edit_type=None, page=0, user_id=None):
                 help_text = "Send the compression level (0-9). Higher values mean better compression but slower speed. Example: 6, 9, etc."
             elif key in {"WATERMARK_FONT", "MERGE_SUBTITLE_FONT"}:
                 help_text = "Send font file name. The font file should be available in the bot's directory. Example: Arial.ttf."
-            elif key in {"MERGE_OUTPUT_FORMAT_VIDEO", "CONVERT_VIDEO_FORMAT", "EXTRACT_VIDEO_FORMAT"}:
+            elif key in {
+                "MERGE_OUTPUT_FORMAT_VIDEO",
+                "CONVERT_VIDEO_FORMAT",
+                "EXTRACT_VIDEO_FORMAT",
+            }:
                 help_text = "Send video output format. Example: mp4, mkv, avi, etc."
-            elif key in {"MERGE_OUTPUT_FORMAT_AUDIO", "CONVERT_AUDIO_FORMAT", "EXTRACT_AUDIO_FORMAT"}:
+            elif key in {
+                "MERGE_OUTPUT_FORMAT_AUDIO",
+                "CONVERT_AUDIO_FORMAT",
+                "EXTRACT_AUDIO_FORMAT",
+            }:
                 help_text = "Send audio output format. Example: mp3, aac, flac, etc."
             elif key in {"EXTRACT_SUBTITLE_FORMAT", "CONVERT_SUBTITLE_FORMAT"}:
-                help_text = "Send subtitle output format. Example: srt, ass, vtt, etc."
+                help_text = (
+                    "Send subtitle output format. Example: srt, ass, vtt, etc."
+                )
             elif key == "CONVERT_DOCUMENT_FORMAT":
-                help_text = "Send document output format. Example: pdf, docx, txt, etc."
+                help_text = (
+                    "Send document output format. Example: pdf, docx, txt, etc."
+                )
             elif key == "CONVERT_ARCHIVE_FORMAT":
-                help_text = "Send archive output format. Example: zip, rar, 7z, tar, etc."
+                help_text = (
+                    "Send archive output format. Example: zip, rar, 7z, tar, etc."
+                )
             elif key == "EXTRACT_ATTACHMENT_FORMAT":
-                help_text = "Send attachment output format. Example: png, jpg, pdf, etc."
+                help_text = (
+                    "Send attachment output format. Example: png, jpg, pdf, etc."
+                )
             elif key == "EXTRACT_PRIORITY":
                 help_text = "Send an integer value for extract priority. Lower values mean higher priority. Example: 6."
             elif key in {"EXTRACT_DELETE_ORIGINAL", "CONVERT_DELETE_ORIGINAL"}:
@@ -434,11 +445,15 @@ async def get_buttons(key=None, edit_type=None, page=0, user_id=None):
             elif key == "EXTRACT_VIDEO_PRESET":
                 help_text = "Send the video preset for extraction. Example: ultrafast, superfast, veryfast, faster, fast, medium, slow, slower, veryslow."
             elif key == "EXTRACT_VIDEO_BITRATE":
-                help_text = "Send the video bitrate for extraction. Example: 5M, 10M, etc."
+                help_text = (
+                    "Send the video bitrate for extraction. Example: 5M, 10M, etc."
+                )
             elif key in {"EXTRACT_VIDEO_RESOLUTION", "CONVERT_VIDEO_RESOLUTION"}:
                 help_text = "Send the video resolution for processing. Example: 1920x1080, 1280x720, etc."
             elif key in {"EXTRACT_VIDEO_FPS", "CONVERT_VIDEO_FPS"}:
-                help_text = "Send the video frame rate for processing. Example: 30, 60, etc."
+                help_text = (
+                    "Send the video frame rate for processing. Example: 30, 60, etc."
+                )
             elif key == "CONVERT_DOCUMENT_QUALITY":
                 help_text = "Send the document quality for conversion (1-100). Higher values mean better quality. Example: 90, 75, etc."
             elif key in {"COMPRESSION_DOCUMENT_DPI", "CONVERT_DOCUMENT_DPI"}:
@@ -509,17 +524,25 @@ async def get_buttons(key=None, edit_type=None, page=0, user_id=None):
             elif key == "SUBTITLE_WATERMARK_STYLE":
                 help_text = "Send subtitle style. Valid options: normal, bold, italic, underline. Example: bold."
             elif key in {"MERGE_AUDIO_VOLUME", "CONVERT_AUDIO_VOLUME"}:
-                help_text = "Send audio volume multiplier. Example: 1.0, 1.5, 0.5, etc."
-            elif key == "MERGE_IMAGE_MODE":
                 help_text = (
-                    "Send image mode. Example: auto, grid, horizontal, vertical, etc."
+                    "Send audio volume multiplier. Example: 1.0, 1.5, 0.5, etc."
                 )
+            elif key == "MERGE_IMAGE_MODE":
+                help_text = "Send image mode. Example: auto, grid, horizontal, vertical, etc."
             elif key in {"MERGE_IMAGE_RESIZE", "COMPRESSION_IMAGE_RESIZE"}:
-                help_text = "Send image resize option. Example: none, 1080p, 720p, etc."
-            elif key in {"MERGE_SUBTITLE_ENCODING", "COMPRESSION_SUBTITLE_ENCODING", "CONVERT_SUBTITLE_ENCODING"}:
+                help_text = (
+                    "Send image resize option. Example: none, 1080p, 720p, etc."
+                )
+            elif key in {
+                "MERGE_SUBTITLE_ENCODING",
+                "COMPRESSION_SUBTITLE_ENCODING",
+                "CONVERT_SUBTITLE_ENCODING",
+            }:
                 help_text = "Send subtitle encoding. Example: utf-8, ascii, etc."
             elif key == "CONVERT_SUBTITLE_LANGUAGE":
-                help_text = "Send subtitle language code. Example: eng, spa, fre, etc."
+                help_text = (
+                    "Send subtitle language code. Example: eng, spa, fre, etc."
+                )
             elif key == "MERGE_DOCUMENT_PAPER_SIZE":
                 help_text = "Send document paper size. Example: a4, letter, etc."
             elif key == "MERGE_DOCUMENT_ORIENTATION":
@@ -546,9 +569,7 @@ async def get_buttons(key=None, edit_type=None, page=0, user_id=None):
             elif key == "TASK_MONITOR_SPEED_THRESHOLD":
                 help_text = "Send the download speed threshold in KB/s. Downloads below this speed are considered slow. Default: 50"
             elif key == "TASK_MONITOR_ELAPSED_THRESHOLD":
-                help_text = (
-                    "Send the elapsed time threshold in seconds. Default: 3600 (1 hour)"
-                )
+                help_text = "Send the elapsed time threshold in seconds. Default: 3600 (1 hour)"
             elif key == "TASK_MONITOR_ETA_THRESHOLD":
                 help_text = (
                     "Send the ETA threshold in seconds. Default: 86400 (24 hours)"
@@ -572,9 +593,7 @@ async def get_buttons(key=None, edit_type=None, page=0, user_id=None):
             else:
                 help_text = f"Send a valid value for {key}."
 
-            msg += (
-                f"{help_text}\n\nCurrent value is '{Config.get(key)}'. Timeout: 60 sec"
-            )
+            msg += f"{help_text}\n\nCurrent value is '{Config.get(key)}'. Timeout: 60 sec"
         elif edit_type == "botvar":
             msg = ""
             buttons.data_button("Back", "botset var")
@@ -601,7 +620,9 @@ async def get_buttons(key=None, edit_type=None, page=0, user_id=None):
                 msg += "Send 'true' to enable or 'false' to disable.\n\n"
                 msg += "Note: Changes will take effect after saving.\n\n"
             elif key == "AUTO_RESTART_INTERVAL":
-                msg += "Set the interval in hours between automatic bot restarts.\n\n"
+                msg += (
+                    "Set the interval in hours between automatic bot restarts.\n\n"
+                )
                 msg += "Example: 24 (for daily restart)\n\n"
                 msg += "Minimum value is 1 hour.\n\n"
 
@@ -805,9 +826,7 @@ Timeout: 60 sec"""
 
         buttons.data_button("Back", "botset back", "footer")
         buttons.data_button("Close", "botset close", "footer")
-        msg = (
-            "<b>Media Tools Settings</b>\n\nConfigure global settings for media tools."
-        )
+        msg = "<b>Media Tools Settings</b>\n\nConfigure global settings for media tools."
     elif key == "taskmonitor":
         # Add buttons for each task monitoring setting
         task_monitor_settings = [
@@ -841,14 +860,18 @@ Timeout: 60 sec"""
         buttons.data_button("Close", "botset close", "footer")
 
         # Get current task monitoring settings
-        monitor_enabled = "✅ Enabled" if Config.TASK_MONITOR_ENABLED else "❌ Disabled"
+        monitor_enabled = (
+            "✅ Enabled" if Config.TASK_MONITOR_ENABLED else "❌ Disabled"
+        )
         monitor_interval = f"{Config.TASK_MONITOR_INTERVAL} seconds"
         monitor_checks = str(Config.TASK_MONITOR_CONSECUTIVE_CHECKS)
         monitor_speed = f"{Config.TASK_MONITOR_SPEED_THRESHOLD} KB/s"
         monitor_elapsed = f"{Config.TASK_MONITOR_ELAPSED_THRESHOLD // 60} minutes"
         monitor_eta = f"{Config.TASK_MONITOR_ETA_THRESHOLD // 3600} hours"
         monitor_wait = f"{Config.TASK_MONITOR_WAIT_TIME // 60} minutes"
-        monitor_completion = f"{Config.TASK_MONITOR_COMPLETION_THRESHOLD // 3600} hours"
+        monitor_completion = (
+            f"{Config.TASK_MONITOR_COMPLETION_THRESHOLD // 3600} hours"
+        )
         monitor_cpu_high = f"{Config.TASK_MONITOR_CPU_HIGH}%"
         monitor_cpu_low = f"{Config.TASK_MONITOR_CPU_LOW}%"
         monitor_memory_high = f"{Config.TASK_MONITOR_MEMORY_HIGH}%"
@@ -908,7 +931,9 @@ Configure task monitoring settings to automatically manage downloads based on pe
             if setting.startswith("AUDIO_"):
                 display_name = (
                     "Audio "
-                    + setting.replace("AUDIO_WATERMARK_", "").replace("_", " ").title()
+                    + setting.replace("AUDIO_WATERMARK_", "")
+                    .replace("_", " ")
+                    .title()
                 )
                 # For boolean settings, add toggle buttons
                 if setting == "AUDIO_WATERMARK_ENABLED":
@@ -928,7 +953,9 @@ Configure task monitoring settings to automatically manage downloads based on pe
                 )
                 # For boolean settings, add toggle buttons
                 if setting == "SUBTITLE_WATERMARK_ENABLED":
-                    status = "✅ ON" if Config.SUBTITLE_WATERMARK_ENABLED else "❌ OFF"
+                    status = (
+                        "✅ ON" if Config.SUBTITLE_WATERMARK_ENABLED else "❌ OFF"
+                    )
                     display_name = f"Subtitle Enabled: {status}"
                     buttons.data_button(
                         display_name,
@@ -948,7 +975,7 @@ Configure task monitoring settings to automatically manage downloads based on pe
                         f"botset toggle {setting} {not Config.WATERMARK_ENABLED}",
                     )
                     continue
-                elif setting in [
+                if setting in [
                     "WATERMARK_THREADING",
                     "WATERMARK_FAST_MODE",
                     "WATERMARK_MAINTAIN_QUALITY",
@@ -975,7 +1002,9 @@ Configure task monitoring settings to automatically manage downloads based on pe
         buttons.data_button("Close", "botset close", "footer")
 
         # Get current visual watermark settings
-        watermark_enabled = "✅ Enabled" if Config.WATERMARK_ENABLED else "❌ Disabled"
+        watermark_enabled = (
+            "✅ Enabled" if Config.WATERMARK_ENABLED else "❌ Disabled"
+        )
         watermark_text = Config.WATERMARK_KEY or "None"
         watermark_position = Config.WATERMARK_POSITION or "top_left (Default)"
         watermark_size = Config.WATERMARK_SIZE or "20 (Default)"
@@ -1010,7 +1039,9 @@ Configure task monitoring settings to automatically manage downloads based on pe
         subtitle_watermark_text = (
             Config.SUBTITLE_WATERMARK_TEXT or "None (Uses visual watermark text)"
         )
-        subtitle_watermark_style = Config.SUBTITLE_WATERMARK_STYLE or "normal (Default)"
+        subtitle_watermark_style = (
+            Config.SUBTITLE_WATERMARK_STYLE or "normal (Default)"
+        )
 
         msg = f"""<b>Watermark Settings</b> | State: {state}
 
@@ -1182,9 +1213,13 @@ Configure global watermark settings that will be used when user settings are not
             for i in range(total_pages):
                 # Make the current page button different
                 if i == current_page:
-                    buttons.data_button(f"[{i + 1}]", f"botset start_merge {i}", "page")
+                    buttons.data_button(
+                        f"[{i + 1}]", f"botset start_merge {i}", "page"
+                    )
                 else:
-                    buttons.data_button(str(i + 1), f"botset start_merge {i}", "page")
+                    buttons.data_button(
+                        str(i + 1), f"botset start_merge {i}", "page"
+                    )
 
             # Add a debug log message
             LOGGER.debug(
@@ -1215,21 +1250,25 @@ Configure global watermark settings that will be used when user settings are not
         # Get the categories shown on the current page
         categories = []
         if any(
-            setting in general_settings for setting in merge_settings[start_idx:end_idx]
+            setting in general_settings
+            for setting in merge_settings[start_idx:end_idx]
         ):
             categories.append("General")
         if any(setting in formats for setting in merge_settings[start_idx:end_idx]):
             categories.append("Formats")
         if any(
-            setting in video_settings for setting in merge_settings[start_idx:end_idx]
+            setting in video_settings
+            for setting in merge_settings[start_idx:end_idx]
         ):
             categories.append("Video")
         if any(
-            setting in audio_settings for setting in merge_settings[start_idx:end_idx]
+            setting in audio_settings
+            for setting in merge_settings[start_idx:end_idx]
         ):
             categories.append("Audio")
         if any(
-            setting in image_settings for setting in merge_settings[start_idx:end_idx]
+            setting in image_settings
+            for setting in merge_settings[start_idx:end_idx]
         ):
             categories.append("Image")
         if any(
@@ -1357,15 +1396,21 @@ Current page shows: {category_text} settings."""
             elif setting.startswith("EXTRACT_SUBTITLE_"):
                 display_name = (
                     "Subtitle "
-                    + setting.replace("EXTRACT_SUBTITLE_", "").replace("_", " ").title()
+                    + setting.replace("EXTRACT_SUBTITLE_", "")
+                    .replace("_", " ")
+                    .title()
                 )
             elif setting.startswith("EXTRACT_ATTACHMENT_"):
                 display_name = (
                     "Attachment "
-                    + setting.replace("EXTRACT_ATTACHMENT_", "").replace("_", " ").title()
+                    + setting.replace("EXTRACT_ATTACHMENT_", "")
+                    .replace("_", " ")
+                    .title()
                 )
             else:
-                display_name = setting.replace("EXTRACT_", "").replace("_", " ").title()
+                display_name = (
+                    setting.replace("EXTRACT_", "").replace("_", " ").title()
+                )
 
             # For boolean settings, add toggle buttons
             if setting in [
@@ -1418,10 +1463,14 @@ Current page shows: {category_text} settings."""
         # Get current extract settings
         extract_enabled = "✅ Enabled" if Config.EXTRACT_ENABLED else "❌ Disabled"
         extract_priority = f"{Config.EXTRACT_PRIORITY}"
-        extract_delete_original = "✅ Enabled" if Config.EXTRACT_DELETE_ORIGINAL else "❌ Disabled"
+        extract_delete_original = (
+            "✅ Enabled" if Config.EXTRACT_DELETE_ORIGINAL else "❌ Disabled"
+        )
 
         # Video settings
-        video_enabled = "✅ Enabled" if Config.EXTRACT_VIDEO_ENABLED else "❌ Disabled"
+        video_enabled = (
+            "✅ Enabled" if Config.EXTRACT_VIDEO_ENABLED else "❌ Disabled"
+        )
         video_codec = Config.EXTRACT_VIDEO_CODEC or "None"
         video_format = Config.EXTRACT_VIDEO_FORMAT or "None"
         video_index = Config.EXTRACT_VIDEO_INDEX or "All"
@@ -1432,7 +1481,9 @@ Current page shows: {category_text} settings."""
         video_fps = Config.EXTRACT_VIDEO_FPS or "None"
 
         # Audio settings
-        audio_enabled = "✅ Enabled" if Config.EXTRACT_AUDIO_ENABLED else "❌ Disabled"
+        audio_enabled = (
+            "✅ Enabled" if Config.EXTRACT_AUDIO_ENABLED else "❌ Disabled"
+        )
         audio_codec = Config.EXTRACT_AUDIO_CODEC or "None"
         audio_format = Config.EXTRACT_AUDIO_FORMAT or "None"
         audio_index = Config.EXTRACT_AUDIO_INDEX or "All"
@@ -1442,7 +1493,9 @@ Current page shows: {category_text} settings."""
         audio_volume = Config.EXTRACT_AUDIO_VOLUME or "None"
 
         # Subtitle settings
-        subtitle_enabled = "✅ Enabled" if Config.EXTRACT_SUBTITLE_ENABLED else "❌ Disabled"
+        subtitle_enabled = (
+            "✅ Enabled" if Config.EXTRACT_SUBTITLE_ENABLED else "❌ Disabled"
+        )
         subtitle_codec = Config.EXTRACT_SUBTITLE_CODEC or "None"
         subtitle_format = Config.EXTRACT_SUBTITLE_FORMAT or "None"
         subtitle_index = Config.EXTRACT_SUBTITLE_INDEX or "All"
@@ -1452,13 +1505,17 @@ Current page shows: {category_text} settings."""
         subtitle_font_size = Config.EXTRACT_SUBTITLE_FONT_SIZE or "None"
 
         # Attachment settings
-        attachment_enabled = "✅ Enabled" if Config.EXTRACT_ATTACHMENT_ENABLED else "❌ Disabled"
+        attachment_enabled = (
+            "✅ Enabled" if Config.EXTRACT_ATTACHMENT_ENABLED else "❌ Disabled"
+        )
         attachment_format = Config.EXTRACT_ATTACHMENT_FORMAT or "None"
         attachment_index = Config.EXTRACT_ATTACHMENT_INDEX or "All"
         attachment_filter = Config.EXTRACT_ATTACHMENT_FILTER or "None"
 
         # Quality settings
-        maintain_quality = "✅ Enabled" if Config.EXTRACT_MAINTAIN_QUALITY else "❌ Disabled"
+        maintain_quality = (
+            "✅ Enabled" if Config.EXTRACT_MAINTAIN_QUALITY else "❌ Disabled"
+        )
 
         msg = f"""<b>Extract Settings</b> | State: {state}
 
@@ -1571,8 +1628,6 @@ Configure global extract settings that will be used when user settings are not a
             "TRIM_ARCHIVE_ENABLED",
             "TRIM_ARCHIVE_FORMAT",
         ]
-
-
 
         # Combine all settings
         trim_settings = (
@@ -1695,17 +1750,23 @@ Configure global extract settings that will be used when user settings are not a
         image_format = Config.TRIM_IMAGE_FORMAT or "None"
 
         # Document settings
-        document_enabled = "✅ Enabled" if Config.TRIM_DOCUMENT_ENABLED else "❌ Disabled"
+        document_enabled = (
+            "✅ Enabled" if Config.TRIM_DOCUMENT_ENABLED else "❌ Disabled"
+        )
         document_quality = Config.TRIM_DOCUMENT_QUALITY or "90 (Default)"
         document_format = Config.TRIM_DOCUMENT_FORMAT or "None"
 
         # Subtitle settings
-        subtitle_enabled = "✅ Enabled" if Config.TRIM_SUBTITLE_ENABLED else "❌ Disabled"
+        subtitle_enabled = (
+            "✅ Enabled" if Config.TRIM_SUBTITLE_ENABLED else "❌ Disabled"
+        )
         subtitle_encoding = Config.TRIM_SUBTITLE_ENCODING or "None"
         subtitle_format = Config.TRIM_SUBTITLE_FORMAT or "None"
 
         # Archive settings
-        archive_enabled = "✅ Enabled" if Config.TRIM_ARCHIVE_ENABLED else "❌ Disabled"
+        archive_enabled = (
+            "✅ Enabled" if Config.TRIM_ARCHIVE_ENABLED else "❌ Disabled"
+        )
         archive_format = Config.TRIM_ARCHIVE_FORMAT or "None"
 
         msg = f"""<b>Trim Settings</b> | State: {state}
@@ -1841,15 +1902,21 @@ Configure global trim settings that will be used when user settings are not avai
             elif setting.startswith("EXTRACT_SUBTITLE_"):
                 display_name = (
                     "Subtitle "
-                    + setting.replace("EXTRACT_SUBTITLE_", "").replace("_", " ").title()
+                    + setting.replace("EXTRACT_SUBTITLE_", "")
+                    .replace("_", " ")
+                    .title()
                 )
             elif setting.startswith("EXTRACT_ATTACHMENT_"):
                 display_name = (
                     "Attachment "
-                    + setting.replace("EXTRACT_ATTACHMENT_", "").replace("_", " ").title()
+                    + setting.replace("EXTRACT_ATTACHMENT_", "")
+                    .replace("_", " ")
+                    .title()
                 )
             else:
-                display_name = setting.replace("EXTRACT_", "").replace("_", " ").title()
+                display_name = (
+                    setting.replace("EXTRACT_", "").replace("_", " ").title()
+                )
 
             # For boolean settings, add toggle buttons
             if setting in [
@@ -1905,10 +1972,14 @@ Configure global trim settings that will be used when user settings are not avai
         # Get current extract settings
         extract_enabled = "✅ Enabled" if Config.EXTRACT_ENABLED else "❌ Disabled"
         extract_priority = f"{Config.EXTRACT_PRIORITY}"
-        delete_original = "✅ Enabled" if Config.EXTRACT_DELETE_ORIGINAL else "❌ Disabled"
+        delete_original = (
+            "✅ Enabled" if Config.EXTRACT_DELETE_ORIGINAL else "❌ Disabled"
+        )
 
         # Video settings
-        video_enabled = "✅ Enabled" if Config.EXTRACT_VIDEO_ENABLED else "❌ Disabled"
+        video_enabled = (
+            "✅ Enabled" if Config.EXTRACT_VIDEO_ENABLED else "❌ Disabled"
+        )
         video_codec = Config.EXTRACT_VIDEO_CODEC or "None"
         video_format = Config.EXTRACT_VIDEO_FORMAT or "None"
         video_index = Config.EXTRACT_VIDEO_INDEX or "All"
@@ -1919,7 +1990,9 @@ Configure global trim settings that will be used when user settings are not avai
         video_fps = Config.EXTRACT_VIDEO_FPS or "None"
 
         # Audio settings
-        audio_enabled = "✅ Enabled" if Config.EXTRACT_AUDIO_ENABLED else "❌ Disabled"
+        audio_enabled = (
+            "✅ Enabled" if Config.EXTRACT_AUDIO_ENABLED else "❌ Disabled"
+        )
         audio_codec = Config.EXTRACT_AUDIO_CODEC or "None"
         audio_format = Config.EXTRACT_AUDIO_FORMAT or "None"
         audio_index = Config.EXTRACT_AUDIO_INDEX or "All"
@@ -1929,7 +2002,9 @@ Configure global trim settings that will be used when user settings are not avai
         audio_volume = Config.EXTRACT_AUDIO_VOLUME or "None"
 
         # Subtitle settings
-        subtitle_enabled = "✅ Enabled" if Config.EXTRACT_SUBTITLE_ENABLED else "❌ Disabled"
+        subtitle_enabled = (
+            "✅ Enabled" if Config.EXTRACT_SUBTITLE_ENABLED else "❌ Disabled"
+        )
         subtitle_codec = Config.EXTRACT_SUBTITLE_CODEC or "None"
         subtitle_format = Config.EXTRACT_SUBTITLE_FORMAT or "None"
         subtitle_index = Config.EXTRACT_SUBTITLE_INDEX or "All"
@@ -1939,13 +2014,17 @@ Configure global trim settings that will be used when user settings are not avai
         subtitle_font_size = Config.EXTRACT_SUBTITLE_FONT_SIZE or "None"
 
         # Attachment settings
-        attachment_enabled = "✅ Enabled" if Config.EXTRACT_ATTACHMENT_ENABLED else "❌ Disabled"
+        attachment_enabled = (
+            "✅ Enabled" if Config.EXTRACT_ATTACHMENT_ENABLED else "❌ Disabled"
+        )
         attachment_format = Config.EXTRACT_ATTACHMENT_FORMAT or "None"
         attachment_index = Config.EXTRACT_ATTACHMENT_INDEX or "All"
         attachment_filter = Config.EXTRACT_ATTACHMENT_FILTER or "None"
 
         # Quality settings
-        maintain_quality = "✅ Enabled" if Config.EXTRACT_MAINTAIN_QUALITY else "❌ Disabled"
+        maintain_quality = (
+            "✅ Enabled" if Config.EXTRACT_MAINTAIN_QUALITY else "❌ Disabled"
+        )
 
         msg = f"""<b>Extract Settings</b> | State: {state}
 
@@ -2386,20 +2465,28 @@ Configure global compression settings that will be used when user settings are n
             elif setting.startswith("CONVERT_SUBTITLE_"):
                 display_name = (
                     "Subtitle "
-                    + setting.replace("CONVERT_SUBTITLE_", "").replace("_", " ").title()
+                    + setting.replace("CONVERT_SUBTITLE_", "")
+                    .replace("_", " ")
+                    .title()
                 )
             elif setting.startswith("CONVERT_DOCUMENT_"):
                 display_name = (
                     "Document "
-                    + setting.replace("CONVERT_DOCUMENT_", "").replace("_", " ").title()
+                    + setting.replace("CONVERT_DOCUMENT_", "")
+                    .replace("_", " ")
+                    .title()
                 )
             elif setting.startswith("CONVERT_ARCHIVE_"):
                 display_name = (
                     "Archive "
-                    + setting.replace("CONVERT_ARCHIVE_", "").replace("_", " ").title()
+                    + setting.replace("CONVERT_ARCHIVE_", "")
+                    .replace("_", " ")
+                    .title()
                 )
             else:
-                display_name = setting.replace("CONVERT_", "").replace("_", " ").title()
+                display_name = (
+                    setting.replace("CONVERT_", "").replace("_", " ").title()
+                )
 
             # For boolean settings, add toggle buttons
             if setting in [
@@ -2456,21 +2543,29 @@ Configure global compression settings that will be used when user settings are n
         # Get current convert settings
         convert_enabled = "✅ Enabled" if Config.CONVERT_ENABLED else "❌ Disabled"
         convert_priority = f"{Config.CONVERT_PRIORITY}"
-        convert_delete_original = "✅ Enabled" if Config.CONVERT_DELETE_ORIGINAL else "❌ Disabled"
+        convert_delete_original = (
+            "✅ Enabled" if Config.CONVERT_DELETE_ORIGINAL else "❌ Disabled"
+        )
 
         # Video settings
-        video_enabled = "✅ Enabled" if Config.CONVERT_VIDEO_ENABLED else "❌ Disabled"
+        video_enabled = (
+            "✅ Enabled" if Config.CONVERT_VIDEO_ENABLED else "❌ Disabled"
+        )
         video_format = Config.CONVERT_VIDEO_FORMAT
         video_codec = Config.CONVERT_VIDEO_CODEC
         video_quality = Config.CONVERT_VIDEO_QUALITY
         video_crf = Config.CONVERT_VIDEO_CRF
         video_preset = Config.CONVERT_VIDEO_PRESET
-        video_maintain_quality = "✅ Enabled" if Config.CONVERT_VIDEO_MAINTAIN_QUALITY else "❌ Disabled"
+        video_maintain_quality = (
+            "✅ Enabled" if Config.CONVERT_VIDEO_MAINTAIN_QUALITY else "❌ Disabled"
+        )
         video_resolution = Config.CONVERT_VIDEO_RESOLUTION
         video_fps = Config.CONVERT_VIDEO_FPS
 
         # Audio settings
-        audio_enabled = "✅ Enabled" if Config.CONVERT_AUDIO_ENABLED else "❌ Disabled"
+        audio_enabled = (
+            "✅ Enabled" if Config.CONVERT_AUDIO_ENABLED else "❌ Disabled"
+        )
         audio_format = Config.CONVERT_AUDIO_FORMAT
         audio_codec = Config.CONVERT_AUDIO_CODEC
         audio_bitrate = Config.CONVERT_AUDIO_BITRATE
@@ -2479,19 +2574,25 @@ Configure global compression settings that will be used when user settings are n
         audio_volume = Config.CONVERT_AUDIO_VOLUME
 
         # Subtitle settings
-        subtitle_enabled = "✅ Enabled" if Config.CONVERT_SUBTITLE_ENABLED else "❌ Disabled"
+        subtitle_enabled = (
+            "✅ Enabled" if Config.CONVERT_SUBTITLE_ENABLED else "❌ Disabled"
+        )
         subtitle_format = Config.CONVERT_SUBTITLE_FORMAT
         subtitle_encoding = Config.CONVERT_SUBTITLE_ENCODING
         subtitle_language = Config.CONVERT_SUBTITLE_LANGUAGE
 
         # Document settings
-        document_enabled = "✅ Enabled" if Config.CONVERT_DOCUMENT_ENABLED else "❌ Disabled"
+        document_enabled = (
+            "✅ Enabled" if Config.CONVERT_DOCUMENT_ENABLED else "❌ Disabled"
+        )
         document_format = Config.CONVERT_DOCUMENT_FORMAT
         document_quality = Config.CONVERT_DOCUMENT_QUALITY
         document_dpi = Config.CONVERT_DOCUMENT_DPI
 
         # Archive settings
-        archive_enabled = "✅ Enabled" if Config.CONVERT_ARCHIVE_ENABLED else "❌ Disabled"
+        archive_enabled = (
+            "✅ Enabled" if Config.CONVERT_ARCHIVE_ENABLED else "❌ Disabled"
+        )
         archive_format = Config.CONVERT_ARCHIVE_FORMAT
         archive_level = Config.CONVERT_ARCHIVE_LEVEL
         archive_method = Config.CONVERT_ARCHIVE_METHOD
@@ -2598,9 +2699,13 @@ Configure global convert settings that will be used when user settings are not a
             if setting == "METADATA_ALL":
                 display_name = "All Fields"
             elif setting.startswith("METADATA_VIDEO_"):
-                display_name = "Video " + setting.replace("METADATA_VIDEO_", "").title()
+                display_name = (
+                    "Video " + setting.replace("METADATA_VIDEO_", "").title()
+                )
             elif setting.startswith("METADATA_AUDIO_"):
-                display_name = "Audio " + setting.replace("METADATA_AUDIO_", "").title()
+                display_name = (
+                    "Audio " + setting.replace("METADATA_AUDIO_", "").title()
+                )
             elif setting.startswith("METADATA_SUBTITLE_"):
                 display_name = (
                     "Subtitle " + setting.replace("METADATA_SUBTITLE_", "").title()
@@ -2767,9 +2872,13 @@ Configure global metadata settings that will be used when user settings are not 
 
         # Add action buttons in a separate row
         if state == "view":
-            buttons.data_button("Edit", "botset edit mediatools_merge_config", "footer")
+            buttons.data_button(
+                "Edit", "botset edit mediatools_merge_config", "footer"
+            )
         else:
-            buttons.data_button("View", "botset view mediatools_merge_config", "footer")
+            buttons.data_button(
+                "View", "botset view mediatools_merge_config", "footer"
+            )
 
         # Add Default button
         buttons.data_button("Default", "botset default_merge_config", "footer")
@@ -2836,7 +2945,9 @@ Configure global metadata settings that will be used when user settings are not 
 
         # Document settings
         document_paper_size = Config.MERGE_DOCUMENT_PAPER_SIZE or "a4 (Default)"
-        document_orientation = Config.MERGE_DOCUMENT_ORIENTATION or "portrait (Default)"
+        document_orientation = (
+            Config.MERGE_DOCUMENT_ORIENTATION or "portrait (Default)"
+        )
         document_margin = Config.MERGE_DOCUMENT_MARGIN or "50 (Default)"
 
         # Metadata settings
@@ -2903,7 +3014,8 @@ Configure advanced merge settings that will be used when user settings are not a
         # Get the categories shown on the current page
         categories = []
         if any(
-            setting in formats for setting in merge_config_settings[start_idx:end_idx]
+            setting in formats
+            for setting in merge_config_settings[start_idx:end_idx]
         ):
             categories.append("Formats")
         if any(
@@ -2949,10 +3061,7 @@ Configure advanced merge settings that will be used when user settings are not a
     elif key in {"mediatools_merge", "mediatools_merge_config"}:
         # Build the menu with 2 columns for settings, 4 columns for action buttons, and 8 columns for pagination
         button = buttons.build_menu(2, 8, 4, 8)
-    elif key == "mediatools_watermark":
-        # Build the menu with 2 columns for settings
-        button = buttons.build_menu(2)
-    elif key == "mediatools_convert":
+    elif key in {"mediatools_watermark", "mediatools_convert"}:
         # Build the menu with 2 columns for settings
         button = buttons.build_menu(2)
     else:
@@ -3184,25 +3293,31 @@ async def edit_variable(_, message, pre_message, key):
     Config.set(key, value)
 
     # Determine which menu to return to based on the key
-    if (
-        key.startswith("WATERMARK_")
-        or key.startswith("AUDIO_WATERMARK_")
-        or key.startswith("SUBTITLE_WATERMARK_")
-    ):
+    if key.startswith(("WATERMARK_", "AUDIO_WATERMARK_", "SUBTITLE_WATERMARK_")):
         return_menu = "mediatools_watermark"
-        LOGGER.debug(f"edit_variable: Setting return_menu for {key} to {return_menu}")
+        LOGGER.debug(
+            f"edit_variable: Setting return_menu for {key} to {return_menu}"
+        )
     elif key.startswith("METADATA_"):
         return_menu = "mediatools_metadata"
-        LOGGER.debug(f"edit_variable: Setting return_menu for {key} to {return_menu}")
+        LOGGER.debug(
+            f"edit_variable: Setting return_menu for {key} to {return_menu}"
+        )
     elif key.startswith("CONVERT_"):
         return_menu = "mediatools_convert"
-        LOGGER.debug(f"edit_variable: Setting return_menu for {key} to {return_menu}")
+        LOGGER.debug(
+            f"edit_variable: Setting return_menu for {key} to {return_menu}"
+        )
     elif key.startswith("COMPRESSION_"):
         return_menu = "mediatools_compression"
-        LOGGER.debug(f"edit_variable: Setting return_menu for {key} to {return_menu}")
+        LOGGER.debug(
+            f"edit_variable: Setting return_menu for {key} to {return_menu}"
+        )
     elif key.startswith("TASK_MONITOR_"):
         return_menu = "taskmonitor"
-        LOGGER.debug(f"edit_variable: Setting return_menu for {key} to {return_menu}")
+        LOGGER.debug(
+            f"edit_variable: Setting return_menu for {key} to {return_menu}"
+        )
     elif key.startswith("MERGE_") or key in [
         "CONCAT_DEMUXER_ENABLED",
         "FILTER_COMPLEX_ENABLED",
@@ -3397,7 +3512,9 @@ async def update_private_file(_, message, pre_message):
         elif file_name in [".netrc", "netrc"]:
             await (await create_subprocess_exec("touch", ".netrc")).wait()
             await (await create_subprocess_exec("chmod", "600", ".netrc")).wait()
-            await (await create_subprocess_exec("cp", ".netrc", "/root/.netrc")).wait()
+            await (
+                await create_subprocess_exec("cp", ".netrc", "/root/.netrc")
+            ).wait()
         await delete_message(message)
     elif doc := message.document:
         file_name = doc.file_name
@@ -3446,7 +3563,9 @@ async def update_private_file(_, message, pre_message):
                 await rename("netrc", ".netrc")
                 file_name = ".netrc"
             await (await create_subprocess_exec("chmod", "600", ".netrc")).wait()
-            await (await create_subprocess_exec("cp", ".netrc", "/root/.netrc")).wait()
+            await (
+                await create_subprocess_exec("cp", ".netrc", "/root/.netrc")
+            ).wait()
         elif file_name == "config.py":
             await load_config()
         await delete_message(message)
@@ -3621,7 +3740,9 @@ async def edit_bot_settings(client, query):
         Config.COMPRESSION_PRIORITY = DEFAULT_VALUES["COMPRESSION_PRIORITY"]
 
         # Video compression settings
-        Config.COMPRESSION_VIDEO_ENABLED = DEFAULT_VALUES["COMPRESSION_VIDEO_ENABLED"]
+        Config.COMPRESSION_VIDEO_ENABLED = DEFAULT_VALUES[
+            "COMPRESSION_VIDEO_ENABLED"
+        ]
         Config.COMPRESSION_VIDEO_PRESET = DEFAULT_VALUES["COMPRESSION_VIDEO_PRESET"]
         Config.COMPRESSION_VIDEO_CRF = DEFAULT_VALUES["COMPRESSION_VIDEO_CRF"]
         Config.COMPRESSION_VIDEO_CODEC = DEFAULT_VALUES["COMPRESSION_VIDEO_CODEC"]
@@ -3631,16 +3752,26 @@ async def edit_bot_settings(client, query):
         ]
 
         # Audio compression settings
-        Config.COMPRESSION_AUDIO_ENABLED = DEFAULT_VALUES["COMPRESSION_AUDIO_ENABLED"]
+        Config.COMPRESSION_AUDIO_ENABLED = DEFAULT_VALUES[
+            "COMPRESSION_AUDIO_ENABLED"
+        ]
         Config.COMPRESSION_AUDIO_PRESET = DEFAULT_VALUES["COMPRESSION_AUDIO_PRESET"]
         Config.COMPRESSION_AUDIO_CODEC = DEFAULT_VALUES["COMPRESSION_AUDIO_CODEC"]
-        Config.COMPRESSION_AUDIO_BITRATE = DEFAULT_VALUES["COMPRESSION_AUDIO_BITRATE"]
-        Config.COMPRESSION_AUDIO_CHANNELS = DEFAULT_VALUES["COMPRESSION_AUDIO_CHANNELS"]
+        Config.COMPRESSION_AUDIO_BITRATE = DEFAULT_VALUES[
+            "COMPRESSION_AUDIO_BITRATE"
+        ]
+        Config.COMPRESSION_AUDIO_CHANNELS = DEFAULT_VALUES[
+            "COMPRESSION_AUDIO_CHANNELS"
+        ]
 
         # Image compression settings
-        Config.COMPRESSION_IMAGE_ENABLED = DEFAULT_VALUES["COMPRESSION_IMAGE_ENABLED"]
+        Config.COMPRESSION_IMAGE_ENABLED = DEFAULT_VALUES[
+            "COMPRESSION_IMAGE_ENABLED"
+        ]
         Config.COMPRESSION_IMAGE_PRESET = DEFAULT_VALUES["COMPRESSION_IMAGE_PRESET"]
-        Config.COMPRESSION_IMAGE_QUALITY = DEFAULT_VALUES["COMPRESSION_IMAGE_QUALITY"]
+        Config.COMPRESSION_IMAGE_QUALITY = DEFAULT_VALUES[
+            "COMPRESSION_IMAGE_QUALITY"
+        ]
         Config.COMPRESSION_IMAGE_RESIZE = DEFAULT_VALUES["COMPRESSION_IMAGE_RESIZE"]
 
         # Document compression settings
@@ -3667,9 +3798,15 @@ async def edit_bot_settings(client, query):
         Config.COMPRESSION_ARCHIVE_ENABLED = DEFAULT_VALUES[
             "COMPRESSION_ARCHIVE_ENABLED"
         ]
-        Config.COMPRESSION_ARCHIVE_PRESET = DEFAULT_VALUES["COMPRESSION_ARCHIVE_PRESET"]
-        Config.COMPRESSION_ARCHIVE_LEVEL = DEFAULT_VALUES["COMPRESSION_ARCHIVE_LEVEL"]
-        Config.COMPRESSION_ARCHIVE_METHOD = DEFAULT_VALUES["COMPRESSION_ARCHIVE_METHOD"]
+        Config.COMPRESSION_ARCHIVE_PRESET = DEFAULT_VALUES[
+            "COMPRESSION_ARCHIVE_PRESET"
+        ]
+        Config.COMPRESSION_ARCHIVE_LEVEL = DEFAULT_VALUES[
+            "COMPRESSION_ARCHIVE_LEVEL"
+        ]
+        Config.COMPRESSION_ARCHIVE_METHOD = DEFAULT_VALUES[
+            "COMPRESSION_ARCHIVE_METHOD"
+        ]
 
         # Update the database
         await database.update_config(
@@ -3681,7 +3818,9 @@ async def edit_bot_settings(client, query):
                 "COMPRESSION_VIDEO_ENABLED": DEFAULT_VALUES[
                     "COMPRESSION_VIDEO_ENABLED"
                 ],
-                "COMPRESSION_VIDEO_PRESET": DEFAULT_VALUES["COMPRESSION_VIDEO_PRESET"],
+                "COMPRESSION_VIDEO_PRESET": DEFAULT_VALUES[
+                    "COMPRESSION_VIDEO_PRESET"
+                ],
                 "COMPRESSION_VIDEO_CRF": DEFAULT_VALUES["COMPRESSION_VIDEO_CRF"],
                 "COMPRESSION_VIDEO_CODEC": DEFAULT_VALUES["COMPRESSION_VIDEO_CODEC"],
                 "COMPRESSION_VIDEO_TUNE": DEFAULT_VALUES["COMPRESSION_VIDEO_TUNE"],
@@ -3692,7 +3831,9 @@ async def edit_bot_settings(client, query):
                 "COMPRESSION_AUDIO_ENABLED": DEFAULT_VALUES[
                     "COMPRESSION_AUDIO_ENABLED"
                 ],
-                "COMPRESSION_AUDIO_PRESET": DEFAULT_VALUES["COMPRESSION_AUDIO_PRESET"],
+                "COMPRESSION_AUDIO_PRESET": DEFAULT_VALUES[
+                    "COMPRESSION_AUDIO_PRESET"
+                ],
                 "COMPRESSION_AUDIO_CODEC": DEFAULT_VALUES["COMPRESSION_AUDIO_CODEC"],
                 "COMPRESSION_AUDIO_BITRATE": DEFAULT_VALUES[
                     "COMPRESSION_AUDIO_BITRATE"
@@ -3704,11 +3845,15 @@ async def edit_bot_settings(client, query):
                 "COMPRESSION_IMAGE_ENABLED": DEFAULT_VALUES[
                     "COMPRESSION_IMAGE_ENABLED"
                 ],
-                "COMPRESSION_IMAGE_PRESET": DEFAULT_VALUES["COMPRESSION_IMAGE_PRESET"],
+                "COMPRESSION_IMAGE_PRESET": DEFAULT_VALUES[
+                    "COMPRESSION_IMAGE_PRESET"
+                ],
                 "COMPRESSION_IMAGE_QUALITY": DEFAULT_VALUES[
                     "COMPRESSION_IMAGE_QUALITY"
                 ],
-                "COMPRESSION_IMAGE_RESIZE": DEFAULT_VALUES["COMPRESSION_IMAGE_RESIZE"],
+                "COMPRESSION_IMAGE_RESIZE": DEFAULT_VALUES[
+                    "COMPRESSION_IMAGE_RESIZE"
+                ],
                 # Document compression settings
                 "COMPRESSION_DOCUMENT_ENABLED": DEFAULT_VALUES[
                     "COMPRESSION_DOCUMENT_ENABLED"
@@ -3716,7 +3861,9 @@ async def edit_bot_settings(client, query):
                 "COMPRESSION_DOCUMENT_PRESET": DEFAULT_VALUES[
                     "COMPRESSION_DOCUMENT_PRESET"
                 ],
-                "COMPRESSION_DOCUMENT_DPI": DEFAULT_VALUES["COMPRESSION_DOCUMENT_DPI"],
+                "COMPRESSION_DOCUMENT_DPI": DEFAULT_VALUES[
+                    "COMPRESSION_DOCUMENT_DPI"
+                ],
                 # Subtitle compression settings
                 "COMPRESSION_SUBTITLE_ENABLED": DEFAULT_VALUES[
                     "COMPRESSION_SUBTITLE_ENABLED"
@@ -3757,7 +3904,9 @@ async def edit_bot_settings(client, query):
         # Video extract settings
         Config.EXTRACT_VIDEO_ENABLED = DEFAULT_VALUES["EXTRACT_VIDEO_ENABLED"]
         Config.EXTRACT_VIDEO_CODEC = DEFAULT_VALUES["EXTRACT_VIDEO_CODEC"]
-        Config.EXTRACT_VIDEO_FORMAT = DEFAULT_VALUES.get("EXTRACT_VIDEO_FORMAT", "none")
+        Config.EXTRACT_VIDEO_FORMAT = DEFAULT_VALUES.get(
+            "EXTRACT_VIDEO_FORMAT", "none"
+        )
         Config.EXTRACT_VIDEO_INDEX = DEFAULT_VALUES["EXTRACT_VIDEO_INDEX"]
         Config.EXTRACT_VIDEO_QUALITY = DEFAULT_VALUES["EXTRACT_VIDEO_QUALITY"]
         Config.EXTRACT_VIDEO_PRESET = DEFAULT_VALUES["EXTRACT_VIDEO_PRESET"]
@@ -3768,7 +3917,9 @@ async def edit_bot_settings(client, query):
         # Audio extract settings
         Config.EXTRACT_AUDIO_ENABLED = DEFAULT_VALUES["EXTRACT_AUDIO_ENABLED"]
         Config.EXTRACT_AUDIO_CODEC = DEFAULT_VALUES["EXTRACT_AUDIO_CODEC"]
-        Config.EXTRACT_AUDIO_FORMAT = DEFAULT_VALUES.get("EXTRACT_AUDIO_FORMAT", "none")
+        Config.EXTRACT_AUDIO_FORMAT = DEFAULT_VALUES.get(
+            "EXTRACT_AUDIO_FORMAT", "none"
+        )
         Config.EXTRACT_AUDIO_INDEX = DEFAULT_VALUES["EXTRACT_AUDIO_INDEX"]
         Config.EXTRACT_AUDIO_BITRATE = DEFAULT_VALUES["EXTRACT_AUDIO_BITRATE"]
         Config.EXTRACT_AUDIO_CHANNELS = DEFAULT_VALUES["EXTRACT_AUDIO_CHANNELS"]
@@ -3778,18 +3929,32 @@ async def edit_bot_settings(client, query):
         # Subtitle extract settings
         Config.EXTRACT_SUBTITLE_ENABLED = DEFAULT_VALUES["EXTRACT_SUBTITLE_ENABLED"]
         Config.EXTRACT_SUBTITLE_CODEC = DEFAULT_VALUES["EXTRACT_SUBTITLE_CODEC"]
-        Config.EXTRACT_SUBTITLE_FORMAT = DEFAULT_VALUES.get("EXTRACT_SUBTITLE_FORMAT", "none")
+        Config.EXTRACT_SUBTITLE_FORMAT = DEFAULT_VALUES.get(
+            "EXTRACT_SUBTITLE_FORMAT", "none"
+        )
         Config.EXTRACT_SUBTITLE_INDEX = DEFAULT_VALUES["EXTRACT_SUBTITLE_INDEX"]
-        Config.EXTRACT_SUBTITLE_LANGUAGE = DEFAULT_VALUES["EXTRACT_SUBTITLE_LANGUAGE"]
-        Config.EXTRACT_SUBTITLE_ENCODING = DEFAULT_VALUES["EXTRACT_SUBTITLE_ENCODING"]
+        Config.EXTRACT_SUBTITLE_LANGUAGE = DEFAULT_VALUES[
+            "EXTRACT_SUBTITLE_LANGUAGE"
+        ]
+        Config.EXTRACT_SUBTITLE_ENCODING = DEFAULT_VALUES[
+            "EXTRACT_SUBTITLE_ENCODING"
+        ]
         Config.EXTRACT_SUBTITLE_FONT = DEFAULT_VALUES["EXTRACT_SUBTITLE_FONT"]
-        Config.EXTRACT_SUBTITLE_FONT_SIZE = DEFAULT_VALUES["EXTRACT_SUBTITLE_FONT_SIZE"]
+        Config.EXTRACT_SUBTITLE_FONT_SIZE = DEFAULT_VALUES[
+            "EXTRACT_SUBTITLE_FONT_SIZE"
+        ]
 
         # Attachment extract settings
-        Config.EXTRACT_ATTACHMENT_ENABLED = DEFAULT_VALUES["EXTRACT_ATTACHMENT_ENABLED"]
-        Config.EXTRACT_ATTACHMENT_FORMAT = DEFAULT_VALUES.get("EXTRACT_ATTACHMENT_FORMAT", "none")
+        Config.EXTRACT_ATTACHMENT_ENABLED = DEFAULT_VALUES[
+            "EXTRACT_ATTACHMENT_ENABLED"
+        ]
+        Config.EXTRACT_ATTACHMENT_FORMAT = DEFAULT_VALUES.get(
+            "EXTRACT_ATTACHMENT_FORMAT", "none"
+        )
         Config.EXTRACT_ATTACHMENT_INDEX = DEFAULT_VALUES["EXTRACT_ATTACHMENT_INDEX"]
-        Config.EXTRACT_ATTACHMENT_FILTER = DEFAULT_VALUES["EXTRACT_ATTACHMENT_FILTER"]
+        Config.EXTRACT_ATTACHMENT_FILTER = DEFAULT_VALUES[
+            "EXTRACT_ATTACHMENT_FILTER"
+        ]
 
         # Quality settings
         Config.EXTRACT_MAINTAIN_QUALITY = DEFAULT_VALUES["EXTRACT_MAINTAIN_QUALITY"]
@@ -3801,46 +3966,67 @@ async def edit_bot_settings(client, query):
                 "EXTRACT_ENABLED": DEFAULT_VALUES["EXTRACT_ENABLED"],
                 "EXTRACT_PRIORITY": DEFAULT_VALUES["EXTRACT_PRIORITY"],
                 "EXTRACT_DELETE_ORIGINAL": DEFAULT_VALUES["EXTRACT_DELETE_ORIGINAL"],
-
                 # Video extract settings
                 "EXTRACT_VIDEO_ENABLED": DEFAULT_VALUES["EXTRACT_VIDEO_ENABLED"],
                 "EXTRACT_VIDEO_CODEC": DEFAULT_VALUES["EXTRACT_VIDEO_CODEC"],
-                "EXTRACT_VIDEO_FORMAT": DEFAULT_VALUES.get("EXTRACT_VIDEO_FORMAT", "none"),
+                "EXTRACT_VIDEO_FORMAT": DEFAULT_VALUES.get(
+                    "EXTRACT_VIDEO_FORMAT", "none"
+                ),
                 "EXTRACT_VIDEO_INDEX": DEFAULT_VALUES["EXTRACT_VIDEO_INDEX"],
                 "EXTRACT_VIDEO_QUALITY": DEFAULT_VALUES["EXTRACT_VIDEO_QUALITY"],
                 "EXTRACT_VIDEO_PRESET": DEFAULT_VALUES["EXTRACT_VIDEO_PRESET"],
                 "EXTRACT_VIDEO_BITRATE": DEFAULT_VALUES["EXTRACT_VIDEO_BITRATE"],
-                "EXTRACT_VIDEO_RESOLUTION": DEFAULT_VALUES["EXTRACT_VIDEO_RESOLUTION"],
+                "EXTRACT_VIDEO_RESOLUTION": DEFAULT_VALUES[
+                    "EXTRACT_VIDEO_RESOLUTION"
+                ],
                 "EXTRACT_VIDEO_FPS": DEFAULT_VALUES["EXTRACT_VIDEO_FPS"],
-
                 # Audio extract settings
                 "EXTRACT_AUDIO_ENABLED": DEFAULT_VALUES["EXTRACT_AUDIO_ENABLED"],
                 "EXTRACT_AUDIO_CODEC": DEFAULT_VALUES["EXTRACT_AUDIO_CODEC"],
-                "EXTRACT_AUDIO_FORMAT": DEFAULT_VALUES.get("EXTRACT_AUDIO_FORMAT", "none"),
+                "EXTRACT_AUDIO_FORMAT": DEFAULT_VALUES.get(
+                    "EXTRACT_AUDIO_FORMAT", "none"
+                ),
                 "EXTRACT_AUDIO_INDEX": DEFAULT_VALUES["EXTRACT_AUDIO_INDEX"],
                 "EXTRACT_AUDIO_BITRATE": DEFAULT_VALUES["EXTRACT_AUDIO_BITRATE"],
                 "EXTRACT_AUDIO_CHANNELS": DEFAULT_VALUES["EXTRACT_AUDIO_CHANNELS"],
                 "EXTRACT_AUDIO_SAMPLING": DEFAULT_VALUES["EXTRACT_AUDIO_SAMPLING"],
                 "EXTRACT_AUDIO_VOLUME": DEFAULT_VALUES["EXTRACT_AUDIO_VOLUME"],
-
                 # Subtitle extract settings
-                "EXTRACT_SUBTITLE_ENABLED": DEFAULT_VALUES["EXTRACT_SUBTITLE_ENABLED"],
+                "EXTRACT_SUBTITLE_ENABLED": DEFAULT_VALUES[
+                    "EXTRACT_SUBTITLE_ENABLED"
+                ],
                 "EXTRACT_SUBTITLE_CODEC": DEFAULT_VALUES["EXTRACT_SUBTITLE_CODEC"],
-                "EXTRACT_SUBTITLE_FORMAT": DEFAULT_VALUES.get("EXTRACT_SUBTITLE_FORMAT", "none"),
+                "EXTRACT_SUBTITLE_FORMAT": DEFAULT_VALUES.get(
+                    "EXTRACT_SUBTITLE_FORMAT", "none"
+                ),
                 "EXTRACT_SUBTITLE_INDEX": DEFAULT_VALUES["EXTRACT_SUBTITLE_INDEX"],
-                "EXTRACT_SUBTITLE_LANGUAGE": DEFAULT_VALUES["EXTRACT_SUBTITLE_LANGUAGE"],
-                "EXTRACT_SUBTITLE_ENCODING": DEFAULT_VALUES["EXTRACT_SUBTITLE_ENCODING"],
+                "EXTRACT_SUBTITLE_LANGUAGE": DEFAULT_VALUES[
+                    "EXTRACT_SUBTITLE_LANGUAGE"
+                ],
+                "EXTRACT_SUBTITLE_ENCODING": DEFAULT_VALUES[
+                    "EXTRACT_SUBTITLE_ENCODING"
+                ],
                 "EXTRACT_SUBTITLE_FONT": DEFAULT_VALUES["EXTRACT_SUBTITLE_FONT"],
-                "EXTRACT_SUBTITLE_FONT_SIZE": DEFAULT_VALUES["EXTRACT_SUBTITLE_FONT_SIZE"],
-
+                "EXTRACT_SUBTITLE_FONT_SIZE": DEFAULT_VALUES[
+                    "EXTRACT_SUBTITLE_FONT_SIZE"
+                ],
                 # Attachment extract settings
-                "EXTRACT_ATTACHMENT_ENABLED": DEFAULT_VALUES["EXTRACT_ATTACHMENT_ENABLED"],
-                "EXTRACT_ATTACHMENT_FORMAT": DEFAULT_VALUES.get("EXTRACT_ATTACHMENT_FORMAT", "none"),
-                "EXTRACT_ATTACHMENT_INDEX": DEFAULT_VALUES["EXTRACT_ATTACHMENT_INDEX"],
-                "EXTRACT_ATTACHMENT_FILTER": DEFAULT_VALUES["EXTRACT_ATTACHMENT_FILTER"],
-
+                "EXTRACT_ATTACHMENT_ENABLED": DEFAULT_VALUES[
+                    "EXTRACT_ATTACHMENT_ENABLED"
+                ],
+                "EXTRACT_ATTACHMENT_FORMAT": DEFAULT_VALUES.get(
+                    "EXTRACT_ATTACHMENT_FORMAT", "none"
+                ),
+                "EXTRACT_ATTACHMENT_INDEX": DEFAULT_VALUES[
+                    "EXTRACT_ATTACHMENT_INDEX"
+                ],
+                "EXTRACT_ATTACHMENT_FILTER": DEFAULT_VALUES[
+                    "EXTRACT_ATTACHMENT_FILTER"
+                ],
                 # Quality settings
-                "EXTRACT_MAINTAIN_QUALITY": DEFAULT_VALUES["EXTRACT_MAINTAIN_QUALITY"],
+                "EXTRACT_MAINTAIN_QUALITY": DEFAULT_VALUES[
+                    "EXTRACT_MAINTAIN_QUALITY"
+                ],
             }
         )
         # Update the UI - pass the current state to maintain edit/view mode
@@ -3943,10 +4129,14 @@ async def edit_bot_settings(client, query):
         Config.CONVERT_VIDEO_QUALITY = DEFAULT_VALUES["CONVERT_VIDEO_QUALITY"]
         Config.CONVERT_VIDEO_CRF = DEFAULT_VALUES["CONVERT_VIDEO_CRF"]
         Config.CONVERT_VIDEO_PRESET = DEFAULT_VALUES["CONVERT_VIDEO_PRESET"]
-        Config.CONVERT_VIDEO_MAINTAIN_QUALITY = DEFAULT_VALUES["CONVERT_VIDEO_MAINTAIN_QUALITY"]
+        Config.CONVERT_VIDEO_MAINTAIN_QUALITY = DEFAULT_VALUES[
+            "CONVERT_VIDEO_MAINTAIN_QUALITY"
+        ]
         Config.CONVERT_VIDEO_RESOLUTION = DEFAULT_VALUES["CONVERT_VIDEO_RESOLUTION"]
         Config.CONVERT_VIDEO_FPS = DEFAULT_VALUES["CONVERT_VIDEO_FPS"]
-        Config.CONVERT_VIDEO_DELETE_ORIGINAL = DEFAULT_VALUES["CONVERT_VIDEO_DELETE_ORIGINAL"]
+        Config.CONVERT_VIDEO_DELETE_ORIGINAL = DEFAULT_VALUES[
+            "CONVERT_VIDEO_DELETE_ORIGINAL"
+        ]
 
         # Audio convert settings
         Config.CONVERT_AUDIO_ENABLED = DEFAULT_VALUES["CONVERT_AUDIO_ENABLED"]
@@ -3956,28 +4146,40 @@ async def edit_bot_settings(client, query):
         Config.CONVERT_AUDIO_CHANNELS = DEFAULT_VALUES["CONVERT_AUDIO_CHANNELS"]
         Config.CONVERT_AUDIO_SAMPLING = DEFAULT_VALUES["CONVERT_AUDIO_SAMPLING"]
         Config.CONVERT_AUDIO_VOLUME = DEFAULT_VALUES["CONVERT_AUDIO_VOLUME"]
-        Config.CONVERT_AUDIO_DELETE_ORIGINAL = DEFAULT_VALUES["CONVERT_AUDIO_DELETE_ORIGINAL"]
+        Config.CONVERT_AUDIO_DELETE_ORIGINAL = DEFAULT_VALUES[
+            "CONVERT_AUDIO_DELETE_ORIGINAL"
+        ]
 
         # Subtitle convert settings
         Config.CONVERT_SUBTITLE_ENABLED = DEFAULT_VALUES["CONVERT_SUBTITLE_ENABLED"]
         Config.CONVERT_SUBTITLE_FORMAT = DEFAULT_VALUES["CONVERT_SUBTITLE_FORMAT"]
-        Config.CONVERT_SUBTITLE_ENCODING = DEFAULT_VALUES["CONVERT_SUBTITLE_ENCODING"]
-        Config.CONVERT_SUBTITLE_LANGUAGE = DEFAULT_VALUES["CONVERT_SUBTITLE_LANGUAGE"]
-        Config.CONVERT_SUBTITLE_DELETE_ORIGINAL = DEFAULT_VALUES["CONVERT_SUBTITLE_DELETE_ORIGINAL"]
+        Config.CONVERT_SUBTITLE_ENCODING = DEFAULT_VALUES[
+            "CONVERT_SUBTITLE_ENCODING"
+        ]
+        Config.CONVERT_SUBTITLE_LANGUAGE = DEFAULT_VALUES[
+            "CONVERT_SUBTITLE_LANGUAGE"
+        ]
+        Config.CONVERT_SUBTITLE_DELETE_ORIGINAL = DEFAULT_VALUES[
+            "CONVERT_SUBTITLE_DELETE_ORIGINAL"
+        ]
 
         # Document convert settings
         Config.CONVERT_DOCUMENT_ENABLED = DEFAULT_VALUES["CONVERT_DOCUMENT_ENABLED"]
         Config.CONVERT_DOCUMENT_FORMAT = DEFAULT_VALUES["CONVERT_DOCUMENT_FORMAT"]
         Config.CONVERT_DOCUMENT_QUALITY = DEFAULT_VALUES["CONVERT_DOCUMENT_QUALITY"]
         Config.CONVERT_DOCUMENT_DPI = DEFAULT_VALUES["CONVERT_DOCUMENT_DPI"]
-        Config.CONVERT_DOCUMENT_DELETE_ORIGINAL = DEFAULT_VALUES["CONVERT_DOCUMENT_DELETE_ORIGINAL"]
+        Config.CONVERT_DOCUMENT_DELETE_ORIGINAL = DEFAULT_VALUES[
+            "CONVERT_DOCUMENT_DELETE_ORIGINAL"
+        ]
 
         # Archive convert settings
         Config.CONVERT_ARCHIVE_ENABLED = DEFAULT_VALUES["CONVERT_ARCHIVE_ENABLED"]
         Config.CONVERT_ARCHIVE_FORMAT = DEFAULT_VALUES["CONVERT_ARCHIVE_FORMAT"]
         Config.CONVERT_ARCHIVE_LEVEL = DEFAULT_VALUES["CONVERT_ARCHIVE_LEVEL"]
         Config.CONVERT_ARCHIVE_METHOD = DEFAULT_VALUES["CONVERT_ARCHIVE_METHOD"]
-        Config.CONVERT_ARCHIVE_DELETE_ORIGINAL = DEFAULT_VALUES["CONVERT_ARCHIVE_DELETE_ORIGINAL"]
+        Config.CONVERT_ARCHIVE_DELETE_ORIGINAL = DEFAULT_VALUES[
+            "CONVERT_ARCHIVE_DELETE_ORIGINAL"
+        ]
 
         # Update the database
         await database.update_config(
@@ -3986,7 +4188,6 @@ async def edit_bot_settings(client, query):
                 "CONVERT_ENABLED": DEFAULT_VALUES["CONVERT_ENABLED"],
                 "CONVERT_PRIORITY": DEFAULT_VALUES["CONVERT_PRIORITY"],
                 "CONVERT_DELETE_ORIGINAL": DEFAULT_VALUES["CONVERT_DELETE_ORIGINAL"],
-
                 # Video convert settings
                 "CONVERT_VIDEO_ENABLED": DEFAULT_VALUES["CONVERT_VIDEO_ENABLED"],
                 "CONVERT_VIDEO_FORMAT": DEFAULT_VALUES["CONVERT_VIDEO_FORMAT"],
@@ -3994,11 +4195,16 @@ async def edit_bot_settings(client, query):
                 "CONVERT_VIDEO_QUALITY": DEFAULT_VALUES["CONVERT_VIDEO_QUALITY"],
                 "CONVERT_VIDEO_CRF": DEFAULT_VALUES["CONVERT_VIDEO_CRF"],
                 "CONVERT_VIDEO_PRESET": DEFAULT_VALUES["CONVERT_VIDEO_PRESET"],
-                "CONVERT_VIDEO_MAINTAIN_QUALITY": DEFAULT_VALUES["CONVERT_VIDEO_MAINTAIN_QUALITY"],
-                "CONVERT_VIDEO_RESOLUTION": DEFAULT_VALUES["CONVERT_VIDEO_RESOLUTION"],
+                "CONVERT_VIDEO_MAINTAIN_QUALITY": DEFAULT_VALUES[
+                    "CONVERT_VIDEO_MAINTAIN_QUALITY"
+                ],
+                "CONVERT_VIDEO_RESOLUTION": DEFAULT_VALUES[
+                    "CONVERT_VIDEO_RESOLUTION"
+                ],
                 "CONVERT_VIDEO_FPS": DEFAULT_VALUES["CONVERT_VIDEO_FPS"],
-                "CONVERT_VIDEO_DELETE_ORIGINAL": DEFAULT_VALUES["CONVERT_VIDEO_DELETE_ORIGINAL"],
-
+                "CONVERT_VIDEO_DELETE_ORIGINAL": DEFAULT_VALUES[
+                    "CONVERT_VIDEO_DELETE_ORIGINAL"
+                ],
                 # Audio convert settings
                 "CONVERT_AUDIO_ENABLED": DEFAULT_VALUES["CONVERT_AUDIO_ENABLED"],
                 "CONVERT_AUDIO_FORMAT": DEFAULT_VALUES["CONVERT_AUDIO_FORMAT"],
@@ -4007,28 +4213,43 @@ async def edit_bot_settings(client, query):
                 "CONVERT_AUDIO_CHANNELS": DEFAULT_VALUES["CONVERT_AUDIO_CHANNELS"],
                 "CONVERT_AUDIO_SAMPLING": DEFAULT_VALUES["CONVERT_AUDIO_SAMPLING"],
                 "CONVERT_AUDIO_VOLUME": DEFAULT_VALUES["CONVERT_AUDIO_VOLUME"],
-                "CONVERT_AUDIO_DELETE_ORIGINAL": DEFAULT_VALUES["CONVERT_AUDIO_DELETE_ORIGINAL"],
-
+                "CONVERT_AUDIO_DELETE_ORIGINAL": DEFAULT_VALUES[
+                    "CONVERT_AUDIO_DELETE_ORIGINAL"
+                ],
                 # Subtitle convert settings
-                "CONVERT_SUBTITLE_ENABLED": DEFAULT_VALUES["CONVERT_SUBTITLE_ENABLED"],
+                "CONVERT_SUBTITLE_ENABLED": DEFAULT_VALUES[
+                    "CONVERT_SUBTITLE_ENABLED"
+                ],
                 "CONVERT_SUBTITLE_FORMAT": DEFAULT_VALUES["CONVERT_SUBTITLE_FORMAT"],
-                "CONVERT_SUBTITLE_ENCODING": DEFAULT_VALUES["CONVERT_SUBTITLE_ENCODING"],
-                "CONVERT_SUBTITLE_LANGUAGE": DEFAULT_VALUES["CONVERT_SUBTITLE_LANGUAGE"],
-                "CONVERT_SUBTITLE_DELETE_ORIGINAL": DEFAULT_VALUES["CONVERT_SUBTITLE_DELETE_ORIGINAL"],
-
+                "CONVERT_SUBTITLE_ENCODING": DEFAULT_VALUES[
+                    "CONVERT_SUBTITLE_ENCODING"
+                ],
+                "CONVERT_SUBTITLE_LANGUAGE": DEFAULT_VALUES[
+                    "CONVERT_SUBTITLE_LANGUAGE"
+                ],
+                "CONVERT_SUBTITLE_DELETE_ORIGINAL": DEFAULT_VALUES[
+                    "CONVERT_SUBTITLE_DELETE_ORIGINAL"
+                ],
                 # Document convert settings
-                "CONVERT_DOCUMENT_ENABLED": DEFAULT_VALUES["CONVERT_DOCUMENT_ENABLED"],
+                "CONVERT_DOCUMENT_ENABLED": DEFAULT_VALUES[
+                    "CONVERT_DOCUMENT_ENABLED"
+                ],
                 "CONVERT_DOCUMENT_FORMAT": DEFAULT_VALUES["CONVERT_DOCUMENT_FORMAT"],
-                "CONVERT_DOCUMENT_QUALITY": DEFAULT_VALUES["CONVERT_DOCUMENT_QUALITY"],
+                "CONVERT_DOCUMENT_QUALITY": DEFAULT_VALUES[
+                    "CONVERT_DOCUMENT_QUALITY"
+                ],
                 "CONVERT_DOCUMENT_DPI": DEFAULT_VALUES["CONVERT_DOCUMENT_DPI"],
-                "CONVERT_DOCUMENT_DELETE_ORIGINAL": DEFAULT_VALUES["CONVERT_DOCUMENT_DELETE_ORIGINAL"],
-
+                "CONVERT_DOCUMENT_DELETE_ORIGINAL": DEFAULT_VALUES[
+                    "CONVERT_DOCUMENT_DELETE_ORIGINAL"
+                ],
                 # Archive convert settings
                 "CONVERT_ARCHIVE_ENABLED": DEFAULT_VALUES["CONVERT_ARCHIVE_ENABLED"],
                 "CONVERT_ARCHIVE_FORMAT": DEFAULT_VALUES["CONVERT_ARCHIVE_FORMAT"],
                 "CONVERT_ARCHIVE_LEVEL": DEFAULT_VALUES["CONVERT_ARCHIVE_LEVEL"],
                 "CONVERT_ARCHIVE_METHOD": DEFAULT_VALUES["CONVERT_ARCHIVE_METHOD"],
-                "CONVERT_ARCHIVE_DELETE_ORIGINAL": DEFAULT_VALUES["CONVERT_ARCHIVE_DELETE_ORIGINAL"],
+                "CONVERT_ARCHIVE_DELETE_ORIGINAL": DEFAULT_VALUES[
+                    "CONVERT_ARCHIVE_DELETE_ORIGINAL"
+                ],
             }
         )
         # Update the UI - pass the current state to maintain edit/view mode
@@ -4093,7 +4314,9 @@ async def edit_bot_settings(client, query):
         Config.TASK_MONITOR_ELAPSED_THRESHOLD = DEFAULT_VALUES[
             "TASK_MONITOR_ELAPSED_THRESHOLD"
         ]
-        Config.TASK_MONITOR_ETA_THRESHOLD = DEFAULT_VALUES["TASK_MONITOR_ETA_THRESHOLD"]
+        Config.TASK_MONITOR_ETA_THRESHOLD = DEFAULT_VALUES[
+            "TASK_MONITOR_ETA_THRESHOLD"
+        ]
         Config.TASK_MONITOR_WAIT_TIME = DEFAULT_VALUES["TASK_MONITOR_WAIT_TIME"]
         Config.TASK_MONITOR_COMPLETION_THRESHOLD = DEFAULT_VALUES[
             "TASK_MONITOR_COMPLETION_THRESHOLD"
@@ -4125,7 +4348,9 @@ async def edit_bot_settings(client, query):
                 ],
                 "TASK_MONITOR_CPU_HIGH": DEFAULT_VALUES["TASK_MONITOR_CPU_HIGH"],
                 "TASK_MONITOR_CPU_LOW": DEFAULT_VALUES["TASK_MONITOR_CPU_LOW"],
-                "TASK_MONITOR_MEMORY_HIGH": DEFAULT_VALUES["TASK_MONITOR_MEMORY_HIGH"],
+                "TASK_MONITOR_MEMORY_HIGH": DEFAULT_VALUES[
+                    "TASK_MONITOR_MEMORY_HIGH"
+                ],
                 "TASK_MONITOR_MEMORY_LOW": DEFAULT_VALUES["TASK_MONITOR_MEMORY_LOW"],
             }
         )
@@ -4571,7 +4796,9 @@ async def edit_bot_settings(client, query):
             )
             rfunc = partial(update_buttons, message, "mediatools_metadata")
         elif data[2].startswith("CONVERT_"):
-            LOGGER.debug(f"Setting return function for {data[2]} to mediatools_convert")
+            LOGGER.debug(
+                f"Setting return function for {data[2]} to mediatools_convert"
+            )
             rfunc = partial(update_buttons, message, "mediatools_convert")
         elif data[2].startswith("COMPRESSION_"):
             LOGGER.debug(
@@ -4582,7 +4809,9 @@ async def edit_bot_settings(client, query):
             LOGGER.debug(f"Setting return function for {data[2]} to mediatools_trim")
             rfunc = partial(update_buttons, message, "mediatools_trim")
         elif data[2].startswith("EXTRACT_"):
-            LOGGER.debug(f"Setting return function for {data[2]} to mediatools_extract")
+            LOGGER.debug(
+                f"Setting return function for {data[2]} to mediatools_extract"
+            )
             rfunc = partial(update_buttons, message, "mediatools_extract")
         elif data[2].startswith("TASK_MONITOR_"):
             LOGGER.debug(f"Setting return function for {data[2]} to taskmonitor")
@@ -4639,7 +4868,9 @@ async def edit_bot_settings(client, query):
         Config.TASK_MONITOR_ELAPSED_THRESHOLD = DEFAULT_VALUES[
             "TASK_MONITOR_ELAPSED_THRESHOLD"
         ]
-        Config.TASK_MONITOR_ETA_THRESHOLD = DEFAULT_VALUES["TASK_MONITOR_ETA_THRESHOLD"]
+        Config.TASK_MONITOR_ETA_THRESHOLD = DEFAULT_VALUES[
+            "TASK_MONITOR_ETA_THRESHOLD"
+        ]
         Config.TASK_MONITOR_WAIT_TIME = DEFAULT_VALUES["TASK_MONITOR_WAIT_TIME"]
         Config.TASK_MONITOR_COMPLETION_THRESHOLD = DEFAULT_VALUES[
             "TASK_MONITOR_COMPLETION_THRESHOLD"
@@ -4672,7 +4903,9 @@ async def edit_bot_settings(client, query):
                 ],
                 "TASK_MONITOR_CPU_HIGH": DEFAULT_VALUES["TASK_MONITOR_CPU_HIGH"],
                 "TASK_MONITOR_CPU_LOW": DEFAULT_VALUES["TASK_MONITOR_CPU_LOW"],
-                "TASK_MONITOR_MEMORY_HIGH": DEFAULT_VALUES["TASK_MONITOR_MEMORY_HIGH"],
+                "TASK_MONITOR_MEMORY_HIGH": DEFAULT_VALUES[
+                    "TASK_MONITOR_MEMORY_HIGH"
+                ],
                 "TASK_MONITOR_MEMORY_LOW": DEFAULT_VALUES["TASK_MONITOR_MEMORY_LOW"],
             }
         )
@@ -4813,7 +5046,9 @@ async def edit_bot_settings(client, query):
         elif data[2] == "PIL_MEMORY_LIMIT":
             value = 2048  # Default to 2GB
         elif data[2] == "BASE_URL":
-            await (await create_subprocess_exec("pkill", "-9", "-f", "gunicorn")).wait()
+            await (
+                await create_subprocess_exec("pkill", "-9", "-f", "gunicorn")
+            ).wait()
         elif data[2] == "BASE_URL_PORT":
             value = 80
             if Config.BASE_URL:
@@ -5111,11 +5346,7 @@ async def edit_bot_settings(client, query):
 
         # Determine which menu to return to based on the key
         return_menu = "mediatools"
-        if (
-            key.startswith("WATERMARK_")
-            or key.startswith("AUDIO_WATERMARK_")
-            or key.startswith("SUBTITLE_WATERMARK_")
-        ):
+        if key.startswith(("WATERMARK_", "AUDIO_WATERMARK_", "SUBTITLE_WATERMARK_")):
             return_menu = "mediatools_watermark"
             LOGGER.debug(f"toggle: Setting return_menu for {key} to {return_menu}")
         elif key.startswith("CONVERT_"):

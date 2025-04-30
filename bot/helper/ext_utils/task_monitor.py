@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 import asyncio
-import gc
 import time
 from asyncio import create_task
 from collections import defaultdict, deque
@@ -13,13 +12,7 @@ except ImportError:
     pip.main(["install", "psutil"])
     import psutil
 
-from bot.helper.ext_utils.gc_utils import (
-    force_garbage_collection,
-    log_memory_usage,
-    smart_garbage_collection,
-)
 # Resource manager removed
-
 from bot import (
     LOGGER,
     non_queued_dl,
@@ -30,6 +23,11 @@ from bot import (
     task_dict,
     task_dict_lock,
 )
+from bot.core.config_manager import Config
+from bot.helper.ext_utils.gc_utils import (
+    log_memory_usage,
+    smart_garbage_collection,
+)
 from bot.helper.ext_utils.status_utils import (
     MirrorStatus,
     speed_string_to_bytes,
@@ -38,8 +36,6 @@ from bot.helper.telegram_helper.message_utils import (
     auto_delete_message,
     send_message,
 )
-
-from bot.core.config_manager import Config
 
 
 # Get monitoring settings from Config
@@ -247,7 +243,7 @@ async def should_cancel_task(task, gid: str) -> tuple[bool, str]:
     is_slow = await is_task_slow(task, gid)
 
     # Get user tag for notifications
-    user_tag = (
+    (
         f"@{task.listener.user.username}"
         if hasattr(task.listener.user, "username") and task.listener.user.username
         else f"<a href='tg://user?id={task.listener.user_id}'>{task.listener.user_id}</a>"
@@ -261,7 +257,7 @@ async def should_cancel_task(task, gid: str) -> tuple[bool, str]:
             task_warnings[gid] = {
                 "warning_sent": False,
                 "warning_time": 0,
-                "reason": f"Long estimated completion time or no progress. Please cancel this task if it's stuck.",
+                "reason": "Long estimated completion time or no progress. Please cancel this task if it's stuck.",
                 "case": 1,
             }
 
@@ -444,11 +440,15 @@ async def queue_task(mid: int, reason: str):
                 if mid in non_queued_dl:
                     non_queued_dl.remove(mid)
                     queued_dl[mid] = asyncio.Event()
-                    LOGGER.info(f"Queued download task {listener.name} due to {reason}")
+                    LOGGER.info(
+                        f"Queued download task {listener.name} due to {reason}"
+                    )
                 elif mid in non_queued_up:
                     non_queued_up.remove(mid)
                     queued_up[mid] = asyncio.Event()
-                    LOGGER.info(f"Queued upload task {listener.name} due to {reason}")
+                    LOGGER.info(
+                        f"Queued upload task {listener.name} due to {reason}"
+                    )
                 else:
                     # Task is not in any queue, can't queue it
                     queued_by_monitor.discard(mid)
@@ -529,7 +529,8 @@ async def cancel_task(task, gid: str, reason: str):
         # Get user tag for notifications
         user_tag = (
             f"@{task.listener.user.username}"
-            if hasattr(task.listener.user, "username") and task.listener.user.username
+            if hasattr(task.listener.user, "username")
+            and task.listener.user.username
             else f"<a href='tg://user?id={task.listener.user_id}'>{task.listener.user_id}</a>"
         )
 
@@ -662,7 +663,9 @@ async def monitor_tasks():
                 for task_info in cpu_intensive_tasks + memory_intensive_tasks:
                     mid, task_type = task_info
                     if mid == task.listener.mid:
-                        should_queue, queue_reason = await should_queue_task(task_type)
+                        should_queue, queue_reason = await should_queue_task(
+                            task_type
+                        )
                         if should_queue:
                             # Verify task is still in task_dict before queuing
                             async with task_dict_lock:

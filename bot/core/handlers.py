@@ -396,16 +396,18 @@ def add_handlers():
 
     # Remove settings callbacks from the main regex_filters
     for pattern in settings_callbacks:
-        if pattern in regex_filters:
-            del regex_filters[pattern]
+        regex_filters.pop(pattern, None)
 
     # Add handlers for settings callbacks in groups with authorization
     for regex_filter, handler_func in settings_callbacks.items():
         TgClient.bot.add_handler(
             CallbackQueryHandler(
                 handler_func,
-                filters=regex(regex_filter) & CustomFilters.authorized & filters.create(
-                    lambda *args: args[2].message and args[2].message.chat.type != "private"
+                filters=regex(regex_filter)
+                & CustomFilters.authorized
+                & filters.create(
+                    lambda *args: args[2].message
+                    and args[2].message.chat.type != "private"
                 ),
             ),
         )
@@ -415,8 +417,10 @@ def add_handlers():
         TgClient.bot.add_handler(
             CallbackQueryHandler(
                 handler_func,
-                filters=regex(regex_filter) & filters.create(
-                    lambda *args: args[2].message and args[2].message.chat.type == "private"
+                filters=regex(regex_filter)
+                & filters.create(
+                    lambda *args: args[2].message
+                    and args[2].message.chat.type == "private"
                 ),
             ),
         )
@@ -445,7 +449,8 @@ def add_handlers():
     TgClient.bot.add_handler(
         MessageHandler(
             handle_qb_commands,
-            filters=regex(r"^/qb(leech|mirror)(\d+|[a-zA-Z0-9_]+)?") & CustomFilters.authorized,
+            filters=regex(r"^/qb(leech|mirror)(\d+|[a-zA-Z0-9_]+)?")
+            & CustomFilters.authorized,
         ),
     )
 
@@ -453,7 +458,10 @@ def add_handlers():
     TgClient.bot.add_handler(
         MessageHandler(
             handle_no_suffix_commands,
-            filters=regex(r"^/(mirror|leech|jdmirror|jdleech|nzbmirror|nzbleech|ytdl|ytdlleech|clone|count|del|list|search|mediainfo|mi|status|s|ping|help|speedtest)$") & CustomFilters.authorized,
+            filters=regex(
+                r"^/(mirror|leech|jdmirror|jdleech|nzbmirror|nzbleech|ytdl|ytdlleech|clone|count|del|list|search|mediainfo|mi|status|s|ping|help|speedtest)$"
+            )
+            & CustomFilters.authorized,
         ),
     )
 

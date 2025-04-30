@@ -1,3 +1,4 @@
+import contextlib
 import gc
 import logging
 import os
@@ -81,14 +82,20 @@ def force_garbage_collection(threshold_mb=100, log_stats=False, generation=None)
                     collected_gen0 = gc.collect(0)  # Collect youngest generation
                     collected_gen1 = gc.collect(1)  # Collect middle generation
                     collected_gen2 = gc.collect(2)  # Collect oldest generation
-                    total_collected = collected_gen0 + collected_gen1 + collected_gen2
+                    total_collected = (
+                        collected_gen0 + collected_gen1 + collected_gen2
+                    )
 
                 # Get memory after collection
                 memory_after = process.memory_info().rss / (1024 * 1024)
-                memory_freed = max(0, memory_mb - memory_after)  # Avoid negative values
+                memory_freed = max(
+                    0, memory_mb - memory_after
+                )  # Avoid negative values
 
                 # Only log if explicitly requested or if there's a significant memory issue
-                if log_stats and memory_freed > 50:  # Only log if more than 50MB freed
+                if (
+                    log_stats and memory_freed > 50
+                ):  # Only log if more than 50MB freed
                     LOGGER.debug(
                         f"Garbage collection: freed {total_collected} objects, "
                         f"memory freed: {memory_freed:.2f} MB"
@@ -100,16 +107,15 @@ def force_garbage_collection(threshold_mb=100, log_stats=False, generation=None)
                     LOGGER.warning(f"Found {len(unreachable)} unreachable objects")
                     # Clear the list to avoid memory leaks
                     gc.garbage.clear()
+            # Just collect without stats
+            elif generation is not None:
+                # Collect specific generation
+                gc.collect(generation)
             else:
-                # Just collect without stats
-                if generation is not None:
-                    # Collect specific generation
-                    gc.collect(generation)
-                else:
-                    # Collect all generations
-                    gc.collect(0)  # Collect youngest generation
-                    gc.collect(1)  # Collect middle generation
-                    gc.collect(2)  # Collect oldest generation
+                # Collect all generations
+                gc.collect(0)  # Collect youngest generation
+                gc.collect(1)  # Collect middle generation
+                gc.collect(2)  # Collect oldest generation
 
             # Update last collection time
             _last_gc_time = current_time
@@ -172,8 +178,7 @@ def get_memory_snapshot():
         return None
 
     try:
-        snapshot = tracemalloc.take_snapshot()
-        return snapshot
+        return tracemalloc.take_snapshot()
     except Exception as e:
         LOGGER.error(f"Failed to take memory snapshot: {e}")
         return None
@@ -329,7 +334,9 @@ def optimized_garbage_collection(aggressive=False, log_stats=False):
 
                 # Always log unreachable objects as they indicate potential memory leaks
                 if unreachable_count > 0:
-                    LOGGER.warning(f"Cleared {unreachable_count} unreachable objects")
+                    LOGGER.warning(
+                        f"Cleared {unreachable_count} unreachable objects"
+                    )
             except Exception as e:
                 LOGGER.debug(f"Error logging GC stats: {e}")
 
@@ -385,7 +392,9 @@ def cleanup_large_objects():
                 # Try to identify what the object is
                 try:
                     if hasattr(obj, "__dict__"):
-                        attrs = list(obj.__dict__.keys())[:5]  # Get first 5 attributes
+                        attrs = list(obj.__dict__.keys())[
+                            :5
+                        ]  # Get first 5 attributes
                         LOGGER.warning(f"  Attributes: {attrs}")
                     elif hasattr(obj, "__len__"):
                         LOGGER.warning(f"  Length: {len(obj)}")
@@ -393,11 +402,9 @@ def cleanup_large_objects():
                     pass
 
                 # For lists, tuples, and dicts, try to identify contents
-                if isinstance(obj, (list, tuple)) and len(obj) > 0:
-                    try:
+                if isinstance(obj, list | tuple) and len(obj) > 0:
+                    with contextlib.suppress(Exception):
                         LOGGER.warning(f"  First element type: {type(obj[0])}")
-                    except Exception:
-                        pass
                 elif isinstance(obj, dict) and len(obj) > 0:
                     try:
                         first_key = next(iter(obj.keys()))
@@ -456,10 +463,8 @@ def cleanup_large_objects():
     except Exception as e:
         LOGGER.error(f"Error cleaning up large objects: {e}")
         # Try a simple collection even if there was an error
-        try:
+        with contextlib.suppress(Exception):
             gc.collect()
-        except Exception:
-            pass
         return 0
 
 
@@ -530,10 +535,10 @@ def smart_garbage_collection(aggressive=False, for_split_file=False):
                         LOGGER.debug(f"Error clearing caches: {e}")
 
             return True
-        else:  # Normal memory usage
-            # Use optimized collection with logging if memory usage is moderate
-            log_stats = memory_percent > 60
-            return optimized_garbage_collection(aggressive=False, log_stats=log_stats)
+        # Normal memory usage
+        # Use optimized collection with logging if memory usage is moderate
+        log_stats = memory_percent > 60
+        return optimized_garbage_collection(aggressive=False, log_stats=log_stats)
     except Exception as e:
         LOGGER.error(f"Error during smart garbage collection: {e}")
         # Try a simple collection as fallback

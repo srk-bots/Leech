@@ -8,6 +8,7 @@ from .check_deletion import (
     force_delete_all_messages,
 )
 from .clone import clone_node
+from .deprecated_commands import handle_no_suffix_commands, handle_qb_commands
 from .exec import aioexecute, clear, execute
 from .file_selector import confirm_selection, select
 from .font_styles import font_styles_cmd
@@ -35,7 +36,6 @@ from .mirror_leech import (
     nzb_leech,
     nzb_mirror,
 )
-from .deprecated_commands import handle_no_suffix_commands, handle_qb_commands
 from .music_search import music_cancel_callback, music_get_callback, music_search
 from .nzb_search import hydra_search
 from .restart import (

@@ -54,7 +54,9 @@ class GoogleDriveUpload(GoogleDriveHelper):
 
         # Generate MediaInfo for mirror tasks if enabled
         # Check if MediaInfo is enabled for this user
-        user_mediainfo_enabled = self.listener.user_dict.get("MEDIAINFO_ENABLED", None)
+        user_mediainfo_enabled = self.listener.user_dict.get(
+            "MEDIAINFO_ENABLED", None
+        )
         if user_mediainfo_enabled is None:
             user_mediainfo_enabled = Config.MEDIAINFO_ENABLED
 
@@ -70,12 +72,17 @@ class GoogleDriveUpload(GoogleDriveHelper):
                 )
 
                 # Check if MediaInfo was successfully generated
-                if self.listener.mediainfo_link and self.listener.mediainfo_link.strip():
+                if (
+                    self.listener.mediainfo_link
+                    and self.listener.mediainfo_link.strip()
+                ):
                     LOGGER.info(f"Generated MediaInfo for mirror file: {self._path}")
                 else:
                     # Set mediainfo_link to None if it's empty or None
                     self.listener.mediainfo_link = None
-                    LOGGER.info("MediaInfo generation skipped or failed for mirror task. Proceeding with upload...")
+                    LOGGER.info(
+                        "MediaInfo generation skipped or failed for mirror task. Proceeding with upload..."
+                    )
             except Exception as e:
                 # Set mediainfo_link to None on error
                 self.listener.mediainfo_link = None

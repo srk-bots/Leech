@@ -1,19 +1,17 @@
 from asyncio import create_subprocess_exec, create_task, sleep
 from functools import partial
 from html import escape
+from http.cookiejar import MozillaCookieJar
 from io import BytesIO
 from os import getcwd
 from time import time
 
-from bot import LOGGER
-
 from aiofiles.os import makedirs, remove
 from aiofiles.os import path as aiopath
-from http.cookiejar import MozillaCookieJar
 from pyrogram.filters import create
 from pyrogram.handlers import MessageHandler
 
-from bot import auth_chats, excluded_extensions, sudo_users, user_data
+from bot import LOGGER, auth_chats, excluded_extensions, sudo_users, user_data
 from bot.core.aeon_client import TgClient
 from bot.core.config_manager import Config
 from bot.helper.ext_utils.bot_utils import (
@@ -21,10 +19,10 @@ from bot.helper.ext_utils.bot_utils import (
     new_task,
     update_user_ldata,
 )
-from bot.helper.ext_utils.status_utils import get_readable_file_size
 from bot.helper.ext_utils.db_handler import database
 from bot.helper.ext_utils.help_messages import user_settings_text
 from bot.helper.ext_utils.media_utils import create_thumb
+from bot.helper.ext_utils.status_utils import get_readable_file_size
 from bot.helper.telegram_helper.button_build import ButtonMaker
 from bot.helper.telegram_helper.message_utils import (
     auto_delete_message,
@@ -93,7 +91,9 @@ async def get_user_settings(from_user, stype="main"):
         )
         if user_dict.get("LEECH_FILENAME_PREFIX", False):
             lprefix = user_dict["LEECH_FILENAME_PREFIX"]
-        elif "LEECH_FILENAME_PREFIX" not in user_dict and Config.LEECH_FILENAME_PREFIX:
+        elif (
+            "LEECH_FILENAME_PREFIX" not in user_dict and Config.LEECH_FILENAME_PREFIX
+        ):
             lprefix = Config.LEECH_FILENAME_PREFIX
         else:
             lprefix = "None"
@@ -137,7 +137,8 @@ async def get_user_settings(from_user, stype="main"):
         if user_dict.get("LEECH_FILENAME_CAPTION", False):
             lcap = user_dict["LEECH_FILENAME_CAPTION"]
         elif (
-            "LEECH_FILENAME_CAPTION" not in user_dict and Config.LEECH_FILENAME_CAPTION
+            "LEECH_FILENAME_CAPTION" not in user_dict
+            and Config.LEECH_FILENAME_CAPTION
         ):
             lcap = Config.LEECH_FILENAME_CAPTION
         else:
@@ -321,7 +322,9 @@ async def get_user_settings(from_user, stype="main"):
             gdrive_id = GDID
         else:
             gdrive_id = "None"
-        index = user_dict["INDEX_URL"] if user_dict.get("INDEX_URL", False) else "None"
+        index = (
+            user_dict["INDEX_URL"] if user_dict.get("INDEX_URL", False) else "None"
+        )
         text = f"""<u><b>Gdrive API Settings for {name}</b></u>
 -> Gdrive Token: <b>{tokenmsg}</b>
 -> Gdrive ID: <code>{gdrive_id}</code>
@@ -340,7 +343,9 @@ Please use /mediatools command to configure convert settings.
         # Global metadata settings
         buttons.data_button("Metadata All", f"userset {user_id} menu METADATA_ALL")
         buttons.data_button("Global Title", f"userset {user_id} menu METADATA_TITLE")
-        buttons.data_button("Global Author", f"userset {user_id} menu METADATA_AUTHOR")
+        buttons.data_button(
+            "Global Author", f"userset {user_id} menu METADATA_AUTHOR"
+        )
         buttons.data_button(
             "Global Comment", f"userset {user_id} menu METADATA_COMMENT"
         )
@@ -403,7 +408,9 @@ Please use /mediatools command to configure convert settings.
         # Get subtitle metadata values
         metadata_subtitle_title = user_dict.get("METADATA_SUBTITLE_TITLE", "None")
         metadata_subtitle_author = user_dict.get("METADATA_SUBTITLE_AUTHOR", "None")
-        metadata_subtitle_comment = user_dict.get("METADATA_SUBTITLE_COMMENT", "None")
+        metadata_subtitle_comment = user_dict.get(
+            "METADATA_SUBTITLE_COMMENT", "None"
+        )
 
         # Legacy metadata key - not used directly in the display but kept for reference
         # metadata_key = user_dict.get("METADATA_KEY", "None")
@@ -438,7 +445,11 @@ Please use /mediatools command to configure convert settings.
         buttons.data_button("Gdrive API", f"userset {user_id} gdrive")
 
         upload_paths = user_dict.get("UPLOAD_PATHS", {})
-        if not upload_paths and "UPLOAD_PATHS" not in user_dict and Config.UPLOAD_PATHS:
+        if (
+            not upload_paths
+            and "UPLOAD_PATHS" not in user_dict
+            and Config.UPLOAD_PATHS
+        ):
             upload_paths = Config.UPLOAD_PATHS
         else:
             upload_paths = "None"
@@ -624,7 +635,8 @@ async def add_file(_, message, ftype):
             auth_cookies = [
                 c
                 for c in yt_cookies
-                if c.name in ("SID", "HSID", "SSID", "APISID", "SAPISID", "LOGIN_INFO")
+                if c.name
+                in ("SID", "HSID", "SSID", "APISID", "SAPISID", "LOGIN_INFO")
             ]
 
             if auth_cookies:
@@ -710,15 +722,13 @@ async def set_option(_, message, option):
     if option == "LEECH_SPLIT_SIZE":
         try:
             # Try to convert the value to an integer
-            if value.isdigit():
-                value = int(value)
-            else:
-                value = get_size_bytes(value)
+            value = int(value) if value.isdigit() else get_size_bytes(value)
 
             # Always use owner's session for max split size calculation, not user's own session
             max_split_size = (
                 TgClient.MAX_SPLIT_SIZE
-                if hasattr(Config, "USER_SESSION_STRING") and Config.USER_SESSION_STRING
+                if hasattr(Config, "USER_SESSION_STRING")
+                and Config.USER_SESSION_STRING
                 else 2097152000
             )
             value = min(int(value), max_split_size)
@@ -726,7 +736,8 @@ async def set_option(_, message, option):
             # If conversion fails, set to default max split size
             max_split_size = (
                 TgClient.MAX_SPLIT_SIZE
-                if hasattr(Config, "USER_SESSION_STRING") and Config.USER_SESSION_STRING
+                if hasattr(Config, "USER_SESSION_STRING")
+                and Config.USER_SESSION_STRING
                 else 2097152000
             )
             value = max_split_size
@@ -803,7 +814,9 @@ async def get_menu(option, message, user_id):
         back_to = "back"
     buttons.data_button("Back", f"userset {user_id} {back_to}")
     buttons.data_button("Close", f"userset {user_id} close")
-    text = f"Edit menu for: {option}\n\nUse /help1, /help2, /help3... for more details."
+    text = (
+        f"Edit menu for: {option}\n\nUse /help1, /help2, /help3... for more details."
+    )
     await edit_message(message, text, buttons.build_menu(2))
 
 
@@ -869,9 +882,7 @@ async def edit_user_settings(client, query):
         update_user_ldata(user_id, data[3], data[4] == "t")
         if data[3] == "STOP_DUPLICATE":
             back_to = "gdrive"
-        elif data[3] == "USER_TOKENS":
-            back_to = "main"
-        elif data[3] == "MEDIAINFO_ENABLED":
+        elif data[3] == "USER_TOKENS" or data[3] == "MEDIAINFO_ENABLED":
             back_to = "main"
         # Convert settings have been moved to Media Tools settings
         else:

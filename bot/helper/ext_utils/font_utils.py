@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
-import os
 import contextlib
+import os
 from logging import getLogger
 
 import aiohttp
@@ -509,7 +509,7 @@ async def apply_font_style(text, style):
     # Handle the literal string "style" as a special case
     if style.lower() == "style":
         LOGGER.debug(
-            f"'style' is a reserved word, not a valid font style. Using code formatting instead."
+            "'style' is a reserved word, not a valid font style. Using code formatting instead."
         )
         return f"<code>{text}</code>"
 
@@ -671,7 +671,7 @@ async def is_google_font(font_name):
 
     # If it's the literal string "style", it's not a valid font
     if font_name.lower() == "style":
-        LOGGER.debug(f"Font name 'style' is a reserved word, not a valid Google Font")
+        LOGGER.debug("Font name 'style' is a reserved word, not a valid Google Font")
         return False
 
     # Try to download the font to check if it exists
@@ -700,7 +700,9 @@ async def apply_google_font_style(text, font_name):
     # Check if the font exists
     font_exists = await is_google_font(font_name)
     if not font_exists:
-        LOGGER.warning(f"Google Font '{font_name}' not found. Using default styling.")
+        LOGGER.warning(
+            f"Google Font '{font_name}' not found. Using default styling."
+        )
         return f"<code>{text}</code>"
 
     # Apply the font using HTML (this is just for visual indication in the caption)

@@ -350,7 +350,9 @@ async def get_media_tools_settings(from_user, stype="main", page_no=0):
             watermark_size = "20 (Default)"
 
         # Get watermark color based on priority
-        user_has_color = "WATERMARK_COLOR" in user_dict and user_dict["WATERMARK_COLOR"]
+        user_has_color = (
+            "WATERMARK_COLOR" in user_dict and user_dict["WATERMARK_COLOR"]
+        )
         owner_has_color = Config.WATERMARK_COLOR
 
         if user_has_color:
@@ -460,7 +462,9 @@ async def get_media_tools_settings(from_user, stype="main", page_no=0):
             "Set Position", f"mediatools {user_id} menu WATERMARK_POSITION"
         )
         buttons.data_button("Set Size", f"mediatools {user_id} menu WATERMARK_SIZE")
-        buttons.data_button("Set Color", f"mediatools {user_id} menu WATERMARK_COLOR")
+        buttons.data_button(
+            "Set Color", f"mediatools {user_id} menu WATERMARK_COLOR"
+        )
         buttons.data_button("Set Font", f"mediatools {user_id} menu WATERMARK_FONT")
         buttons.data_button(
             "Set Opacity", f"mediatools {user_id} menu WATERMARK_OPACITY"
@@ -477,7 +481,9 @@ async def get_media_tools_settings(from_user, stype="main", page_no=0):
         )
 
         # Subtitle watermark settings
-        subtitle_watermark_enabled = user_dict.get("SUBTITLE_WATERMARK_ENABLED", False)
+        subtitle_watermark_enabled = user_dict.get(
+            "SUBTITLE_WATERMARK_ENABLED", False
+        )
         buttons.data_button(
             f"Subtitle WM: {'✅ ON' if subtitle_watermark_enabled else '❌ OFF'}",
             f"mediatools {user_id} tog SUBTITLE_WATERMARK_ENABLED {'f' if subtitle_watermark_enabled else 't'}",
@@ -547,7 +553,9 @@ async def get_media_tools_settings(from_user, stype="main", page_no=0):
             watermark_size = "20 (Default)"
 
         # Get watermark color based on priority
-        user_has_color = "WATERMARK_COLOR" in user_dict and user_dict["WATERMARK_COLOR"]
+        user_has_color = (
+            "WATERMARK_COLOR" in user_dict and user_dict["WATERMARK_COLOR"]
+        )
         owner_has_color = Config.WATERMARK_COLOR
 
         if user_has_color:
@@ -652,7 +660,9 @@ async def get_media_tools_settings(from_user, stype="main", page_no=0):
             audio_watermark_text = "Same as visual watermark"
 
         # Get subtitle watermark text
-        subtitle_watermark_enabled = user_dict.get("SUBTITLE_WATERMARK_ENABLED", False)
+        subtitle_watermark_enabled = user_dict.get(
+            "SUBTITLE_WATERMARK_ENABLED", False
+        )
         user_has_subtitle_text = (
             "SUBTITLE_WATERMARK_TEXT" in user_dict
             and user_dict["SUBTITLE_WATERMARK_TEXT"]
@@ -660,7 +670,9 @@ async def get_media_tools_settings(from_user, stype="main", page_no=0):
         owner_has_subtitle_text = Config.SUBTITLE_WATERMARK_TEXT
 
         if user_has_subtitle_text:
-            subtitle_watermark_text = f"{user_dict['SUBTITLE_WATERMARK_TEXT']} (User)"
+            subtitle_watermark_text = (
+                f"{user_dict['SUBTITLE_WATERMARK_TEXT']} (User)"
+            )
         elif (subtitle_watermark_enabled and owner_has_subtitle_text) or (
             Config.SUBTITLE_WATERMARK_ENABLED and owner_has_subtitle_text
         ):
@@ -728,7 +740,9 @@ async def get_media_tools_settings(from_user, stype="main", page_no=0):
             )
 
         buttons.data_button("Configure", f"mediatools {user_id} merge_config")
-        buttons.data_button("Set Priority", f"mediatools {user_id} menu MERGE_PRIORITY")
+        buttons.data_button(
+            "Set Priority", f"mediatools {user_id} menu MERGE_PRIORITY"
+        )
         buttons.data_button(
             "Remove Original", f"mediatools {user_id} menu MERGE_REMOVE_ORIGINAL"
         )
@@ -928,7 +942,9 @@ async def get_media_tools_settings(from_user, stype="main", page_no=0):
             )
 
         # Get settings for current page
-        current_page_settings = merge_settings[page_no * items_per_page:(page_no * items_per_page) + items_per_page]
+        current_page_settings = merge_settings[
+            page_no * items_per_page : (page_no * items_per_page) + items_per_page
+        ]
 
         # Add buttons for each setting on current page
         for setting in current_page_settings:
@@ -1047,35 +1063,22 @@ async def get_media_tools_settings(from_user, stype="main", page_no=0):
         # Get the categories shown on the current page
         categories = []
         # Calculate the start index for the current page
-        current_page_settings = merge_settings[page_no * items_per_page:(page_no * items_per_page) + items_per_page]
+        current_page_settings = merge_settings[
+            page_no * items_per_page : (page_no * items_per_page) + items_per_page
+        ]
         if any(setting in formats for setting in current_page_settings):
             categories.append("Formats")
-        if any(
-            setting in video_settings for setting in current_page_settings
-        ):
+        if any(setting in video_settings for setting in current_page_settings):
             categories.append("Video")
-        if any(
-            setting in audio_settings for setting in current_page_settings
-        ):
+        if any(setting in audio_settings for setting in current_page_settings):
             categories.append("Audio")
-        if any(
-            setting in image_settings for setting in current_page_settings
-        ):
+        if any(setting in image_settings for setting in current_page_settings):
             categories.append("Image")
-        if any(
-            setting in subtitle_settings
-            for setting in current_page_settings
-        ):
+        if any(setting in subtitle_settings for setting in current_page_settings):
             categories.append("Subtitle")
-        if any(
-            setting in document_settings
-            for setting in current_page_settings
-        ):
+        if any(setting in document_settings for setting in current_page_settings):
             categories.append("Document")
-        if any(
-            setting in metadata_settings
-            for setting in current_page_settings
-        ):
+        if any(setting in metadata_settings for setting in current_page_settings):
             categories.append("Metadata")
 
         category_text = ", ".join(categories)
@@ -1787,7 +1790,9 @@ async def get_media_tools_settings(from_user, stype="main", page_no=0):
             f"mediatools {user_id} tog TRIM_ENABLED {'f' if trim_enabled else 't'}",
         )
         buttons.data_button("Configure", f"mediatools {user_id} trim_config")
-        buttons.data_button("Set Priority", f"mediatools {user_id} menu TRIM_PRIORITY")
+        buttons.data_button(
+            "Set Priority", f"mediatools {user_id} menu TRIM_PRIORITY"
+        )
         buttons.data_button("Reset", f"mediatools {user_id} reset_trim")
         buttons.data_button("Remove", f"mediatools {user_id} remove_trim")
         buttons.data_button("Back", f"mediatools {user_id} back", "footer")
@@ -1817,8 +1822,7 @@ async def get_media_tools_settings(from_user, stype="main", page_no=0):
         # Get video trim status
         video_trim_enabled = user_dict.get("TRIM_VIDEO_ENABLED", False)
         owner_video_trim_enabled = (
-            hasattr(Config, "TRIM_VIDEO_ENABLED")
-            and Config.TRIM_VIDEO_ENABLED
+            hasattr(Config, "TRIM_VIDEO_ENABLED") and Config.TRIM_VIDEO_ENABLED
         )
 
         if "TRIM_VIDEO_ENABLED" in user_dict:
@@ -1834,8 +1838,7 @@ async def get_media_tools_settings(from_user, stype="main", page_no=0):
         # Get audio trim status
         audio_trim_enabled = user_dict.get("TRIM_AUDIO_ENABLED", False)
         owner_audio_trim_enabled = (
-            hasattr(Config, "TRIM_AUDIO_ENABLED")
-            and Config.TRIM_AUDIO_ENABLED
+            hasattr(Config, "TRIM_AUDIO_ENABLED") and Config.TRIM_AUDIO_ENABLED
         )
 
         if "TRIM_AUDIO_ENABLED" in user_dict:
@@ -1851,8 +1854,7 @@ async def get_media_tools_settings(from_user, stype="main", page_no=0):
         # Get image trim status
         image_trim_enabled = user_dict.get("TRIM_IMAGE_ENABLED", False)
         owner_image_trim_enabled = (
-            hasattr(Config, "TRIM_IMAGE_ENABLED")
-            and Config.TRIM_IMAGE_ENABLED
+            hasattr(Config, "TRIM_IMAGE_ENABLED") and Config.TRIM_IMAGE_ENABLED
         )
 
         if "TRIM_IMAGE_ENABLED" in user_dict:
@@ -1868,8 +1870,7 @@ async def get_media_tools_settings(from_user, stype="main", page_no=0):
         # Get document trim status
         document_trim_enabled = user_dict.get("TRIM_DOCUMENT_ENABLED", False)
         owner_document_trim_enabled = (
-            hasattr(Config, "TRIM_DOCUMENT_ENABLED")
-            and Config.TRIM_DOCUMENT_ENABLED
+            hasattr(Config, "TRIM_DOCUMENT_ENABLED") and Config.TRIM_DOCUMENT_ENABLED
         )
 
         if "TRIM_DOCUMENT_ENABLED" in user_dict:
@@ -1885,8 +1886,7 @@ async def get_media_tools_settings(from_user, stype="main", page_no=0):
         # Get subtitle trim status
         subtitle_trim_enabled = user_dict.get("TRIM_SUBTITLE_ENABLED", False)
         owner_subtitle_trim_enabled = (
-            hasattr(Config, "TRIM_SUBTITLE_ENABLED")
-            and Config.TRIM_SUBTITLE_ENABLED
+            hasattr(Config, "TRIM_SUBTITLE_ENABLED") and Config.TRIM_SUBTITLE_ENABLED
         )
 
         if "TRIM_SUBTITLE_ENABLED" in user_dict:
@@ -1902,8 +1902,7 @@ async def get_media_tools_settings(from_user, stype="main", page_no=0):
         # Get archive trim status
         archive_trim_enabled = user_dict.get("TRIM_ARCHIVE_ENABLED", False)
         owner_archive_trim_enabled = (
-            hasattr(Config, "TRIM_ARCHIVE_ENABLED")
-            and Config.TRIM_ARCHIVE_ENABLED
+            hasattr(Config, "TRIM_ARCHIVE_ENABLED") and Config.TRIM_ARCHIVE_ENABLED
         )
 
         if "TRIM_ARCHIVE_ENABLED" in user_dict:
@@ -1942,13 +1941,14 @@ async def get_media_tools_settings(from_user, stype="main", page_no=0):
             f"mediatools {user_id} tog EXTRACT_ENABLED {'f' if extract_enabled else 't'}",
         )
         buttons.data_button("Configure", f"mediatools {user_id} extract_config")
-        buttons.data_button("Set Priority", f"mediatools {user_id} menu EXTRACT_PRIORITY")
+        buttons.data_button(
+            "Set Priority", f"mediatools {user_id} menu EXTRACT_PRIORITY"
+        )
         buttons.data_button("Reset", f"mediatools {user_id} reset_extract")
         buttons.data_button("Remove", f"mediatools {user_id} remove_extract")
         buttons.data_button("Back", f"mediatools {user_id} back", "footer")
         buttons.data_button("Close", f"mediatools {user_id} close", "footer")
         btns = buttons.build_menu(2)
-
 
         # Get extract priority
         user_has_priority = "EXTRACT_PRIORITY" in user_dict
@@ -1994,7 +1994,8 @@ async def get_media_tools_settings(from_user, stype="main", page_no=0):
         # Get extract subtitle status
         subtitle_extract_enabled = user_dict.get("EXTRACT_SUBTITLE_ENABLED", False)
         owner_subtitle_extract_enabled = (
-            hasattr(Config, "EXTRACT_SUBTITLE_ENABLED") and Config.EXTRACT_SUBTITLE_ENABLED
+            hasattr(Config, "EXTRACT_SUBTITLE_ENABLED")
+            and Config.EXTRACT_SUBTITLE_ENABLED
         )
 
         if "EXTRACT_SUBTITLE_ENABLED" in user_dict:
@@ -2008,9 +2009,12 @@ async def get_media_tools_settings(from_user, stype="main", page_no=0):
             subtitle_status = "❌ Disabled"
 
         # Get extract attachment status
-        attachment_extract_enabled = user_dict.get("EXTRACT_ATTACHMENT_ENABLED", False)
+        attachment_extract_enabled = user_dict.get(
+            "EXTRACT_ATTACHMENT_ENABLED", False
+        )
         owner_attachment_extract_enabled = (
-            hasattr(Config, "EXTRACT_ATTACHMENT_ENABLED") and Config.EXTRACT_ATTACHMENT_ENABLED
+            hasattr(Config, "EXTRACT_ATTACHMENT_ENABLED")
+            and Config.EXTRACT_ATTACHMENT_ENABLED
         )
 
         if "EXTRACT_ATTACHMENT_ENABLED" in user_dict:
@@ -2026,7 +2030,8 @@ async def get_media_tools_settings(from_user, stype="main", page_no=0):
         # Get maintain quality status
         maintain_quality_enabled = user_dict.get("EXTRACT_MAINTAIN_QUALITY", True)
         owner_maintain_quality_enabled = (
-            hasattr(Config, "EXTRACT_MAINTAIN_QUALITY") and Config.EXTRACT_MAINTAIN_QUALITY
+            hasattr(Config, "EXTRACT_MAINTAIN_QUALITY")
+            and Config.EXTRACT_MAINTAIN_QUALITY
         )
 
         if "EXTRACT_MAINTAIN_QUALITY" in user_dict:
@@ -2052,10 +2057,6 @@ async def get_media_tools_settings(from_user, stype="main", page_no=0):
 ┃
 ┖ <b>Maintain Quality</b> → {maintain_quality_status}"""
 
-
-
-
-
     elif stype == "trim_config":
         # Trim configuration menu
         LOGGER.debug(f"Generating trim_config menu for user {user_id}")
@@ -2064,9 +2065,7 @@ async def get_media_tools_settings(from_user, stype="main", page_no=0):
         buttons.data_button(
             "Start Time", f"mediatools {user_id} menu TRIM_START_TIME"
         )
-        buttons.data_button(
-            "End Time", f"mediatools {user_id} menu TRIM_END_TIME"
-        )
+        buttons.data_button("End Time", f"mediatools {user_id} menu TRIM_END_TIME")
 
         # Add delete original toggle
         delete_original = user_dict.get("TRIM_DELETE_ORIGINAL", False)
@@ -2076,9 +2075,7 @@ async def get_media_tools_settings(from_user, stype="main", page_no=0):
         )
 
         # Add a header for format settings
-        buttons.data_button(
-            "⚙️ Format Settings", f"mediatools {user_id} help_trim"
-        )
+        buttons.data_button("⚙️ Format Settings", f"mediatools {user_id} help_trim")
 
         # Video trim settings
         video_enabled = user_dict.get("TRIM_VIDEO_ENABLED", False)
@@ -2182,10 +2179,7 @@ async def get_media_tools_settings(from_user, stype="main", page_no=0):
         delete_original = user_dict.get("TRIM_DELETE_ORIGINAL", None)
         if delete_original is None and hasattr(Config, "TRIM_DELETE_ORIGINAL"):
             delete_original = Config.TRIM_DELETE_ORIGINAL
-        if delete_original:
-            delete_original_str = "✅ Enabled"
-        else:
-            delete_original_str = "❌ Disabled"
+        delete_original_str = "✅ Enabled" if delete_original else "❌ Disabled"
 
         # Get video trim settings
         video_codec = user_dict.get("TRIM_VIDEO_CODEC", None)
@@ -2201,7 +2195,11 @@ async def get_media_tools_settings(from_user, stype="main", page_no=0):
         video_format = user_dict.get("TRIM_VIDEO_FORMAT", None)
         if video_format is None and hasattr(Config, "TRIM_VIDEO_FORMAT"):
             video_format = Config.TRIM_VIDEO_FORMAT
-        video_format_str = f"{video_format}" if video_format and video_format != "none" else "Same as input (Default)"
+        video_format_str = (
+            f"{video_format}"
+            if video_format and video_format != "none"
+            else "Same as input (Default)"
+        )
 
         # Get audio trim settings
         audio_codec = user_dict.get("TRIM_AUDIO_CODEC", None)
@@ -2217,13 +2215,17 @@ async def get_media_tools_settings(from_user, stype="main", page_no=0):
         audio_format = user_dict.get("TRIM_AUDIO_FORMAT", None)
         if audio_format is None and hasattr(Config, "TRIM_AUDIO_FORMAT"):
             audio_format = Config.TRIM_AUDIO_FORMAT
-        audio_format_str = f"{audio_format}" if audio_format and audio_format != "none" else "Same as input (Default)"
+        audio_format_str = (
+            f"{audio_format}"
+            if audio_format and audio_format != "none"
+            else "Same as input (Default)"
+        )
 
         # Get image trim settings
         image_quality = user_dict.get("TRIM_IMAGE_QUALITY", None)
         if image_quality is None and hasattr(Config, "TRIM_IMAGE_QUALITY"):
             image_quality = Config.TRIM_IMAGE_QUALITY
-        if not image_quality or image_quality == "none" or image_quality == "0" or image_quality == 0:
+        if not image_quality or image_quality in {"none", "0", 0}:
             image_quality_str = "Original Quality (Default)"
         else:
             image_quality_str = f"{image_quality}"
@@ -2231,13 +2233,17 @@ async def get_media_tools_settings(from_user, stype="main", page_no=0):
         image_format = user_dict.get("TRIM_IMAGE_FORMAT", None)
         if image_format is None and hasattr(Config, "TRIM_IMAGE_FORMAT"):
             image_format = Config.TRIM_IMAGE_FORMAT
-        image_format_str = f"{image_format}" if image_format and image_format != "none" else "Same as input (Default)"
+        image_format_str = (
+            f"{image_format}"
+            if image_format and image_format != "none"
+            else "Same as input (Default)"
+        )
 
         # Get document trim settings
         document_quality = user_dict.get("TRIM_DOCUMENT_QUALITY", None)
         if document_quality is None and hasattr(Config, "TRIM_DOCUMENT_QUALITY"):
             document_quality = Config.TRIM_DOCUMENT_QUALITY
-        if not document_quality or document_quality == "none" or document_quality == "0" or document_quality == 0:
+        if not document_quality or document_quality in {"none", "0", 0}:
             document_quality_str = "Original Quality (Default)"
         else:
             document_quality_str = f"{document_quality}"
@@ -2245,7 +2251,11 @@ async def get_media_tools_settings(from_user, stype="main", page_no=0):
         document_format = user_dict.get("TRIM_DOCUMENT_FORMAT", None)
         if document_format is None and hasattr(Config, "TRIM_DOCUMENT_FORMAT"):
             document_format = Config.TRIM_DOCUMENT_FORMAT
-        document_format_str = f"{document_format}" if document_format and document_format != "none" else "Same as input (Default)"
+        document_format_str = (
+            f"{document_format}"
+            if document_format and document_format != "none"
+            else "Same as input (Default)"
+        )
 
         # Get subtitle trim settings
         subtitle_encoding = user_dict.get("TRIM_SUBTITLE_ENCODING", None)
@@ -2258,22 +2268,27 @@ async def get_media_tools_settings(from_user, stype="main", page_no=0):
         subtitle_format = user_dict.get("TRIM_SUBTITLE_FORMAT", None)
         if subtitle_format is None and hasattr(Config, "TRIM_SUBTITLE_FORMAT"):
             subtitle_format = Config.TRIM_SUBTITLE_FORMAT
-        subtitle_format_str = f"{subtitle_format}" if subtitle_format and subtitle_format != "none" else "Same as input (Default)"
+        subtitle_format_str = (
+            f"{subtitle_format}"
+            if subtitle_format and subtitle_format != "none"
+            else "Same as input (Default)"
+        )
 
         # Get archive trim settings
         archive_format = user_dict.get("TRIM_ARCHIVE_FORMAT", None)
         if archive_format is None and hasattr(Config, "TRIM_ARCHIVE_FORMAT"):
             archive_format = Config.TRIM_ARCHIVE_FORMAT
-        archive_format_str = f"{archive_format}" if archive_format and archive_format != "none" else "Same as input (Default)"
-
-
+        archive_format_str = (
+            f"{archive_format}"
+            if archive_format and archive_format != "none"
+            else "Same as input (Default)"
+        )
 
         # Get trim enabled status for each type
         # Video trim status
         video_trim_enabled = user_dict.get("TRIM_VIDEO_ENABLED", False)
         owner_video_trim_enabled = (
-            hasattr(Config, "TRIM_VIDEO_ENABLED")
-            and Config.TRIM_VIDEO_ENABLED
+            hasattr(Config, "TRIM_VIDEO_ENABLED") and Config.TRIM_VIDEO_ENABLED
         )
 
         if "TRIM_VIDEO_ENABLED" in user_dict:
@@ -2289,8 +2304,7 @@ async def get_media_tools_settings(from_user, stype="main", page_no=0):
         # Audio trim status
         audio_trim_enabled = user_dict.get("TRIM_AUDIO_ENABLED", False)
         owner_audio_trim_enabled = (
-            hasattr(Config, "TRIM_AUDIO_ENABLED")
-            and Config.TRIM_AUDIO_ENABLED
+            hasattr(Config, "TRIM_AUDIO_ENABLED") and Config.TRIM_AUDIO_ENABLED
         )
 
         if "TRIM_AUDIO_ENABLED" in user_dict:
@@ -2306,8 +2320,7 @@ async def get_media_tools_settings(from_user, stype="main", page_no=0):
         # Image trim status
         image_trim_enabled = user_dict.get("TRIM_IMAGE_ENABLED", False)
         owner_image_trim_enabled = (
-            hasattr(Config, "TRIM_IMAGE_ENABLED")
-            and Config.TRIM_IMAGE_ENABLED
+            hasattr(Config, "TRIM_IMAGE_ENABLED") and Config.TRIM_IMAGE_ENABLED
         )
 
         if "TRIM_IMAGE_ENABLED" in user_dict:
@@ -2323,8 +2336,7 @@ async def get_media_tools_settings(from_user, stype="main", page_no=0):
         # Document trim status
         document_trim_enabled = user_dict.get("TRIM_DOCUMENT_ENABLED", False)
         owner_document_trim_enabled = (
-            hasattr(Config, "TRIM_DOCUMENT_ENABLED")
-            and Config.TRIM_DOCUMENT_ENABLED
+            hasattr(Config, "TRIM_DOCUMENT_ENABLED") and Config.TRIM_DOCUMENT_ENABLED
         )
 
         if "TRIM_DOCUMENT_ENABLED" in user_dict:
@@ -2340,8 +2352,7 @@ async def get_media_tools_settings(from_user, stype="main", page_no=0):
         # Subtitle trim status
         subtitle_trim_enabled = user_dict.get("TRIM_SUBTITLE_ENABLED", False)
         owner_subtitle_trim_enabled = (
-            hasattr(Config, "TRIM_SUBTITLE_ENABLED")
-            and Config.TRIM_SUBTITLE_ENABLED
+            hasattr(Config, "TRIM_SUBTITLE_ENABLED") and Config.TRIM_SUBTITLE_ENABLED
         )
 
         if "TRIM_SUBTITLE_ENABLED" in user_dict:
@@ -2357,8 +2368,7 @@ async def get_media_tools_settings(from_user, stype="main", page_no=0):
         # Archive trim status
         archive_trim_enabled = user_dict.get("TRIM_ARCHIVE_ENABLED", False)
         owner_archive_trim_enabled = (
-            hasattr(Config, "TRIM_ARCHIVE_ENABLED")
-            and Config.TRIM_ARCHIVE_ENABLED
+            hasattr(Config, "TRIM_ARCHIVE_ENABLED") and Config.TRIM_ARCHIVE_ENABLED
         )
 
         if "TRIM_ARCHIVE_ENABLED" in user_dict:
@@ -2483,16 +2493,19 @@ async def get_media_tools_settings(from_user, stype="main", page_no=0):
             "Subtitle Index", f"mediatools {user_id} menu EXTRACT_SUBTITLE_INDEX"
         )
         buttons.data_button(
-            "Subtitle Language", f"mediatools {user_id} menu EXTRACT_SUBTITLE_LANGUAGE"
+            "Subtitle Language",
+            f"mediatools {user_id} menu EXTRACT_SUBTITLE_LANGUAGE",
         )
         buttons.data_button(
-            "Subtitle Encoding", f"mediatools {user_id} menu EXTRACT_SUBTITLE_ENCODING"
+            "Subtitle Encoding",
+            f"mediatools {user_id} menu EXTRACT_SUBTITLE_ENCODING",
         )
         buttons.data_button(
             "Subtitle Font", f"mediatools {user_id} menu EXTRACT_SUBTITLE_FONT"
         )
         buttons.data_button(
-            "Subtitle Font Size", f"mediatools {user_id} menu EXTRACT_SUBTITLE_FONT_SIZE"
+            "Subtitle Font Size",
+            f"mediatools {user_id} menu EXTRACT_SUBTITLE_FONT_SIZE",
         )
 
         # Attachment extract settings
@@ -2502,13 +2515,15 @@ async def get_media_tools_settings(from_user, stype="main", page_no=0):
             f"mediatools {user_id} tog EXTRACT_ATTACHMENT_ENABLED {'f' if attachment_enabled else 't'}",
         )
         buttons.data_button(
-            "Attachment Format", f"mediatools {user_id} menu EXTRACT_ATTACHMENT_FORMAT"
+            "Attachment Format",
+            f"mediatools {user_id} menu EXTRACT_ATTACHMENT_FORMAT",
         )
         buttons.data_button(
             "Attachment Index", f"mediatools {user_id} menu EXTRACT_ATTACHMENT_INDEX"
         )
         buttons.data_button(
-            "Attachment Filter", f"mediatools {user_id} menu EXTRACT_ATTACHMENT_FILTER"
+            "Attachment Filter",
+            f"mediatools {user_id} menu EXTRACT_ATTACHMENT_FILTER",
         )
 
         # Maintain quality toggle
@@ -2543,7 +2558,9 @@ async def get_media_tools_settings(from_user, stype="main", page_no=0):
         video_index = user_dict.get("EXTRACT_VIDEO_INDEX", None)
         if video_index is None and hasattr(Config, "EXTRACT_VIDEO_INDEX"):
             video_index = Config.EXTRACT_VIDEO_INDEX
-        video_index_str = f"{video_index}" if video_index is not None else "All (Default)"
+        video_index_str = (
+            f"{video_index}" if video_index is not None else "All (Default)"
+        )
 
         video_quality = user_dict.get("EXTRACT_VIDEO_QUALITY", None)
         if video_quality is None and hasattr(Config, "EXTRACT_VIDEO_QUALITY"):
@@ -2563,7 +2580,9 @@ async def get_media_tools_settings(from_user, stype="main", page_no=0):
         video_resolution = user_dict.get("EXTRACT_VIDEO_RESOLUTION", None)
         if video_resolution is None and hasattr(Config, "EXTRACT_VIDEO_RESOLUTION"):
             video_resolution = Config.EXTRACT_VIDEO_RESOLUTION
-        video_resolution_str = f"{video_resolution}" if video_resolution else "None (Default)"
+        video_resolution_str = (
+            f"{video_resolution}" if video_resolution else "None (Default)"
+        )
 
         video_fps = user_dict.get("EXTRACT_VIDEO_FPS", None)
         if video_fps is None and hasattr(Config, "EXTRACT_VIDEO_FPS"):
@@ -2584,7 +2603,9 @@ async def get_media_tools_settings(from_user, stype="main", page_no=0):
         audio_index = user_dict.get("EXTRACT_AUDIO_INDEX", None)
         if audio_index is None and hasattr(Config, "EXTRACT_AUDIO_INDEX"):
             audio_index = Config.EXTRACT_AUDIO_INDEX
-        audio_index_str = f"{audio_index}" if audio_index is not None else "All (Default)"
+        audio_index_str = (
+            f"{audio_index}" if audio_index is not None else "All (Default)"
+        )
 
         audio_bitrate = user_dict.get("EXTRACT_AUDIO_BITRATE", None)
         if audio_bitrate is None and hasattr(Config, "EXTRACT_AUDIO_BITRATE"):
@@ -2594,12 +2615,16 @@ async def get_media_tools_settings(from_user, stype="main", page_no=0):
         audio_channels = user_dict.get("EXTRACT_AUDIO_CHANNELS", None)
         if audio_channels is None and hasattr(Config, "EXTRACT_AUDIO_CHANNELS"):
             audio_channels = Config.EXTRACT_AUDIO_CHANNELS
-        audio_channels_str = f"{audio_channels}" if audio_channels else "None (Default)"
+        audio_channels_str = (
+            f"{audio_channels}" if audio_channels else "None (Default)"
+        )
 
         audio_sampling = user_dict.get("EXTRACT_AUDIO_SAMPLING", None)
         if audio_sampling is None and hasattr(Config, "EXTRACT_AUDIO_SAMPLING"):
             audio_sampling = Config.EXTRACT_AUDIO_SAMPLING
-        audio_sampling_str = f"{audio_sampling}" if audio_sampling else "None (Default)"
+        audio_sampling_str = (
+            f"{audio_sampling}" if audio_sampling else "None (Default)"
+        )
 
         audio_volume = user_dict.get("EXTRACT_AUDIO_VOLUME", None)
         if audio_volume is None and hasattr(Config, "EXTRACT_AUDIO_VOLUME"):
@@ -2610,27 +2635,41 @@ async def get_media_tools_settings(from_user, stype="main", page_no=0):
         subtitle_codec = user_dict.get("EXTRACT_SUBTITLE_CODEC", None)
         if subtitle_codec is None and hasattr(Config, "EXTRACT_SUBTITLE_CODEC"):
             subtitle_codec = Config.EXTRACT_SUBTITLE_CODEC
-        subtitle_codec_str = f"{subtitle_codec}" if subtitle_codec else "None (Default)"
+        subtitle_codec_str = (
+            f"{subtitle_codec}" if subtitle_codec else "None (Default)"
+        )
 
         subtitle_format = user_dict.get("EXTRACT_SUBTITLE_FORMAT", None)
         if subtitle_format is None and hasattr(Config, "EXTRACT_SUBTITLE_FORMAT"):
             subtitle_format = Config.EXTRACT_SUBTITLE_FORMAT
-        subtitle_format_str = f"{subtitle_format}" if subtitle_format else "None (Default)"
+        subtitle_format_str = (
+            f"{subtitle_format}" if subtitle_format else "None (Default)"
+        )
 
         subtitle_index = user_dict.get("EXTRACT_SUBTITLE_INDEX", None)
         if subtitle_index is None and hasattr(Config, "EXTRACT_SUBTITLE_INDEX"):
             subtitle_index = Config.EXTRACT_SUBTITLE_INDEX
-        subtitle_index_str = f"{subtitle_index}" if subtitle_index is not None else "All (Default)"
+        subtitle_index_str = (
+            f"{subtitle_index}" if subtitle_index is not None else "All (Default)"
+        )
 
         subtitle_language = user_dict.get("EXTRACT_SUBTITLE_LANGUAGE", None)
-        if subtitle_language is None and hasattr(Config, "EXTRACT_SUBTITLE_LANGUAGE"):
+        if subtitle_language is None and hasattr(
+            Config, "EXTRACT_SUBTITLE_LANGUAGE"
+        ):
             subtitle_language = Config.EXTRACT_SUBTITLE_LANGUAGE
-        subtitle_language_str = f"{subtitle_language}" if subtitle_language else "None (Default)"
+        subtitle_language_str = (
+            f"{subtitle_language}" if subtitle_language else "None (Default)"
+        )
 
         subtitle_encoding = user_dict.get("EXTRACT_SUBTITLE_ENCODING", None)
-        if subtitle_encoding is None and hasattr(Config, "EXTRACT_SUBTITLE_ENCODING"):
+        if subtitle_encoding is None and hasattr(
+            Config, "EXTRACT_SUBTITLE_ENCODING"
+        ):
             subtitle_encoding = Config.EXTRACT_SUBTITLE_ENCODING
-        subtitle_encoding_str = f"{subtitle_encoding}" if subtitle_encoding else "None (Default)"
+        subtitle_encoding_str = (
+            f"{subtitle_encoding}" if subtitle_encoding else "None (Default)"
+        )
 
         subtitle_font = user_dict.get("EXTRACT_SUBTITLE_FONT", None)
         if subtitle_font is None and hasattr(Config, "EXTRACT_SUBTITLE_FONT"):
@@ -2638,32 +2677,47 @@ async def get_media_tools_settings(from_user, stype="main", page_no=0):
         subtitle_font_str = f"{subtitle_font}" if subtitle_font else "None (Default)"
 
         subtitle_font_size = user_dict.get("EXTRACT_SUBTITLE_FONT_SIZE", None)
-        if subtitle_font_size is None and hasattr(Config, "EXTRACT_SUBTITLE_FONT_SIZE"):
+        if subtitle_font_size is None and hasattr(
+            Config, "EXTRACT_SUBTITLE_FONT_SIZE"
+        ):
             subtitle_font_size = Config.EXTRACT_SUBTITLE_FONT_SIZE
-        subtitle_font_size_str = f"{subtitle_font_size}" if subtitle_font_size else "None (Default)"
+        subtitle_font_size_str = (
+            f"{subtitle_font_size}" if subtitle_font_size else "None (Default)"
+        )
 
         # Get attachment extract settings
         attachment_format = user_dict.get("EXTRACT_ATTACHMENT_FORMAT", None)
-        if attachment_format is None and hasattr(Config, "EXTRACT_ATTACHMENT_FORMAT"):
+        if attachment_format is None and hasattr(
+            Config, "EXTRACT_ATTACHMENT_FORMAT"
+        ):
             attachment_format = Config.EXTRACT_ATTACHMENT_FORMAT
-        attachment_format_str = f"{attachment_format}" if attachment_format else "None (Default)"
+        attachment_format_str = (
+            f"{attachment_format}" if attachment_format else "None (Default)"
+        )
 
         attachment_index = user_dict.get("EXTRACT_ATTACHMENT_INDEX", None)
         if attachment_index is None and hasattr(Config, "EXTRACT_ATTACHMENT_INDEX"):
             attachment_index = Config.EXTRACT_ATTACHMENT_INDEX
-        attachment_index_str = f"{attachment_index}" if attachment_index is not None else "All (Default)"
+        attachment_index_str = (
+            f"{attachment_index}"
+            if attachment_index is not None
+            else "All (Default)"
+        )
 
         attachment_filter = user_dict.get("EXTRACT_ATTACHMENT_FILTER", None)
-        if attachment_filter is None and hasattr(Config, "EXTRACT_ATTACHMENT_FILTER"):
+        if attachment_filter is None and hasattr(
+            Config, "EXTRACT_ATTACHMENT_FILTER"
+        ):
             attachment_filter = Config.EXTRACT_ATTACHMENT_FILTER
-        attachment_filter_str = f"{attachment_filter}" if attachment_filter else "None (Default)"
+        attachment_filter_str = (
+            f"{attachment_filter}" if attachment_filter else "None (Default)"
+        )
 
         # Get extract enabled status for each type
         # Video extract status
         video_extract_enabled = user_dict.get("EXTRACT_VIDEO_ENABLED", False)
         owner_video_extract_enabled = (
-            hasattr(Config, "EXTRACT_VIDEO_ENABLED")
-            and Config.EXTRACT_VIDEO_ENABLED
+            hasattr(Config, "EXTRACT_VIDEO_ENABLED") and Config.EXTRACT_VIDEO_ENABLED
         )
 
         if "EXTRACT_VIDEO_ENABLED" in user_dict:
@@ -2679,8 +2733,7 @@ async def get_media_tools_settings(from_user, stype="main", page_no=0):
         # Audio extract status
         audio_extract_enabled = user_dict.get("EXTRACT_AUDIO_ENABLED", False)
         owner_audio_extract_enabled = (
-            hasattr(Config, "EXTRACT_AUDIO_ENABLED")
-            and Config.EXTRACT_AUDIO_ENABLED
+            hasattr(Config, "EXTRACT_AUDIO_ENABLED") and Config.EXTRACT_AUDIO_ENABLED
         )
 
         if "EXTRACT_AUDIO_ENABLED" in user_dict:
@@ -2711,7 +2764,9 @@ async def get_media_tools_settings(from_user, stype="main", page_no=0):
             subtitle_status = "❌ Disabled"
 
         # Attachment extract status
-        attachment_extract_enabled = user_dict.get("EXTRACT_ATTACHMENT_ENABLED", False)
+        attachment_extract_enabled = user_dict.get(
+            "EXTRACT_ATTACHMENT_ENABLED", False
+        )
         owner_attachment_extract_enabled = (
             hasattr(Config, "EXTRACT_ATTACHMENT_ENABLED")
             and Config.EXTRACT_ATTACHMENT_ENABLED
@@ -2883,13 +2938,15 @@ async def get_media_tools_settings(from_user, stype="main", page_no=0):
             f"mediatools {user_id} tog COMPRESSION_DOCUMENT_ENABLED {'f' if document_enabled else 't'}",
         )
         buttons.data_button(
-            "Document Preset", f"mediatools {user_id} menu COMPRESSION_DOCUMENT_PRESET"
+            "Document Preset",
+            f"mediatools {user_id} menu COMPRESSION_DOCUMENT_PRESET",
         )
         buttons.data_button(
             "Document DPI", f"mediatools {user_id} menu COMPRESSION_DOCUMENT_DPI"
         )
         buttons.data_button(
-            "Document Format", f"mediatools {user_id} menu COMPRESSION_DOCUMENT_FORMAT"
+            "Document Format",
+            f"mediatools {user_id} menu COMPRESSION_DOCUMENT_FORMAT",
         )
 
         # Subtitle compression settings
@@ -2899,14 +2956,16 @@ async def get_media_tools_settings(from_user, stype="main", page_no=0):
             f"mediatools {user_id} tog COMPRESSION_SUBTITLE_ENABLED {'f' if subtitle_enabled else 't'}",
         )
         buttons.data_button(
-            "Subtitle Preset", f"mediatools {user_id} menu COMPRESSION_SUBTITLE_PRESET"
+            "Subtitle Preset",
+            f"mediatools {user_id} menu COMPRESSION_SUBTITLE_PRESET",
         )
         buttons.data_button(
             "Subtitle Encoding",
             f"mediatools {user_id} menu COMPRESSION_SUBTITLE_ENCODING",
         )
         buttons.data_button(
-            "Subtitle Format", f"mediatools {user_id} menu COMPRESSION_SUBTITLE_FORMAT"
+            "Subtitle Format",
+            f"mediatools {user_id} menu COMPRESSION_SUBTITLE_FORMAT",
         )
 
         # Archive compression settings
@@ -3033,7 +3092,9 @@ async def get_media_tools_settings(from_user, stype="main", page_no=0):
 
         # Get document compression settings
         document_preset = user_dict.get("COMPRESSION_DOCUMENT_PRESET", None)
-        if document_preset is None and hasattr(Config, "COMPRESSION_DOCUMENT_PRESET"):
+        if document_preset is None and hasattr(
+            Config, "COMPRESSION_DOCUMENT_PRESET"
+        ):
             document_preset = Config.COMPRESSION_DOCUMENT_PRESET
         document_preset_str = (
             f"{document_preset}" if document_preset else "medium (Default)"
@@ -3045,13 +3106,19 @@ async def get_media_tools_settings(from_user, stype="main", page_no=0):
         document_dpi_str = f"{document_dpi}" if document_dpi else "150 (Default)"
 
         document_format = user_dict.get("COMPRESSION_DOCUMENT_FORMAT", None)
-        if document_format is None and hasattr(Config, "COMPRESSION_DOCUMENT_FORMAT"):
+        if document_format is None and hasattr(
+            Config, "COMPRESSION_DOCUMENT_FORMAT"
+        ):
             document_format = Config.COMPRESSION_DOCUMENT_FORMAT
-        document_format_str = f"{document_format}" if document_format else "none (Default)"
+        document_format_str = (
+            f"{document_format}" if document_format else "none (Default)"
+        )
 
         # Get subtitle compression settings
         subtitle_preset = user_dict.get("COMPRESSION_SUBTITLE_PRESET", None)
-        if subtitle_preset is None and hasattr(Config, "COMPRESSION_SUBTITLE_PRESET"):
+        if subtitle_preset is None and hasattr(
+            Config, "COMPRESSION_SUBTITLE_PRESET"
+        ):
             subtitle_preset = Config.COMPRESSION_SUBTITLE_PRESET
         subtitle_preset_str = (
             f"{subtitle_preset}" if subtitle_preset else "medium (Default)"
@@ -3067,9 +3134,13 @@ async def get_media_tools_settings(from_user, stype="main", page_no=0):
         )
 
         subtitle_format = user_dict.get("COMPRESSION_SUBTITLE_FORMAT", None)
-        if subtitle_format is None and hasattr(Config, "COMPRESSION_SUBTITLE_FORMAT"):
+        if subtitle_format is None and hasattr(
+            Config, "COMPRESSION_SUBTITLE_FORMAT"
+        ):
             subtitle_format = Config.COMPRESSION_SUBTITLE_FORMAT
-        subtitle_format_str = f"{subtitle_format}" if subtitle_format else "none (Default)"
+        subtitle_format_str = (
+            f"{subtitle_format}" if subtitle_format else "none (Default)"
+        )
 
         # Get archive compression settings
         archive_preset = user_dict.get("COMPRESSION_ARCHIVE_PRESET", None)
@@ -3094,7 +3165,9 @@ async def get_media_tools_settings(from_user, stype="main", page_no=0):
         archive_format = user_dict.get("COMPRESSION_ARCHIVE_FORMAT", None)
         if archive_format is None and hasattr(Config, "COMPRESSION_ARCHIVE_FORMAT"):
             archive_format = Config.COMPRESSION_ARCHIVE_FORMAT
-        archive_format_str = f"{archive_format}" if archive_format else "none (Default)"
+        archive_format_str = (
+            f"{archive_format}" if archive_format else "none (Default)"
+        )
 
         # Get compression enabled status for each type
         # Video compression status
@@ -3265,9 +3338,15 @@ async def get_media_tools_settings(from_user, stype="main", page_no=0):
         # Media type buttons
         buttons.data_button("Video Convert", f"mediatools {user_id} convert_video")
         buttons.data_button("Audio Convert", f"mediatools {user_id} convert_audio")
-        buttons.data_button("Subtitle Convert", f"mediatools {user_id} convert_subtitle")
-        buttons.data_button("Document Convert", f"mediatools {user_id} convert_document")
-        buttons.data_button("Archive Convert", f"mediatools {user_id} convert_archive")
+        buttons.data_button(
+            "Subtitle Convert", f"mediatools {user_id} convert_subtitle"
+        )
+        buttons.data_button(
+            "Document Convert", f"mediatools {user_id} convert_document"
+        )
+        buttons.data_button(
+            "Archive Convert", f"mediatools {user_id} convert_archive"
+        )
 
         buttons.data_button(
             "Set Priority", f"mediatools {user_id} menu CONVERT_PRIORITY"
@@ -3283,8 +3362,13 @@ async def get_media_tools_settings(from_user, stype="main", page_no=0):
 
         # Get delete original status
         if "CONVERT_DELETE_ORIGINAL" in user_dict:
-            delete_original_status = "✅ Enabled (User)" if delete_original else "❌ Disabled (User)"
-        elif hasattr(Config, "CONVERT_DELETE_ORIGINAL") and Config.CONVERT_DELETE_ORIGINAL:
+            delete_original_status = (
+                "✅ Enabled (User)" if delete_original else "❌ Disabled (User)"
+            )
+        elif (
+            hasattr(Config, "CONVERT_DELETE_ORIGINAL")
+            and Config.CONVERT_DELETE_ORIGINAL
+        ):
             delete_original_status = "✅ Enabled (Global)"
         else:
             delete_original_status = "❌ Disabled"
@@ -3324,7 +3408,8 @@ async def get_media_tools_settings(from_user, stype="main", page_no=0):
         # Get subtitle convert enabled status
         subtitle_convert_enabled = user_dict.get("CONVERT_SUBTITLE_ENABLED", False)
         owner_subtitle_enabled = (
-            hasattr(Config, "CONVERT_SUBTITLE_ENABLED") and Config.CONVERT_SUBTITLE_ENABLED
+            hasattr(Config, "CONVERT_SUBTITLE_ENABLED")
+            and Config.CONVERT_SUBTITLE_ENABLED
         )
 
         if "CONVERT_SUBTITLE_ENABLED" in user_dict:
@@ -3340,7 +3425,8 @@ async def get_media_tools_settings(from_user, stype="main", page_no=0):
         # Get document convert enabled status
         document_convert_enabled = user_dict.get("CONVERT_DOCUMENT_ENABLED", False)
         owner_document_enabled = (
-            hasattr(Config, "CONVERT_DOCUMENT_ENABLED") and Config.CONVERT_DOCUMENT_ENABLED
+            hasattr(Config, "CONVERT_DOCUMENT_ENABLED")
+            and Config.CONVERT_DOCUMENT_ENABLED
         )
 
         if "CONVERT_DOCUMENT_ENABLED" in user_dict:
@@ -3356,7 +3442,8 @@ async def get_media_tools_settings(from_user, stype="main", page_no=0):
         # Get archive convert enabled status
         archive_convert_enabled = user_dict.get("CONVERT_ARCHIVE_ENABLED", False)
         owner_archive_enabled = (
-            hasattr(Config, "CONVERT_ARCHIVE_ENABLED") and Config.CONVERT_ARCHIVE_ENABLED
+            hasattr(Config, "CONVERT_ARCHIVE_ENABLED")
+            and Config.CONVERT_ARCHIVE_ENABLED
         )
 
         if "CONVERT_ARCHIVE_ENABLED" in user_dict:
@@ -3401,10 +3488,12 @@ async def get_media_tools_settings(from_user, stype="main", page_no=0):
 
         # Get subtitle convert format
         user_has_subtitle_format = (
-            "CONVERT_SUBTITLE_FORMAT" in user_dict and user_dict["CONVERT_SUBTITLE_FORMAT"]
+            "CONVERT_SUBTITLE_FORMAT" in user_dict
+            and user_dict["CONVERT_SUBTITLE_FORMAT"]
         )
         owner_has_subtitle_format = (
-            hasattr(Config, "CONVERT_SUBTITLE_FORMAT") and Config.CONVERT_SUBTITLE_FORMAT
+            hasattr(Config, "CONVERT_SUBTITLE_FORMAT")
+            and Config.CONVERT_SUBTITLE_FORMAT
         )
 
         if user_has_subtitle_format:
@@ -3416,10 +3505,12 @@ async def get_media_tools_settings(from_user, stype="main", page_no=0):
 
         # Get document convert format
         user_has_document_format = (
-            "CONVERT_DOCUMENT_FORMAT" in user_dict and user_dict["CONVERT_DOCUMENT_FORMAT"]
+            "CONVERT_DOCUMENT_FORMAT" in user_dict
+            and user_dict["CONVERT_DOCUMENT_FORMAT"]
         )
         owner_has_document_format = (
-            hasattr(Config, "CONVERT_DOCUMENT_FORMAT") and Config.CONVERT_DOCUMENT_FORMAT
+            hasattr(Config, "CONVERT_DOCUMENT_FORMAT")
+            and Config.CONVERT_DOCUMENT_FORMAT
         )
 
         if user_has_document_format:
@@ -3431,10 +3522,12 @@ async def get_media_tools_settings(from_user, stype="main", page_no=0):
 
         # Get archive convert format
         user_has_archive_format = (
-            "CONVERT_ARCHIVE_FORMAT" in user_dict and user_dict["CONVERT_ARCHIVE_FORMAT"]
+            "CONVERT_ARCHIVE_FORMAT" in user_dict
+            and user_dict["CONVERT_ARCHIVE_FORMAT"]
         )
         owner_has_archive_format = (
-            hasattr(Config, "CONVERT_ARCHIVE_FORMAT") and Config.CONVERT_ARCHIVE_FORMAT
+            hasattr(Config, "CONVERT_ARCHIVE_FORMAT")
+            and Config.CONVERT_ARCHIVE_FORMAT
         )
 
         if user_has_archive_format:
@@ -3492,7 +3585,9 @@ async def get_media_tools_settings(from_user, stype="main", page_no=0):
         buttons.data_button(
             "Set Quality", f"mediatools {user_id} menu CONVERT_VIDEO_QUALITY"
         )
-        buttons.data_button("Set CRF", f"mediatools {user_id} menu CONVERT_VIDEO_CRF")
+        buttons.data_button(
+            "Set CRF", f"mediatools {user_id} menu CONVERT_VIDEO_CRF"
+        )
         buttons.data_button(
             "Set Preset", f"mediatools {user_id} menu CONVERT_VIDEO_PRESET"
         )
@@ -3666,8 +3761,6 @@ async def get_media_tools_settings(from_user, stype="main", page_no=0):
             # Default value from config is True
             maintain_quality_status = "✅ High (Default)"
 
-
-
         # Get video convert enabled status
         video_convert_enabled = user_dict.get("CONVERT_VIDEO_ENABLED", False)
         owner_video_enabled = (
@@ -3731,7 +3824,9 @@ async def get_media_tools_settings(from_user, stype="main", page_no=0):
             video_status = (
                 "✅ Enabled (User)" if video_enabled else "❌ Disabled (User)"
             )
-        elif hasattr(Config, "EXTRACT_VIDEO_ENABLED") and Config.EXTRACT_VIDEO_ENABLED:
+        elif (
+            hasattr(Config, "EXTRACT_VIDEO_ENABLED") and Config.EXTRACT_VIDEO_ENABLED
+        ):
             video_status = "✅ Enabled (Global)"
         else:
             video_status = "❌ Disabled"
@@ -3742,7 +3837,9 @@ async def get_media_tools_settings(from_user, stype="main", page_no=0):
             audio_status = (
                 "✅ Enabled (User)" if audio_enabled else "❌ Disabled (User)"
             )
-        elif hasattr(Config, "EXTRACT_AUDIO_ENABLED") and Config.EXTRACT_AUDIO_ENABLED:
+        elif (
+            hasattr(Config, "EXTRACT_AUDIO_ENABLED") and Config.EXTRACT_AUDIO_ENABLED
+        ):
             audio_status = "✅ Enabled (Global)"
         else:
             audio_status = "❌ Disabled"
@@ -3753,7 +3850,10 @@ async def get_media_tools_settings(from_user, stype="main", page_no=0):
             subtitle_status = (
                 "✅ Enabled (User)" if subtitle_enabled else "❌ Disabled (User)"
             )
-        elif hasattr(Config, "EXTRACT_SUBTITLE_ENABLED") and Config.EXTRACT_SUBTITLE_ENABLED:
+        elif (
+            hasattr(Config, "EXTRACT_SUBTITLE_ENABLED")
+            and Config.EXTRACT_SUBTITLE_ENABLED
+        ):
             subtitle_status = "✅ Enabled (Global)"
         else:
             subtitle_status = "❌ Disabled"
@@ -3764,7 +3864,10 @@ async def get_media_tools_settings(from_user, stype="main", page_no=0):
             attachment_status = (
                 "✅ Enabled (User)" if attachment_enabled else "❌ Disabled (User)"
             )
-        elif hasattr(Config, "EXTRACT_ATTACHMENT_ENABLED") and Config.EXTRACT_ATTACHMENT_ENABLED:
+        elif (
+            hasattr(Config, "EXTRACT_ATTACHMENT_ENABLED")
+            and Config.EXTRACT_ATTACHMENT_ENABLED
+        ):
             attachment_status = "✅ Enabled (Global)"
         else:
             attachment_status = "❌ Disabled"
@@ -3903,9 +4006,7 @@ async def get_media_tools_settings(from_user, stype="main", page_no=0):
         buttons.data_button(
             "Resolution", f"mediatools {user_id} menu EXTRACT_VIDEO_RESOLUTION"
         )
-        buttons.data_button(
-            "FPS", f"mediatools {user_id} menu EXTRACT_VIDEO_FPS"
-        )
+        buttons.data_button("FPS", f"mediatools {user_id} menu EXTRACT_VIDEO_FPS")
 
         buttons.data_button("Back", f"mediatools {user_id} extract_config", "footer")
         buttons.data_button("Close", f"mediatools {user_id} close", "footer")
@@ -3915,38 +4016,54 @@ async def get_media_tools_settings(from_user, stype="main", page_no=0):
         video_codec = user_dict.get("EXTRACT_VIDEO_CODEC", "none")
         if video_codec == "none" and hasattr(Config, "EXTRACT_VIDEO_CODEC"):
             video_codec = Config.EXTRACT_VIDEO_CODEC
-        video_codec_str = f"{video_codec}" if video_codec != "none" else "none (Default)"
+        video_codec_str = (
+            f"{video_codec}" if video_codec != "none" else "none (Default)"
+        )
 
         video_format = user_dict.get("EXTRACT_VIDEO_FORMAT", "none")
         if video_format == "none" and hasattr(Config, "EXTRACT_VIDEO_FORMAT"):
             video_format = Config.EXTRACT_VIDEO_FORMAT
-        video_format_str = f"{video_format}" if video_format != "none" else "none (Default)"
+        video_format_str = (
+            f"{video_format}" if video_format != "none" else "none (Default)"
+        )
 
         video_index = user_dict.get("EXTRACT_VIDEO_INDEX", None)
         if video_index is None and hasattr(Config, "EXTRACT_VIDEO_INDEX"):
             video_index = Config.EXTRACT_VIDEO_INDEX
-        video_index_str = f"{video_index}" if video_index is not None else "All (Default)"
+        video_index_str = (
+            f"{video_index}" if video_index is not None else "All (Default)"
+        )
 
         # Get additional video settings
         video_quality = user_dict.get("EXTRACT_VIDEO_QUALITY", "none")
         if video_quality == "none" and hasattr(Config, "EXTRACT_VIDEO_QUALITY"):
             video_quality = Config.EXTRACT_VIDEO_QUALITY
-        video_quality_str = f"{video_quality}" if video_quality != "none" else "none (Default)"
+        video_quality_str = (
+            f"{video_quality}" if video_quality != "none" else "none (Default)"
+        )
 
         video_preset = user_dict.get("EXTRACT_VIDEO_PRESET", "none")
         if video_preset == "none" and hasattr(Config, "EXTRACT_VIDEO_PRESET"):
             video_preset = Config.EXTRACT_VIDEO_PRESET
-        video_preset_str = f"{video_preset}" if video_preset != "none" else "none (Default)"
+        video_preset_str = (
+            f"{video_preset}" if video_preset != "none" else "none (Default)"
+        )
 
         video_bitrate = user_dict.get("EXTRACT_VIDEO_BITRATE", "none")
         if video_bitrate == "none" and hasattr(Config, "EXTRACT_VIDEO_BITRATE"):
             video_bitrate = Config.EXTRACT_VIDEO_BITRATE
-        video_bitrate_str = f"{video_bitrate}" if video_bitrate != "none" else "none (Default)"
+        video_bitrate_str = (
+            f"{video_bitrate}" if video_bitrate != "none" else "none (Default)"
+        )
 
         video_resolution = user_dict.get("EXTRACT_VIDEO_RESOLUTION", "none")
-        if video_resolution == "none" and hasattr(Config, "EXTRACT_VIDEO_RESOLUTION"):
+        if video_resolution == "none" and hasattr(
+            Config, "EXTRACT_VIDEO_RESOLUTION"
+        ):
             video_resolution = Config.EXTRACT_VIDEO_RESOLUTION
-        video_resolution_str = f"{video_resolution}" if video_resolution != "none" else "none (Default)"
+        video_resolution_str = (
+            f"{video_resolution}" if video_resolution != "none" else "none (Default)"
+        )
 
         video_fps = user_dict.get("EXTRACT_VIDEO_FPS", "none")
         if video_fps == "none" and hasattr(Config, "EXTRACT_VIDEO_FPS"):
@@ -4011,38 +4128,52 @@ Use 'copy' codec to preserve original quality. When set to 'none', settings won'
         audio_codec = user_dict.get("EXTRACT_AUDIO_CODEC", "none")
         if audio_codec == "none" and hasattr(Config, "EXTRACT_AUDIO_CODEC"):
             audio_codec = Config.EXTRACT_AUDIO_CODEC
-        audio_codec_str = f"{audio_codec}" if audio_codec != "none" else "none (Default)"
+        audio_codec_str = (
+            f"{audio_codec}" if audio_codec != "none" else "none (Default)"
+        )
 
         audio_format = user_dict.get("EXTRACT_AUDIO_FORMAT", "none")
         if audio_format == "none" and hasattr(Config, "EXTRACT_AUDIO_FORMAT"):
             audio_format = Config.EXTRACT_AUDIO_FORMAT
-        audio_format_str = f"{audio_format}" if audio_format != "none" else "none (Default)"
+        audio_format_str = (
+            f"{audio_format}" if audio_format != "none" else "none (Default)"
+        )
 
         audio_index = user_dict.get("EXTRACT_AUDIO_INDEX", None)
         if audio_index is None and hasattr(Config, "EXTRACT_AUDIO_INDEX"):
             audio_index = Config.EXTRACT_AUDIO_INDEX
-        audio_index_str = f"{audio_index}" if audio_index is not None else "All (Default)"
+        audio_index_str = (
+            f"{audio_index}" if audio_index is not None else "All (Default)"
+        )
 
         # Get additional audio settings
         audio_bitrate = user_dict.get("EXTRACT_AUDIO_BITRATE", "none")
         if audio_bitrate == "none" and hasattr(Config, "EXTRACT_AUDIO_BITRATE"):
             audio_bitrate = Config.EXTRACT_AUDIO_BITRATE
-        audio_bitrate_str = f"{audio_bitrate}" if audio_bitrate != "none" else "none (Default)"
+        audio_bitrate_str = (
+            f"{audio_bitrate}" if audio_bitrate != "none" else "none (Default)"
+        )
 
         audio_channels = user_dict.get("EXTRACT_AUDIO_CHANNELS", "none")
         if audio_channels == "none" and hasattr(Config, "EXTRACT_AUDIO_CHANNELS"):
             audio_channels = Config.EXTRACT_AUDIO_CHANNELS
-        audio_channels_str = f"{audio_channels}" if audio_channels != "none" else "none (Default)"
+        audio_channels_str = (
+            f"{audio_channels}" if audio_channels != "none" else "none (Default)"
+        )
 
         audio_sampling = user_dict.get("EXTRACT_AUDIO_SAMPLING", "none")
         if audio_sampling == "none" and hasattr(Config, "EXTRACT_AUDIO_SAMPLING"):
             audio_sampling = Config.EXTRACT_AUDIO_SAMPLING
-        audio_sampling_str = f"{audio_sampling}" if audio_sampling != "none" else "none (Default)"
+        audio_sampling_str = (
+            f"{audio_sampling}" if audio_sampling != "none" else "none (Default)"
+        )
 
         audio_volume = user_dict.get("EXTRACT_AUDIO_VOLUME", "none")
         if audio_volume == "none" and hasattr(Config, "EXTRACT_AUDIO_VOLUME"):
             audio_volume = Config.EXTRACT_AUDIO_VOLUME
-        audio_volume_str = f"{audio_volume}" if audio_volume != "none" else "none (Default)"
+        audio_volume_str = (
+            f"{audio_volume}" if audio_volume != "none" else "none (Default)"
+        )
 
         text = f"""<b>Audio Extract Configuration</b>
 
@@ -4100,38 +4231,64 @@ Use 'copy' codec to preserve original quality. When set to 'none', settings won'
         subtitle_codec = user_dict.get("EXTRACT_SUBTITLE_CODEC", "none")
         if subtitle_codec == "none" and hasattr(Config, "EXTRACT_SUBTITLE_CODEC"):
             subtitle_codec = Config.EXTRACT_SUBTITLE_CODEC
-        subtitle_codec_str = f"{subtitle_codec}" if subtitle_codec != "none" else "none (Default)"
+        subtitle_codec_str = (
+            f"{subtitle_codec}" if subtitle_codec != "none" else "none (Default)"
+        )
 
         subtitle_format = user_dict.get("EXTRACT_SUBTITLE_FORMAT", "none")
         if subtitle_format == "none" and hasattr(Config, "EXTRACT_SUBTITLE_FORMAT"):
             subtitle_format = Config.EXTRACT_SUBTITLE_FORMAT
-        subtitle_format_str = f"{subtitle_format}" if subtitle_format != "none" else "none (Default)"
+        subtitle_format_str = (
+            f"{subtitle_format}" if subtitle_format != "none" else "none (Default)"
+        )
 
         subtitle_index = user_dict.get("EXTRACT_SUBTITLE_INDEX", None)
         if subtitle_index is None and hasattr(Config, "EXTRACT_SUBTITLE_INDEX"):
             subtitle_index = Config.EXTRACT_SUBTITLE_INDEX
-        subtitle_index_str = f"{subtitle_index}" if subtitle_index is not None else "All (Default)"
+        subtitle_index_str = (
+            f"{subtitle_index}" if subtitle_index is not None else "All (Default)"
+        )
 
         # Get additional subtitle settings
         subtitle_language = user_dict.get("EXTRACT_SUBTITLE_LANGUAGE", "none")
-        if subtitle_language == "none" and hasattr(Config, "EXTRACT_SUBTITLE_LANGUAGE"):
+        if subtitle_language == "none" and hasattr(
+            Config, "EXTRACT_SUBTITLE_LANGUAGE"
+        ):
             subtitle_language = Config.EXTRACT_SUBTITLE_LANGUAGE
-        subtitle_language_str = f"{subtitle_language}" if subtitle_language != "none" else "none (Default)"
+        subtitle_language_str = (
+            f"{subtitle_language}"
+            if subtitle_language != "none"
+            else "none (Default)"
+        )
 
         subtitle_encoding = user_dict.get("EXTRACT_SUBTITLE_ENCODING", "none")
-        if subtitle_encoding == "none" and hasattr(Config, "EXTRACT_SUBTITLE_ENCODING"):
+        if subtitle_encoding == "none" and hasattr(
+            Config, "EXTRACT_SUBTITLE_ENCODING"
+        ):
             subtitle_encoding = Config.EXTRACT_SUBTITLE_ENCODING
-        subtitle_encoding_str = f"{subtitle_encoding}" if subtitle_encoding != "none" else "none (Default)"
+        subtitle_encoding_str = (
+            f"{subtitle_encoding}"
+            if subtitle_encoding != "none"
+            else "none (Default)"
+        )
 
         subtitle_font = user_dict.get("EXTRACT_SUBTITLE_FONT", "none")
         if subtitle_font == "none" and hasattr(Config, "EXTRACT_SUBTITLE_FONT"):
             subtitle_font = Config.EXTRACT_SUBTITLE_FONT
-        subtitle_font_str = f"{subtitle_font}" if subtitle_font != "none" else "none (Default)"
+        subtitle_font_str = (
+            f"{subtitle_font}" if subtitle_font != "none" else "none (Default)"
+        )
 
         subtitle_font_size = user_dict.get("EXTRACT_SUBTITLE_FONT_SIZE", "none")
-        if subtitle_font_size == "none" and hasattr(Config, "EXTRACT_SUBTITLE_FONT_SIZE"):
+        if subtitle_font_size == "none" and hasattr(
+            Config, "EXTRACT_SUBTITLE_FONT_SIZE"
+        ):
             subtitle_font_size = Config.EXTRACT_SUBTITLE_FONT_SIZE
-        subtitle_font_size_str = f"{subtitle_font_size}" if subtitle_font_size != "none" else "none (Default)"
+        subtitle_font_size_str = (
+            f"{subtitle_font_size}"
+            if subtitle_font_size != "none"
+            else "none (Default)"
+        )
 
         text = f"""<b>Subtitle Extract Configuration</b>
 
@@ -4175,20 +4332,36 @@ Use 'copy' codec to preserve original format or 'srt' to convert ASS/SSA to SRT.
 
         # Get attachment extract settings
         attachment_format = user_dict.get("EXTRACT_ATTACHMENT_FORMAT", "none")
-        if attachment_format == "none" and hasattr(Config, "EXTRACT_ATTACHMENT_FORMAT"):
+        if attachment_format == "none" and hasattr(
+            Config, "EXTRACT_ATTACHMENT_FORMAT"
+        ):
             attachment_format = Config.EXTRACT_ATTACHMENT_FORMAT
-        attachment_format_str = f"{attachment_format}" if attachment_format != "none" else "none (Default)"
+        attachment_format_str = (
+            f"{attachment_format}"
+            if attachment_format != "none"
+            else "none (Default)"
+        )
 
         attachment_index = user_dict.get("EXTRACT_ATTACHMENT_INDEX", None)
         if attachment_index is None and hasattr(Config, "EXTRACT_ATTACHMENT_INDEX"):
             attachment_index = Config.EXTRACT_ATTACHMENT_INDEX
-        attachment_index_str = f"{attachment_index}" if attachment_index is not None else "All (Default)"
+        attachment_index_str = (
+            f"{attachment_index}"
+            if attachment_index is not None
+            else "All (Default)"
+        )
 
         # Get additional attachment settings
         attachment_filter = user_dict.get("EXTRACT_ATTACHMENT_FILTER", "none")
-        if attachment_filter == "none" and hasattr(Config, "EXTRACT_ATTACHMENT_FILTER"):
+        if attachment_filter == "none" and hasattr(
+            Config, "EXTRACT_ATTACHMENT_FILTER"
+        ):
             attachment_filter = Config.EXTRACT_ATTACHMENT_FILTER
-        attachment_filter_str = f"{attachment_filter}" if attachment_filter != "none" else "none (Default)"
+        attachment_filter_str = (
+            f"{attachment_filter}"
+            if attachment_filter != "none"
+            else "none (Default)"
+        )
 
         text = f"""<b>Attachment Extract Configuration</b>
 
@@ -4354,8 +4527,6 @@ Use 'copy' codec to preserve original format or 'srt' to convert ASS/SSA to SRT.
         else:
             audio_volume = "0.0 (Default)"
 
-
-
         # Get audio convert enabled status
         audio_convert_enabled = user_dict.get("CONVERT_AUDIO_ENABLED", False)
         owner_audio_enabled = (
@@ -4466,7 +4637,8 @@ Use 'copy' codec to preserve original format or 'srt' to convert ASS/SSA to SRT.
         # Get subtitle convert enabled status
         subtitle_convert_enabled = user_dict.get("CONVERT_SUBTITLE_ENABLED", False)
         owner_subtitle_enabled = (
-            hasattr(Config, "CONVERT_SUBTITLE_ENABLED") and Config.CONVERT_SUBTITLE_ENABLED
+            hasattr(Config, "CONVERT_SUBTITLE_ENABLED")
+            and Config.CONVERT_SUBTITLE_ENABLED
         )
 
         if "CONVERT_SUBTITLE_ENABLED" in user_dict:
@@ -4570,7 +4742,8 @@ Use 'copy' codec to preserve original format or 'srt' to convert ASS/SSA to SRT.
         # Get document convert enabled status
         document_convert_enabled = user_dict.get("CONVERT_DOCUMENT_ENABLED", False)
         owner_document_enabled = (
-            hasattr(Config, "CONVERT_DOCUMENT_ENABLED") and Config.CONVERT_DOCUMENT_ENABLED
+            hasattr(Config, "CONVERT_DOCUMENT_ENABLED")
+            and Config.CONVERT_DOCUMENT_ENABLED
         )
 
         if "CONVERT_DOCUMENT_ENABLED" in user_dict:
@@ -4674,7 +4847,8 @@ Use 'copy' codec to preserve original format or 'srt' to convert ASS/SSA to SRT.
         # Get archive convert enabled status
         archive_convert_enabled = user_dict.get("CONVERT_ARCHIVE_ENABLED", False)
         owner_archive_enabled = (
-            hasattr(Config, "CONVERT_ARCHIVE_ENABLED") and Config.CONVERT_ARCHIVE_ENABLED
+            hasattr(Config, "CONVERT_ARCHIVE_ENABLED")
+            and Config.CONVERT_ARCHIVE_ENABLED
         )
 
         if "CONVERT_ARCHIVE_ENABLED" in user_dict:
@@ -4863,7 +5037,9 @@ async def update_media_tools_settings(query, stype="main"):
     elif stype == "merge_config":
         # Use the global variable for merge_config
         page_no = merge_config_page
-        LOGGER.debug(f"Using global merge_config_page: {page_no} for merge_config menu")
+        LOGGER.debug(
+            f"Using global merge_config_page: {page_no} for merge_config menu"
+        )
 
     LOGGER.debug(
         f"Calling get_media_tools_settings with stype: {stype}, page_no: {page_no}"
@@ -4927,45 +5103,41 @@ async def get_menu(option, message, user_id):
         back_target = "convert_archive"
     elif option.startswith("CONVERT_"):
         back_target = "convert"
-    elif option in ["TRIM_START_TIME", "TRIM_END_TIME"]:
-        back_target = "trim_config"
-    elif option.startswith("TRIM_VIDEO_"):
-        back_target = "trim_config"
-    elif option.startswith("TRIM_AUDIO_"):
-        back_target = "trim_config"
-    elif option.startswith("TRIM_IMAGE_"):
-        back_target = "trim_config"
-    elif option.startswith("TRIM_DOCUMENT_"):
-        back_target = "trim_config"
-    elif option.startswith("TRIM_SUBTITLE_"):
-        back_target = "trim_config"
-    elif option.startswith("TRIM_ARCHIVE_"):
+    elif option in ["TRIM_START_TIME", "TRIM_END_TIME"] or option.startswith(
+        (
+            "TRIM_VIDEO_",
+            "TRIM_AUDIO_",
+            "TRIM_IMAGE_",
+            "TRIM_DOCUMENT_",
+            "TRIM_SUBTITLE_",
+            "TRIM_ARCHIVE_",
+        )
+    ):
         back_target = "trim_config"
     elif option.startswith("TRIM_"):
         back_target = "trim"
-    elif option.startswith("EXTRACT_VIDEO_"):
-        back_target = "extract_config"
-    elif option.startswith("EXTRACT_AUDIO_"):
-        back_target = "extract_config"
-    elif option.startswith("EXTRACT_SUBTITLE_"):
-        back_target = "extract_config"
-    elif option.startswith("EXTRACT_ATTACHMENT_"):
-        back_target = "extract_config"
-    elif option.startswith("EXTRACT_MAINTAIN_QUALITY"):
+    elif option.startswith(
+        (
+            "EXTRACT_VIDEO_",
+            "EXTRACT_AUDIO_",
+            "EXTRACT_SUBTITLE_",
+            "EXTRACT_ATTACHMENT_",
+            "EXTRACT_MAINTAIN_QUALITY",
+        )
+    ):
         back_target = "extract_config"
     elif option.startswith("EXTRACT_"):
         back_target = "extract"
-    elif option.startswith("COMPRESSION_VIDEO_"):
-        back_target = "compression_config"
-    elif option.startswith("COMPRESSION_AUDIO_"):
-        back_target = "compression_config"
-    elif option.startswith("COMPRESSION_IMAGE_"):
-        back_target = "compression_config"
-    elif option.startswith("COMPRESSION_DOCUMENT_"):
-        back_target = "compression_config"
-    elif option.startswith("COMPRESSION_SUBTITLE_"):
-        back_target = "compression_config"
-    elif option.startswith("COMPRESSION_ARCHIVE_"):
+    elif option.startswith(
+        (
+            "COMPRESSION_VIDEO_",
+            "COMPRESSION_AUDIO_",
+            "COMPRESSION_IMAGE_",
+            "COMPRESSION_DOCUMENT_",
+            "COMPRESSION_SUBTITLE_",
+            "COMPRESSION_ARCHIVE_",
+        )
+    ):
         back_target = "compression_config"
     elif option.startswith("COMPRESSION_"):
         back_target = "compression"
@@ -5018,11 +5190,10 @@ async def get_menu(option, message, user_id):
         current_value = "default.otf (Default)"
     elif option == "WATERMARK_PRIORITY":
         current_value = "2 (Default)"
-    elif option == "WATERMARK_THREADING":
-        current_value = "True (Default)"
-    elif option == "WATERMARK_FAST_MODE":
-        current_value = "True (Default)"
-    elif option == "WATERMARK_MAINTAIN_QUALITY":
+    elif (
+        option in {"WATERMARK_THREADING", "WATERMARK_FAST_MODE"}
+        or option == "WATERMARK_MAINTAIN_QUALITY"
+    ):
         current_value = "True (Default)"
     elif option == "WATERMARK_OPACITY":
         current_value = "1.0 (Default)"
@@ -5034,73 +5205,43 @@ async def get_menu(option, message, user_id):
         current_value = "6 (Default)"
     elif option == "EXTRACT_DELETE_ORIGINAL":
         current_value = "True (Default)"
-    elif option == "EXTRACT_VIDEO_QUALITY":
-        current_value = "none (Default)"
-    elif option == "EXTRACT_VIDEO_PRESET":
-        current_value = "none (Default)"
-    elif option == "EXTRACT_VIDEO_BITRATE":
-        current_value = "none (Default)"
-    elif option == "EXTRACT_VIDEO_RESOLUTION":
-        current_value = "none (Default)"
-    elif option == "EXTRACT_VIDEO_FPS":
-        current_value = "none (Default)"
-    elif option == "EXTRACT_AUDIO_BITRATE":
-        current_value = "none (Default)"
-    elif option == "EXTRACT_AUDIO_CHANNELS":
-        current_value = "none (Default)"
-    elif option == "EXTRACT_AUDIO_SAMPLING":
-        current_value = "none (Default)"
-    elif option == "EXTRACT_AUDIO_VOLUME":
-        current_value = "none (Default)"
-    elif option == "EXTRACT_SUBTITLE_LANGUAGE":
-        current_value = "none (Default)"
-    elif option == "EXTRACT_SUBTITLE_ENCODING":
-        current_value = "none (Default)"
-    elif option == "EXTRACT_SUBTITLE_FONT":
-        current_value = "none (Default)"
-    elif option == "EXTRACT_SUBTITLE_FONT_SIZE":
-        current_value = "none (Default)"
-    elif option == "EXTRACT_ATTACHMENT_FILTER":
+    elif (
+        option in {"EXTRACT_VIDEO_QUALITY", "EXTRACT_VIDEO_PRESET"}
+        or option in {"EXTRACT_VIDEO_BITRATE", "EXTRACT_VIDEO_RESOLUTION"}
+        or option in {"EXTRACT_VIDEO_FPS", "EXTRACT_AUDIO_BITRATE"}
+        or option in {"EXTRACT_AUDIO_CHANNELS", "EXTRACT_AUDIO_SAMPLING"}
+        or option in {"EXTRACT_AUDIO_VOLUME", "EXTRACT_SUBTITLE_LANGUAGE"}
+        or option in {"EXTRACT_SUBTITLE_ENCODING", "EXTRACT_SUBTITLE_FONT"}
+        or option in {"EXTRACT_SUBTITLE_FONT_SIZE", "EXTRACT_ATTACHMENT_FILTER"}
+    ):
         current_value = "none (Default)"
     elif option == "COMPRESSION_PRIORITY":
         current_value = "5 (Default)"
-    elif option == "CONVERT_VIDEO_FORMAT":
-        current_value = "none (Default)"
-    elif option == "CONVERT_VIDEO_CODEC":
-        current_value = "none (Default)"
-    elif option == "CONVERT_VIDEO_QUALITY":
+    elif (
+        option in {"CONVERT_VIDEO_FORMAT", "CONVERT_VIDEO_CODEC"}
+        or option == "CONVERT_VIDEO_QUALITY"
+    ):
         current_value = "none (Default)"
     elif option == "CONVERT_VIDEO_CRF":
         current_value = "0 (Default)"
-    elif option == "CONVERT_VIDEO_PRESET":
+    elif option in {"CONVERT_VIDEO_PRESET", "CONVERT_AUDIO_FORMAT"} or option in {
+        "CONVERT_AUDIO_CODEC",
+        "CONVERT_AUDIO_BITRATE",
+    }:
         current_value = "none (Default)"
-    elif option == "CONVERT_AUDIO_FORMAT":
-        current_value = "none (Default)"
-    elif option == "CONVERT_AUDIO_CODEC":
-        current_value = "none (Default)"
-    elif option == "CONVERT_AUDIO_BITRATE":
-        current_value = "none (Default)"
-    elif option == "CONVERT_AUDIO_CHANNELS":
-        current_value = "0 (Default)"
-    elif option == "CONVERT_AUDIO_SAMPLING":
+    elif option in {"CONVERT_AUDIO_CHANNELS", "CONVERT_AUDIO_SAMPLING"}:
         current_value = "0 (Default)"
     elif option == "CONVERT_AUDIO_VOLUME":
         current_value = "0.0 (Default)"
-    elif option == "CONVERT_VIDEO_RESOLUTION":
-        current_value = "none (Default)"
-    elif option == "CONVERT_VIDEO_FPS":
+    elif option in {"CONVERT_VIDEO_RESOLUTION", "CONVERT_VIDEO_FPS"}:
         current_value = "none (Default)"
     elif option == "CONVERT_DELETE_ORIGINAL":
         current_value = "False (Default)"
-    elif option == "CONVERT_SUBTITLE_FORMAT":
-        current_value = "none (Default)"
-    elif option == "CONVERT_SUBTITLE_ENCODING":
-        current_value = "none (Default)"
-    elif option == "CONVERT_SUBTITLE_LANGUAGE":
-        current_value = "none (Default)"
-    elif option == "CONVERT_DOCUMENT_FORMAT":
-        current_value = "none (Default)"
-    elif option == "CONVERT_DOCUMENT_QUALITY":
+    elif (
+        option in {"CONVERT_SUBTITLE_FORMAT", "CONVERT_SUBTITLE_ENCODING"}
+        or option in {"CONVERT_SUBTITLE_LANGUAGE", "CONVERT_DOCUMENT_FORMAT"}
+        or option == "CONVERT_DOCUMENT_QUALITY"
+    ):
         current_value = "none (Default)"
     elif option == "CONVERT_DOCUMENT_DPI":
         current_value = "0 (Default)"
@@ -5424,7 +5565,8 @@ async def set_option(_, message, option, rfunc):
             value = "00:00:00"
         # Validate time format (HH:MM:SS or MM:SS or SS)
         import re
-        time_pattern = re.compile(r'^(\d+:)?(\d+:)?(\d+)(\.\d+)?$')
+
+        time_pattern = re.compile(r"^(\d+:)?(\d+:)?(\d+)(\.\d+)?$")
         if not time_pattern.match(value):
             error_msg = await send_message(
                 message,
@@ -5439,7 +5581,8 @@ async def set_option(_, message, option, rfunc):
         else:
             # Validate time format (HH:MM:SS or MM:SS or SS)
             import re
-            time_pattern = re.compile(r'^(\d+:)?(\d+:)?(\d+)(\.\d+)?$')
+
+            time_pattern = re.compile(r"^(\d+:)?(\d+:)?(\d+)(\.\d+)?$")
             if not time_pattern.match(value):
                 error_msg = await send_message(
                     message,
@@ -5504,8 +5647,8 @@ async def set_option(_, message, option, rfunc):
         else:
             valid_bitrates = ["1M", "2M", "5M", "8M", "10M", "15M", "20M"]
             if value not in valid_bitrates and not (
-                value.endswith("k") and value[:-1].isdigit() or
-                value.endswith("M") and value[:-1].isdigit()
+                (value.endswith("k") and value[:-1].isdigit())
+                or (value.endswith("M") and value[:-1].isdigit())
             ):
                 error_msg = await send_message(
                     message,
@@ -5519,7 +5662,8 @@ async def set_option(_, message, option, rfunc):
         else:
             valid_resolutions = ["1920x1080", "1280x720", "854x480", "640x360"]
             if value not in valid_resolutions and not (
-                value.count("x") == 1 and all(part.isdigit() for part in value.split("x"))
+                value.count("x") == 1
+                and all(part.isdigit() for part in value.split("x"))
             ):
                 error_msg = await send_message(
                     message,
@@ -5609,7 +5753,17 @@ async def set_option(_, message, option, rfunc):
         if value.lower() == "none":
             value = "none"
         else:
-            valid_languages = ["eng", "spa", "fre", "ger", "ita", "jpn", "chi", "kor", "rus"]
+            valid_languages = [
+                "eng",
+                "spa",
+                "fre",
+                "ger",
+                "ita",
+                "jpn",
+                "chi",
+                "kor",
+                "rus",
+            ]
             if len(value) != 3 and value not in valid_languages:
                 error_msg = await send_message(
                     message,
@@ -5714,7 +5868,8 @@ async def set_option(_, message, option, rfunc):
             return
     elif option == "MERGE_IMAGE_RESIZE":
         if value != "none" and not (
-            value.count("x") == 1 and all(part.isdigit() for part in value.split("x"))
+            value.count("x") == 1
+            and all(part.isdigit() for part in value.split("x"))
         ):
             error_msg = await send_message(
                 message,
@@ -5971,10 +6126,13 @@ async def edit_media_tools_settings(client, query):
         await query.answer()
         LOGGER.debug(f"Button clicked: {data[2]}")
         await update_media_tools_settings(query, data[2])
-    elif data[2] in ["convert_video", "convert_audio", "convert_subtitle", "convert_document", "convert_archive"]:
-        await query.answer()
-        await update_media_tools_settings(query, data[2])
     elif data[2] in [
+        "convert_video",
+        "convert_audio",
+        "convert_subtitle",
+        "convert_document",
+        "convert_archive",
+    ] or data[2] in [
         "help",
         "help_watermark",
         "help_merge",
@@ -6060,49 +6218,42 @@ async def edit_media_tools_settings(client, query):
         elif data[3].startswith("COMPRESSION_"):
             if data[3] == "COMPRESSION_ENABLED":
                 await update_media_tools_settings(query, "compression")
-            elif data[3].startswith("COMPRESSION_VIDEO_"):
-                await update_media_tools_settings(query, "compression_config")
-            elif data[3].startswith("COMPRESSION_AUDIO_"):
-                await update_media_tools_settings(query, "compression_config")
-            elif data[3].startswith("COMPRESSION_IMAGE_"):
-                await update_media_tools_settings(query, "compression_config")
-            elif data[3].startswith("COMPRESSION_DOCUMENT_"):
-                await update_media_tools_settings(query, "compression_config")
-            elif data[3].startswith("COMPRESSION_SUBTITLE_"):
-                await update_media_tools_settings(query, "compression_config")
-            elif data[3].startswith("COMPRESSION_ARCHIVE_"):
+            elif (
+                data[3].startswith("COMPRESSION_VIDEO_")
+                or data[3].startswith("COMPRESSION_AUDIO_")
+                or data[3].startswith("COMPRESSION_IMAGE_")
+                or data[3].startswith("COMPRESSION_DOCUMENT_")
+                or data[3].startswith("COMPRESSION_SUBTITLE_")
+                or data[3].startswith("COMPRESSION_ARCHIVE_")
+            ):
                 await update_media_tools_settings(query, "compression_config")
             else:
                 await update_media_tools_settings(query, "compression")
         elif data[3].startswith("TRIM_"):
             if data[3] == "TRIM_ENABLED":
                 await update_media_tools_settings(query, "trim")
-            elif data[3] in ["TRIM_START_TIME", "TRIM_END_TIME", "TRIM_DELETE_ORIGINAL"]:
-                await update_media_tools_settings(query, "trim_config")
-            elif data[3].startswith("TRIM_VIDEO_"):
-                await update_media_tools_settings(query, "trim_config")
-            elif data[3].startswith("TRIM_AUDIO_"):
-                await update_media_tools_settings(query, "trim_config")
-            elif data[3].startswith("TRIM_IMAGE_"):
-                await update_media_tools_settings(query, "trim_config")
-            elif data[3].startswith("TRIM_DOCUMENT_"):
-                await update_media_tools_settings(query, "trim_config")
-            elif data[3].startswith("TRIM_SUBTITLE_"):
-                await update_media_tools_settings(query, "trim_config")
-            elif data[3].startswith("TRIM_ARCHIVE_"):
+            elif (
+                data[3]
+                in ["TRIM_START_TIME", "TRIM_END_TIME", "TRIM_DELETE_ORIGINAL"]
+                or data[3].startswith("TRIM_VIDEO_")
+                or data[3].startswith("TRIM_AUDIO_")
+                or data[3].startswith("TRIM_IMAGE_")
+                or data[3].startswith("TRIM_DOCUMENT_")
+                or data[3].startswith("TRIM_SUBTITLE_")
+                or data[3].startswith("TRIM_ARCHIVE_")
+            ):
                 await update_media_tools_settings(query, "trim_config")
             else:
                 await update_media_tools_settings(query, "trim")
         elif data[3].startswith("EXTRACT_"):
             if data[3] == "EXTRACT_ENABLED":
                 await update_media_tools_settings(query, "extract")
-            elif data[3].startswith("EXTRACT_VIDEO_"):
-                await update_media_tools_settings(query, "extract_config")
-            elif data[3].startswith("EXTRACT_AUDIO_"):
-                await update_media_tools_settings(query, "extract_config")
-            elif data[3].startswith("EXTRACT_SUBTITLE_"):
-                await update_media_tools_settings(query, "extract_config")
-            elif data[3].startswith("EXTRACT_ATTACHMENT_"):
+            elif (
+                data[3].startswith("EXTRACT_VIDEO_")
+                or data[3].startswith("EXTRACT_AUDIO_")
+                or data[3].startswith("EXTRACT_SUBTITLE_")
+                or data[3].startswith("EXTRACT_ATTACHMENT_")
+            ):
                 await update_media_tools_settings(query, "extract_config")
             else:
                 await update_media_tools_settings(query, "extract")
@@ -6389,8 +6540,6 @@ async def edit_media_tools_settings(client, query):
                 del user_dict[key]
         await database.update_user_data(user_id)
         await update_media_tools_settings(query, "compression")
-
-
 
     elif data[2] == "reset_convert":
         await query.answer("Resetting all convert settings to default...")

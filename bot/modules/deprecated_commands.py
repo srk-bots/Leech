@@ -1,5 +1,8 @@
 from bot.core.config_manager import Config
-from bot.helper.telegram_helper.message_utils import auto_delete_message, send_message
+from bot.helper.telegram_helper.message_utils import (
+    auto_delete_message,
+    send_message,
+)
 
 
 async def handle_qb_commands(client, message):
@@ -36,7 +39,7 @@ async def handle_no_suffix_commands(client, message):
         client: The client instance
         message: The message object containing the command
     """
-    command = message.text.split()[0].lower().lstrip('/')
+    command = message.text.split()[0].lower().lstrip("/")
 
     # Get the command suffix from config
     cmd_suffix = Config.CMD_SUFFIX

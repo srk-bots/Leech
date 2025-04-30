@@ -232,7 +232,9 @@ class Mirror(TaskListener):
         self.metadata_subtitle_title = args["-metadata-subtitle-title"]
         self.metadata_subtitle_author = args["-metadata-subtitle-author"]
         self.metadata_subtitle_comment = args["-metadata-subtitle-comment"]
-        self.folder_name = f"/{args['-m']}".rstrip("/") if len(args["-m"]) > 0 else ""
+        self.folder_name = (
+            f"/{args['-m']}".rstrip("/") if len(args["-m"]) > 0 else ""
+        )
         self.bot_trans = args["-bt"]
         self.user_trans = args["-ut"]
         self.merge_video = args["-merge-video"]
@@ -464,8 +466,11 @@ class Mirror(TaskListener):
 
         try:
             if (
-                self.link and (is_magnet(self.link) or self.link.endswith(".torrent"))
-            ) or (file_ and file_.file_name and file_.file_name.endswith(".torrent")):
+                self.link
+                and (is_magnet(self.link) or self.link.endswith(".torrent"))
+            ) or (
+                file_ and file_.file_name and file_.file_name.endswith(".torrent")
+            ):
                 self.is_qbit = True
         except Exception:
             pass
@@ -577,9 +582,7 @@ class Mirror(TaskListener):
             pssw = args["-ap"]
             if ussr or pssw:
                 auth = f"{ussr}:{pssw}"
-                headers += (
-                    f" authorization: Basic {b64encode(auth.encode()).decode('ascii')}"
-                )
+                headers += f" authorization: Basic {b64encode(auth.encode()).decode('ascii')}"
             create_task(add_aria2_download(self, path, headers, ratio, seed_time))
         await delete_links(self.message)
         return None

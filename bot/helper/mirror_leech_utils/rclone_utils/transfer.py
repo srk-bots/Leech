@@ -130,7 +130,9 @@ class RcloneTransferHelper:
         if return_code != -9:
             error = stderr.decode().strip()
             if not error and remote_type == "drive" and self._use_service_accounts:
-                error = "Mostly your service accounts don't have access to this drive!"
+                error = (
+                    "Mostly your service accounts don't have access to this drive!"
+                )
             LOGGER.error(error)
 
             if (
@@ -202,7 +204,9 @@ class RcloneTransferHelper:
         await self._start_download(cmd, remote_type)
 
     async def _get_gdrive_link(self, config_path, destination, mime_type):
-        epath = destination.rsplit("/", 1)[0] if mime_type == "Folder" else destination
+        epath = (
+            destination.rsplit("/", 1)[0] if mime_type == "Folder" else destination
+        )
 
         cmd = [
             "xone",
@@ -292,30 +296,45 @@ class RcloneTransferHelper:
 
             # Generate MediaInfo for rclone uploads if enabled
             # Check if MediaInfo is enabled for this user
-            user_mediainfo_enabled = self._listener.user_dict.get("MEDIAINFO_ENABLED", None)
+            user_mediainfo_enabled = self._listener.user_dict.get(
+                "MEDIAINFO_ENABLED", None
+            )
             if user_mediainfo_enabled is None:
                 user_mediainfo_enabled = Config.MEDIAINFO_ENABLED
 
             # Generate MediaInfo if enabled and it's a file (not a folder)
             if user_mediainfo_enabled:
-                LOGGER.debug("Generating MediaInfo for rclone upload before upload...")
+                LOGGER.debug(
+                    "Generating MediaInfo for rclone upload before upload..."
+                )
                 from bot.modules.mediainfo import gen_mediainfo
 
                 try:
                     # Generate MediaInfo for the file
-                    self._listener.mediainfo_link = await gen_mediainfo(None, media_path=path, silent=True)
+                    self._listener.mediainfo_link = await gen_mediainfo(
+                        None, media_path=path, silent=True
+                    )
 
                     # Check if MediaInfo was successfully generated
-                    if self._listener.mediainfo_link and self._listener.mediainfo_link.strip():
-                        LOGGER.info(f"Generated MediaInfo for rclone upload file: {path}")
+                    if (
+                        self._listener.mediainfo_link
+                        and self._listener.mediainfo_link.strip()
+                    ):
+                        LOGGER.info(
+                            f"Generated MediaInfo for rclone upload file: {path}"
+                        )
                     else:
                         # Set mediainfo_link to None if it's empty or None
                         self._listener.mediainfo_link = None
-                        LOGGER.info("MediaInfo generation skipped or failed for rclone upload. Proceeding with upload...")
+                        LOGGER.info(
+                            "MediaInfo generation skipped or failed for rclone upload. Proceeding with upload..."
+                        )
                 except Exception as e:
                     # Set mediainfo_link to None on error
                     self._listener.mediainfo_link = None
-                    LOGGER.error(f"Error generating MediaInfo for rclone upload: {e}")
+                    LOGGER.error(
+                        f"Error generating MediaInfo for rclone upload: {e}"
+                    )
 
         try:
             remote_opts = await self._get_remote_options(oconfig_path, oremote)
@@ -467,7 +486,9 @@ class RcloneTransferHelper:
                     mime_type,
                 )
                 return (
-                    (None, None) if self._listener.is_cancelled else (link, destination)
+                    (None, None)
+                    if self._listener.is_cancelled
+                    else (link, destination)
                 )
             cmd = [
                 "xone",

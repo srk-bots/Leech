@@ -1,5 +1,4 @@
 import contextlib
-import gc
 from asyncio import gather, sleep
 from inspect import iscoroutinefunction
 from pathlib import Path

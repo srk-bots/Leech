@@ -176,9 +176,7 @@ async def rss_sub(_, message, pre_event):
                 f"\n<b>Title: </b><code>{title}</code>\n<b>Feed Url: </b>{feed_link}"
             )
             feed_msg += f"\n<b>Latest record for </b>{rss_d.feed.title}:"
-            feed_msg += (
-                f"\nName: <code>{last_title.replace('>', '').replace('<', '')}</code>"
-            )
+            feed_msg += f"\nName: <code>{last_title.replace('>', '').replace('<', '')}</code>"
             try:
                 last_link = rss_d.entries[0]["links"][1]["href"]
             except IndexError:
@@ -312,7 +310,11 @@ async def rss_sub(_, message, pre_event):
 async def get_user_id(title):
     async with rss_dict_lock:
         return next(
-            ((True, user_id) for user_id, feeds in rss_dict.items() if title in feeds),
+            (
+                (True, user_id)
+                for user_id, feeds in rss_dict.items()
+                if title in feeds
+            ),
             (False, False),
         )
 
@@ -406,9 +408,7 @@ async def rss_list(query, start, all_users=False):
                 list_feed += f"<b>Command:</b> <code>{data['command']}</code>\n"
                 list_feed += f"<b>Inf:</b> <code>{data['inf']}</code>\n"
                 list_feed += f"<b>Exf:</b> <code>{data['exf']}</code>\n"
-                list_feed += (
-                    f"<b>Sensitive:</b> <code>{data.get('sensitive', False)}</code>\n"
-                )
+                list_feed += f"<b>Sensitive:</b> <code>{data.get('sensitive', False)}</code>\n"
                 list_feed += f"<b>Paused:</b> <code>{data['paused']}</code>\n"
                 # Add site name if available
                 if site_name := data.get("site_name"):
@@ -782,6 +782,7 @@ Timeout: 60 sec. Argument -c for command and arguments
 async def rss_monitor():
     # Add memory management
     import gc
+
     import psutil
 
     # Force garbage collection before starting
@@ -887,7 +888,10 @@ async def rss_monitor():
                     LOGGER.warning(f"No title found in feed: {title}")
                     last_title = "Unknown Title"
                 # Check if we've seen this item before
-                if data["last_feed"] == last_link or data["last_title"] == last_title:
+                if (
+                    data["last_feed"] == last_link
+                    or data["last_title"] == last_title
+                ):
                     continue
                 feed_count = 0
                 while True:
@@ -925,7 +929,10 @@ async def rss_monitor():
                             continue
 
                         # Check if we've seen this item before
-                        if data["last_feed"] == url or data["last_title"] == item_title:
+                        if (
+                            data["last_feed"] == url
+                            or data["last_title"] == item_title
+                        ):
                             break
                         if rss_d.entries[feed_count].get("size"):
                             size = int(rss_d.entries[feed_count]["size"])
@@ -946,7 +953,9 @@ async def rss_monitor():
                     for flist in data["inf"]:
                         if (
                             data.get("sensitive", False)
-                            and all(x.lower() not in item_title.lower() for x in flist)
+                            and all(
+                                x.lower() not in item_title.lower() for x in flist
+                            )
                         ) or (
                             not data.get("sensitive", False)
                             and all(x not in item_title for x in flist)
@@ -979,7 +988,8 @@ async def rss_monitor():
                     )
                     # Replace any other control characters
                     sanitized_title = "".join(
-                        c if ord(c) >= 32 or c == "\n" else " " for c in sanitized_title
+                        c if ord(c) >= 32 or c == "\n" else " "
+                        for c in sanitized_title
                     )
 
                     # Sanitize URL
@@ -1002,7 +1012,9 @@ async def rss_monitor():
                         feed_msg = f"<b>Name: </b><code>{sanitized_title}</code>"
                         feed_msg += f"\n\n<b>Link: </b><code>{sanitized_url}</code>"
                         if size:
-                            feed_msg += f"\n<b>Size: </b>{get_readable_file_size(size)}"
+                            feed_msg += (
+                                f"\n<b>Size: </b>{get_readable_file_size(size)}"
+                            )
                     # Add site name for all feeds
                     # Use the site_name from the dictionary if available, otherwise extract it from the URL
                     site_name = data.get("site_name", "")
@@ -1022,7 +1034,9 @@ async def rss_monitor():
 
                     # Validate message content before sending
                     if not feed_msg.strip():
-                        LOGGER.error(f"Empty message generated for {title}. Skipping.")
+                        LOGGER.error(
+                            f"Empty message generated for {title}. Skipping."
+                        )
                         feed_count += 1
                         continue
 
@@ -1055,7 +1069,9 @@ async def rss_monitor():
                             await send_rss(simplified_msg, rss_chat_id, rss_topic_id)
                             feed_count += 1
                         except Exception as e2:
-                            LOGGER.error(f"Failed to send simplified message too: {e2}")
+                            LOGGER.error(
+                                f"Failed to send simplified message too: {e2}"
+                            )
                             feed_count += 1
                 async with rss_dict_lock:
                     if user not in rss_dict or not rss_dict[user].get(title, False):

@@ -17,7 +17,10 @@ from bot.core.aeon_client import TgClient
 from bot.helper.aeon_utils.access_check import token_check
 from bot.helper.ext_utils.bot_utils import cmd_exec
 from bot.helper.ext_utils.gc_utils import smart_garbage_collection
-from bot.helper.ext_utils.links_utils import is_url  # Used for URL validation at line ~826
+from bot.helper.ext_utils.links_utils import (
+    is_url,  # Used for URL validation at line ~826
+)
+
 # Resource manager removed
 from bot.helper.ext_utils.telegraph_helper import telegraph
 from bot.helper.telegram_helper.bot_commands import BotCommands
@@ -42,19 +45,19 @@ def parse_ffprobe_info(json_data, file_size, filename):
 
     # Map container formats to more descriptive names
     container_format_info = {
-        'matroska,webm': 'Matroska / WebM',
-        'mov,mp4,m4a,3gp,3g2,mj2': 'MP4 / QuickTime',
-        'avi': 'Audio Video Interleave',
-        'asf': 'Advanced Systems Format',
-        'flv': 'Flash Video',
-        'mpegts': 'MPEG Transport Stream',
-        'mpeg': 'MPEG Program Stream',
-        'ogg': 'Ogg',
-        'wav': 'Waveform Audio',
-        'aiff': 'Audio Interchange File Format',
-        'flac': 'Free Lossless Audio Codec',
-        'mp3': 'MPEG Audio Layer III',
-        'mp2': 'MPEG Audio Layer II',
+        "matroska,webm": "Matroska / WebM",
+        "mov,mp4,m4a,3gp,3g2,mj2": "MP4 / QuickTime",
+        "avi": "Audio Video Interleave",
+        "asf": "Advanced Systems Format",
+        "flv": "Flash Video",
+        "mpegts": "MPEG Transport Stream",
+        "mpeg": "MPEG Program Stream",
+        "ogg": "Ogg",
+        "wav": "Waveform Audio",
+        "aiff": "Audio Interchange File Format",
+        "flac": "Free Lossless Audio Codec",
+        "mp3": "MPEG Audio Layer III",
+        "mp2": "MPEG Audio Layer II",
     }
 
     # Get a more descriptive format name if available
@@ -62,7 +65,7 @@ def parse_ffprobe_info(json_data, file_size, filename):
     tc += f"{'Format':<28}: {display_format}\n"
 
     # Add format info if available and not redundant
-    if format_long_name and format_long_name != format_name and format_long_name != display_format:
+    if format_long_name and format_long_name not in (format_name, display_format):
         tc += f"{'Format/Info':<28}: {format_long_name}\n"
 
     # Add container profile if available
@@ -72,7 +75,7 @@ def parse_ffprobe_info(json_data, file_size, filename):
 
         # Add compatible brands if available
         if "compatible_brands" in format_info["tags"]:
-            tc += f"{'Compatible brands':<28}: {format_info["tags"]["compatible_brands"]}\n"
+            tc += f"{'Compatible brands':<28}: {format_info['tags']['compatible_brands']}\n"
 
     # File size in different units with better formatting
     if file_size > 0:
@@ -110,13 +113,13 @@ def parse_ffprobe_info(json_data, file_size, filename):
     if "avg_frame_rate" in format_info:
         # Parse frame rate fraction
         try:
-            fr_parts = format_info["avg_frame_rate"].split('/')
+            fr_parts = format_info["avg_frame_rate"].split("/")
             if len(fr_parts) == 2:
                 num, den = int(fr_parts[0]), int(fr_parts[1])
                 if den == 1:
                     tc += f"{'Frame rate':<28}: {num} FPS\n"
                 else:
-                    tc += f"{'Frame rate':<28}: {num/den:.3f} FPS ({format_info['avg_frame_rate']})\n"
+                    tc += f"{'Frame rate':<28}: {num / den:.3f} FPS ({format_info['avg_frame_rate']})\n"
             else:
                 tc += f"{'Frame rate':<28}: {format_info['avg_frame_rate']} FPS\n"
         except (ValueError, ZeroDivisionError):
@@ -155,7 +158,7 @@ def parse_ffprobe_info(json_data, file_size, filename):
     # Format tags
     tags = format_info.get("tags", {})
     if tags:
-        tc += "\n" # Add a blank line before tags
+        tc += "\n"  # Add a blank line before tags
         for k, v in tags.items():
             # Skip tags that we've already handled
             if k.lower() == "major_brand" or k.lower() == "compatible_brands":
@@ -192,7 +195,7 @@ def parse_ffprobe_info(json_data, file_size, filename):
             elif k.lower() == "date":
                 display_key = "Date"
             else:
-                display_key = k.replace('_', ' ').capitalize()
+                display_key = k.replace("_", " ").capitalize()
 
             tc += f"{display_key:<28}: {v}\n"
     tc += "</pre><br>"
@@ -219,11 +222,22 @@ def parse_ffprobe_info(json_data, file_size, filename):
         if codec_type == "video" and codec_name == "mjpeg":
             # Check if this is likely a cover art
             is_cover = False
-            if disposition.get("attached_pic", 0) == 1:
-                is_cover = True
-            elif "tags" in stream and "mimetype" in stream["tags"] and "image" in stream["tags"]["mimetype"]:
-                is_cover = True
-            elif "tags" in stream and "filename" in stream["tags"] and any(ext in stream["tags"]["filename"].lower() for ext in [".jpg", ".jpeg", ".png", ".gif"]):
+            if (
+                disposition.get("attached_pic", 0) == 1
+                or (
+                    "tags" in stream
+                    and "mimetype" in stream["tags"]
+                    and "image" in stream["tags"]["mimetype"]
+                )
+                or (
+                    "tags" in stream
+                    and "filename" in stream["tags"]
+                    and any(
+                        ext in stream["tags"]["filename"].lower()
+                        for ext in [".jpg", ".jpeg", ".png", ".gif"]
+                    )
+                )
+            ):
                 is_cover = True
 
             if is_cover:
@@ -325,7 +339,7 @@ def parse_ffprobe_info(json_data, file_size, filename):
 
             # Add more descriptive codec information
             format_info_added = False
-            for line in tc.split('\n'):
+            for line in tc.split("\n"):
                 if "Format/Info" in line:
                     format_info_added = True
                     break
@@ -373,8 +387,9 @@ def parse_ffprobe_info(json_data, file_size, filename):
                     # Calculate simple ratio
                     def gcd(a, b):
                         return a if b == 0 else gcd(b, a % b)
+
                     divisor = gcd(width, height)
-                    display_aspect_ratio = f"{width//divisor}:{height//divisor}"
+                    display_aspect_ratio = f"{width // divisor}:{height // divisor}"
 
                 tc += f"{'Display aspect ratio':<28}: {display_aspect_ratio}\n"
 
@@ -382,13 +397,13 @@ def parse_ffprobe_info(json_data, file_size, filename):
             if "r_frame_rate" in stream:
                 # Parse frame rate fraction
                 try:
-                    fr_parts = stream["r_frame_rate"].split('/')
+                    fr_parts = stream["r_frame_rate"].split("/")
                     if len(fr_parts) == 2:
                         num, den = int(fr_parts[0]), int(fr_parts[1])
                         if den == 1:
                             tc += f"{'Frame rate':<28}: {num} FPS\n"
                         else:
-                            tc += f"{'Frame rate':<28}: {num/den:.3f} FPS ({stream['r_frame_rate']})\n"
+                            tc += f"{'Frame rate':<28}: {num / den:.3f} FPS ({stream['r_frame_rate']})\n"
                     else:
                         tc += f"{'Frame rate':<28}: {stream['r_frame_rate']} FPS\n"
                 except (ValueError, ZeroDivisionError):
@@ -402,7 +417,12 @@ def parse_ffprobe_info(json_data, file_size, filename):
                     tc += f"{'Frame rate mode':<28}: Variable\n"
 
             # Color information
-            for color_info in ["color_space", "color_range", "color_transfer", "color_primaries"]:
+            for color_info in [
+                "color_space",
+                "color_range",
+                "color_transfer",
+                "color_primaries",
+            ]:
                 if color_info in stream:
                     # Make color space names more readable
                     value = stream[color_info]
@@ -414,7 +434,9 @@ def parse_ffprobe_info(json_data, file_size, filename):
                         elif value == "bt2020":
                             value = "BT.2020 (UHDTV)"
 
-                    tc += f"{color_info.replace('_', ' ').capitalize():<28}: {value}\n"
+                    tc += (
+                        f"{color_info.replace('_', ' ').capitalize():<28}: {value}\n"
+                    )
 
             # Chroma subsampling
             if "pix_fmt" in stream:
@@ -441,7 +463,9 @@ def parse_ffprobe_info(json_data, file_size, filename):
                         tc += f"{'Bit depth':<28}: {bit_depth_value} bits\n"
                 except (ValueError, TypeError):
                     # If conversion fails, use the raw value
-                    tc += f"{'Bit depth':<28}: {stream['bits_per_raw_sample']} bits\n"
+                    tc += (
+                        f"{'Bit depth':<28}: {stream['bits_per_raw_sample']} bits\n"
+                    )
             elif "pix_fmt" in stream:
                 # Try to extract bit depth from pixel format
                 pix_fmt = stream["pix_fmt"]
@@ -457,7 +481,10 @@ def parse_ffprobe_info(json_data, file_size, filename):
             # Scan type already handled above
 
             # HDR information
-            if "color_transfer" in stream and stream["color_transfer"] in ["smpte2084", "arib-std-b67"]:
+            if "color_transfer" in stream and stream["color_transfer"] in [
+                "smpte2084",
+                "arib-std-b67",
+            ]:
                 if stream["color_transfer"] == "smpte2084":
                     tc += f"{'HDR format':<28}: HDR10 (SMPTE ST 2084)\n"
                 elif stream["color_transfer"] == "arib-std-b67":
@@ -479,7 +506,9 @@ def parse_ffprobe_info(json_data, file_size, filename):
                     # Add percentage of total size
                     if file_size > 0:
                         percentage = (stream_size / file_size) * 100
-                        tc += f"{'Stream size (% of total)':<28}: {percentage:.1f}%\n"
+                        tc += (
+                            f"{'Stream size (% of total)':<28}: {percentage:.1f}%\n"
+                        )
                 except (ValueError, TypeError):
                     # Skip stream size if conversion fails
                     pass
@@ -577,53 +606,54 @@ def parse_ffprobe_info(json_data, file_size, filename):
                 except (ValueError, TypeError):
                     # If conversion fails, use the raw value
                     bit_depth = stream["bits_per_raw_sample"]
-            else:
-                # Try to determine bit depth from codec
-                if codec_name == "pcm_s16le" or codec_name == "pcm_s16be":
-                    bit_depth = 16
-                elif codec_name == "pcm_s24le" or codec_name == "pcm_s24be":
-                    bit_depth = 24
-                elif codec_name == "pcm_s32le" or codec_name == "pcm_s32be":
-                    bit_depth = 32
-                elif codec_name == "pcm_f32le" or codec_name == "pcm_f32be":
-                    bit_depth = 32
-                elif codec_name == "pcm_f64le" or codec_name == "pcm_f64be":
-                    bit_depth = 64
-                elif codec_name == "flac":
-                    # FLAC is typically 16 or 24 bit
-                    bit_depth = "16 or 24"
-                elif codec_name in ["mp3", "aac", "vorbis", "opus"]:
-                    # These are variable bit depth formats
-                    bit_depth = "Variable"
-                elif codec_name in ["ac3", "eac3"]:
-                    bit_depth = "16 to 24"
-                elif codec_name == "dts":
-                    bit_depth = "Up to 24"
+            # Try to determine bit depth from codec
+            elif codec_name in {"pcm_s16le", "pcm_s16be"}:
+                bit_depth = 16
+            elif codec_name in {"pcm_s24le", "pcm_s24be"}:
+                bit_depth = 24
+            elif codec_name in {"pcm_s32le", "pcm_s32be"} or codec_name in {
+                "pcm_f32le",
+                "pcm_f32be",
+            }:
+                bit_depth = 32
+            elif codec_name in {"pcm_f64le", "pcm_f64be"}:
+                bit_depth = 64
+            elif codec_name == "flac":
+                # FLAC is typically 16 or 24 bit
+                bit_depth = "16 or 24"
+            elif codec_name in ["mp3", "aac", "vorbis", "opus"]:
+                # These are variable bit depth formats
+                bit_depth = "Variable"
+            elif codec_name in ["ac3", "eac3"]:
+                bit_depth = "16 to 24"
+            elif codec_name == "dts":
+                bit_depth = "Up to 24"
 
             if bit_depth:
                 tc += f"{'Bit depth':<28}: {bit_depth} bits\n"
 
             # Compression mode
-            if codec_name in ["pcm_s16le", "pcm_s24le", "pcm_s32le", "pcm_f32le", "pcm_f64le",
-                             "pcm_s16be", "pcm_s24be", "pcm_s32be", "pcm_f32be", "pcm_f64be"]:
-                tc += f"{'Compression mode':<28}: Lossless\n"
-            elif codec_name in ["flac", "alac", "ape", "wavpack"]:
+            if codec_name in [
+                "pcm_s16le",
+                "pcm_s24le",
+                "pcm_s32le",
+                "pcm_f32le",
+                "pcm_f64le",
+                "pcm_s16be",
+                "pcm_s24be",
+                "pcm_s32be",
+                "pcm_f32be",
+                "pcm_f64be",
+            ] or codec_name in ["flac", "alac", "ape", "wavpack"]:
                 tc += f"{'Compression mode':<28}: Lossless\n"
             elif "bit_rate" in stream:
                 tc += f"{'Compression mode':<28}: Lossy\n"
 
                 # Add quality information for lossy formats
                 try:
-                    if codec_name == "mp3" and "bit_rate" in stream:
-                        bit_rate = int(stream["bit_rate"])
-                        if bit_rate < 128000:
-                            quality = "Low"
-                        elif bit_rate < 256000:
-                            quality = "Medium"
-                        else:
-                            quality = "High"
-                        tc += f"{'Quality':<28}: {quality} ({bit_rate / 1000:.0f} kb/s)\n"
-                    elif codec_name == "aac" and "bit_rate" in stream:
+                    if (codec_name == "mp3" and "bit_rate" in stream) or (
+                        codec_name == "aac" and "bit_rate" in stream
+                    ):
                         bit_rate = int(stream["bit_rate"])
                         if bit_rate < 128000:
                             quality = "Low"
@@ -652,7 +682,9 @@ def parse_ffprobe_info(json_data, file_size, filename):
                     # Add percentage of total size
                     if file_size > 0:
                         percentage = (stream_size / file_size) * 100
-                        tc += f"{'Stream size (% of total)':<28}: {percentage:.1f}%\n"
+                        tc += (
+                            f"{'Stream size (% of total)':<28}: {percentage:.1f}%\n"
+                        )
                 except (ValueError, TypeError):
                     # Skip stream size if conversion fails
                     pass
@@ -665,27 +697,29 @@ def parse_ffprobe_info(json_data, file_size, filename):
 
                 # Map subtitle formats to more descriptive names
                 subtitle_format_info = {
-                    'subrip': 'SubRip Text',
-                    'ass': 'Advanced SubStation Alpha',
-                    'ssa': 'SubStation Alpha',
-                    'webvtt': 'WebVTT (Web Video Text Tracks)',
-                    'mov_text': 'QuickTime Text',
-                    'dvd_subtitle': 'DVD Subtitle',
-                    'hdmv_pgs_subtitle': 'PGS (Presentation Graphics Stream)',
-                    'dvb_subtitle': 'DVB Subtitle',
-                    'dvb_teletext': 'DVB Teletext',
-                    'arib_caption': 'ARIB Caption',
-                    'srt': 'SubRip Text',
-                    'microdvd': 'MicroDVD',
-                    'jacosub': 'JACOsub',
-                    'sami': 'SAMI',
-                    'realtext': 'RealText',
-                    'subviewer': 'SubViewer',
-                    'subviewer1': 'SubViewer 1.0',
-                    'vplayer': 'VPlayer',
+                    "subrip": "SubRip Text",
+                    "ass": "Advanced SubStation Alpha",
+                    "ssa": "SubStation Alpha",
+                    "webvtt": "WebVTT (Web Video Text Tracks)",
+                    "mov_text": "QuickTime Text",
+                    "dvd_subtitle": "DVD Subtitle",
+                    "hdmv_pgs_subtitle": "PGS (Presentation Graphics Stream)",
+                    "dvb_subtitle": "DVB Subtitle",
+                    "dvb_teletext": "DVB Teletext",
+                    "arib_caption": "ARIB Caption",
+                    "srt": "SubRip Text",
+                    "microdvd": "MicroDVD",
+                    "jacosub": "JACOsub",
+                    "sami": "SAMI",
+                    "realtext": "RealText",
+                    "subviewer": "SubViewer",
+                    "subviewer1": "SubViewer 1.0",
+                    "vplayer": "VPlayer",
                 }
 
-                format_info = subtitle_format_info.get(codec_name, codec_name.upper())
+                format_info = subtitle_format_info.get(
+                    codec_name, codec_name.upper()
+                )
 
                 tc += f"{'Subtitle format':<28}: {codec_name.upper()}\n"
                 if format_info != codec_name.upper():
@@ -704,15 +738,19 @@ def parse_ffprobe_info(json_data, file_size, filename):
                     # Try to detect language from stream index or other properties
                     if "index" in stream:
                         index = stream["index"]
-                        if index == 1:  # Often the first subtitle track is the main language
+                        if (
+                            index == 1
+                        ):  # Often the first subtitle track is the main language
                             tc += f"{'Language':<28}: Primary\n"
-                        elif index == 2:  # Often the second subtitle track is English
+                        elif (
+                            index == 2
+                        ):  # Often the second subtitle track is English
                             tc += f"{'Language':<28}: Secondary\n"
 
         # Stream tags
         tags = stream.get("tags", {})
         if tags:
-            tc += "\n" # Add a blank line before tags
+            tc += "\n"  # Add a blank line before tags
 
             # Special handling for cover art
             if section == "Cover":
@@ -789,7 +827,9 @@ def parse_ffprobe_info(json_data, file_size, filename):
     return tc
 
 
-async def gen_mediainfo(message, link=None, media=None, reply=None, media_path=None, silent=False):
+async def gen_mediainfo(
+    message, link=None, media=None, reply=None, media_path=None, silent=False
+):
     """
     Generate MediaInfo for a file
 
@@ -804,7 +844,11 @@ async def gen_mediainfo(message, link=None, media=None, reply=None, media_path=N
     Returns:
         str: Telegraph link path or None if failed
     """
-    temp_send = None if silent else await send_message(message, "Generating MediaInfo with ffprobe...")
+    temp_send = (
+        None
+        if silent
+        else await send_message(message, "Generating MediaInfo with ffprobe...")
+    )
     des_path = media_path
     tc = ""
 
@@ -839,7 +883,9 @@ async def gen_mediainfo(message, link=None, media=None, reply=None, media_path=N
 
             # Update status message if not in silent mode
             if not silent and temp_send:
-                await edit_message(temp_send, f"Downloading a sample of {filename} for analysis...")
+                await edit_message(
+                    temp_send, f"Downloading a sample of {filename} for analysis..."
+                )
 
             headers = {
                 "user-agent": "Mozilla/5.0 (Linux; Android 12; 2201116PI) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/107.0.0.0 Mobile Safari/537.36",
@@ -849,7 +895,9 @@ async def gen_mediainfo(message, link=None, media=None, reply=None, media_path=N
             async with aiohttp.ClientSession() as session:
                 try:
                     # Set a reasonable timeout (5 minutes)
-                    async with session.get(link, headers=headers, timeout=300) as response:
+                    async with session.get(
+                        link, headers=headers, timeout=300
+                    ) as response:
                         # Get total file size from Content-Range header if available
                         content_range = response.headers.get("Content-Range", "")
                         if content_range:
@@ -860,7 +908,9 @@ async def gen_mediainfo(message, link=None, media=None, reply=None, media_path=N
 
                         # If Content-Range not available, use Content-Length
                         if not file_size:
-                            file_size = int(response.headers.get("Content-Length", 0))
+                            file_size = int(
+                                response.headers.get("Content-Length", 0)
+                            )
 
                         # Download sample of the file using read() with a size limit
                         # This approach avoids ContentLengthError when we don't read the entire response
@@ -874,40 +924,67 @@ async def gen_mediainfo(message, link=None, media=None, reply=None, media_path=N
                                 try:
                                     # Read just one chunk at a time
                                     chunk = await response.content.read(chunk_size)
-                                    if not chunk:  # Empty chunk means end of response
+                                    if (
+                                        not chunk
+                                    ):  # Empty chunk means end of response
                                         break
 
                                     await f.write(chunk)
                                     downloaded_size += len(chunk)
 
                                     # Periodically update status for large files if not in silent mode
-                                    if not silent and temp_send and downloaded_size % (5 * 1024 * 1024) == 0:  # Every 5MB
-                                        await edit_message(temp_send, f"Downloading sample of {filename} for analysis... ({downloaded_size / (1024 * 1024):.1f} MB)")
+                                    if (
+                                        not silent
+                                        and temp_send
+                                        and downloaded_size % (5 * 1024 * 1024) == 0
+                                    ):  # Every 5MB
+                                        await edit_message(
+                                            temp_send,
+                                            f"Downloading sample of {filename} for analysis... ({downloaded_size / (1024 * 1024):.1f} MB)",
+                                        )
                                 except Exception as chunk_error:
-                                    LOGGER.warning(f"Error reading chunk: {chunk_error}. Got {downloaded_size / (1024 * 1024):.1f} MB which should be enough for analysis.")
+                                    LOGGER.warning(
+                                        f"Error reading chunk: {chunk_error}. Got {downloaded_size / (1024 * 1024):.1f} MB which should be enough for analysis."
+                                    )
                                     break
 
                             # If we got at least some data, consider it a success
                             if downloaded_size > 0:
-                                LOGGER.info(f"Successfully downloaded {downloaded_size / (1024 * 1024):.1f} MB sample of {filename}")
+                                LOGGER.info(
+                                    f"Successfully downloaded {downloaded_size / (1024 * 1024):.1f} MB sample of {filename}"
+                                )
                             else:
-                                LOGGER.error(f"Failed to download any data from {link}")
-                                raise Exception("Failed to download any data from the link")
+                                LOGGER.error(
+                                    f"Failed to download any data from {link}"
+                                )
+                                raise Exception(
+                                    "Failed to download any data from the link"
+                                )
 
                 except aiohttp.ClientError as ce:
                     # Handle specific aiohttp client errors
                     LOGGER.error(f"HTTP client error downloading from {link}: {ce}")
-                    if not await aiopath.exists(des_path) or await aiopath.getsize(des_path) == 0:
+                    if (
+                        not await aiopath.exists(des_path)
+                        or await aiopath.getsize(des_path) == 0
+                    ):
                         raise Exception(f"Failed to download file sample: {ce}")
                     # If we have some data, continue with what we have
-                    LOGGER.info(f"Continuing with partial download ({await aiopath.getsize(des_path) / (1024 * 1024):.1f} MB)")
+                    LOGGER.info(
+                        f"Continuing with partial download ({await aiopath.getsize(des_path) / (1024 * 1024):.1f} MB)"
+                    )
 
                 except Exception as e:
                     LOGGER.error(f"Error downloading from {link}: {e}")
-                    if not await aiopath.exists(des_path) or await aiopath.getsize(des_path) == 0:
+                    if (
+                        not await aiopath.exists(des_path)
+                        or await aiopath.getsize(des_path) == 0
+                    ):
                         raise Exception(f"Failed to download file sample: {e}")
                     # If we have some data, continue with what we have
-                    LOGGER.info(f"Continuing with partial download ({await aiopath.getsize(des_path) / (1024 * 1024):.1f} MB)")
+                    LOGGER.info(
+                        f"Continuing with partial download ({await aiopath.getsize(des_path) / (1024 * 1024):.1f} MB)"
+                    )
 
                 finally:
                     # Run garbage collection after download to free memory
@@ -919,7 +996,10 @@ async def gen_mediainfo(message, link=None, media=None, reply=None, media_path=N
 
             # Update status message if not in silent mode
             if not silent and temp_send:
-                await edit_message(temp_send, f"Downloading a sample of {media.file_name} for analysis...")
+                await edit_message(
+                    temp_send,
+                    f"Downloading a sample of {media.file_name} for analysis...",
+                )
 
             if file_size <= 30 * 1024 * 1024:  # 30MB
                 # For small files, download the entire file
@@ -941,29 +1021,51 @@ async def gen_mediainfo(message, link=None, media=None, reply=None, media_path=N
 
                                 # We only need enough data for ffprobe to analyze
                                 if downloaded_size >= max_sample_size:  # 10MB
-                                    LOGGER.info(f"Got enough data ({downloaded_size / (1024 * 1024):.1f} MB) for analysis, stopping download")
+                                    LOGGER.info(
+                                        f"Got enough data ({downloaded_size / (1024 * 1024):.1f} MB) for analysis, stopping download"
+                                    )
                                     break
 
                                 # Periodically update status for large files if not in silent mode
-                                if not silent and temp_send and downloaded_size % (5 * 1024 * 1024) == 0:  # Every 5MB
-                                    await edit_message(temp_send, f"Downloading sample of {media.file_name} for analysis... ({downloaded_size / (1024 * 1024):.1f} MB)")
+                                if (
+                                    not silent
+                                    and temp_send
+                                    and downloaded_size % (5 * 1024 * 1024) == 0
+                                ):  # Every 5MB
+                                    await edit_message(
+                                        temp_send,
+                                        f"Downloading sample of {media.file_name} for analysis... ({downloaded_size / (1024 * 1024):.1f} MB)",
+                                    )
                             except Exception as chunk_error:
-                                LOGGER.warning(f"Error processing chunk: {chunk_error}. Got {downloaded_size / (1024 * 1024):.1f} MB which should be enough for analysis.")
+                                LOGGER.warning(
+                                    f"Error processing chunk: {chunk_error}. Got {downloaded_size / (1024 * 1024):.1f} MB which should be enough for analysis."
+                                )
                                 break
 
                     # If we got at least some data, consider it a success
                     if downloaded_size > 0:
-                        LOGGER.info(f"Successfully downloaded {downloaded_size / (1024 * 1024):.1f} MB sample of {media.file_name}")
+                        LOGGER.info(
+                            f"Successfully downloaded {downloaded_size / (1024 * 1024):.1f} MB sample of {media.file_name}"
+                        )
                     else:
-                        LOGGER.error("Failed to download any data from Telegram media")
-                        raise Exception("Failed to download any data from Telegram media")
+                        LOGGER.error(
+                            "Failed to download any data from Telegram media"
+                        )
+                        raise Exception(
+                            "Failed to download any data from Telegram media"
+                        )
 
                 except Exception as e:
                     LOGGER.error(f"Error downloading from Telegram media: {e}")
-                    if not await aiopath.exists(des_path) or await aiopath.getsize(des_path) == 0:
+                    if (
+                        not await aiopath.exists(des_path)
+                        or await aiopath.getsize(des_path) == 0
+                    ):
                         raise Exception(f"Failed to download media sample: {e}")
                     # If we have some data, continue with what we have
-                    LOGGER.info(f"Continuing with partial download ({await aiopath.getsize(des_path) / (1024 * 1024):.1f} MB)")
+                    LOGGER.info(
+                        f"Continuing with partial download ({await aiopath.getsize(des_path) / (1024 * 1024):.1f} MB)"
+                    )
 
                 finally:
                     # Run garbage collection after download to free memory
@@ -983,7 +1085,9 @@ async def gen_mediainfo(message, link=None, media=None, reply=None, media_path=N
             if file_size_check == 0:
                 LOGGER.error(f"MediaInfo: File exists but has zero size: {des_path}")
                 if not silent:
-                    await send_message(message, f"File exists but has zero size: {des_path}")
+                    await send_message(
+                        message, f"File exists but has zero size: {des_path}"
+                    )
                 return None
         except Exception as e:
             LOGGER.error(f"MediaInfo: Error accessing file: {des_path}, Error: {e}")
@@ -1000,10 +1104,60 @@ async def gen_mediainfo(message, link=None, media=None, reply=None, media_path=N
         filename = ospath.basename(des_path).lower()
 
         # Define file type extensions
-        subtitle_exts = ['.srt', '.ass', '.ssa', '.vtt', '.sub', '.idx', '.stl', '.scc', '.ttml', '.sbv', '.dfxp', '.smi', '.webvtt']
-        archive_exts = ['.zip', '.rar', '.7z', '.tar', '.gz', '.bz2', '.xz', '.iso', '.cab', '.arj', '.lzh', '.udf', '.wim']
-        image_exts = ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp', '.tiff', '.svg', '.eps', '.psd']
-        document_exts = ['.pdf', '.doc', '.docx', '.xls', '.xlsx', '.ppt', '.pptx', '.txt', '.md', '.epub']
+        subtitle_exts = [
+            ".srt",
+            ".ass",
+            ".ssa",
+            ".vtt",
+            ".sub",
+            ".idx",
+            ".stl",
+            ".scc",
+            ".ttml",
+            ".sbv",
+            ".dfxp",
+            ".smi",
+            ".webvtt",
+        ]
+        archive_exts = [
+            ".zip",
+            ".rar",
+            ".7z",
+            ".tar",
+            ".gz",
+            ".bz2",
+            ".xz",
+            ".iso",
+            ".cab",
+            ".arj",
+            ".lzh",
+            ".udf",
+            ".wim",
+        ]
+        image_exts = [
+            ".jpg",
+            ".jpeg",
+            ".png",
+            ".gif",
+            ".bmp",
+            ".webp",
+            ".tiff",
+            ".svg",
+            ".eps",
+            ".psd",
+        ]
+        document_exts = [
+            ".pdf",
+            ".doc",
+            ".docx",
+            ".xls",
+            ".xlsx",
+            ".ppt",
+            ".pptx",
+            ".txt",
+            ".md",
+            ".epub",
+        ]
 
         # Check for split archives with part numbers
         is_split_archive = False
@@ -1014,34 +1168,60 @@ async def gen_mediainfo(message, link=None, media=None, reply=None, media_path=N
         # If not a direct archive extension, check for split archive patterns
         if not is_archive:
             # Check for split archive patterns
-            if (re_search(r'\.part0*[0-9]+\.rar$', filename) or  # Match .part1.rar, .part01.rar, etc.
-                re_search(r'\.part0*[0-9]+\.zip$', filename) or  # Match .part1.zip, .part01.zip, etc.
-                re_search(r'\.part0*[0-9]+\.7z$', filename) or   # Match .part1.7z, .part01.7z, etc.
-                re_search(r'\.[0-9]{3}$', filename) or           # Match .001, .002, etc.
-                re_search(r'\.[0-9]{2}$', filename) or           # Match .01, .02, etc.
-                re_search(r'\.[0-9]$', filename) or              # Match .1, .2, etc.
-                re_search(r'\.r[0-9]+$', filename) or            # Match .r00, .r01, etc.
-                re_search(r'\.z[0-9]+$', filename) or            # Match .z01, .z02, etc.
-                re_search(r'\.zip\.[0-9]+$', filename) or        # Match .zip.001, etc.
-                re_search(r'\.rar\.[0-9]+$', filename)):         # Match .rar.001, etc.
-
+            if (
+                re_search(
+                    r"\.part0*[0-9]+\.rar$", filename
+                )  # Match .part1.rar, .part01.rar, etc.
+                or re_search(
+                    r"\.part0*[0-9]+\.zip$", filename
+                )  # Match .part1.zip, .part01.zip, etc.
+                or re_search(
+                    r"\.part0*[0-9]+\.7z$", filename
+                )  # Match .part1.7z, .part01.7z, etc.
+                or re_search(r"\.[0-9]{3}$", filename)  # Match .001, .002, etc.
+                or re_search(r"\.[0-9]{2}$", filename)  # Match .01, .02, etc.
+                or re_search(r"\.[0-9]$", filename)  # Match .1, .2, etc.
+                or re_search(r"\.r[0-9]+$", filename)  # Match .r00, .r01, etc.
+                or re_search(r"\.z[0-9]+$", filename)  # Match .z01, .z02, etc.
+                or re_search(r"\.zip\.[0-9]+$", filename)  # Match .zip.001, etc.
+                or re_search(r"\.rar\.[0-9]+$", filename)
+            ):  # Match .rar.001, etc.
                 # For numeric extensions (.001, .01, .1), verify it's actually an archive
-                if re_search(r'\.[0-9]+$', filename):
+                if re_search(r"\.[0-9]+$", filename):
                     try:
                         # Use file command to verify it's an archive
                         abs_path = ospath.abspath(des_path)
-                        cmd = ['file', '-b', abs_path]
+                        cmd = ["file", "-b", abs_path]
                         stdout, stderr, return_code = await cmd_exec(cmd)
                         if return_code == 0 and stdout:
-                            if any(archive_type in stdout.lower() for archive_type in
-                                ['zip', 'rar', '7-zip', 'tar', 'gzip', 'bzip2', 'xz', 'iso', 'archive', 'data']):
+                            if any(
+                                archive_type in stdout.lower()
+                                for archive_type in [
+                                    "zip",
+                                    "rar",
+                                    "7-zip",
+                                    "tar",
+                                    "gzip",
+                                    "bzip2",
+                                    "xz",
+                                    "iso",
+                                    "archive",
+                                    "data",
+                                ]
+                            ):
                                 is_split_archive = True
                                 is_archive = True
-                                LOGGER.debug(f"Verified numeric extension is an archive: {filename}")
+                                LOGGER.debug(
+                                    f"Verified numeric extension is an archive: {filename}"
+                                )
                             else:
-                                LOGGER.debug(f"Numeric extension is not an archive: {filename} - {stdout}")
+                                LOGGER.debug(
+                                    f"Numeric extension is not an archive: {filename} - {stdout}"
+                                )
                     except Exception as e:
-                        LOGGER.debug(f"Error verifying archive with file command: {e}")
+                        LOGGER.debug(
+                            f"Error verifying archive with file command: {e}"
+                        )
                         # Assume it's an archive if verification fails
                         is_split_archive = True
                         is_archive = True
@@ -1057,39 +1237,59 @@ async def gen_mediainfo(message, link=None, media=None, reply=None, media_path=N
             # Verify file exists before running file command
             abs_path = ospath.abspath(des_path)
             if not ospath.exists(abs_path):
-                LOGGER.warning(f"File does not exist at path: {abs_path}, skipping file command check")
+                LOGGER.warning(
+                    f"File does not exist at path: {abs_path}, skipping file command check"
+                )
             else:
                 # File exists, proceed with file command
-                cmd = ['file', '-b', abs_path]
+                cmd = ["file", "-b", abs_path]
                 stdout, stderr, return_code = await cmd_exec(cmd)
                 if return_code == 0 and stdout:
                     stdout_lower = stdout.lower()
                     # If it's already identified as an archive, this will provide additional info
                     # If not, this might identify it as an archive despite the extension
-                    if any(archive_type in stdout_lower for archive_type in
-                          ['zip', 'rar', '7-zip', 'tar', 'gzip', 'bzip2', 'xz', 'iso', 'archive']):
+                    if any(
+                        archive_type in stdout_lower
+                        for archive_type in [
+                            "zip",
+                            "rar",
+                            "7-zip",
+                            "tar",
+                            "gzip",
+                            "bzip2",
+                            "xz",
+                            "iso",
+                            "archive",
+                        ]
+                    ):
                         is_archive = True
-                        LOGGER.debug(f"Confirmed archive type via file command: {filename} - {stdout}")
+                        LOGGER.debug(
+                            f"Confirmed archive type via file command: {filename} - {stdout}"
+                        )
 
                         # Try to determine the specific archive format from file output
-                        if 'rar archive' in stdout_lower:
-                            file_ext = '.rar'  # Override extension for correct handling
-                        elif 'zip archive' in stdout_lower:
-                            file_ext = '.zip'
-                        elif '7-zip archive' in stdout_lower:
-                            file_ext = '.7z'
-                        elif 'tar archive' in stdout_lower:
-                            file_ext = '.tar'
-                        elif 'gzip compressed' in stdout_lower:
-                            file_ext = '.gz'
-                        elif 'bzip2 compressed' in stdout_lower:
-                            file_ext = '.bz2'
-                        elif 'xz compressed' in stdout_lower:
-                            file_ext = '.xz'
-                        elif 'iso 9660' in stdout_lower:
-                            file_ext = '.iso'
+                        if "rar archive" in stdout_lower:
+                            file_ext = (
+                                ".rar"  # Override extension for correct handling
+                            )
+                        elif "zip archive" in stdout_lower:
+                            file_ext = ".zip"
+                        elif "7-zip archive" in stdout_lower:
+                            file_ext = ".7z"
+                        elif "tar archive" in stdout_lower:
+                            file_ext = ".tar"
+                        elif "gzip compressed" in stdout_lower:
+                            file_ext = ".gz"
+                        elif "bzip2 compressed" in stdout_lower:
+                            file_ext = ".bz2"
+                        elif "xz compressed" in stdout_lower:
+                            file_ext = ".xz"
+                        elif "iso 9660" in stdout_lower:
+                            file_ext = ".iso"
                 elif return_code != 0:
-                    LOGGER.debug(f"File command failed with return code {return_code}: {stderr}")
+                    LOGGER.debug(
+                        f"File command failed with return code {return_code}: {stderr}"
+                    )
         except Exception as e:
             LOGGER.debug(f"Error checking file type with file command: {e}")
             # Continue with the process, using the extension-based detection as fallback
@@ -1108,31 +1308,39 @@ async def gen_mediainfo(message, link=None, media=None, reply=None, media_path=N
             archive_format = ""
 
             # First try to determine format from file extension
-            if file_ext == '.rar':
+            if file_ext == ".rar":
                 archive_format = "RAR"
-            elif file_ext == '.zip':
+            elif file_ext == ".zip":
                 archive_format = "ZIP"
-            elif file_ext == '.7z':
+            elif file_ext == ".7z":
                 archive_format = "7Z"
-            elif file_ext == '.tar':
+            elif file_ext == ".tar":
                 archive_format = "TAR"
-            elif file_ext == '.gz':
+            elif file_ext == ".gz":
                 archive_format = "GZ"
-            elif file_ext == '.bz2':
+            elif file_ext == ".bz2":
                 archive_format = "BZ2"
-            elif file_ext == '.xz':
+            elif file_ext == ".xz":
                 archive_format = "XZ"
-            elif file_ext == '.iso':
+            elif file_ext == ".iso":
                 archive_format = "ISO"
-            elif file_ext == '.cab':
+            elif file_ext == ".cab":
                 archive_format = "CAB"
             elif is_split_archive:
                 # For split archives, try to determine the format from the filename pattern
-                if re_search(r'\.part0*[0-9]+\.rar$', filename) or re_search(r'\.rar\.[0-9]+$', filename) or re_search(r'\.r[0-9]+$', filename):
+                if (
+                    re_search(r"\.part0*[0-9]+\.rar$", filename)
+                    or re_search(r"\.rar\.[0-9]+$", filename)
+                    or re_search(r"\.r[0-9]+$", filename)
+                ):
                     archive_format = "RAR"
-                elif re_search(r'\.part0*[0-9]+\.zip$', filename) or re_search(r'\.zip\.[0-9]+$', filename) or re_search(r'\.z[0-9]+$', filename):
+                elif (
+                    re_search(r"\.part0*[0-9]+\.zip$", filename)
+                    or re_search(r"\.zip\.[0-9]+$", filename)
+                    or re_search(r"\.z[0-9]+$", filename)
+                ):
                     archive_format = "ZIP"
-                elif re_search(r'\.part0*[0-9]+\.7z$', filename):
+                elif re_search(r"\.part0*[0-9]+\.7z$", filename):
                     archive_format = "7Z"
                 else:
                     # For numeric extensions or unknown patterns, use file command
@@ -1146,53 +1354,53 @@ async def gen_mediainfo(message, link=None, media=None, reply=None, media_path=N
                 abs_path = ospath.abspath(des_path)
 
                 # First try file command
-                cmd = ['file', '-b', abs_path]
+                cmd = ["file", "-b", abs_path]
                 stdout, stderr, return_code = await cmd_exec(cmd)
                 if return_code == 0 and stdout:
                     stdout_lower = stdout.lower()
 
                     # Update format based on file command output
-                    if 'rar archive' in stdout_lower:
+                    if "rar archive" in stdout_lower:
                         archive_format = "RAR"
-                    elif 'zip archive' in stdout_lower:
+                    elif "zip archive" in stdout_lower:
                         archive_format = "ZIP"
-                    elif '7-zip archive' in stdout_lower:
+                    elif "7-zip archive" in stdout_lower:
                         archive_format = "7Z"
-                    elif 'tar archive' in stdout_lower:
+                    elif "tar archive" in stdout_lower:
                         archive_format = "TAR"
-                    elif 'gzip compressed' in stdout_lower:
+                    elif "gzip compressed" in stdout_lower:
                         archive_format = "GZ"
-                    elif 'bzip2 compressed' in stdout_lower:
+                    elif "bzip2 compressed" in stdout_lower:
                         archive_format = "BZ2"
-                    elif 'xz compressed' in stdout_lower:
+                    elif "xz compressed" in stdout_lower:
                         archive_format = "XZ"
-                    elif 'iso 9660' in stdout_lower:
+                    elif "iso 9660" in stdout_lower:
                         archive_format = "ISO"
-                    elif 'microsoft cabinet' in stdout_lower:
+                    elif "microsoft cabinet" in stdout_lower:
                         archive_format = "CAB"
 
                 # If file command didn't give a clear result, try 7z
-                if archive_format == "Split Archive" or archive_format == "Unknown":
-                    cmd = ['7z', 'l', abs_path]
+                if archive_format in {"Split Archive", "Unknown"}:
+                    cmd = ["7z", "l", abs_path]
                     stdout, stderr, return_code = await cmd_exec(cmd)
                     if return_code == 0 and stdout:
-                        if 'Type = Rar' in stdout:
+                        if "Type = Rar" in stdout:
                             archive_format = "RAR"
-                        elif 'Type = Zip' in stdout:
+                        elif "Type = Zip" in stdout:
                             archive_format = "ZIP"
-                        elif 'Type = 7z' in stdout:
+                        elif "Type = 7z" in stdout:
                             archive_format = "7Z"
-                        elif 'Type = gzip' in stdout:
+                        elif "Type = gzip" in stdout:
                             archive_format = "GZ"
-                        elif 'Type = bzip2' in stdout:
+                        elif "Type = bzip2" in stdout:
                             archive_format = "BZ2"
-                        elif 'Type = xz' in stdout:
+                        elif "Type = xz" in stdout:
                             archive_format = "XZ"
-                        elif 'Type = Tar' in stdout:
+                        elif "Type = Tar" in stdout:
                             archive_format = "TAR"
-                        elif 'Type = Iso' in stdout:
+                        elif "Type = Iso" in stdout:
                             archive_format = "ISO"
-                        elif 'Type = Cab' in stdout:
+                        elif "Type = Cab" in stdout:
                             archive_format = "CAB"
             except Exception as e:
                 LOGGER.debug(f"Error verifying archive format: {e}")
@@ -1202,22 +1410,24 @@ async def gen_mediainfo(message, link=None, media=None, reply=None, media_path=N
 
             # Map archive formats to more descriptive names
             archive_format_info = {
-                'ZIP': 'ZIP Archive Format',
-                'RAR': 'Roshal Archive',
-                '7Z': '7-Zip Archive Format',
-                'TAR': 'Tape Archive',
-                'GZ': 'Gzip Compressed Archive',
-                'BZ2': 'Bzip2 Compressed Archive',
-                'XZ': 'XZ Compressed Archive',
-                'ISO': 'ISO 9660 Disk Image',
-                'CAB': 'Microsoft Cabinet Archive',
-                'ARJ': 'ARJ Compressed Archive',
-                'LZH': 'LZH Compressed Archive',
-                'UDF': 'Universal Disk Format Image',
-                'WIM': 'Windows Imaging Format'
+                "ZIP": "ZIP Archive Format",
+                "RAR": "Roshal Archive",
+                "7Z": "7-Zip Archive Format",
+                "TAR": "Tape Archive",
+                "GZ": "Gzip Compressed Archive",
+                "BZ2": "Bzip2 Compressed Archive",
+                "XZ": "XZ Compressed Archive",
+                "ISO": "ISO 9660 Disk Image",
+                "CAB": "Microsoft Cabinet Archive",
+                "ARJ": "ARJ Compressed Archive",
+                "LZH": "LZH Compressed Archive",
+                "UDF": "Universal Disk Format Image",
+                "WIM": "Windows Imaging Format",
             }
 
-            format_info = archive_format_info.get(archive_format, f"{archive_format} Archive Format")
+            format_info = archive_format_info.get(
+                archive_format, f"{archive_format} Archive Format"
+            )
             tc += f"{'Format/Info':<28}: {format_info}\n"
             tc += f"{'File size':<28}: {file_size / (1024 * 1024):.2f} MiB\n"
 
@@ -1229,16 +1439,22 @@ async def gen_mediainfo(message, link=None, media=None, reply=None, media_path=N
 
                 # Verify file exists before running file command
                 if not ospath.exists(abs_path):
-                    LOGGER.warning(f"File does not exist at path: {abs_path}, skipping file analysis")
+                    LOGGER.warning(
+                        f"File does not exist at path: {abs_path}, skipping file analysis"
+                    )
                 else:
-                    cmd = ['file', '-b', abs_path]
+                    cmd = ["file", "-b", abs_path]
                     stdout, stderr, return_code = await cmd_exec(cmd)
                     if return_code == 0 and stdout:
                         tc += f"{'File analysis':<28}: {stdout.strip()}\n"
                     else:
-                        LOGGER.debug(f"File command returned non-zero code: {return_code}, stderr: {stderr}")
+                        LOGGER.debug(
+                            f"File command returned non-zero code: {return_code}, stderr: {stderr}"
+                        )
             except Exception as e:
-                LOGGER.debug(f"Error getting archive file info with file command: {e}")
+                LOGGER.debug(
+                    f"Error getting archive file info with file command: {e}"
+                )
                 # Continue without this info, it's not critical
 
             # Try to get compression ratio if possible
@@ -1246,42 +1462,52 @@ async def gen_mediainfo(message, link=None, media=None, reply=None, media_path=N
                 # Use absolute path for all archive commands
                 abs_path = ospath.abspath(des_path)
 
-                if file_ext in ['.zip', '.rar', '.7z'] or is_split_archive:
-                    if file_ext == '.zip' or (is_split_archive and archive_format == "ZIP"):
-                        cmd = ['unzip', '-l', abs_path]
-                    elif file_ext == '.rar' or (is_split_archive and archive_format == "RAR"):
+                if file_ext in [".zip", ".rar", ".7z"] or is_split_archive:
+                    if file_ext == ".zip" or (
+                        is_split_archive and archive_format == "ZIP"
+                    ):
+                        cmd = ["unzip", "-l", abs_path]
+                    elif file_ext == ".rar" or (
+                        is_split_archive and archive_format == "RAR"
+                    ):
                         # Try 7z first as it's more reliable for partial archives
-                        cmd = ['7z', 'l', abs_path]
+                        cmd = ["7z", "l", abs_path]
                         stdout, stderr, return_code = await cmd_exec(cmd)
                         if return_code != 0:
                             # If 7z fails, try unrar
-                            LOGGER.debug(f"7z failed for RAR file, trying unrar: {abs_path}")
-                            cmd = ['unrar', 'l', abs_path]
-                    elif file_ext == '.7z' or (is_split_archive and archive_format == "7Z"):
-                        cmd = ['7z', 'l', abs_path]
+                            LOGGER.debug(
+                                f"7z failed for RAR file, trying unrar: {abs_path}"
+                            )
+                            cmd = ["unrar", "l", abs_path]
+                    elif file_ext == ".7z" or (
+                        is_split_archive and archive_format == "7Z"
+                    ):
+                        cmd = ["7z", "l", abs_path]
 
                     stdout, stderr, return_code = await cmd_exec(cmd)
                     if return_code == 0 and stdout:
                         # Try to extract uncompressed size
                         uncompressed_size = 0
-                        if file_ext == '.zip':
+                        if file_ext == ".zip":
                             # For zip, look for the total line
-                            for line in stdout.strip().split('\n'):
-                                if 'Total' in line and 'files' in line:
-                                    size_match = re_search(r'(\d+)\s+bytes', line)
+                            for line in stdout.strip().split("\n"):
+                                if "Total" in line and "files" in line:
+                                    size_match = re_search(r"(\d+)\s+bytes", line)
                                     if size_match:
                                         uncompressed_size = int(size_match.group(1))
-                        elif file_ext == '.rar':
+                        elif file_ext == ".rar":
                             # For rar, sum up the sizes
-                            for line in stdout.strip().split('\n'):
-                                size_match = re_search(r'\s+(\d+)\s+\d+\s+\d+%', line)
+                            for line in stdout.strip().split("\n"):
+                                size_match = re_search(
+                                    r"\s+(\d+)\s+\d+\s+\d+%", line
+                                )
                                 if size_match:
                                     uncompressed_size += int(size_match.group(1))
-                        elif file_ext == '.7z':
+                        elif file_ext == ".7z":
                             # For 7z, look for the size line
-                            for line in stdout.strip().split('\n'):
-                                if 'Size:' in line:
-                                    size_match = re_search(r'Size:\s+(\d+)', line)
+                            for line in stdout.strip().split("\n"):
+                                if "Size:" in line:
+                                    size_match = re_search(r"Size:\s+(\d+)", line)
                                     if size_match:
                                         uncompressed_size = int(size_match.group(1))
 
@@ -1306,37 +1532,39 @@ async def gen_mediainfo(message, link=None, media=None, reply=None, media_path=N
                 abs_path = ospath.abspath(des_path)
 
                 # First try 7z for all archive types as it's the most versatile
-                cmd = ['7z', 'l', abs_path]
+                cmd = ["7z", "l", abs_path]
                 stdout, stderr, return_code = await cmd_exec(cmd)
 
                 # If 7z fails, try format-specific tools
                 if return_code != 0:
-                    LOGGER.debug(f"7z failed for {file_ext} file, trying format-specific tool: {abs_path}")
+                    LOGGER.debug(
+                        f"7z failed for {file_ext} file, trying format-specific tool: {abs_path}"
+                    )
 
-                    if file_ext == '.zip':
-                        cmd = ['unzip', '-l', abs_path]
-                    elif file_ext == '.rar':
-                        cmd = ['unrar', 'l', abs_path]
-                    elif file_ext in ['.tar', '.gz', '.bz2', '.xz']:
-                        cmd = ['tar', 'tf', abs_path]
-                    elif file_ext == '.iso':
-                        cmd = ['isoinfo', '-l', '-i', abs_path]
-                    elif file_ext == '.cab':
-                        cmd = ['cabextract', '-l', abs_path]
+                    if file_ext == ".zip":
+                        cmd = ["unzip", "-l", abs_path]
+                    elif file_ext == ".rar":
+                        cmd = ["unrar", "l", abs_path]
+                    elif file_ext in [".tar", ".gz", ".bz2", ".xz"]:
+                        cmd = ["tar", "tf", abs_path]
+                    elif file_ext == ".iso":
+                        cmd = ["isoinfo", "-l", "-i", abs_path]
+                    elif file_ext == ".cab":
+                        cmd = ["cabextract", "-l", abs_path]
                     else:
                         # If we don't have a specific tool, try file command as a last resort
-                        cmd = ['file', '-z', abs_path]
+                        cmd = ["file", "-z", abs_path]
 
                     stdout, stderr, return_code = await cmd_exec(cmd)
 
                 if return_code == 0 and stdout:
                     # Limit output to avoid very large content
-                    content_lines = stdout.strip().split('\n')
+                    content_lines = stdout.strip().split("\n")
 
                     # Determine the format of the output based on the command used
-                    is_7z_output = '7-Zip' in stdout or 'Type = ' in stdout
-                    is_unzip_output = 'Archive:' in stdout and 'Length' in stdout
-                    is_unrar_output = 'UNRAR ' in stdout or 'RAR ' in stdout
+                    is_7z_output = "7-Zip" in stdout or "Type = " in stdout
+                    is_unzip_output = "Archive:" in stdout and "Length" in stdout
+                    is_unrar_output = "UNRAR " in stdout or "RAR " in stdout
 
                     # Filter out header and footer lines for cleaner output
                     filtered_lines = []
@@ -1351,35 +1579,50 @@ async def gen_mediainfo(message, link=None, media=None, reply=None, media_path=N
                             line = line.strip()
 
                             # Skip empty lines and headers
-                            if not line or 'Scanning' in line or 'Listing' in line or '--' in line:
+                            if (
+                                not line
+                                or "Scanning" in line
+                                or "Listing" in line
+                                or "--" in line
+                            ):
                                 continue
 
                             # Detect when we're in the file list section
-                            if 'Date' in line and 'Time' in line and 'Attr' in line and 'Size' in line and 'Name' in line:
+                            if (
+                                "Date" in line
+                                and "Time" in line
+                                and "Attr" in line
+                                and "Size" in line
+                                and "Name" in line
+                            ):
                                 in_file_list = True
                                 continue
 
                             # Skip the separator line after the header
-                            if in_file_list and '----' in line:
+                            if in_file_list and "----" in line:
                                 continue
 
                             # End of file list
-                            if in_file_list and ('files' in line and 'folders' in line):
+                            if in_file_list and (
+                                "files" in line and "folders" in line
+                            ):
                                 # Extract total files count
-                                files_match = re_search(r'(\d+)\s+files', line)
+                                files_match = re_search(r"(\d+)\s+files", line)
                                 if files_match:
                                     total_files = int(files_match.group(1))
                                 continue
 
                             # Extract uncompressed size from summary
-                            if 'Size:' in line:
-                                size_match = re_search(r'Size:\s+(\d+)', line)
+                            if "Size:" in line:
+                                size_match = re_search(r"Size:\s+(\d+)", line)
                                 if size_match:
-                                    total_size_uncompressed = int(size_match.group(1))
+                                    total_size_uncompressed = int(
+                                        size_match.group(1)
+                                    )
                                 continue
 
                             # Process file entries
-                            if in_file_list and not line.startswith('----'):
+                            if in_file_list and not line.startswith("----"):
                                 filtered_lines.append(line)
                     elif is_unzip_output:
                         # unzip output processing
@@ -1387,18 +1630,25 @@ async def gen_mediainfo(message, link=None, media=None, reply=None, media_path=N
                             line = line.strip()
 
                             # Skip headers and footers
-                            if not line or 'Archive:' in line or 'Length' in line or '------' in line:
+                            if (
+                                not line
+                                or "Archive:" in line
+                                or "Length" in line
+                                or "------" in line
+                            ):
                                 continue
 
                             # Extract total from the summary line
-                            if 'files' in line and 'bytes' in line:
-                                files_match = re_search(r'(\d+)\s+files', line)
+                            if "files" in line and "bytes" in line:
+                                files_match = re_search(r"(\d+)\s+files", line)
                                 if files_match:
                                     total_files = int(files_match.group(1))
 
-                                size_match = re_search(r'(\d+)\s+bytes', line)
+                                size_match = re_search(r"(\d+)\s+bytes", line)
                                 if size_match:
-                                    total_size_uncompressed = int(size_match.group(1))
+                                    total_size_uncompressed = int(
+                                        size_match.group(1)
+                                    )
                                 continue
 
                             filtered_lines.append(line)
@@ -1408,11 +1658,18 @@ async def gen_mediainfo(message, link=None, media=None, reply=None, media_path=N
                             line = line.strip()
 
                             # Skip headers and footers
-                            if not line or 'UNRAR ' in line or 'RAR ' in line or '------' in line:
+                            if (
+                                not line
+                                or "UNRAR " in line
+                                or "RAR " in line
+                                or "------" in line
+                            ):
                                 continue
 
                             # Skip summary lines
-                            if line.startswith('Archive ') or line.startswith('*') or line.endswith('files'):
+                            if line.startswith(("Archive ", "*")) or line.endswith(
+                                "files"
+                            ):
                                 continue
 
                             filtered_lines.append(line)
@@ -1430,9 +1687,12 @@ async def gen_mediainfo(message, link=None, media=None, reply=None, media_path=N
 
                     # Limit to 20 files for display
                     if len(filtered_lines) > 20:
-                        content_sample = '\n'.join(filtered_lines[:20]) + f"\n... and {len(filtered_lines) - 20} more files"
+                        content_sample = (
+                            "\n".join(filtered_lines[:20])
+                            + f"\n... and {len(filtered_lines) - 20} more files"
+                        )
                     else:
-                        content_sample = '\n'.join(filtered_lines)
+                        content_sample = "\n".join(filtered_lines)
 
                     # Add archive contents section
                     if content_sample.strip():
@@ -1469,12 +1729,16 @@ async def gen_mediainfo(message, link=None, media=None, reply=None, media_path=N
                                     filename = parts[-1]  # Last part is the filename
                             else:
                                 # Try to extract filename from the end of the line
-                                filename_match = re_search(r'([^\/\s]+\.[a-zA-Z0-9]+)$', line)
+                                filename_match = re_search(
+                                    r"([^\/\s]+\.[a-zA-Z0-9]+)$", line
+                                )
                                 if filename_match:
                                     filename = filename_match.group(1)
                                 else:
                                     # If no match, use the whole line as a fallback
-                                    filename = line.split()[-1] if line.split() else ""
+                                    filename = (
+                                        line.split()[-1] if line.split() else ""
+                                    )
 
                             # Extract extension and count
                             if filename:
@@ -1487,7 +1751,9 @@ async def gen_mediainfo(message, link=None, media=None, reply=None, media_path=N
                         # Display file types summary
                         if file_types:
                             tc += "<blockquote>File Types</blockquote><pre>"
-                            for ext, count in sorted(file_types.items(), key=lambda x: x[1], reverse=True):
+                            for ext, count in sorted(
+                                file_types.items(), key=lambda x: x[1], reverse=True
+                            ):
                                 tc += f"{ext[1:].upper():<10}: {count} files\n"
                             tc += "</pre><br>"
             except Exception as e:
@@ -1495,13 +1761,13 @@ async def gen_mediainfo(message, link=None, media=None, reply=None, media_path=N
                 # Add a note about the error
                 tc += "<blockquote>Archive Analysis</blockquote><pre>"
                 tc += "Could not analyze archive contents completely.\n"
-                tc += f"Error: {str(e)}\n"
+                tc += f"Error: {e!s}\n"
                 tc += "</pre><br>"
 
             return tc
 
         # Handle image files
-        elif file_ext in image_exts:
+        if file_ext in image_exts:
             # Special handling for image files
             if not silent and temp_send:
                 await edit_message(temp_send, "Analyzing image file...")
@@ -1512,19 +1778,21 @@ async def gen_mediainfo(message, link=None, media=None, reply=None, media_path=N
 
             # Map image formats to more descriptive names
             image_format_info = {
-                'JPG': 'JPEG Image',
-                'JPEG': 'JPEG Image',
-                'PNG': 'Portable Network Graphics',
-                'GIF': 'Graphics Interchange Format',
-                'BMP': 'Bitmap Image',
-                'WEBP': 'WebP Image',
-                'TIFF': 'Tagged Image File Format',
-                'SVG': 'Scalable Vector Graphics',
-                'EPS': 'Encapsulated PostScript',
-                'PSD': 'Adobe Photoshop Document'
+                "JPG": "JPEG Image",
+                "JPEG": "JPEG Image",
+                "PNG": "Portable Network Graphics",
+                "GIF": "Graphics Interchange Format",
+                "BMP": "Bitmap Image",
+                "WEBP": "WebP Image",
+                "TIFF": "Tagged Image File Format",
+                "SVG": "Scalable Vector Graphics",
+                "EPS": "Encapsulated PostScript",
+                "PSD": "Adobe Photoshop Document",
             }
 
-            format_info = image_format_info.get(file_ext[1:].upper(), f"{file_ext[1:].upper()} Image")
+            format_info = image_format_info.get(
+                file_ext[1:].upper(), f"{file_ext[1:].upper()} Image"
+            )
             tc += f"{'Format':<28}: {file_ext[1:].upper()}\n"
             tc += f"{'Format/Info':<28}: {format_info}\n"
             tc += f"{'File size':<28}: {file_size / (1024 * 1024):.2f} MiB\n"
@@ -1533,11 +1801,13 @@ async def gen_mediainfo(message, link=None, media=None, reply=None, media_path=N
             try:
                 cmd = [
                     "ffprobe",  # Keep as ffprobe, not xtra
-                    "-v", "quiet",
-                    "-print_format", "json",
+                    "-v",
+                    "quiet",
+                    "-print_format",
+                    "json",
                     "-show_format",
                     "-show_streams",
-                    des_path
+                    des_path,
                 ]
 
                 # Use cmd_exec instead of direct subprocess call
@@ -1558,7 +1828,7 @@ async def gen_mediainfo(message, link=None, media=None, reply=None, media_path=N
                                 tc += f"{'Resolution':<28}: {width}x{height}\n"
 
                             if "bits_per_raw_sample" in stream:
-                                tc += f"{'Bit depth':<28}: {stream["bits_per_raw_sample"]} bits\n"
+                                tc += f"{'Bit depth':<28}: {stream['bits_per_raw_sample']} bits\n"
 
                             if "pix_fmt" in stream:
                                 pix_fmt = stream["pix_fmt"]
@@ -1577,7 +1847,9 @@ async def gen_mediainfo(message, link=None, media=None, reply=None, media_path=N
                                     tc += f"{'Bit depth':<28}: 16 bits\n"
                                 elif "p10" in pix_fmt:
                                     tc += f"{'Bit depth':<28}: 10 bits\n"
-                                elif "p8" in pix_fmt or not any(x in pix_fmt for x in ["p16", "p10", "p12"]):
+                                elif "p8" in pix_fmt or not any(
+                                    x in pix_fmt for x in ["p16", "p10", "p12"]
+                                ):
                                     tc += f"{'Bit depth':<28}: 8 bits\n"
                     except json.JSONDecodeError:
                         pass
@@ -1589,14 +1861,18 @@ async def gen_mediainfo(message, link=None, media=None, reply=None, media_path=N
                 abs_path = ospath.abspath(des_path)
                 # Verify file exists before running file command
                 if not ospath.exists(abs_path):
-                    LOGGER.warning(f"File does not exist at path: {abs_path}, skipping file analysis")
+                    LOGGER.warning(
+                        f"File does not exist at path: {abs_path}, skipping file analysis"
+                    )
                 else:
-                    cmd = ['file', '-b', abs_path]
+                    cmd = ["file", "-b", abs_path]
                     stdout, stderr, return_code = await cmd_exec(cmd)
                     if return_code == 0 and stdout:
                         tc += f"{'File analysis':<28}: {stdout.strip()}\n"
                     else:
-                        LOGGER.debug(f"File command returned non-zero code: {return_code}, stderr: {stderr}")
+                        LOGGER.debug(
+                            f"File command returned non-zero code: {return_code}, stderr: {stderr}"
+                        )
             except Exception as e:
                 LOGGER.debug(f"Error getting image file info with file command: {e}")
                 # Continue without this info, it's not critical
@@ -1605,7 +1881,7 @@ async def gen_mediainfo(message, link=None, media=None, reply=None, media_path=N
             return tc
 
         # Handle document files
-        elif file_ext in document_exts:
+        if file_ext in document_exts:
             # Special handling for document files
             if not silent and temp_send:
                 await edit_message(temp_send, "Analyzing document file...")
@@ -1616,19 +1892,21 @@ async def gen_mediainfo(message, link=None, media=None, reply=None, media_path=N
 
             # Map document formats to more descriptive names
             document_format_info = {
-                'PDF': 'Portable Document Format',
-                'DOC': 'Microsoft Word Document (Legacy)',
-                'DOCX': 'Microsoft Word Document',
-                'XLS': 'Microsoft Excel Spreadsheet (Legacy)',
-                'XLSX': 'Microsoft Excel Spreadsheet',
-                'PPT': 'Microsoft PowerPoint Presentation (Legacy)',
-                'PPTX': 'Microsoft PowerPoint Presentation',
-                'TXT': 'Plain Text Document',
-                'MD': 'Markdown Document',
-                'EPUB': 'Electronic Publication'
+                "PDF": "Portable Document Format",
+                "DOC": "Microsoft Word Document (Legacy)",
+                "DOCX": "Microsoft Word Document",
+                "XLS": "Microsoft Excel Spreadsheet (Legacy)",
+                "XLSX": "Microsoft Excel Spreadsheet",
+                "PPT": "Microsoft PowerPoint Presentation (Legacy)",
+                "PPTX": "Microsoft PowerPoint Presentation",
+                "TXT": "Plain Text Document",
+                "MD": "Markdown Document",
+                "EPUB": "Electronic Publication",
             }
 
-            format_info = document_format_info.get(file_ext[1:].upper(), f"{file_ext[1:].upper()} Document")
+            format_info = document_format_info.get(
+                file_ext[1:].upper(), f"{file_ext[1:].upper()} Document"
+            )
             tc += f"{'Format':<28}: {file_ext[1:].upper()}\n"
             tc += f"{'Format/Info':<28}: {format_info}\n"
             tc += f"{'File size':<28}: {file_size / (1024 * 1024):.2f} MiB\n"
@@ -1638,28 +1916,34 @@ async def gen_mediainfo(message, link=None, media=None, reply=None, media_path=N
                 abs_path = ospath.abspath(des_path)
                 # Verify file exists before running file command
                 if not ospath.exists(abs_path):
-                    LOGGER.warning(f"File does not exist at path: {abs_path}, skipping file analysis")
+                    LOGGER.warning(
+                        f"File does not exist at path: {abs_path}, skipping file analysis"
+                    )
                 else:
-                    cmd = ['file', '-b', abs_path]
+                    cmd = ["file", "-b", abs_path]
                     stdout, stderr, return_code = await cmd_exec(cmd)
                     if return_code == 0 and stdout:
                         tc += f"{'File analysis':<28}: {stdout.strip()}\n"
                     else:
-                        LOGGER.debug(f"File command returned non-zero code: {return_code}, stderr: {stderr}")
+                        LOGGER.debug(
+                            f"File command returned non-zero code: {return_code}, stderr: {stderr}"
+                        )
             except Exception as e:
-                LOGGER.debug(f"Error getting document file info with file command: {e}")
+                LOGGER.debug(
+                    f"Error getting document file info with file command: {e}"
+                )
                 # Continue without this info, it's not critical
 
             # For PDF files, try to get page count
-            if file_ext.lower() == '.pdf':
+            if file_ext.lower() == ".pdf":
                 try:
-                    cmd = ['pdfinfo', des_path]
+                    cmd = ["pdfinfo", des_path]
                     stdout, stderr, return_code = await cmd_exec(cmd)
                     if return_code == 0 and stdout:
                         # Extract page count
-                        for line in stdout.strip().split('\n'):
-                            if line.startswith('Pages:'):
-                                page_count = line.split(':', 1)[1].strip()
+                        for line in stdout.strip().split("\n"):
+                            if line.startswith("Pages:"):
+                                page_count = line.split(":", 1)[1].strip()
                                 tc += f"{'Page count':<28}: {page_count}\n"
                                 break
                 except Exception as e:
@@ -1668,79 +1952,95 @@ async def gen_mediainfo(message, link=None, media=None, reply=None, media_path=N
             tc += "</pre><br>"
             return tc
 
-        elif file_ext in subtitle_exts:
+        if file_ext in subtitle_exts:
             # Special handling for subtitle files
             if not silent and temp_send:
                 await edit_message(temp_send, "Analyzing subtitle file...")
 
             # Try to determine subtitle format from extension
-            subtitle_format = file_ext[1:].upper()  # Remove the dot and convert to uppercase
+            subtitle_format = file_ext[
+                1:
+            ].upper()  # Remove the dot and convert to uppercase
 
             # Map subtitle formats to more descriptive names
             subtitle_format_info = {
-                'SRT': 'SubRip Text',
-                'ASS': 'Advanced SubStation Alpha',
-                'SSA': 'SubStation Alpha',
-                'VTT': 'WebVTT (Web Video Text Tracks)',
-                'WEBVTT': 'WebVTT (Web Video Text Tracks)',
-                'SUB': 'MicroDVD or SubViewer',
-                'IDX': 'VobSub',
-                'STL': 'EBU STL (European Broadcasting Union Subtitle)',
-                'SCC': 'Scenarist Closed Caption',
-                'TTML': 'Timed Text Markup Language',
-                'SBV': 'YouTube Subtitles',
-                'DFXP': 'Distribution Format Exchange Profile',
-                'SMI': 'SAMI (Synchronized Accessible Media Interchange)'
+                "SRT": "SubRip Text",
+                "ASS": "Advanced SubStation Alpha",
+                "SSA": "SubStation Alpha",
+                "VTT": "WebVTT (Web Video Text Tracks)",
+                "WEBVTT": "WebVTT (Web Video Text Tracks)",
+                "SUB": "MicroDVD or SubViewer",
+                "IDX": "VobSub",
+                "STL": "EBU STL (European Broadcasting Union Subtitle)",
+                "SCC": "Scenarist Closed Caption",
+                "TTML": "Timed Text Markup Language",
+                "SBV": "YouTube Subtitles",
+                "DFXP": "Distribution Format Exchange Profile",
+                "SMI": "SAMI (Synchronized Accessible Media Interchange)",
             }
 
-            format_info = subtitle_format_info.get(subtitle_format, f"{subtitle_format} subtitle")
+            format_info = subtitle_format_info.get(
+                subtitle_format, f"{subtitle_format} subtitle"
+            )
 
             # Try to get more info using file command
             try:
                 abs_path = ospath.abspath(des_path)
                 # Verify file exists before running file command
                 if not ospath.exists(abs_path):
-                    LOGGER.warning(f"File does not exist at path: {abs_path}, skipping file analysis")
+                    LOGGER.warning(
+                        f"File does not exist at path: {abs_path}, skipping file analysis"
+                    )
                 else:
-                    cmd = ['file', '-b', abs_path]
+                    cmd = ["file", "-b", abs_path]
                     stdout, stderr, return_code = await cmd_exec(cmd)
                     if return_code == 0 and stdout:
                         file_analysis = stdout.strip()
                         # If file command gives more specific info, use it to refine format info
-                        if 'SubRip' in file_analysis and subtitle_format == 'SRT':
-                            format_info = 'SubRip Text (SRT)'
-                        elif 'Advanced SubStation Alpha' in file_analysis and subtitle_format in ['ASS', 'SSA']:
-                            format_info = 'Advanced SubStation Alpha (ASS)'
-                        elif 'WebVTT' in file_analysis and subtitle_format in ['VTT', 'WEBVTT']:
-                            format_info = 'WebVTT (Web Video Text Tracks)'
+                        if "SubRip" in file_analysis and subtitle_format == "SRT":
+                            format_info = "SubRip Text (SRT)"
+                        elif (
+                            "Advanced SubStation Alpha" in file_analysis
+                            and subtitle_format in ["ASS", "SSA"]
+                        ):
+                            format_info = "Advanced SubStation Alpha (ASS)"
+                        elif "WebVTT" in file_analysis and subtitle_format in [
+                            "VTT",
+                            "WEBVTT",
+                        ]:
+                            format_info = "WebVTT (Web Video Text Tracks)"
                     else:
-                        LOGGER.debug(f"File command returned non-zero code: {return_code}, stderr: {stderr}")
+                        LOGGER.debug(
+                            f"File command returned non-zero code: {return_code}, stderr: {stderr}"
+                        )
             except Exception as e:
-                LOGGER.debug(f"Error getting subtitle file info with file command: {e}")
+                LOGGER.debug(
+                    f"Error getting subtitle file info with file command: {e}"
+                )
                 # Continue without this info, it's not critical
 
             # Read a small sample of the file to try to determine encoding and format
-            encoding = 'utf-8'
+            encoding = "utf-8"
             file_sample = ""
             try:
                 # Use async file operations for better resource management
-                async with aiopen(des_path, 'rb') as f:
+                async with aiopen(des_path, "rb") as f:
                     raw_data = await f.read(4096)  # Read first 4KB
 
                     # Try to detect encoding
-                    if raw_data.startswith(b'\xef\xbb\xbf'):
-                        encoding = 'utf-8-sig'  # UTF-8 with BOM
-                    elif raw_data.startswith(b'\xff\xfe'):
-                        encoding = 'utf-16-le'  # UTF-16 Little Endian
-                    elif raw_data.startswith(b'\xfe\xff'):
-                        encoding = 'utf-16-be'  # UTF-16 Big Endian
+                    if raw_data.startswith(b"\xef\xbb\xbf"):
+                        encoding = "utf-8-sig"  # UTF-8 with BOM
+                    elif raw_data.startswith(b"\xff\xfe"):
+                        encoding = "utf-16-le"  # UTF-16 Little Endian
+                    elif raw_data.startswith(b"\xfe\xff"):
+                        encoding = "utf-16-be"  # UTF-16 Big Endian
 
                     # Try to decode with detected encoding
                     try:
-                        file_sample = raw_data.decode(encoding, errors='replace')
+                        file_sample = raw_data.decode(encoding, errors="replace")
                     except UnicodeDecodeError:
                         # If that fails, try with latin-1 which should always work
-                        file_sample = raw_data.decode('latin-1', errors='replace')
+                        file_sample = raw_data.decode("latin-1", errors="replace")
             except Exception as e:
                 LOGGER.error(f"Error reading subtitle file: {e}")
 
@@ -1755,7 +2055,7 @@ async def gen_mediainfo(message, link=None, media=None, reply=None, media_path=N
             tc += f"{'File size':<28}: {file_size / (1024 * 1024):.2f} MiB\n"
 
             # Try to determine encoding from file sample
-            if encoding != 'utf-8':
+            if encoding != "utf-8":
                 tc += f"{'Encoding':<28}: {encoding}\n"
 
             tc += "</pre><br>"
@@ -1766,41 +2066,64 @@ async def gen_mediainfo(message, link=None, media=None, reply=None, media_path=N
 
             # Try to estimate the language from filename
             lang_codes = {
-                'eng': 'English', 'en': 'English',
-                'fre': 'French', 'fr': 'French',
-                'ger': 'German', 'de': 'German',
-                'spa': 'Spanish', 'es': 'Spanish',
-                'ita': 'Italian', 'it': 'Italian',
-                'rus': 'Russian', 'ru': 'Russian',
-                'jpn': 'Japanese', 'ja': 'Japanese',
-                'chi': 'Chinese', 'zh': 'Chinese',
-                'ara': 'Arabic', 'ar': 'Arabic',
-                'hin': 'Hindi', 'hi': 'Hindi',
-                'kor': 'Korean', 'ko': 'Korean',
-                'por': 'Portuguese', 'pt': 'Portuguese',
-                'dut': 'Dutch', 'nl': 'Dutch',
-                'swe': 'Swedish', 'sv': 'Swedish',
-                'nor': 'Norwegian', 'no': 'Norwegian',
-                'dan': 'Danish', 'da': 'Danish',
-                'fin': 'Finnish', 'fi': 'Finnish',
-                'pol': 'Polish', 'pl': 'Polish',
-                'tur': 'Turkish', 'tr': 'Turkish',
-                'heb': 'Hebrew', 'he': 'Hebrew',
-                'tha': 'Thai', 'th': 'Thai'
+                "eng": "English",
+                "en": "English",
+                "fre": "French",
+                "fr": "French",
+                "ger": "German",
+                "de": "German",
+                "spa": "Spanish",
+                "es": "Spanish",
+                "ita": "Italian",
+                "it": "Italian",
+                "rus": "Russian",
+                "ru": "Russian",
+                "jpn": "Japanese",
+                "ja": "Japanese",
+                "chi": "Chinese",
+                "zh": "Chinese",
+                "ara": "Arabic",
+                "ar": "Arabic",
+                "hin": "Hindi",
+                "hi": "Hindi",
+                "kor": "Korean",
+                "ko": "Korean",
+                "por": "Portuguese",
+                "pt": "Portuguese",
+                "dut": "Dutch",
+                "nl": "Dutch",
+                "swe": "Swedish",
+                "sv": "Swedish",
+                "nor": "Norwegian",
+                "no": "Norwegian",
+                "dan": "Danish",
+                "da": "Danish",
+                "fin": "Finnish",
+                "fi": "Finnish",
+                "pol": "Polish",
+                "pl": "Polish",
+                "tur": "Turkish",
+                "tr": "Turkish",
+                "heb": "Hebrew",
+                "he": "Hebrew",
+                "tha": "Thai",
+                "th": "Thai",
             }
 
             filename_lower = ospath.basename(des_path).lower()
             detected_lang = None
 
             for code, language in lang_codes.items():
-                if (f".{code}." in filename_lower or
-                    f"_{code}." in filename_lower or
-                    f"-{code}." in filename_lower or
-                    f".{code}_" in filename_lower or
-                    f"_{code}_" in filename_lower or
-                    f"-{code}-" in filename_lower or
-                    f" {language.lower()}." in filename_lower or
-                    f".{language.lower()}." in filename_lower):
+                if (
+                    f".{code}." in filename_lower
+                    or f"_{code}." in filename_lower
+                    or f"-{code}." in filename_lower
+                    or f".{code}_" in filename_lower
+                    or f"_{code}_" in filename_lower
+                    or f"-{code}-" in filename_lower
+                    or f" {language.lower()}." in filename_lower
+                    or f".{language.lower()}." in filename_lower
+                ):
                     detected_lang = language
                     break
 
@@ -1810,10 +2133,10 @@ async def gen_mediainfo(message, link=None, media=None, reply=None, media_path=N
             # Add a sample of the file content if available
             if file_sample:
                 # Clean up the sample and limit to a few lines
-                sample_lines = file_sample.split('\n')[:5]
-                sample_text = '\n'.join(sample_lines)
+                sample_lines = file_sample.split("\n")[:5]
+                sample_text = "\n".join(sample_lines)
                 if len(sample_text) > 200:
-                    sample_text = sample_text[:197] + '...'
+                    sample_text = sample_text[:197] + "..."
 
                 tc += f"\n{'Content sample':<28}:\n{sample_text}\n"
 
@@ -1823,15 +2146,18 @@ async def gen_mediainfo(message, link=None, media=None, reply=None, media_path=N
         # For non-subtitle files or subtitle files that ffprobe can handle
         # Run ffprobe with more detailed options
         cmd = [
-            'ffprobe',  # Keep as ffprobe, not xtra
-            '-v', 'quiet',
-            '-print_format', 'json',
-            '-show_format',
-            '-show_streams',
-            '-show_chapters',
-            '-show_programs',
-            '-show_entries', 'format_tags:stream_tags:stream_disposition',
-            des_path
+            "ffprobe",  # Keep as ffprobe, not xtra
+            "-v",
+            "quiet",
+            "-print_format",
+            "json",
+            "-show_format",
+            "-show_streams",
+            "-show_chapters",
+            "-show_programs",
+            "-show_entries",
+            "format_tags:stream_tags:stream_disposition",
+            des_path,
         ]
 
         stdout, stderr, return_code = await cmd_exec(cmd)
@@ -1853,8 +2179,7 @@ async def gen_mediainfo(message, link=None, media=None, reply=None, media_path=N
                 tc += f"{'Subtitle format':<28}: {subtitle_format.lower()}\n"
                 tc += "</pre><br>"
                 return tc
-            else:
-                raise Exception(f"ffprobe failed with return code {return_code}")
+            raise Exception(f"ffprobe failed with return code {return_code}")
 
         if stdout:
             try:
@@ -1869,7 +2194,7 @@ async def gen_mediainfo(message, link=None, media=None, reply=None, media_path=N
     except Exception as e:
         LOGGER.error(f"MediaInfo error: {e}")
         if not silent and temp_send:
-            await edit_message(temp_send, f"MediaInfo failed: {str(e)}")
+            await edit_message(temp_send, f"MediaInfo failed: {e!s}")
         return None
     finally:
         # Clean up temporary file ONLY if it's not the original file path
@@ -1880,7 +2205,9 @@ async def gen_mediainfo(message, link=None, media=None, reply=None, media_path=N
                 LOGGER.debug(f"Cleaning up temporary MediaInfo file: {des_path}")
                 await aioremove(des_path)
             else:
-                LOGGER.debug(f"Not cleaning up file as it's not a temporary MediaInfo file: {des_path}")
+                LOGGER.debug(
+                    f"Not cleaning up file as it's not a temporary MediaInfo file: {des_path}"
+                )
 
         # Run garbage collection to free up memory
         # Use aggressive mode for large files
@@ -1902,7 +2229,9 @@ async def gen_mediainfo(message, link=None, media=None, reply=None, media_path=N
 
             # Create the page
             try:
-                link_id = (await telegraph.create_page(title="MediaInfo", content=tc))["path"]
+                link_id = (
+                    await telegraph.create_page(title="MediaInfo", content=tc)
+                )["path"]
 
                 # If in silent mode, just return the path
                 if silent:
@@ -1922,14 +2251,23 @@ async def gen_mediainfo(message, link=None, media=None, reply=None, media_path=N
                 # Check if the error is related to content size
                 if "CONTENT_TOO_BIG" in str(e):
                     # Try to split the content and create a simpler version
-                    LOGGER.warning("Content too big for Telegraph, creating simplified version...")
+                    LOGGER.warning(
+                        "Content too big for Telegraph, creating simplified version..."
+                    )
 
                     # Create a simplified version with just the basic info
-                    simplified_tc = tc.split("<blockquote>Archive Contents</blockquote>")[0] + "</pre><br>"
+                    simplified_tc = (
+                        tc.split("<blockquote>Archive Contents</blockquote>")[0]
+                        + "</pre><br>"
+                    )
                     simplified_tc += "<blockquote>Note</blockquote><pre>Full content was too large for Telegraph. This is a simplified version.</pre><br>"
 
                     try:
-                        link_id = (await telegraph.create_page(title="MediaInfo (Simplified)", content=simplified_tc))["path"]
+                        link_id = (
+                            await telegraph.create_page(
+                                title="MediaInfo (Simplified)", content=simplified_tc
+                            )
+                        )["path"]
 
                         # If in silent mode, just return the path
                         if silent:
@@ -1944,14 +2282,21 @@ async def gen_mediainfo(message, link=None, media=None, reply=None, media_path=N
                             disable_web_page_preview=False,
                         )
                     except Exception as e2:
-                        LOGGER.error(f"Failed to create simplified Telegraph page: {e2}")
+                        LOGGER.error(
+                            f"Failed to create simplified Telegraph page: {e2}"
+                        )
                         if not silent and temp_send:
-                            await edit_message(temp_send, "Failed to create MediaInfo page: Content too large for Telegraph")
+                            await edit_message(
+                                temp_send,
+                                "Failed to create MediaInfo page: Content too large for Telegraph",
+                            )
                         return None
                 else:
                     # For other errors, show the error message
                     if not silent and temp_send:
-                        await edit_message(temp_send, f"Failed to create MediaInfo page: {str(e)}")
+                        await edit_message(
+                            temp_send, f"Failed to create MediaInfo page: {e!s}"
+                        )
                     return None
 
             # Run garbage collection after Telegraph API call
@@ -1959,11 +2304,13 @@ async def gen_mediainfo(message, link=None, media=None, reply=None, media_path=N
         except Exception as e:
             LOGGER.error(f"Unexpected error in MediaInfo generation: {e}")
             if not silent and temp_send:
-                await edit_message(temp_send, f"Failed to generate MediaInfo: {str(e)}")
+                await edit_message(temp_send, f"Failed to generate MediaInfo: {e!s}")
             return None
     else:
         if not silent and temp_send:
-            await temp_send.edit("Failed to generate MediaInfo. No data was returned.")
+            await temp_send.edit(
+                "Failed to generate MediaInfo. No data was returned."
+            )
         return None
 
 
@@ -1985,7 +2332,9 @@ async def mediainfo(_, message):
 
     # Create a more detailed help message
     cmd_prefix = BotCommands.MediaInfoCommand
-    cmd_str = f"/{cmd_prefix[0]}" if isinstance(cmd_prefix, list) else f"/{cmd_prefix}"
+    cmd_str = (
+        f"/{cmd_prefix[0]}" if isinstance(cmd_prefix, list) else f"/{cmd_prefix}"
+    )
 
     help_msg = (
         "<b>📋 MediaInfo Command Help</b>\n\n"
@@ -2014,15 +2363,14 @@ async def mediainfo(_, message):
         if reply and reply.text:
             await delete_links(message)
             # Try to extract URL from text
-            url_match = re_search(r'https?://\S+', reply.text)
+            url_match = re_search(r"https?://\S+", reply.text)
             if url_match:
                 link = url_match.group(0)
                 await gen_mediainfo(message, link)
                 return
-            else:
-                # If no URL found, try the whole text as a link
-                await gen_mediainfo(message, reply.text)
-                return
+            # If no URL found, try the whole text as a link
+            await gen_mediainfo(message, reply.text)
+            return
 
         # Handle reply to media file
         if reply:
@@ -2053,7 +2401,7 @@ async def mediainfo(_, message):
 
     except Exception as e:
         LOGGER.error(f"MediaInfo command error: {e}")
-        error_msg = f"<b>Error processing MediaInfo command:</b> {str(e)}"
+        error_msg = f"<b>Error processing MediaInfo command:</b> {e!s}"
         error_message = await send_message(message, error_msg)
         create_task(auto_delete_message(error_message, time=300))
     finally:
