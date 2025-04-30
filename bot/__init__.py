@@ -32,6 +32,7 @@ getLogger("pyrogram").setLevel(ERROR)
 getLogger("httpx").setLevel(WARNING)
 getLogger("pymongo").setLevel(WARNING)
 getLogger("aiohttp").setLevel(WARNING)
+getLogger("bot.modules.music_search").setLevel(ERROR)
 
 bot_start_time = time()
 
@@ -40,7 +41,7 @@ set_event_loop(bot_loop)
 
 
 class CustomFormatter(Formatter):
-    def formatTime(
+    def formatTime(  # noqa: N802
         self,
         record: LogRecord,
         datefmt: str | None,

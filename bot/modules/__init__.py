@@ -35,6 +35,8 @@ from .mirror_leech import (
     nzb_leech,
     nzb_mirror,
 )
+from .deprecated_commands import handle_no_suffix_commands, handle_qb_commands
+from .music_search import music_cancel_callback, music_get_callback, music_search
 from .nzb_search import hydra_search
 from .restart import (
     confirm_restart,
@@ -91,6 +93,8 @@ __all__ = [
     "handle_cancel_command",
     "handle_command",
     "handle_group_gensession",
+    "handle_no_suffix_commands",
+    "handle_qb_commands",
     "handle_session_input",
     "hydra_search",
     "imdb_callback",

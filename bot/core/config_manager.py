@@ -1,7 +1,7 @@
 import ast
 import os
 from importlib import import_module
-from typing import Any, ClassVar
+from typing import Any, ClassVar, Optional
 
 
 class Config:
@@ -33,6 +33,7 @@ class Config:
     LOGIN_PASS: str = ""
     MEDIA_GROUP: bool = False
     HYBRID_LEECH: bool = False
+    MUSIC_SEARCH_CHATS: ClassVar[list] = []
     NAME_SUBSTITUTE: str = r""
     OWNER_ID: int = 0
     QUEUE_ALL: int = 0
@@ -116,9 +117,7 @@ class Config:
     COMPRESSION_VIDEO_CODEC: str = "none"
     COMPRESSION_VIDEO_TUNE: str = "none"
     COMPRESSION_VIDEO_PIXEL_FORMAT: str = "none"
-    COMPRESSION_VIDEO_FORMAT: str = (
-        "none"  # Output format for video compression (e.g., mp4, mkv)
-    )
+    COMPRESSION_VIDEO_FORMAT: str = "none"  # Output format for video compression (e.g., mp4, mkv)
 
     # Audio Compression Settings
     COMPRESSION_AUDIO_ENABLED: bool = False
@@ -126,43 +125,33 @@ class Config:
     COMPRESSION_AUDIO_CODEC: str = "none"
     COMPRESSION_AUDIO_BITRATE: str = "none"
     COMPRESSION_AUDIO_CHANNELS: int = 0
-    COMPRESSION_AUDIO_FORMAT: str = (
-        "none"  # Output format for audio compression (e.g., mp3, aac)
-    )
+    COMPRESSION_AUDIO_FORMAT: str = "none"  # Output format for audio compression (e.g., mp3, aac)
 
     # Image Compression Settings
     COMPRESSION_IMAGE_ENABLED: bool = False
     COMPRESSION_IMAGE_PRESET: str = "none"  # none, fast, medium, slow
     COMPRESSION_IMAGE_QUALITY: int = 0
     COMPRESSION_IMAGE_RESIZE: str = "none"
-    COMPRESSION_IMAGE_FORMAT: str = (
-        "none"  # Output format for image compression (e.g., jpg, png)
-    )
+    COMPRESSION_IMAGE_FORMAT: str = "none"  # Output format for image compression (e.g., jpg, png)
 
     # Document Compression Settings
     COMPRESSION_DOCUMENT_ENABLED: bool = False
     COMPRESSION_DOCUMENT_PRESET: str = "none"  # none, fast, medium, slow
     COMPRESSION_DOCUMENT_DPI: int = 0
-    COMPRESSION_DOCUMENT_FORMAT: str = (
-        "none"  # Output format for document compression (e.g., pdf)
-    )
+    COMPRESSION_DOCUMENT_FORMAT: str = "none"  # Output format for document compression (e.g., pdf)
 
     # Subtitle Compression Settings
     COMPRESSION_SUBTITLE_ENABLED: bool = False
     COMPRESSION_SUBTITLE_PRESET: str = "none"  # none, fast, medium, slow
     COMPRESSION_SUBTITLE_ENCODING: str = "none"
-    COMPRESSION_SUBTITLE_FORMAT: str = (
-        "none"  # Output format for subtitle compression (e.g., srt)
-    )
+    COMPRESSION_SUBTITLE_FORMAT: str = "none"  # Output format for subtitle compression (e.g., srt)
 
     # Archive Compression Settings
     COMPRESSION_ARCHIVE_ENABLED: bool = False
     COMPRESSION_ARCHIVE_PRESET: str = "none"  # none, fast, medium, slow
     COMPRESSION_ARCHIVE_LEVEL: int = 0
     COMPRESSION_ARCHIVE_METHOD: str = "none"
-    COMPRESSION_ARCHIVE_FORMAT: str = (
-        "none"  # Output format for archive compression (e.g., zip, 7z)
-    )
+    COMPRESSION_ARCHIVE_FORMAT: str = "none"  # Output format for archive compression (e.g., zip, 7z)
 
     # Trim Settings
     TRIM_ENABLED: bool = False
@@ -175,44 +164,32 @@ class Config:
     TRIM_VIDEO_ENABLED: bool = False
     TRIM_VIDEO_CODEC: str = "none"  # none, copy, libx264, etc.
     TRIM_VIDEO_PRESET: str = "none"  # none, fast, medium, slow
-    TRIM_VIDEO_FORMAT: str = (
-        "none"  # Output format for video trimming (e.g., mp4, mkv)
-    )
+    TRIM_VIDEO_FORMAT: str = "none"  # Output format for video trimming (e.g., mp4, mkv)
 
     # Audio Trim Settings
     TRIM_AUDIO_ENABLED: bool = False
     TRIM_AUDIO_CODEC: str = "none"  # none, copy, aac, etc.
     TRIM_AUDIO_PRESET: str = "none"  # none, fast, medium, slow
-    TRIM_AUDIO_FORMAT: str = (
-        "none"  # Output format for audio trimming (e.g., mp3, aac)
-    )
+    TRIM_AUDIO_FORMAT: str = "none"  # Output format for audio trimming (e.g., mp3, aac)
 
     # Image Trim Settings
     TRIM_IMAGE_ENABLED: bool = False
     TRIM_IMAGE_QUALITY: int = 90
-    TRIM_IMAGE_FORMAT: str = (
-        "none"  # Output format for image trimming (e.g., jpg, png)
-    )
+    TRIM_IMAGE_FORMAT: str = "none"  # Output format for image trimming (e.g., jpg, png)
 
     # Document Trim Settings
     TRIM_DOCUMENT_ENABLED: bool = False
     TRIM_DOCUMENT_QUALITY: int = 90
-    TRIM_DOCUMENT_FORMAT: str = (
-        "none"  # Output format for document trimming (e.g., pdf)
-    )
+    TRIM_DOCUMENT_FORMAT: str = "none"  # Output format for document trimming (e.g., pdf)
 
     # Subtitle Trim Settings
     TRIM_SUBTITLE_ENABLED: bool = False
     TRIM_SUBTITLE_ENCODING: str = "none"
-    TRIM_SUBTITLE_FORMAT: str = (
-        "none"  # Output format for subtitle trimming (e.g., srt)
-    )
+    TRIM_SUBTITLE_FORMAT: str = "none"  # Output format for subtitle trimming (e.g., srt)
 
     # Archive Trim Settings
     TRIM_ARCHIVE_ENABLED: bool = False
-    TRIM_ARCHIVE_FORMAT: str = (
-        "none"  # Output format for archive trimming (e.g., zip, 7z)
-    )
+    TRIM_ARCHIVE_FORMAT: str = "none"  # Output format for archive trimming (e.g., zip, 7z)
 
     # Extract Settings
     EXTRACT_ENABLED: bool = False
@@ -222,61 +199,39 @@ class Config:
     # Video Extract Settings
     EXTRACT_VIDEO_ENABLED: bool = False
     EXTRACT_VIDEO_CODEC: str = "none"
-    EXTRACT_VIDEO_FORMAT: str = (
-        "none"  # Output format for video extraction (e.g., mp4, mkv)
-    )
-    EXTRACT_VIDEO_INDEX: int | None = None
-    EXTRACT_VIDEO_QUALITY: str = (
-        "none"  # Quality setting for video extraction (e.g., crf value)
-    )
-    EXTRACT_VIDEO_PRESET: str = (
-        "none"  # Preset for video encoding (e.g., medium, slow)
-    )
+    EXTRACT_VIDEO_FORMAT: str = "none"  # Output format for video extraction (e.g., mp4, mkv)
+    EXTRACT_VIDEO_INDEX: Optional[int] = None
+    EXTRACT_VIDEO_QUALITY: str = "none"  # Quality setting for video extraction (e.g., crf value)
+    EXTRACT_VIDEO_PRESET: str = "none"   # Preset for video encoding (e.g., medium, slow)
     EXTRACT_VIDEO_BITRATE: str = "none"  # Bitrate for video encoding (e.g., 5M)
-    EXTRACT_VIDEO_RESOLUTION: str = (
-        "none"  # Resolution for video extraction (e.g., 1920x1080)
-    )
-    EXTRACT_VIDEO_FPS: str = "none"  # Frame rate for video extraction (e.g., 30)
+    EXTRACT_VIDEO_RESOLUTION: str = "none"  # Resolution for video extraction (e.g., 1920x1080)
+    EXTRACT_VIDEO_FPS: str = "none"      # Frame rate for video extraction (e.g., 30)
 
     # Audio Extract Settings
     EXTRACT_AUDIO_ENABLED: bool = False
     EXTRACT_AUDIO_CODEC: str = "none"
-    EXTRACT_AUDIO_FORMAT: str = (
-        "none"  # Output format for audio extraction (e.g., mp3, aac)
-    )
-    EXTRACT_AUDIO_INDEX: int | None = None
+    EXTRACT_AUDIO_FORMAT: str = "none"  # Output format for audio extraction (e.g., mp3, aac)
+    EXTRACT_AUDIO_INDEX: Optional[int] = None
     EXTRACT_AUDIO_BITRATE: str = "none"  # Bitrate for audio encoding (e.g., 320k)
-    EXTRACT_AUDIO_CHANNELS: str = "none"  # Number of audio channels (e.g., 2)
-    EXTRACT_AUDIO_SAMPLING: str = "none"  # Sampling rate for audio (e.g., 48000)
-    EXTRACT_AUDIO_VOLUME: str = "none"  # Volume adjustment for audio (e.g., 1.5)
+    EXTRACT_AUDIO_CHANNELS: str = "none" # Number of audio channels (e.g., 2)
+    EXTRACT_AUDIO_SAMPLING: str = "none" # Sampling rate for audio (e.g., 48000)
+    EXTRACT_AUDIO_VOLUME: str = "none"   # Volume adjustment for audio (e.g., 1.5)
 
     # Subtitle Extract Settings
     EXTRACT_SUBTITLE_ENABLED: bool = False
     EXTRACT_SUBTITLE_CODEC: str = "none"
-    EXTRACT_SUBTITLE_FORMAT: str = (
-        "none"  # Output format for subtitle extraction (e.g., srt, ass)
-    )
-    EXTRACT_SUBTITLE_INDEX: int | None = None
-    EXTRACT_SUBTITLE_LANGUAGE: str = (
-        "none"  # Language code for subtitle extraction (e.g., eng)
-    )
-    EXTRACT_SUBTITLE_ENCODING: str = (
-        "none"  # Character encoding for subtitles (e.g., UTF-8)
-    )
-    EXTRACT_SUBTITLE_FONT: str = (
-        "none"  # Font for subtitles (for formats that support it)
-    )
-    EXTRACT_SUBTITLE_FONT_SIZE: str = "none"  # Font size for subtitles
+    EXTRACT_SUBTITLE_FORMAT: str = "none"  # Output format for subtitle extraction (e.g., srt, ass)
+    EXTRACT_SUBTITLE_INDEX: Optional[int] = None
+    EXTRACT_SUBTITLE_LANGUAGE: str = "none"  # Language code for subtitle extraction (e.g., eng)
+    EXTRACT_SUBTITLE_ENCODING: str = "none"  # Character encoding for subtitles (e.g., UTF-8)
+    EXTRACT_SUBTITLE_FONT: str = "none"      # Font for subtitles (for formats that support it)
+    EXTRACT_SUBTITLE_FONT_SIZE: str = "none" # Font size for subtitles
 
     # Attachment Extract Settings
     EXTRACT_ATTACHMENT_ENABLED: bool = False
-    EXTRACT_ATTACHMENT_FORMAT: str = (
-        "none"  # Output format for attachment extraction (e.g., png, jpg)
-    )
-    EXTRACT_ATTACHMENT_INDEX: int | None = None
-    EXTRACT_ATTACHMENT_FILTER: str = (
-        "none"  # Filter for attachment extraction (e.g., *.ttf)
-    )
+    EXTRACT_ATTACHMENT_FORMAT: str = "none"  # Output format for attachment extraction (e.g., png, jpg)
+    EXTRACT_ATTACHMENT_INDEX: Optional[int] = None
+    EXTRACT_ATTACHMENT_FILTER: str = "none"  # Filter for attachment extraction (e.g., *.ttf)
 
     # Extract Quality Settings
     EXTRACT_MAINTAIN_QUALITY: bool = True

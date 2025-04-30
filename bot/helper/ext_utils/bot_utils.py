@@ -1,4 +1,3 @@
-import math
 from asyncio import (
     create_subprocess_exec,
     create_subprocess_shell,
@@ -9,10 +8,11 @@ from asyncio.subprocess import PIPE
 from base64 import urlsafe_b64decode, urlsafe_b64encode
 from concurrent.futures import ThreadPoolExecutor
 from functools import partial, wraps
+import math
 
 from httpx import AsyncClient
 
-from bot import LOGGER, bot_loop, user_data
+from bot import bot_loop, LOGGER, user_data
 from bot.core.config_manager import Config
 from bot.helper.telegram_helper.button_build import ButtonMaker
 
@@ -278,8 +278,8 @@ def get_user_split_size(user_id, args, file_size, equal_splits=False):
         bool: Whether to skip splitting
     """
     from bot import user_data
-    from bot.core.aeon_client import TgClient
     from bot.core.config_manager import Config
+    from bot.core.aeon_client import TgClient
 
     user_dict = user_data.get(user_id, {})
 
@@ -306,7 +306,7 @@ def get_user_split_size(user_id, args, file_size, equal_splits=False):
     elif user_dict.get("LEECH_SPLIT_SIZE"):
         split_size = user_dict.get("LEECH_SPLIT_SIZE")
     # Owner settings have third priority
-    elif Config.LEECH_SPLIT_SIZE and max_split_size != Config.LEECH_SPLIT_SIZE:
+    elif Config.LEECH_SPLIT_SIZE and Config.LEECH_SPLIT_SIZE != max_split_size:
         split_size = Config.LEECH_SPLIT_SIZE
     # Default to max split size if no custom size is set
     else:
@@ -339,21 +339,24 @@ def get_user_split_size(user_id, args, file_size, equal_splits=False):
         if file_size <= max_split_size:
             # If file size is less than max split size, no need to split
             return file_size, True
-        # Calculate number of parts needed based on max split size
-        parts = math.ceil(file_size / max_split_size)
-        # Calculate equal split size
-        equal_split_size = math.ceil(file_size / parts)
-        # Ensure the calculated equal split size is never greater than max split size
-        equal_split_size = min(equal_split_size, max_split_size)
-        # Never skip splitting if equal splits is on and file size is greater than max split size
-        return equal_split_size, False
-    # For regular splitting (not equal splits):
-    # Skip splitting if file size is less than the split size
-    if file_size <= split_size:
-        return file_size, True
-    # Always split the file if it's larger than split_size, regardless of max_split_size
-    # This ensures files larger than max_split_size still get split when equal_splits is off
-    return split_size, False
+        else:
+            # Calculate number of parts needed based on max split size
+            parts = math.ceil(file_size / max_split_size)
+            # Calculate equal split size
+            equal_split_size = math.ceil(file_size / parts)
+            # Ensure the calculated equal split size is never greater than max split size
+            equal_split_size = min(equal_split_size, max_split_size)
+            # Never skip splitting if equal splits is on and file size is greater than max split size
+            return equal_split_size, False
+    else:
+        # For regular splitting (not equal splits):
+        # Skip splitting if file size is less than the split size
+        if file_size <= split_size:
+            return file_size, True
+        else:
+            # Always split the file if it's larger than split_size, regardless of max_split_size
+            # This ensures files larger than max_split_size still get split when equal_splits is off
+            return split_size, False
 
 
 def update_user_ldata(id_, key, value):

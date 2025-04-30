@@ -35,9 +35,7 @@ def get_html_formats_page():
     msg += "• <b>underline</b>: <u>Underlined text</u>\n"
     msg += "• <b>strike</b>: <s>Strikethrough text</s>\n"
     msg += "• <b>code</b>: <code>Monospace text</code>\n"
-    msg += (
-        "• <b>monospace</b>: <pre>Preformatted text with preserved spacing</pre>\n"
-    )
+    msg += "• <b>monospace</b>: <pre>Preformatted text with preserved spacing</pre>\n"
     msg += "• <b>spoiler</b>: <spoiler>Spoiler text</spoiler>\n"
     msg += "• <b>quote</b>: <blockquote>Quoted text</blockquote>\n\n"
 
@@ -61,7 +59,9 @@ def get_html_formats_page():
 
     msg += "<b>For Leech Font:</b>\n"
     msg += 'Enter an HTML format name like "bold", "italic", "code", etc.\n'
-    msg += "Example: Enter 'bold' to use <b>Bold text</b> for all your leech captions\n\n"
+    msg += (
+        "Example: Enter 'bold' to use <b>Bold text</b> for all your leech captions\n\n"
+    )
 
     msg += "<b>For Leech Caption:</b>\n"
     msg += "Use the template variable format: {{variable}html_format}\n"
@@ -75,7 +75,9 @@ def get_html_formats_page():
 
 def get_unicode_emoji_page():
     msg = "<b>Unicode Emojis and Special Characters:</b>\n\n"
-    msg += "You can also use any single Unicode character or emoji as a style. Examples:\n"
+    msg += (
+        "You can also use any single Unicode character or emoji as a style. Examples:\n"
+    )
     msg += "- 🔥: Will add the fire emoji before and after your text\n"
     msg += "- ⭐: Will add stars before and after your text\n"
     msg += "- Any other emoji or special character will be used similarly\n\n"
@@ -97,13 +99,11 @@ def get_template_variables_page():
     msg += "<b>Basic Variables:</b>\n"
     msg += "• <code>{filename}</code> - The name of the file without extension\n"
     msg += "• <code>{size}</code> - The size of the file (e.g., 1.5GB, 750MB)\n"
+    msg += "• <code>{duration}</code> - The duration of media files (e.g., 01:30:45)\n"
+    msg += "• <code>{quality}</code> - The quality of video files (e.g., 1080p, 720p)\n"
     msg += (
-        "• <code>{duration}</code> - The duration of media files (e.g., 01:30:45)\n"
+        "• <code>{audios}</code> - Audio languages in the file (e.g., English, Hindi)\n"
     )
-    msg += (
-        "• <code>{quality}</code> - The quality of video files (e.g., 1080p, 720p)\n"
-    )
-    msg += "• <code>{audios}</code> - Audio languages in the file (e.g., English, Hindi)\n"
     msg += "• <code>{subtitles}</code> - Subtitle languages in the file (e.g., English, Spanish)\n"
     msg += "• <code>{md5_hash}</code> - MD5 hash of the file\n\n"
 
@@ -112,16 +112,10 @@ def get_template_variables_page():
     msg += "• <code>{episode}</code> - Episode number (with leading zero for single digits)\n\n"
 
     msg += "<b>Media Information:</b>\n"
-    msg += (
-        "• <code>{NumVideos}</code> - Number of video tracks (zero-padded for <10)\n"
-    )
-    msg += (
-        "• <code>{NumAudios}</code> - Number of audio tracks (zero-padded for <10)\n"
-    )
+    msg += "• <code>{NumVideos}</code> - Number of video tracks (zero-padded for <10)\n"
+    msg += "• <code>{NumAudios}</code> - Number of audio tracks (zero-padded for <10)\n"
     msg += "• <code>{NumSubtitles}</code> - Number of subtitle tracks (zero-padded for <10)\n"
-    msg += (
-        "• <code>{year}</code> - Release year extracted from filename or metadata\n"
-    )
+    msg += "• <code>{year}</code> - Release year extracted from filename or metadata\n"
     msg += "• <code>{formate}</code> - File format/extension (uppercase)\n"
     msg += "• <code>{id}</code> - Unique ID of the file\n"
     msg += "• <code>{framerate}</code> - Video framerate (e.g., 24.00 fps)\n"
@@ -129,16 +123,14 @@ def get_template_variables_page():
 
     msg += "<b>Variable Styling:</b>\n"
     msg += "You can apply different styles to each variable independently:\n"
-    msg += (
-        "• <code>{{variable}style}</code> - Apply a style to a specific variable\n"
-    )
+    msg += "• <code>{{variable}style}</code> - Apply a style to a specific variable\n"
     msg += "   Examples: <code>{{filename}bold}</code>, <code>{{size}code}</code>, <code>{{quality}italic}</code>\n\n"
 
     msg += "<b>Google Font Styling:</b>\n"
+    msg += "• <code>{{variable}FontName}</code> - Apply a Google Font to a variable\n"
     msg += (
-        "• <code>{{variable}FontName}</code> - Apply a Google Font to a variable\n"
+        "   Examples: <code>{{filename}Roboto}</code>, <code>{{size}Open Sans}</code>\n"
     )
-    msg += "   Examples: <code>{{filename}Roboto}</code>, <code>{{size}Open Sans}</code>\n"
     msg += "• <code>{{variable}FontName:weight}</code> - Apply a Google Font with specific weight\n"
     msg += "   Examples: <code>{{filename}Roboto:700}</code>, <code>{{size}Open Sans:300}</code>\n\n"
 
@@ -147,7 +139,9 @@ def get_template_variables_page():
     msg += "   Examples: <code>{{filename}🔥}</code>, <code>{{size}⭐}</code>\n\n"
 
     msg += "<b>Nested Styling (Advanced):</b>\n"
-    msg += "• <code>{{{variable}style1}style2}</code> - Apply two styles to a variable\n"
+    msg += (
+        "• <code>{{{variable}style1}style2}</code> - Apply two styles to a variable\n"
+    )
     msg += "   Examples: <code>{{{filename}Roboto:700}bold}</code>, <code>{{{filename}bold}italic}</code>\n"
     msg += "   This applies style1 first, then style2 to the result\n\n"
     msg += "<b>Triple Nested Styling (Expert):</b>\n"
@@ -157,19 +151,21 @@ def get_template_variables_page():
     msg += "   Perfect for combining HTML format + emoji + Google Font\n\n"
     msg += "<b>Unlimited Nesting (Master):</b>\n"
     msg += "• You can nest styles to any depth with any combination of styles\n"
+    msg += "   Example: <code>{{{{{filename}bold}italic}code}underline}strike</code>\n"
     msg += (
-        "   Example: <code>{{{{{filename}bold}italic}code}underline}strike</code>\n"
+        "   This applies styles in order: bold → italic → code → underline → strike\n"
     )
-    msg += "   This applies styles in order: bold → italic → code → underline → strike\n"
     msg += "   You can combine HTML formats, Google Fonts, and emojis in any order\n"
-    msg += "   Example: <code>{{{{{filename}Roboto:700}bold}italic}🔥}underline</code>\n\n"
+    msg += (
+        "   Example: <code>{{{{{filename}Roboto:700}bold}italic}🔥}underline</code>\n\n"
+    )
 
     msg += "<b>Example Usage:</b>\n"
-    msg += (
-        "• TV Show: <code>{{filename}bold} S{season}E{episode} [{quality}]</code>\n"
-    )
+    msg += "• TV Show: <code>{{filename}bold} S{season}E{episode} [{quality}]</code>\n"
     msg += "• Detailed: <code>{{filename}Roboto} [{formate}] [{{codec}code}] [{framerate}]</code>\n"
-    msg += "• Nested: <code>File: {{{filename}bold}italic} | Size: {{size}code}</code>\n"
+    msg += (
+        "• Nested: <code>File: {{{filename}bold}italic} | Size: {{size}code}</code>\n"
+    )
     msg += "• Complete: <code>{{filename}bold}\nQuality: {{quality}code} | Size: {{size}italic}\nCodec: {codec}\nAudio: {audios} | Subtitles: {subtitles}</code>\n\n"
 
     return msg
@@ -185,10 +181,10 @@ def get_usage_examples_page():
     msg += "   • <code>File: {{filename}Montserrat:700} | {size}</code>\n"
     msg += "   • <code>{{filename}bold} | {{size}italic}</code>\n\n"
     msg += "3. <b>Mixing different font styles:</b>\n"
-    msg += "   • <code>{{filename}Roboto:700} | {{size}mono} | {{quality}script}</code>\n"
     msg += (
-        "   • <code>{{filename}sans} | {{size}serif} | {{quality}gothic}</code>\n\n"
+        "   • <code>{{filename}Roboto:700} | {{size}mono} | {{quality}script}</code>\n"
     )
+    msg += "   • <code>{{filename}sans} | {{size}serif} | {{quality}gothic}</code>\n\n"
     msg += "4. <b>Using HTML formatting with variables:</b>\n"
     msg += "   • <code>{{filename}bold_italic} | {{size}code}</code>\n"
     msg += "   • <code>{{filename}spoiler} | {{size}monospace}</code>\n"
@@ -201,7 +197,9 @@ def get_usage_examples_page():
     msg += "   • <code>{{filename}🔥} | {{size}⭐}</code>\n"
     msg += "   • <code>{{filename}U+1F525} | {{size}U+2B50}</code> (using Unicode codepoints)\n\n"
     msg += "6. <b>Combining Google Fonts with HTML formatting (nested styles):</b>\n"
-    msg += "   • <code>{{{filename}Roboto:700}bold}</code> - Bold Roboto with HTML bold\n"
+    msg += (
+        "   • <code>{{{filename}Roboto:700}bold}</code> - Bold Roboto with HTML bold\n"
+    )
     msg += "   • <code>{{{filename}Open Sans:300}italic}</code> - Light Open Sans with italic\n\n"
     msg += "7. <b>Triple nesting with emoji and Google Font:</b>\n"
     msg += "   • <code>{{{{filename}bold}italic}🔥}</code> - Bold italic text with fire emoji\n"
@@ -224,7 +222,9 @@ def get_google_fonts_page():
     msg += "<b>How to Find Google Fonts:</b>\n"
     msg += "1. Visit <a href='https://fonts.google.com/'>fonts.google.com</a>\n"
     msg += "2. Find a font you like\n"
-    msg += "3. Use the exact font name in your leech font setting or caption template\n\n"
+    msg += (
+        "3. Use the exact font name in your leech font setting or caption template\n\n"
+    )
 
     msg += "<b>Popular Google Fonts:</b>\n"
     msg += "• <code>Roboto</code> - Clean, modern sans-serif font\n"
@@ -261,9 +261,7 @@ def get_google_fonts_page():
     msg += "• For complex nested styles, apply them in order from innermost to outermost for best results\n\n"
 
     msg += "Set your preferred font style in user settings with /usettings or /us command.\n\n"
-    msg += (
-        "These font styles will be applied to your leech captions in file captions."
-    )
+    msg += "These font styles will be applied to your leech captions in file captions."
 
     return msg
 

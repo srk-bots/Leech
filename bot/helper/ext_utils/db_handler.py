@@ -1,3 +1,4 @@
+import gc
 import inspect
 from importlib import import_module
 from time import time as get_time
@@ -133,8 +134,7 @@ class DbManager:
 
                 # Force garbage collection after handling large files
                 if (
-                    len(pf_bin) > 1024 * 1024
-                    and smart_garbage_collection is not None
+                    len(pf_bin) > 1024 * 1024 and smart_garbage_collection is not None
                 ):  # 1MB
                     smart_garbage_collection(aggressive=False)
 
@@ -434,9 +434,7 @@ class DbManager:
         # Cleaning up old scheduled deletion entries
 
         # Get all entries to check which ones are actually old and processed
-        entries_to_check = [
-            doc async for doc in self.db.scheduled_deletions.find({})
-        ]
+        entries_to_check = [doc async for doc in self.db.scheduled_deletions.find({})]
 
         # Count entries by type
         current_time = int(get_time())
@@ -478,8 +476,7 @@ class DbManager:
                 "time_remaining": doc["delete_time"] - current_time
                 if "delete_time" in doc
                 else "unknown",
-                "is_due": doc["delete_time"]
-                <= current_time + 30  # 30 seconds buffer
+                "is_due": doc["delete_time"] <= current_time + 30  # 30 seconds buffer
                 if "delete_time" in doc
                 else False,
             }

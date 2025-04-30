@@ -29,20 +29,16 @@ UPLOAD_PATHS = {}
 DELETE_LINKS = False
 FSUB_IDS = ""
 TOKEN_TIMEOUT = 0
-LOGIN_PASS = ""  # Set a password to enable login feature
 PAID_CHANNEL_ID = 0
 PAID_CHANNEL_LINK = ""
 SET_COMMANDS = True
 METADATA_KEY = ""
+WATERMARK_KEY = ""
 LOG_CHAT_ID = 0
 LEECH_FILENAME_CAPTION = ""
 HYDRA_IP = ""
 HYDRA_API_KEY = ""
 INSTADL_API = ""
-MEDIA_STORE = False
-
-# Media Tools Settings
-MEDIA_TOOLS_ENABLED = True  # Enable/disable Media Tools feature
 
 # GDrive Tools
 GDRIVE_ID = ""
@@ -95,9 +91,6 @@ MEDIA_GROUP = False
 USER_TRANSMISSION = False
 HYBRID_LEECH = False
 LEECH_FILENAME_PREFIX = ""
-LEECH_SUFFIX = ""
-LEECH_FONT = ""
-LEECH_FILENAME = ""
 LEECH_DUMP_CHAT = ""
 THUMBNAIL_LAYOUT = ""
 
@@ -111,10 +104,6 @@ WEB_PINCODE = False
 QUEUE_ALL = 0
 QUEUE_DOWNLOAD = 0
 QUEUE_UPLOAD = 0
-
-# Auto Restart Settings
-AUTO_RESTART_ENABLED = False  # Enable/disable automatic bot restart
-AUTO_RESTART_INTERVAL = 24  # Restart interval in hours
 
 # RSS
 RSS_DELAY = 600

@@ -42,6 +42,8 @@ from bot.modules import (
     handle_cancel_command,
     handle_command,
     handle_group_gensession,
+    handle_no_suffix_commands,
+    handle_qb_commands,
     handle_session_input,
     hydra_search,
     imdb_callback,
@@ -55,6 +57,9 @@ from bot.modules import (
     media_tools_settings,
     mediainfo,
     mirror,
+    music_cancel_callback,
+    music_get_callback,
+    music_search,
     nzb_leech,
     nzb_mirror,
     ping,
@@ -320,10 +325,15 @@ def add_handlers():
             BotCommands.LoginCommand,
             None,
         ),
+        "music_search": (
+            music_search,
+            BotCommands.MusicSearchCommand,
+            CustomFilters.authorized,
+        ),
         "media_tools_settings": (
             media_tools_settings,
             BotCommands.MediaToolsCommand,
-            CustomFilters.authorized,
+            CustomFilters.authorized & filters.group,
         ),
         "media_tools_help_cmd": (
             media_tools_help_cmd,
@@ -367,6 +377,8 @@ def add_handlers():
         "^botrestart": confirm_restart,
         "^aeon": aeon_callback,
         "^imdb": imdb_callback,
+        "^musget": music_get_callback,
+        "^muscancel": music_cancel_callback,
         "^fontstyles": font_styles_callback,
         "^mthelp": media_tools_help_callback,
         "^gensession": gen_session,
@@ -384,18 +396,16 @@ def add_handlers():
 
     # Remove settings callbacks from the main regex_filters
     for pattern in settings_callbacks:
-        regex_filters.pop(pattern, None)
+        if pattern in regex_filters:
+            del regex_filters[pattern]
 
     # Add handlers for settings callbacks in groups with authorization
     for regex_filter, handler_func in settings_callbacks.items():
         TgClient.bot.add_handler(
             CallbackQueryHandler(
                 handler_func,
-                filters=regex(regex_filter)
-                & CustomFilters.authorized
-                & filters.create(
-                    lambda *args: args[2].message
-                    and args[2].message.chat.type != "private"
+                filters=regex(regex_filter) & CustomFilters.authorized & filters.create(
+                    lambda *args: args[2].message and args[2].message.chat.type != "private"
                 ),
             ),
         )
@@ -405,10 +415,8 @@ def add_handlers():
         TgClient.bot.add_handler(
             CallbackQueryHandler(
                 handler_func,
-                filters=regex(regex_filter)
-                & filters.create(
-                    lambda *args: args[2].message
-                    and args[2].message.chat.type == "private"
+                filters=regex(regex_filter) & filters.create(
+                    lambda *args: args[2].message and args[2].message.chat.type == "private"
                 ),
             ),
         )
@@ -430,6 +438,22 @@ def add_handlers():
         MessageHandler(
             cancel,
             filters=regex(r"^/stop(_\w+)?(?!all)") & CustomFilters.authorized,
+        ),
+    )
+
+    # Add handler for deprecated commands (qbleech, qbmirror) with any suffix
+    TgClient.bot.add_handler(
+        MessageHandler(
+            handle_qb_commands,
+            filters=regex(r"^/qb(leech|mirror)(\d+|[a-zA-Z0-9_]+)?") & CustomFilters.authorized,
+        ),
+    )
+
+    # Add handler for commands without suffix
+    TgClient.bot.add_handler(
+        MessageHandler(
+            handle_no_suffix_commands,
+            filters=regex(r"^/(mirror|leech|jdmirror|jdleech|nzbmirror|nzbleech|ytdl|ytdlleech|clone|count|del|list|search|mediainfo|mi|status|s|ping|help|speedtest)$") & CustomFilters.authorized,
         ),
     )
 

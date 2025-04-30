@@ -55,15 +55,17 @@ def get_merge_intro_page():
     msg += "<b>Merge Flags</b>: -merge-video -merge-audio -merge-subtitle -merge-image -merge-pdf -merge-all\n\n"
 
     msg += '<blockquote expandable="expandable"><b>Multi-Link Usage (reply to first link or file)</b>:\n'
-    msg += "<code>/cmd link -m folder_name -merge-video</code> (merge only video files)\n"
-    msg += "<code>/cmd link -m folder_name -merge-audio</code> (merge only audio files)\n"
+    msg += (
+        "<code>/cmd link -m folder_name -merge-video</code> (merge only video files)\n"
+    )
+    msg += (
+        "<code>/cmd link -m folder_name -merge-audio</code> (merge only audio files)\n"
+    )
     msg += "<code>/cmd -b -m folder_name -merge-subtitle</code>\n\n"
 
     msg += "or\n\n"
 
-    msg += (
-        "<b>Bulk Usage (reply to text file with links or message with links)</b>:\n"
-    )
+    msg += "<b>Bulk Usage (reply to text file with links or message with links)</b>:\n"
     msg += "<code>/cmd -b -m folder_name -merge-image</code>\n"
     msg += "<code>/cmd -b -m folder_name -merge-pdf</code>\n"
     msg += "<code>/cmd -b -m folder_name -merge-all</code>\n\n"
@@ -82,7 +84,9 @@ def get_merge_intro_page():
 
     msg += "<b>Supported Merge Types:</b>\n"
     msg += "• Video + Video + Video + ... (creates a single video file)\n"
-    msg += "  - Use <code>-merge-video</code> to preserve all video and subtitle tracks\n"
+    msg += (
+        "  - Use <code>-merge-video</code> to preserve all video and subtitle tracks\n"
+    )
     msg += "• Audio + Audio + Audio + ... (creates a single audio file)\n"
     msg += "• Subtitle + Subtitle + ... (creates a single subtitle file)\n"
     msg += "• Video + Audio + Subtitle (adds audio and subtitle tracks to video)\n"
@@ -91,9 +95,7 @@ def get_merge_intro_page():
     msg += "  - Use <code>-merge-all</code> to preserve all video, audio, and subtitle tracks\n\n"
 
     msg += '<blockquote expandable="expandable"><b>File Order Preservation</b>:\n'
-    msg += (
-        "• All files are merged in the same order as they are provided by the user\n"
-    )
+    msg += "• All files are merged in the same order as they are provided by the user\n"
     msg += "• This applies to all file types: videos, audios, subtitles, images, and documents\n"
     msg += "• The order is especially important for sequential content like video episodes or chapters</blockquote>\n\n"
 
@@ -120,9 +122,7 @@ def get_merge_video_page():
     msg += "• Use MKV container for best compatibility with different codecs\n"
     msg += "• The 'copy' codec is fastest and preserves quality but requires similar source files\n"
     msg += "• Use -merge-video flag to preserve all video and subtitle tracks\n"
-    msg += (
-        "• For files with different codecs or formats, use filter complex method\n"
-    )
+    msg += "• For files with different codecs or formats, use filter complex method\n"
     msg += "• Set video quality in Media Tools settings for transcoding operations\n"
     msg += "• Higher CRF values mean lower quality but smaller file size\n"
     msg += "• Recommended CRF values: 18-23 for high quality, 23-28 for medium quality</blockquote>\n\n"
@@ -149,7 +149,9 @@ def get_merge_audio_page():
     msg += "• MP3 format is widely compatible but lossy\n"
     msg += "• FLAC format preserves audio quality but results in larger files\n"
     msg += "• AAC offers good quality-to-size ratio for most content\n"
-    msg += "• Volume normalization helps balance audio levels across different sources\n"
+    msg += (
+        "• Volume normalization helps balance audio levels across different sources\n"
+    )
     msg += "• For audiobooks or podcasts, consider mono audio (1 channel) to reduce file size\n"
     msg += "• 192kbps is a good balance between quality and file size for most content</blockquote>\n\n"
 
@@ -172,9 +174,7 @@ def get_merge_subtitle_page():
 
     msg += '<blockquote expandable="expandable"><b>Subtitle Merging Tips:</b>\n'
     msg += "• SRT format is most widely compatible but lacks styling options\n"
-    msg += (
-        "• ASS/SSA formats support advanced styling (colors, positioning, fonts)\n"
-    )
+    msg += "• ASS/SSA formats support advanced styling (colors, positioning, fonts)\n"
     msg += "• When merging subtitles with different timings, they will be concatenated sequentially\n"
     msg += "• For multi-language subtitles, use language codes in filenames (movie.en.srt, movie.es.srt)\n"
     msg += "• Subtitle encoding can be configured in Media Tools settings (UTF-8 recommended)\n"
@@ -186,25 +186,25 @@ def get_merge_subtitle_page():
 def get_merge_image_page():
     msg = "<b>Image Merging (5/20)</b>\n\n"
     msg += "<b>Image Merging Modes:</b>\n"
+    msg += "• <b>Collage Mode</b> - Creates a grid of images (default for 3+ images)\n"
     msg += (
-        "• <b>Collage Mode</b> - Creates a grid of images (default for 3+ images)\n"
+        "• <b>Horizontal Mode</b> - Places images side by side (default for 2 images)\n"
     )
-    msg += "• <b>Horizontal Mode</b> - Places images side by side (default for 2 images)\n"
     msg += "• <b>Vertical Mode</b> - Stacks images on top of each other\n\n"
 
     msg += "<b>Supported Image Formats:</b>\n"
     msg += "• Input: JPG, JPEG, PNG, GIF, BMP, WebP, TIFF, HEIC\n"
     msg += "• Output: JPG (default), PNG, WebP, TIFF\n"
-    msg += "• Features: Resolution preservation, quality settings, metadata handling\n\n"
+    msg += (
+        "• Features: Resolution preservation, quality settings, metadata handling\n\n"
+    )
 
     msg += '<blockquote expandable="expandable"><b>Image Merging Tips:</b>\n'
     msg += "• JPG format offers good compression but is lossy (quality loss)\n"
     msg += "• PNG format preserves quality but results in larger files\n"
     msg += "• WebP offers good balance between quality and file size\n"
     msg += "• For collage mode, you can configure the number of columns in Media Tools settings\n"
-    msg += (
-        "• Background color for image merging can be customized (default: white)\n"
-    )
+    msg += "• Background color for image merging can be customized (default: white)\n"
     msg += "• Images can be resized to a uniform size before merging for better appearance</blockquote>\n\n"
 
     return msg
@@ -221,7 +221,9 @@ def get_merge_document_page():
     msg += "<b>Supported Document Formats:</b>\n"
     msg += "• Input: PDF\n"
     msg += "• Output: PDF\n"
-    msg += "• Features: Page order preservation, metadata retention, bookmark handling\n\n"
+    msg += (
+        "• Features: Page order preservation, metadata retention, bookmark handling\n\n"
+    )
 
     msg += '<blockquote expandable="expandable"><b>Document Merging Tips:</b>\n'
     msg += "• PDF merging works best with similar document types\n"
@@ -229,7 +231,9 @@ def get_merge_document_page():
     msg += "• Document properties like title and author can be configured in Media Tools settings\n"
     msg += "• Bookmarks from original PDFs are preserved in the merged document\n"
     msg += "• Password-protected PDFs may not merge correctly\n"
-    msg += "• Future updates may add support for other document formats</blockquote>\n\n"
+    msg += (
+        "• Future updates may add support for other document formats</blockquote>\n\n"
+    )
 
     return msg
 
@@ -240,11 +244,15 @@ def get_merge_mixed_page():
     msg += "• <b>Video + Audio</b>: Adds audio tracks to video files\n"
     msg += "• <b>Video + Subtitle</b>: Embeds subtitle tracks in video files\n"
     msg += "• <b>Video + Audio + Subtitle</b>: Creates complete media package with all tracks\n"
-    msg += "• <b>Multiple Audio Tracks</b>: Adds multiple language/quality audio options\n"
+    msg += (
+        "• <b>Multiple Audio Tracks</b>: Adds multiple language/quality audio options\n"
+    )
     msg += "• <b>Multiple Subtitle Tracks</b>: Embeds multiple language subtitle options\n\n"
 
     msg += "<b>Mixed Merging Guide:</b>\n"
-    msg += "1. Place all files in the same directory using <code>-m folder_name</code>\n"
+    msg += (
+        "1. Place all files in the same directory using <code>-m folder_name</code>\n"
+    )
     msg += "2. Use <code>-merge-all</code> to automatically detect and merge compatible files\n"
     msg += "3. File naming is important for proper track matching:\n"
     msg += "   • Use similar base names (video.mp4, video.srt, video.mp3)\n"
@@ -268,13 +276,17 @@ def get_merge_notes_page():
     msg = "<b>Merge Notes & Advanced Features (8/20)</b>\n\n"
 
     msg += "<b>Important Considerations:</b>\n"
-    msg += "• File order is preserved during merging (important for sequential content)\n"
+    msg += (
+        "• File order is preserved during merging (important for sequential content)\n"
+    )
     msg += "• Both <code>-merge-video</code> and <code>-merge-all</code> flags preserve all tracks\n"
     msg += "• Mixed media merging works best with MKV container format\n"
     msg += "• Some combinations may require transcoding which affects quality\n"
     msg += "• Large files may require more processing time and resources\n"
     msg += "• Certain format combinations may have compatibility limitations\n"
-    msg += "• Original files can be preserved or removed after merging (configurable)\n\n"
+    msg += (
+        "• Original files can be preserved or removed after merging (configurable)\n\n"
+    )
 
     msg += '<blockquote expandable="expandable"><b>Best Practices:</b>\n'
     msg += "• Use MKV container for most versatile track support\n"
@@ -290,18 +302,22 @@ def get_merge_notes_page():
 
     msg += '<blockquote expandable="expandable"><b>Advanced Features</b>:\n'
     msg += "• <b>Concat Demuxer</b>: Fast merging for files with identical codecs\n"
-    msg += (
-        "• <b>Filter Complex</b>: Advanced merging for files with different codecs\n"
-    )
+    msg += "• <b>Filter Complex</b>: Advanced merging for files with different codecs\n"
     msg += "• <b>Output Format</b>: Choose the format for merged files (mkv, mp4, mp3, etc.)\n"
     msg += "• <b>Threading</b>: Process multiple files simultaneously\n"
-    msg += "• <b>Thread Number</b>: Control parallel processing threads</blockquote>\n\n"
+    msg += (
+        "• <b>Thread Number</b>: Control parallel processing threads</blockquote>\n\n"
+    )
 
     msg += "<b>Important Notes:</b>\n"
-    msg += "• For best results, use the -m flag to place all files in the same directory\n"
+    msg += (
+        "• For best results, use the -m flag to place all files in the same directory\n"
+    )
     msg += "• The rename flag (-n) will not work with merge operations\n"
     msg += "• Files with identical filenames may cause issues during merging\n"
-    msg += "• Original files are removed after successful merge if enabled in settings\n"
+    msg += (
+        "• Original files are removed after successful merge if enabled in settings\n"
+    )
     msg += "• User settings take priority over owner settings\n"
     msg += "• Default settings are used if no others are specified\n"
 
@@ -390,7 +406,9 @@ def get_watermark_settings_page():
     msg += "• <b>Default</b>: System default sans-serif font\n"
     msg += "• <b>Google Fonts</b>: Any Google Font name (e.g., Roboto, Open Sans)\n"
     msg += "• <b>Custom Fonts</b>: Path to .ttf or .otf file\n"
-    msg += "• <b>Recommended</b>: Sans-serif fonts for better readability</blockquote>\n\n"
+    msg += (
+        "• <b>Recommended</b>: Sans-serif fonts for better readability</blockquote>\n\n"
+    )
 
     msg += '<blockquote expandable="expandable"><b>Advanced Settings</b>:\n'
     msg += "• <b>Padding</b>: Space between watermark and edge\n"
@@ -399,7 +417,9 @@ def get_watermark_settings_page():
     msg += "• <b>Threading</b>: Process multiple files simultaneously\n"
     msg += "• <b>Thread Number</b>: Number of parallel processing threads\n"
     msg += "• <b>Fast Mode</b>: Uses ultrafast preset for large files (>100MB)\n"
-    msg += "• <b>Maintain Quality</b>: Uses higher quality settings (CRF 18 for videos)\n"
+    msg += (
+        "• <b>Maintain Quality</b>: Uses higher quality settings (CRF 18 for videos)\n"
+    )
     msg += "• <b>Opacity</b>: Sets transparency (0.0 = fully transparent, 1.0 = fully opaque)</blockquote>\n\n"
 
     msg += '<blockquote expandable="expandable"><b>Audio Watermark Details</b>:\n'
@@ -408,9 +428,7 @@ def get_watermark_settings_page():
     msg += "• Number of beeps is determined by size parameter\n"
     msg += "• Adds metadata with watermark text to audio files\n"
     msg += "• Will not be applied to video files with audio tracks\n"
-    msg += (
-        "• Can be enabled/disabled separately from visual watermark</blockquote>\n\n"
-    )
+    msg += "• Can be enabled/disabled separately from visual watermark</blockquote>\n\n"
 
     msg += '<blockquote expandable="expandable"><b>Subtitle Watermark Details</b>:\n'
     msg += "• Adds watermark text to subtitle entries\n"
@@ -418,9 +436,7 @@ def get_watermark_settings_page():
     msg += "• Preserves original subtitle timing and formatting\n"
     msg += "• Will not be applied to videos with embedded subtitle tracks\n"
     msg += "• Can be enabled/disabled separately from visual watermark\n"
-    msg += (
-        "• Custom text can be different from visual watermark text</blockquote>\n\n"
-    )
+    msg += "• Custom text can be different from visual watermark text</blockquote>\n\n"
 
     return msg
 
@@ -451,16 +467,12 @@ def get_convert_intro_page():
     msg += "• <b>Video CRF</b>: Quality factor (0-51, lower is better)\n"
     msg += "• <b>Video Preset</b>: Encoding speed vs compression ratio\n"
     msg += "• <b>Maintain Quality</b>: Preserve high quality during conversion\n"
-    msg += (
-        "• <b>Audio Format</b>: Output format for audio (mp3, m4a, flac, wav, ogg)\n"
-    )
+    msg += "• <b>Audio Format</b>: Output format for audio (mp3, m4a, flac, wav, ogg)\n"
     msg += "• <b>Audio Codec</b>: Encoding codec (mp3, aac, opus, flac)\n"
     msg += "• <b>Audio Bitrate</b>: Quality setting (128k, 192k, 320k)\n"
     msg += "• <b>Audio Channels</b>: Mono (1) or stereo (2)\n"
     msg += "• <b>Audio Sampling</b>: Sample rate in Hz (44100, 48000)\n"
-    msg += (
-        "• <b>Audio Volume</b>: Volume adjustment (1.0 = original)</blockquote>\n\n"
-    )
+    msg += "• <b>Audio Volume</b>: Volume adjustment (1.0 = original)</blockquote>\n\n"
 
     msg += '<blockquote expandable="expandable"><b>Advanced Usage</b>:\n'
     msg += "• <b>Convert specific formats</b>:\n"
@@ -471,9 +483,7 @@ def get_convert_intro_page():
     msg += "This will convert all audio formats to MP3 except WAV files\n\n"
     msg += "• <b>Combined video and audio conversion</b>:\n"
     msg += "<code>/leech https://example.com/media.zip -cv mp4 -ca mp3</code>\n"
-    msg += (
-        "This will convert all videos to MP4 and all audios to MP3</blockquote>\n\n"
-    )
+    msg += "This will convert all videos to MP4 and all audios to MP3</blockquote>\n\n"
 
     msg += "<b>Priority Settings</b>:\n"
     msg += "Convert follows the same priority settings as other media tools:\n"
@@ -547,25 +557,19 @@ def get_compression_intro_page():
 
     msg += "The fast preset uses higher quality reduction, while the slow preset uses more advanced algorithms to maintain visual quality.</blockquote>\n\n"
 
-    msg += (
-        '<blockquote expandable="expandable"><b>Document Compression Settings</b>:\n'
-    )
+    msg += '<blockquote expandable="expandable"><b>Document Compression Settings</b>:\n'
     msg += "• <b>Preset</b>: Fast, medium, or slow compression\n"
     msg += "• <b>DPI</b>: Resolution for embedded images\n\n"
 
     msg += "The fast preset uses lower DPI values for embedded images, while the slow preset uses more thorough optimization techniques.</blockquote>\n\n"
 
-    msg += (
-        '<blockquote expandable="expandable"><b>Subtitle Compression Settings</b>:\n'
-    )
+    msg += '<blockquote expandable="expandable"><b>Subtitle Compression Settings</b>:\n'
     msg += "• <b>Preset</b>: Fast, medium, or slow compression\n"
     msg += "• <b>Encoding</b>: Character encoding (UTF-8, ASCII, etc.)\n\n"
 
     msg += "The fast preset uses simpler encoding, while the slow preset optimizes formatting and timing information.</blockquote>\n\n"
 
-    msg += (
-        '<blockquote expandable="expandable"><b>Archive Compression Settings</b>:\n'
-    )
+    msg += '<blockquote expandable="expandable"><b>Archive Compression Settings</b>:\n'
     msg += "• <b>Preset</b>: Fast, medium, or slow compression\n"
     msg += "• <b>Level</b>: Compression level (1-9)\n"
     msg += "• <b>Method</b>: Compression algorithm\n\n"
@@ -601,9 +605,7 @@ def get_trim_intro_page():
 
     msg += "You can also use it without specifying end time to trim from a specific point to the end:\n"
     msg += '<code>/mirror https://example.com/audio.mp3 -trim "00:30:00-"</code>\n'
-    msg += (
-        "This will extract the portion from 30 minutes to the end of the file.\n\n"
-    )
+    msg += "This will extract the portion from 30 minutes to the end of the file.\n\n"
 
     msg += "Or trim from the beginning to a specific point:\n"
     msg += '<code>/leech https://example.com/video.mp4 -trim "-00:05:00"</code>\n'
@@ -632,9 +634,7 @@ def get_trim_intro_page():
     msg += "• <b>Decimal seconds</b>: For precise trimming (00:01:23.456)\n\n"
 
     msg += "Examples:\n"
-    msg += (
-        '<code>/leech video.mp4 -trim "00:01:30-00:02:45"</code> (HH:MM:SS format)\n'
-    )
+    msg += '<code>/leech video.mp4 -trim "00:01:30-00:02:45"</code> (HH:MM:SS format)\n'
     msg += '<code>/mirror audio.mp3 -trim "5:30-10:45"</code> (MM:SS format)\n'
     msg += '<code>/leech video.mp4 -trim "90-180"</code> (seconds only)\n'
     msg += '<code>/mirror audio.mp3 -trim "01:23.456-02:34.567"</code> (with decimal seconds)</blockquote>\n\n'
@@ -657,9 +657,7 @@ def get_trim_settings_page():
     msg += "• <b>Delete Original</b>: Remove original file after successful trim\n\n"
 
     msg += "<b>Media-Specific Settings</b>:\n"
-    msg += (
-        "• <b>Video Codec</b>: Codec to use for video trimming (copy, h264, h265)\n"
-    )
+    msg += "• <b>Video Codec</b>: Codec to use for video trimming (copy, h264, h265)\n"
     msg += "• <b>Video Preset</b>: Encoding preset for video trimming (fast, medium, slow)\n"
     msg += "• <b>Video Format</b>: Output format for trimmed videos (mp4, mkv, avi, webm)\n"
     msg += "• <b>Audio Codec</b>: Codec to use for audio trimming (copy, aac, mp3)\n"
@@ -669,9 +667,7 @@ def get_trim_settings_page():
     msg += "• <b>Image Format</b>: Output format for trimmed images (jpg, png, webp, gif)\n"
     msg += "• <b>Document Quality</b>: Quality setting for document processing (0-100, 0 or 'none' means use original quality)\n"
     msg += "• <b>Document Format</b>: Output format for trimmed documents (pdf, docx, txt)\n"
-    msg += (
-        "• <b>Subtitle Encoding</b>: Character encoding for subtitle files (UTF-8)\n"
-    )
+    msg += "• <b>Subtitle Encoding</b>: Character encoding for subtitle files (UTF-8)\n"
     msg += "• <b>Subtitle Format</b>: Output format for trimmed subtitles (srt, ass, vtt)\n"
     msg += "• <b>Archive Format</b>: Output format for trimmed archives (zip, 7z, tar)\n\n"
 
@@ -681,26 +677,18 @@ def get_trim_settings_page():
     msg += "• For example, setting Video Format to 'mp4' will output MP4 files regardless of input format\n"
     msg += "• Format settings work with the -del flag to replace original files with trimmed versions\n"
     msg += "• Command line format flags take priority over user settings\n"
-    msg += (
-        "• User format settings take priority over owner settings</blockquote>\n\n"
-    )
+    msg += "• User format settings take priority over owner settings</blockquote>\n\n"
 
     msg += '<blockquote expandable="expandable"><b>Advanced Settings</b>:\n'
     msg += "• <b>Fast Mode</b>: Use faster encoding for large files\n"
-    msg += (
-        "• <b>Accurate Mode</b>: More precise trimming (slower but more accurate)\n"
-    )
-    msg += (
-        "• <b>Keyframe Mode</b>: Trim at keyframes only (faster but less precise)\n"
-    )
+    msg += "• <b>Accurate Mode</b>: More precise trimming (slower but more accurate)\n"
+    msg += "• <b>Keyframe Mode</b>: Trim at keyframes only (faster but less precise)\n"
     msg += "• <b>Thread Count</b>: Number of CPU threads to use for processing\n"
     msg += "• <b>Max Memory</b>: Maximum memory allocation for trimming operations\n"
     msg += "• <b>Temp Directory</b>: Location for temporary files during processing</blockquote>\n\n"
 
     msg += '<blockquote expandable="expandable"><b>Special Media Handling</b>:\n'
-    msg += (
-        "• <b>Videos</b>: Trimming preserves all streams (video, audio, subtitles)\n"
-    )
+    msg += "• <b>Videos</b>: Trimming preserves all streams (video, audio, subtitles)\n"
     msg += "• <b>Audio</b>: Trimming preserves metadata (artist, album, etc.)\n"
     msg += "• <b>Images</b>: For static images, trimming creates a copy with quality settings\n"
     msg += "• <b>Animated GIFs</b>: Trimming extracts specific frame ranges\n"
@@ -709,13 +697,9 @@ def get_trim_settings_page():
     msg += "• <b>Archives</b>: Trimming extracts specific files based on patterns</blockquote>\n\n"
 
     msg += '<blockquote expandable="expandable"><b>Delete Original Flag</b>:\n'
-    msg += (
-        "• Use the <code>-del</code> flag to delete original files after trimming\n"
-    )
+    msg += "• Use the <code>-del</code> flag to delete original files after trimming\n"
     msg += "• Example: <code>/leech https://example.com/video.mp4 -trim 00:01:30-00:02:45 -del</code>\n"
-    msg += (
-        "• This is useful for saving space when you only need the trimmed portion\n"
-    )
+    msg += "• This is useful for saving space when you only need the trimmed portion\n"
     msg += "• The Delete Original setting in the trim configuration menu has the same effect\n"
     msg += "• Command line -del flag takes priority over user settings\n"
     msg += "• User Delete Original setting takes priority over owner settings</blockquote>\n\n"
@@ -783,9 +767,7 @@ def get_extract_intro_page():
     msg += "• <b>Subtitle Codec</b>: Output codec for subtitle tracks (copy, srt, ass, etc.)\n"
     msg += "• <b>Subtitle Index</b>: Specific subtitle track to extract (0-based index)\n"
     msg += "• <b>Attachment Extract</b>: Extract attachments from container\n"
-    msg += (
-        "• <b>Attachment Index</b>: Specific attachment to extract (0-based index)\n"
-    )
+    msg += "• <b>Attachment Index</b>: Specific attachment to extract (0-based index)\n"
     msg += "• <b>Maintain Quality</b>: Preserve high quality during extraction</blockquote>\n\n"
 
     msg += '<blockquote expandable="expandable"><b>Advanced Usage</b>:\n'
@@ -818,9 +800,7 @@ def get_extract_settings_page():
     msg += "<b>General Extract Settings</b>:\n"
     msg += "• <b>Enabled</b>: Master toggle for extract feature\n"
     msg += "• <b>Priority</b>: Order in which extract runs (default: 6)\n"
-    msg += (
-        "• <b>Maintain Quality</b>: Preserve original quality during extraction\n\n"
-    )
+    msg += "• <b>Maintain Quality</b>: Preserve original quality during extraction\n\n"
 
     msg += "<b>Video Extract Settings</b>:\n"
     msg += "• <b>Video Extract</b>: Enable/disable video track extraction\n"
@@ -839,9 +819,7 @@ def get_extract_settings_page():
     msg += "<b>Subtitle Extract Settings</b>:\n"
     msg += "• <b>Subtitle Extract</b>: Enable/disable subtitle track extraction\n"
     msg += "• <b>Subtitle Codec</b>: Output codec for subtitle tracks\n"
-    msg += (
-        "• <b>Subtitle Index</b>: Specific subtitle track(s) to extract (0-based)\n"
-    )
+    msg += "• <b>Subtitle Index</b>: Specific subtitle track(s) to extract (0-based)\n"
     msg += "• <b>Subtitle Index Flag</b>: -extract-subtitle-index or -si\n"
     msg += "• <b>Multiple Indices</b>: Use comma-separated values (e.g., 0,1,2)\n\n"
 
@@ -955,7 +933,9 @@ def get_metadata_guide_page():
     msg += "• <b>Track-Specific Metadata</b>:\n"
     msg += "  - <b>Video</b>: Separate title, author, comment for video tracks\n"
     msg += "  - <b>Audio</b>: Separate title, author, comment for audio tracks\n"
-    msg += "  - <b>Subtitle</b>: Separate title, author, comment for subtitle tracks\n\n"
+    msg += (
+        "  - <b>Subtitle</b>: Separate title, author, comment for subtitle tracks\n\n"
+    )
 
     msg += "<b>Priority Order</b>:\n"
     msg += "1. Command line arguments (highest priority)\n"
@@ -975,12 +955,12 @@ def get_metadata_guide_page():
     msg += "• Use quotes around metadata values with spaces\n"
     msg += "• Keep metadata concise for better compatibility\n"
     msg += "• Use -metadata-all for quick application to all fields\n"
-    msg += "• Individual field settings (-metadata-title, etc.) override -metadata-all\n"
+    msg += (
+        "• Individual field settings (-metadata-title, etc.) override -metadata-all\n"
+    )
     msg += "• Track-specific settings override global settings\n"
     msg += "• Some players and devices may only display certain metadata fields\n"
-    msg += (
-        "• Metadata is preserved during file transfers and uploads</blockquote>\n\n"
-    )
+    msg += "• Metadata is preserved during file transfers and uploads</blockquote>\n\n"
 
     msg += '<blockquote expandable="expandable"><b>Examples</b>:\n'
     msg += "• <code>/leech https://example.com/music.zip -metadata-title 'Album Name'</code>\n"
@@ -1032,9 +1012,7 @@ def get_usage_examples_page_1():
     msg += '• <code>/leech https://example.com/videos.zip -merge-video -wm "My Channel"</code>\n'
     msg += "  Merges videos first, then adds watermark (default priority)\n\n"
     msg += '• <code>/mirror https://example.com/files.zip -m folder -merge-all -wm "© 2023"</code>\n'
-    msg += (
-        "  Merges files by type while preserving all tracks, then adds watermark\n\n"
-    )
+    msg += "  Merges files by type while preserving all tracks, then adds watermark\n\n"
 
     msg += "<b>Note:</b> See next page for more examples"
 
@@ -1073,7 +1051,7 @@ def get_usage_examples_page_2():
     msg += "  Merges videos, compresses with medium preset, then adds watermark\n\n"
     msg += '• <code>/mirror https://example.com/media.zip -cv mp4 -video-fast -wm "© 2023"</code>\n'
     msg += "  Converts to MP4, compresses with fast preset, then adds watermark\n\n"
-    msg += "• <code>/leech https://example.com/video.mkv -extract-audio -ca mp3 -del</code>\n"
+    msg += '• <code>/leech https://example.com/video.mkv -extract-audio -ca mp3 -del</code>\n'
     msg += "  Extracts audio tracks, converts them to MP3, and deletes original file\n\n"
 
     msg += "<b>Note:</b> Use /mediatools command to configure advanced settings"

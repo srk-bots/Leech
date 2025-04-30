@@ -25,7 +25,6 @@ from bot.helper.telegram_helper.message_utils import (
 @new_task
 async def restart_bot(_, message):
     await delete_message(message)  # Delete command message immediately
-    await delete_message(message)  # Delete command message immediately
     buttons = button_build.ButtonMaker()
     buttons.data_button("Yes!", "botrestart confirm")
     buttons.data_button("Cancel", "botrestart cancel")

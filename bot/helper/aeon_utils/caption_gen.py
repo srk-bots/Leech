@@ -23,7 +23,6 @@ except ImportError:
 
 class DefaultDict(dict):
     """A dictionary that returns 'Unknown' for missing keys."""
-
     def __missing__(self, _):
         return "Unknown"
 
@@ -132,9 +131,7 @@ async def generate_caption(filename, directory, caption_template):
                 temp_dir = tempfile.mkdtemp()
                 same_filesystem = False
 
-            safe_name = (
-                f"temp_mediainfo_{int(time())}{os.path.splitext(filename)[1]}"
-            )
+            safe_name = f"temp_mediainfo_{int(time())}{os.path.splitext(filename)[1]}"
             safe_path = os.path.join(temp_dir, safe_name)
             # We'll use the temp_dir variable for cleanup later
 
@@ -155,10 +152,7 @@ async def generate_caption(filename, directory, caption_template):
                     try:
                         # Only copy a small portion of the file for MediaInfo analysis
                         # This is much faster than copying the entire file
-                        with (
-                            open(file_path, "rb") as src,
-                            open(safe_path, "wb") as dst,
-                        ):
+                        with open(file_path, "rb") as src, open(safe_path, "wb") as dst:
                             # Copy first 10MB which should be enough for MediaInfo
                             dst.write(src.read(10 * 1024 * 1024))
                         LOGGER.debug(
@@ -198,9 +192,7 @@ async def generate_caption(filename, directory, caption_template):
 
             mediainfo_data = json.loads(result[0])  # Parse JSON output
         except Exception as error:
-            LOGGER.error(
-                f"Failed to retrieve media info: {error}. File may not exist!"
-            )
+            LOGGER.error(f"Failed to retrieve media info: {error}. File may not exist!")
             return filename
 
         # Extract media information

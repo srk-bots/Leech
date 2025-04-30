@@ -232,9 +232,7 @@ class Mirror(TaskListener):
         self.metadata_subtitle_title = args["-metadata-subtitle-title"]
         self.metadata_subtitle_author = args["-metadata-subtitle-author"]
         self.metadata_subtitle_comment = args["-metadata-subtitle-comment"]
-        self.folder_name = (
-            f"/{args['-m']}".rstrip("/") if len(args["-m"]) > 0 else ""
-        )
+        self.folder_name = f"/{args['-m']}".rstrip("/") if len(args["-m"]) > 0 else ""
         self.bot_trans = args["-bt"]
         self.user_trans = args["-ut"]
         self.merge_video = args["-merge-video"]
@@ -466,11 +464,8 @@ class Mirror(TaskListener):
 
         try:
             if (
-                self.link
-                and (is_magnet(self.link) or self.link.endswith(".torrent"))
-            ) or (
-                file_ and file_.file_name and file_.file_name.endswith(".torrent")
-            ):
+                self.link and (is_magnet(self.link) or self.link.endswith(".torrent"))
+            ) or (file_ and file_.file_name and file_.file_name.endswith(".torrent")):
                 self.is_qbit = True
         except Exception:
             pass
@@ -487,7 +482,6 @@ class Mirror(TaskListener):
                 and not is_gdrive_id(self.link)
                 and not is_gdrive_link(self.link)
                 and not is_mega_link(self.link)
-                and not is_mega_link(self.link)
             )
         ):
             x = await send_message(
@@ -500,17 +494,6 @@ class Mirror(TaskListener):
             return await auto_delete_message(x, time=300)
 
         if len(self.link) > 0:
-            LOGGER.debug(self.link)
-
-        # Check if it's a Mega link but not using jdleech or jdmirror command
-        if is_mega_link(self.link) and not self.is_jd:
-            error_msg = (
-                "⚠️ For Mega links, please use /jdleech or /jdmirror command instead."
-            )
-            x = await send_message(self.message, error_msg)
-            await self.remove_from_same_dir()
-            await delete_links(self.message)
-            return await auto_delete_message(x, time=300)
             LOGGER.debug(self.link)
 
         # Check if it's a Mega link but not using jdleech or jdmirror command
@@ -541,7 +524,6 @@ class Mirror(TaskListener):
             and not self.link.endswith(".torrent")
             and file_ is None
             and not is_gdrive_id(self.link)
-            and not is_mega_link(self.link)
             and not is_mega_link(self.link)
         ):
             content_type = await get_content_type(self.link)
@@ -595,7 +577,9 @@ class Mirror(TaskListener):
             pssw = args["-ap"]
             if ussr or pssw:
                 auth = f"{ussr}:{pssw}"
-                headers += f" authorization: Basic {b64encode(auth.encode()).decode('ascii')}"
+                headers += (
+                    f" authorization: Basic {b64encode(auth.encode()).decode('ascii')}"
+                )
             create_task(add_aria2_download(self, path, headers, ratio, seed_time))
         await delete_links(self.message)
         return None

@@ -149,9 +149,7 @@ def is_nsfw(text):
 def is_nsfw_data(data):
     if isinstance(data, list):
         return any(
-            is_nsfw(item.get("name", ""))
-            if isinstance(item, dict)
-            else is_nsfw(item)
+            is_nsfw(item.get("name", "")) if isinstance(item, dict) else is_nsfw(item)
             for item in data
         )
     if isinstance(data, dict):

@@ -1,17 +1,19 @@
 from asyncio import create_subprocess_exec, create_task, sleep
 from functools import partial
 from html import escape
-from http.cookiejar import MozillaCookieJar
 from io import BytesIO
 from os import getcwd
 from time import time
 
+from bot import LOGGER
+
 from aiofiles.os import makedirs, remove
 from aiofiles.os import path as aiopath
+from http.cookiejar import MozillaCookieJar
 from pyrogram.filters import create
 from pyrogram.handlers import MessageHandler
 
-from bot import LOGGER, auth_chats, excluded_extensions, sudo_users, user_data
+from bot import auth_chats, excluded_extensions, sudo_users, user_data
 from bot.core.aeon_client import TgClient
 from bot.core.config_manager import Config
 from bot.helper.ext_utils.bot_utils import (
@@ -19,10 +21,10 @@ from bot.helper.ext_utils.bot_utils import (
     new_task,
     update_user_ldata,
 )
+from bot.helper.ext_utils.status_utils import get_readable_file_size
 from bot.helper.ext_utils.db_handler import database
 from bot.helper.ext_utils.help_messages import user_settings_text
 from bot.helper.ext_utils.media_utils import create_thumb
-from bot.helper.ext_utils.status_utils import get_readable_file_size
 from bot.helper.telegram_helper.button_build import ButtonMaker
 from bot.helper.telegram_helper.message_utils import (
     auto_delete_message,
@@ -33,7 +35,7 @@ from bot.helper.telegram_helper.message_utils import (
 )
 
 handler_dict = {}
-no_thumb = "https://graph.org/file/73ae908d18c6b38038071.jpg"
+no_thumb = "https://graph.org/file/80b7fb095063a18f9e232.jpg"
 
 leech_options = [
     "THUMBNAIL",
@@ -41,9 +43,6 @@ leech_options = [
     "EQUAL_SPLITS",
     # "LEECH_DUMP_CHAT",
     "LEECH_FILENAME_PREFIX",
-    "LEECH_SUFFIX",
-    "LEECH_FONT",
-    "LEECH_FILENAME",
     "LEECH_SUFFIX",
     "LEECH_FONT",
     "LEECH_FILENAME",
@@ -88,52 +87,16 @@ async def get_user_settings(from_user, stype="main"):
 
     if stype == "leech":
         buttons.data_button("Thumbnail", f"userset {user_id} menu THUMBNAIL")
-        buttons.data_button("Thumbnail", f"userset {user_id} menu THUMBNAIL")
         buttons.data_button(
             "Leech Prefix",
             f"userset {user_id} menu LEECH_FILENAME_PREFIX",
         )
         if user_dict.get("LEECH_FILENAME_PREFIX", False):
             lprefix = user_dict["LEECH_FILENAME_PREFIX"]
-        elif (
-            "LEECH_FILENAME_PREFIX" not in user_dict and Config.LEECH_FILENAME_PREFIX
-        ):
+        elif "LEECH_FILENAME_PREFIX" not in user_dict and Config.LEECH_FILENAME_PREFIX:
             lprefix = Config.LEECH_FILENAME_PREFIX
         else:
             lprefix = "None"
-        buttons.data_button(
-            "Leech Suffix",
-            f"userset {user_id} menu LEECH_SUFFIX",
-        )
-        if user_dict.get("LEECH_SUFFIX", False):
-            lsuffix = user_dict["LEECH_SUFFIX"]
-        elif "LEECH_SUFFIX" not in user_dict and Config.LEECH_SUFFIX:
-            lsuffix = Config.LEECH_SUFFIX
-        else:
-            lsuffix = "None"
-
-        buttons.data_button(
-            "Leech Font",
-            f"userset {user_id} menu LEECH_FONT",
-        )
-        if user_dict.get("LEECH_FONT", False):
-            lfont = user_dict["LEECH_FONT"]
-        elif "LEECH_FONT" not in user_dict and Config.LEECH_FONT:
-            lfont = Config.LEECH_FONT
-        else:
-            lfont = "None"
-
-        buttons.data_button(
-            "Leech Filename",
-            f"userset {user_id} menu LEECH_FILENAME",
-        )
-        if user_dict.get("LEECH_FILENAME", False):
-            lfilename = user_dict["LEECH_FILENAME"]
-        elif "LEECH_FILENAME" not in user_dict and Config.LEECH_FILENAME:
-            lfilename = Config.LEECH_FILENAME
-        else:
-            lfilename = "None"
-
         buttons.data_button(
             "Leech Suffix",
             f"userset {user_id} menu LEECH_SUFFIX",
@@ -174,8 +137,7 @@ async def get_user_settings(from_user, stype="main"):
         if user_dict.get("LEECH_FILENAME_CAPTION", False):
             lcap = user_dict["LEECH_FILENAME_CAPTION"]
         elif (
-            "LEECH_FILENAME_CAPTION" not in user_dict
-            and Config.LEECH_FILENAME_CAPTION
+            "LEECH_FILENAME_CAPTION" not in user_dict and Config.LEECH_FILENAME_CAPTION
         ):
             lcap = Config.LEECH_FILENAME_CAPTION
         else:
@@ -359,9 +321,7 @@ async def get_user_settings(from_user, stype="main"):
             gdrive_id = GDID
         else:
             gdrive_id = "None"
-        index = (
-            user_dict["INDEX_URL"] if user_dict.get("INDEX_URL", False) else "None"
-        )
+        index = user_dict["INDEX_URL"] if user_dict.get("INDEX_URL", False) else "None"
         text = f"""<u><b>Gdrive API Settings for {name}</b></u>
 -> Gdrive Token: <b>{tokenmsg}</b>
 -> Gdrive ID: <code>{gdrive_id}</code>
@@ -380,9 +340,7 @@ Please use /mediatools command to configure convert settings.
         # Global metadata settings
         buttons.data_button("Metadata All", f"userset {user_id} menu METADATA_ALL")
         buttons.data_button("Global Title", f"userset {user_id} menu METADATA_TITLE")
-        buttons.data_button(
-            "Global Author", f"userset {user_id} menu METADATA_AUTHOR"
-        )
+        buttons.data_button("Global Author", f"userset {user_id} menu METADATA_AUTHOR")
         buttons.data_button(
             "Global Comment", f"userset {user_id} menu METADATA_COMMENT"
         )
@@ -445,9 +403,7 @@ Please use /mediatools command to configure convert settings.
         # Get subtitle metadata values
         metadata_subtitle_title = user_dict.get("METADATA_SUBTITLE_TITLE", "None")
         metadata_subtitle_author = user_dict.get("METADATA_SUBTITLE_AUTHOR", "None")
-        metadata_subtitle_comment = user_dict.get(
-            "METADATA_SUBTITLE_COMMENT", "None"
-        )
+        metadata_subtitle_comment = user_dict.get("METADATA_SUBTITLE_COMMENT", "None")
 
         # Legacy metadata key - not used directly in the display but kept for reference
         # metadata_key = user_dict.get("METADATA_KEY", "None")
@@ -482,11 +438,7 @@ Please use /mediatools command to configure convert settings.
         buttons.data_button("Gdrive API", f"userset {user_id} gdrive")
 
         upload_paths = user_dict.get("UPLOAD_PATHS", {})
-        if (
-            not upload_paths
-            and "UPLOAD_PATHS" not in user_dict
-            and Config.UPLOAD_PATHS
-        ):
+        if not upload_paths and "UPLOAD_PATHS" not in user_dict and Config.UPLOAD_PATHS:
             upload_paths = Config.UPLOAD_PATHS
         else:
             upload_paths = "None"
@@ -508,7 +460,6 @@ Please use /mediatools command to configure convert settings.
         tr = "MY" if user_tokens else "OWNER"
         trr = "OWNER" if user_tokens else "MY"
         buttons.data_button(
-            f"{trr} Token/Config",
             f"{trr} Token/Config",
             f"userset {user_id} tog USER_TOKENS {'f' if user_tokens else 't'}",
         )
@@ -536,9 +487,7 @@ Please use /mediatools command to configure convert settings.
         )
         if user_dict.get("YT_DLP_OPTIONS", False):
             ytopt = "Added by User"
-            ytopt = "Added by User"
         elif "YT_DLP_OPTIONS" not in user_dict and Config.YT_DLP_OPTIONS:
-            ytopt = "Added by Owner"
             ytopt = "Added by Owner"
         else:
             ytopt = "None"
@@ -555,9 +504,7 @@ Please use /mediatools command to configure convert settings.
         buttons.data_button("FFmpeg Cmds", f"userset {user_id} menu FFMPEG_CMDS")
         if user_dict.get("FFMPEG_CMDS", False):
             ffc = "Added by User"
-            ffc = "Added by User"
         elif "FFMPEG_CMDS" not in user_dict and Config.FFMPEG_CMDS:
-            ffc = "Added by Owner"
             ffc = "Added by Owner"
         else:
             ffc = "None"
@@ -638,10 +585,6 @@ async def send_user_settings(_, message):
     settings_msg = await send_message(message, msg, button, t)
     # Auto delete settings after 5 minutes
     create_task(auto_delete_message(settings_msg, time=300))  # noqa: RUF006
-    await delete_message(message)  # Delete the command message instantly
-    settings_msg = await send_message(message, msg, button, t)
-    # Auto delete settings after 5 minutes
-    create_task(auto_delete_message(settings_msg, time=300))  # noqa: RUF006
 
 
 @new_task
@@ -681,8 +624,7 @@ async def add_file(_, message, ftype):
             auth_cookies = [
                 c
                 for c in yt_cookies
-                if c.name
-                in ("SID", "HSID", "SSID", "APISID", "SAPISID", "LOGIN_INFO")
+                if c.name in ("SID", "HSID", "SSID", "APISID", "SAPISID", "LOGIN_INFO")
             ]
 
             if auth_cookies:
@@ -768,13 +710,15 @@ async def set_option(_, message, option):
     if option == "LEECH_SPLIT_SIZE":
         try:
             # Try to convert the value to an integer
-            value = int(value) if value.isdigit() else get_size_bytes(value)
+            if value.isdigit():
+                value = int(value)
+            else:
+                value = get_size_bytes(value)
 
             # Always use owner's session for max split size calculation, not user's own session
             max_split_size = (
                 TgClient.MAX_SPLIT_SIZE
-                if hasattr(Config, "USER_SESSION_STRING")
-                and Config.USER_SESSION_STRING
+                if hasattr(Config, "USER_SESSION_STRING") and Config.USER_SESSION_STRING
                 else 2097152000
             )
             value = min(int(value), max_split_size)
@@ -782,8 +726,7 @@ async def set_option(_, message, option):
             # If conversion fails, set to default max split size
             max_split_size = (
                 TgClient.MAX_SPLIT_SIZE
-                if hasattr(Config, "USER_SESSION_STRING")
-                and Config.USER_SESSION_STRING
+                if hasattr(Config, "USER_SESSION_STRING") and Config.USER_SESSION_STRING
                 else 2097152000
             )
             value = max_split_size
@@ -793,7 +736,7 @@ async def set_option(_, message, option):
         for x in fx:
             x = x.lstrip(".")
             value.append(x.strip().lower())
-    elif option in {"LEECH_FILENAME_CAPTION"}:
+    elif option == "LEECH_FILENAME_CAPTION":
         # Check if caption exceeds Telegram's limit (1024 characters)
         if len(value) > 1024:
             error_msg = await send_message(
@@ -860,9 +803,7 @@ async def get_menu(option, message, user_id):
         back_to = "back"
     buttons.data_button("Back", f"userset {user_id} {back_to}")
     buttons.data_button("Close", f"userset {user_id} close")
-    text = (
-        f"Edit menu for: {option}\n\nUse /help1, /help2, /help3... for more details."
-    )
+    text = f"Edit menu for: {option}\n\nUse /help1, /help2, /help3... for more details."
     await edit_message(message, text, buttons.build_menu(2))
 
 
@@ -879,10 +820,6 @@ async def event_handler(client, query, pfunc, photo=False, document=False):
         else:
             mtype = event.text
         user = event.from_user or event.sender_chat
-
-        # Check if user is None before accessing id
-        if user is None:
-            return False
 
         # Check if user is None before accessing id
         if user is None:
@@ -920,8 +857,6 @@ async def edit_user_settings(client, query):
         await query.answer("Not Yours!", show_alert=True)
         return
     if data[2] == "setevent":
-        return
-    if data[2] == "setevent":
         await query.answer()
     elif data[2] in ["leech", "gdrive", "rclone", "metadata", "convert"]:
         await query.answer()
@@ -934,7 +869,9 @@ async def edit_user_settings(client, query):
         update_user_ldata(user_id, data[3], data[4] == "t")
         if data[3] == "STOP_DUPLICATE":
             back_to = "gdrive"
-        elif data[3] == "USER_TOKENS" or data[3] == "MEDIAINFO_ENABLED":
+        elif data[3] == "USER_TOKENS":
+            back_to = "main"
+        elif data[3] == "MEDIAINFO_ENABLED":
             back_to = "main"
         # Convert settings have been moved to Media Tools settings
         else:
@@ -1006,10 +943,6 @@ You can provide your own cookies for YouTube and other yt-dlp downloads to acces
         create_task(  # noqa: RUF006
             auto_delete_message(edit_msg, time=300),
         )  # Auto delete edit stage after 5 minutes
-        edit_msg = await edit_message(message, text, buttons.build_menu(1))
-        create_task(  # noqa: RUF006
-            auto_delete_message(edit_msg, time=300),
-        )  # Auto delete edit stage after 5 minutes
         pfunc = partial(func, option=data[3])
         await event_handler(client, query, pfunc)
         await get_menu(data[3], message, user_id)
@@ -1067,11 +1000,6 @@ You can provide your own cookies for YouTube and other yt-dlp downloads to acces
         create_task(  # noqa: RUF006
             auto_delete_message(msg, time=30),
         )  # Delete after 30 seconds
-        msg = await send_file(message, thumb_path, name)
-        # Auto delete thumbnail after viewing
-        create_task(  # noqa: RUF006
-            auto_delete_message(msg, time=30),
-        )  # Delete after 30 seconds
     elif data[2] in ["gd", "rc"]:
         await query.answer()
         du = "rc" if data[2] == "gd" else "gd"
@@ -1085,11 +1013,6 @@ You can provide your own cookies for YouTube and other yt-dlp downloads to acces
         await query.answer()
         await delete_message(message.reply_to_message)
         await delete_message(message)
-    # Add auto-delete for all edited messages
-    if message and not message.empty:
-        create_task(  # noqa: RUF006
-            auto_delete_message(message, time=300),
-        )  # 5 minutes
     # Add auto-delete for all edited messages
     if message and not message.empty:
         create_task(  # noqa: RUF006
