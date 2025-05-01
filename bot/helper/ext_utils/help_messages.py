@@ -887,7 +887,18 @@ user_settings_text = {
     "CHATGPT_API_URL": "Send your custom ChatGPT API URL. This will be used as a fallback if the API key is not provided or fails. Leave empty to use the bot owner's API URL. Timeout: 60 sec",
     "GEMINI_API_KEY": "Send your Gemini AI API key. This will be used to access the Google AI API directly. Leave empty to use the bot owner's API key. Timeout: 60 sec",
     "GEMINI_API_URL": "Send your custom Gemini AI API URL. This will be used as a fallback if the API key is not provided or fails. Leave empty to use the bot owner's API URL. Timeout: 60 sec",
-    "CUSTOM_AI_API_URL": "Send your custom AI API URL. Supports various formats including placeholder URLs like 'https://example.com/?q={question}' or standard APIs that accept POST/GET requests. The system will automatically detect the appropriate format. Set DEFAULT_AI_PROVIDER to 'custom' to use this URL. Timeout: 60 sec",
+    "CUSTOM_AI_API_URL": """Send your custom AI API URL. Supports various formats:
+- https://example.com/{query}
+- https://example.com/?q={query}
+- https://example.com/?question={query}
+- https://example.com/?id={id}&question={query}
+- https://example.com/?url={query}&tool={query}
+
+For URLs with multiple placeholders, use pipe-separated queries:
+/ask query1|query2|query3
+
+The system automatically detects the appropriate format and supports text, images, videos, audio, and documents.
+Set DEFAULT_AI_PROVIDER to 'custom' to use this URL. Timeout: 60 sec""",
     "METADATA_KEY": "Send your text for change mkv medias metadata (title only). This is a legacy option, consider using the specific metadata options instead. Timeout: 60 sec",
     "METADATA_ALL": "Send metadata text to be used for all metadata fields (title, author, comment) for all track types. This takes priority over all other metadata settings. Timeout: 60 sec",
     "METADATA_TITLE": "Send metadata text to be used for the global title field. Timeout: 60 sec",
