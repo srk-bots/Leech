@@ -13,6 +13,88 @@ from bot.helper.telegram_helper.message_utils import (
 )
 
 
+async def send_long_message(message, text, time=300):
+    """
+    Split and send long messages that exceed Telegram's 4096 character limit
+
+    Args:
+        message: Message to reply to
+        text: Text content to send
+        time: Time in seconds after which to auto-delete the messages
+
+    Returns:
+        List of sent message objects
+    """
+    # Maximum length for a single Telegram message
+    MAX_LENGTH = 4000  # Using 4000 instead of 4096 to be safe
+
+    # If the message is short enough, send it as is
+    if len(text) <= MAX_LENGTH:
+        msg = await send_message(message, text)
+        create_task(auto_delete_message(msg, time=time))  # noqa: RUF006
+        return [msg]
+
+    # Split the message into chunks
+    chunks = []
+    current_chunk = ""
+
+    # Split by paragraphs first (double newlines)
+    paragraphs = text.split("\n\n")
+
+    for paragraph in paragraphs:
+        # If adding this paragraph would exceed the limit, start a new chunk
+        if len(current_chunk) + len(paragraph) + 2 > MAX_LENGTH:
+            # If the current chunk is not empty, add it to chunks
+            if current_chunk:
+                chunks.append(current_chunk)
+                current_chunk = ""
+
+            # If the paragraph itself is too long, split it by sentences
+            if len(paragraph) > MAX_LENGTH:
+                sentences = paragraph.replace(". ", ".\n").split("\n")
+                for sentence in sentences:
+                    if len(current_chunk) + len(sentence) + 2 > MAX_LENGTH:
+                        if current_chunk:
+                            chunks.append(current_chunk)
+                            current_chunk = ""
+
+                        # If the sentence is still too long, split it by words
+                        if len(sentence) > MAX_LENGTH:
+                            words = sentence.split(" ")
+                            for word in words:
+                                if len(current_chunk) + len(word) + 1 > MAX_LENGTH:
+                                    chunks.append(current_chunk)
+                                    current_chunk = word + " "
+                                else:
+                                    current_chunk += word + " "
+                        else:
+                            current_chunk = sentence + "\n\n"
+                    else:
+                        current_chunk += sentence + "\n\n"
+            else:
+                current_chunk = paragraph + "\n\n"
+        else:
+            current_chunk += paragraph + "\n\n"
+
+    # Add the last chunk if it's not empty
+    if current_chunk:
+        chunks.append(current_chunk)
+
+    # Send each chunk as a separate message
+    sent_messages = []
+    for i, chunk in enumerate(chunks):
+        # Add part number if there are multiple chunks
+        if len(chunks) > 1:
+            prefix = f"<b>Part {i + 1}/{len(chunks)}</b>\n\n"
+            chunk = prefix + chunk
+
+        msg = await send_message(message, chunk)
+        create_task(auto_delete_message(msg, time=time))  # noqa: RUF006
+        sent_messages.append(msg)
+
+    return sent_messages
+
+
 @new_task
 async def ask_ai(_, message):
     """
@@ -59,8 +141,8 @@ async def ask_ai(_, message):
         )
         # Auto-delete help message after 5 minutes
         create_task(auto_delete_message(help_msg, time=300))  # noqa: RUF006
-        # Auto-delete command message
-        create_task(auto_delete_message(message, time=0))  # noqa: RUF006
+        # Auto-delete command message after 5 minutes
+        create_task(auto_delete_message(message, time=300))  # noqa: RUF006
         return
 
     # Extract the question from the message
@@ -82,8 +164,8 @@ async def ask_ai(_, message):
                     )
                     # Auto-delete error message after 5 minutes
                     create_task(auto_delete_message(error_msg, time=300))  # noqa: RUF006
-                    # Auto-delete command message
-                    create_task(auto_delete_message(message, time=0))  # noqa: RUF006
+                    # Auto-delete command message after 5 minutes
+                    create_task(auto_delete_message(message, time=300))  # noqa: RUF006
                     return
             else:
                 # Not a command, use the entire message as the question
@@ -96,8 +178,8 @@ async def ask_ai(_, message):
             )
             # Auto-delete error message after 5 minutes
             create_task(auto_delete_message(error_msg, time=300))  # noqa: RUF006
-            # Auto-delete command message
-            create_task(auto_delete_message(message, time=0))  # noqa: RUF006
+            # Auto-delete command message after 5 minutes
+            create_task(auto_delete_message(message, time=300))  # noqa: RUF006
             return
     except Exception as e:
         # Handle any exceptions that might occur
@@ -108,8 +190,8 @@ async def ask_ai(_, message):
         )
         # Auto-delete error message after 5 minutes
         create_task(auto_delete_message(error_msg, time=300))  # noqa: RUF006
-        # Auto-delete command message
-        create_task(auto_delete_message(message, time=0))  # noqa: RUF006
+        # Auto-delete command message after 5 minutes
+        create_task(auto_delete_message(message, time=300))  # noqa: RUF006
         return
 
     # Send a waiting message
@@ -130,8 +212,8 @@ async def ask_ai(_, message):
                 )
                 # Auto-delete error message after 5 minutes
                 create_task(auto_delete_message(error_msg, time=300))  # noqa: RUF006
-                # Auto-delete command message
-                create_task(auto_delete_message(message, time=0))  # noqa: RUF006
+                # Auto-delete command message after 5 minutes
+                create_task(auto_delete_message(message, time=300))  # noqa: RUF006
                 await delete_message(wait_msg)
                 return
 
@@ -152,8 +234,8 @@ async def ask_ai(_, message):
                 )
                 # Auto-delete error message after 5 minutes
                 create_task(auto_delete_message(error_msg, time=300))  # noqa: RUF006
-                # Auto-delete command message
-                create_task(auto_delete_message(message, time=0))  # noqa: RUF006
+                # Auto-delete command message after 5 minutes
+                create_task(auto_delete_message(message, time=300))  # noqa: RUF006
                 await delete_message(wait_msg)
                 return
 
@@ -176,8 +258,8 @@ async def ask_ai(_, message):
                 )
                 # Auto-delete error message after 5 minutes
                 create_task(auto_delete_message(error_msg, time=300))  # noqa: RUF006
-                # Auto-delete command message
-                create_task(auto_delete_message(message, time=0))  # noqa: RUF006
+                # Auto-delete command message after 5 minutes
+                create_task(auto_delete_message(message, time=300))  # noqa: RUF006
                 await delete_message(wait_msg)
                 return
 
@@ -200,8 +282,8 @@ async def ask_ai(_, message):
                 )
                 # Auto-delete error message after 5 minutes
                 create_task(auto_delete_message(error_msg, time=300))  # noqa: RUF006
-                # Auto-delete command message
-                create_task(auto_delete_message(message, time=0))  # noqa: RUF006
+                # Auto-delete command message after 5 minutes
+                create_task(auto_delete_message(message, time=300))  # noqa: RUF006
                 await delete_message(wait_msg)
                 return
 
@@ -222,8 +304,8 @@ async def ask_ai(_, message):
                 )
                 # Auto-delete error message after 5 minutes
                 create_task(auto_delete_message(error_msg, time=300))  # noqa: RUF006
-                # Auto-delete command message
-                create_task(auto_delete_message(message, time=0))  # noqa: RUF006
+                # Auto-delete command message after 5 minutes
+                create_task(auto_delete_message(message, time=300))  # noqa: RUF006
                 await delete_message(wait_msg)
                 return
 
@@ -234,11 +316,9 @@ async def ask_ai(_, message):
         # Format the response
         formatted_response = f"🤖 <b>{provider_display}:</b>\n\n{response}"
 
-        # Send the response
-        response_msg = await send_message(message, formatted_response)
-
-        # Auto-delete the response after 5 minutes
-        create_task(auto_delete_message(response_msg, time=300))  # noqa: RUF006
+        # Send the response using the long message handler to handle message length limits
+        # This will automatically handle messages that are too long for Telegram
+        await send_long_message(message, formatted_response, time=300)
 
     except Exception as e:
         LOGGER.error(f"Error in AI response: {e!s}")
@@ -249,8 +329,8 @@ async def ask_ai(_, message):
     # Delete the waiting message
     await delete_message(wait_msg)
 
-    # Auto-delete the command message
-    create_task(auto_delete_message(message, time=0))  # noqa: RUF006
+    # Auto-delete the command message after 5 minutes
+    create_task(auto_delete_message(message, time=300))  # noqa: RUF006
 
 
 async def get_ai_response(question, api_key, api_url, user_id):
