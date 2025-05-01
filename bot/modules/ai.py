@@ -498,9 +498,9 @@ async def get_deepseek_response_with_api_url(question, api_url, user_id):
     # Ensure the URL doesn't end with a slash
     api_url = api_url.rstrip("/")
 
-    # If the URL is the default DeepSeek API URL from the example
-    if "deepseek.privates-bots.workers.dev" in api_url:
-        # Use the format from the example
+    # Check if this is a specific API URL format
+    if "deepseek" in api_url and "workers.dev" in api_url:
+        # Use a GET request format with query parameter
         full_url = f"{api_url}/?question={question}"
 
         timeout = Timeout(30.0, connect=10.0)
