@@ -480,13 +480,16 @@ def is_media_tool_enabled(tool_name):
         bool: True if the tool is enabled, False otherwise
     """
     from bot.core.config_manager import Config
+    from bot import LOGGER
 
     # If ENABLE_EXTRA_MODULES is False, all extra modules are disabled
     if not Config.ENABLE_EXTRA_MODULES:
+        LOGGER.debug(f"Extra modules disabled, tool {tool_name} is disabled")
         return False
 
     # If media tools are completely disabled (boolean False), return False
     if Config.MEDIA_TOOLS_ENABLED is False:
+        LOGGER.debug(f"Media tools disabled, tool {tool_name} is disabled")
         return False
 
     # If MEDIA_TOOLS_ENABLED is a string with comma-separated values
@@ -498,17 +501,26 @@ def is_media_tool_enabled(tool_name):
             if t.strip()
         ]
 
+        LOGGER.debug(f"Enabled tools from config: {enabled_tools}")
+
         # If checking for 'mediatools' (general media tools status), return True if any tool is enabled
         if tool_name.lower() == "mediatools":
-            return len(enabled_tools) > 0
+            is_enabled = len(enabled_tools) > 0
+            LOGGER.debug(f"Checking if any media tools are enabled: {is_enabled}")
+            return is_enabled
 
         # Otherwise, check if the specific tool is in the enabled list
-        return tool_name.lower() in enabled_tools
+        is_enabled = tool_name.lower() in enabled_tools
+        LOGGER.debug(
+            f"Checking if tool {tool_name} is in enabled list: {is_enabled}"
+        )
+        return is_enabled
 
     # If MEDIA_TOOLS_ENABLED is True (boolean), all tools are enabled
     if Config.MEDIA_TOOLS_ENABLED is True:
         # If checking for 'mediatools', return True
         if tool_name.lower() == "mediatools":
+            LOGGER.debug("All media tools are enabled")
             return True
 
         # For specific tools, check if they're in the list of all available tools
@@ -523,9 +535,14 @@ def is_media_tool_enabled(tool_name):
             "ffmpeg",
             "sample",
         ]
-        return tool_name.lower() in all_tools
+        is_enabled = tool_name.lower() in all_tools
+        LOGGER.debug(
+            f"Checking if tool {tool_name} is in all tools list: {is_enabled}"
+        )
+        return is_enabled
 
     # Default case: media tools are disabled
+    LOGGER.debug(f"Default case: media tools disabled, tool {tool_name} is disabled")
     return False
 
 

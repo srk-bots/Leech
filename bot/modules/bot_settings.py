@@ -5717,12 +5717,15 @@ async def edit_bot_settings(client, query):
             "extract",
             "metadata",
             "ffmpeg",
+            "sample",
         ]
 
         # Parse current enabled tools
         enabled_tools = []
         if isinstance(current_value, str) and "," in current_value:
-            enabled_tools = [t.strip().lower() for t in current_value.split(",")]
+            enabled_tools = [
+                t.strip().lower() for t in current_value.split(",") if t.strip()
+            ]
         elif current_value is True:  # If it's True (boolean), all tools are enabled
             enabled_tools = all_tools.copy()
 
