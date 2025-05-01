@@ -3745,6 +3745,11 @@ async def edit_bot_settings(client, query):
         LOGGER.debug("mediatools_compression button clicked")
         await update_buttons(message, "mediatools_compression")
 
+    elif data[1] == "ai":
+        await query.answer()
+        LOGGER.debug("ai button clicked")
+        await update_buttons(message, "ai")
+
     elif data[1] == "default_watermark":
         await query.answer("Resetting all watermark settings to default...")
         # Reset all watermark settings to default
