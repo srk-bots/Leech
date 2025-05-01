@@ -1,10 +1,13 @@
 import contextlib
+import gc
 import json
 import os
 import resource
+import shutil
 from asyncio import create_subprocess_exec, gather, sleep, wait_for
 from asyncio.subprocess import PIPE
 from os import path as ospath
+from pathlib import Path
 from re import escape
 from re import search as re_search
 from time import time
@@ -13,7 +16,8 @@ import aiofiles
 from aiofiles.os import makedirs, remove
 from aiofiles.os import path as aiopath
 from aioshutil import rmtree
-from PIL import Image
+from PIL import Image, ImageDraw, ImageFont
+from PyPDF2 import PdfMerger, PdfReader, PdfWriter
 
 from bot import DOWNLOAD_DIR, LOGGER, cpu_no
 from bot.core.config_manager import Config
@@ -21,6 +25,11 @@ from bot.core.config_manager import Config
 from .bot_utils import cmd_exec, sync_to_async
 from .files_utils import get_mime_type, get_path_size, is_archive, is_archive_split
 from .status_utils import time_to_seconds
+
+try:
+    from bot.helper.ext_utils.gc_utils import smart_garbage_collection
+except ImportError:
+    smart_garbage_collection = None
 
 
 # Function to limit memory usage for PIL operations
@@ -4020,8 +4029,7 @@ class FFMpeg:
             if ".temp" in original_file:
                 original_file = original_file.replace(".temp", "")
 
-            # Import the document_utils module
-            from bot.helper.aeon_utils.document_utils import apply_document_metadata
+            # Use the apply_document_metadata function from this module
 
             # Get metadata from listener
             try:
@@ -5731,3 +5739,299 @@ class FFMpeg:
             i += 1
 
         return True
+
+
+async def apply_document_metadata(file_path, title=None, author=None, comment=None):
+    """Apply metadata to document files like PDF using appropriate tools.
+
+    Args:
+        file_path: Path to the document file
+        title: Title metadata to apply
+        author: Author metadata to apply
+        comment: Comment metadata to apply
+
+    Returns:
+        bool: True if metadata was successfully applied, False otherwise
+    """
+    if not file_path or not await aiopath.exists(file_path):
+        LOGGER.error(f"File not found: {file_path}")
+        return False
+
+    # Skip if no metadata to apply
+    if not title and not author and not comment:
+        LOGGER.debug("No metadata provided, skipping")
+        return True
+
+    # Get file extension
+    ext = os.path.splitext(file_path)[1].lower()
+
+    # Create a temporary file for output
+    temp_file = f"{file_path}.temp{ext}"
+
+    # Handle different document types
+    if ext == ".pdf":
+        return await apply_pdf_metadata(file_path, temp_file, title, author, comment)
+    if ext in [".epub", ".mobi", ".azw", ".azw3"]:
+        return await apply_ebook_metadata(
+            file_path, temp_file, title, author, comment
+        )
+    if ext in [
+        ".doc",
+        ".docx",
+        ".xls",
+        ".xlsx",
+        ".ppt",
+        ".pptx",
+        ".odt",
+        ".ods",
+        ".odp",
+    ]:
+        return await apply_office_metadata(
+            file_path, temp_file, title, author, comment
+        )
+    if ext in [".txt", ".md", ".csv", ".rtf"]:
+        return await apply_text_metadata(
+            file_path, temp_file, title, author, comment
+        )
+    # Try exiftool for other document types
+    return await apply_exiftool_metadata(
+        file_path, temp_file, title, author, comment
+    )
+
+
+async def apply_pdf_metadata(
+    file_path, temp_file, title=None, author=None, comment=None
+):
+    """Apply metadata to PDF files using pdftk or exiftool.
+
+    Args:
+        file_path: Path to the PDF file
+        temp_file: Path to the temporary file
+        title: Title metadata to apply
+        author: Author metadata to apply
+        comment: Comment metadata to apply
+
+    Returns:
+        bool: True if metadata was successfully applied, False otherwise
+    """
+    try:
+        # Check if pdftk is available
+        pdftk_check = await cmd_exec(["which", "pdftk"])
+
+        if pdftk_check[0]:  # pdftk is available
+            LOGGER.info(f"Using pdftk to apply metadata to {file_path}")
+
+            # Create a temporary info file
+            info_file = f"{file_path}.info"
+            with open(info_file, "w") as f:
+                if title:
+                    f.write(f"InfoKey: Title\nInfoValue: {title}\n")
+                if author:
+                    f.write(f"InfoKey: Author\nInfoValue: {author}\n")
+                if comment:
+                    f.write(f"InfoKey: Subject\nInfoValue: {comment}\n")
+
+            # Apply metadata
+            cmd = ["pdftk", file_path, "update_info", info_file, "output", temp_file]
+
+            result = await cmd_exec(cmd)
+
+            # Clean up
+            if await aiopath.exists(info_file):
+                await remove(info_file)
+
+            if result[2] == 0 and await aiopath.exists(temp_file):
+                os.replace(temp_file, file_path)
+                return True
+            if await aiopath.exists(temp_file):
+                await remove(temp_file)
+            LOGGER.error(f"pdftk failed: {result[1]}")
+            # Fall back to exiftool
+            return await apply_exiftool_metadata(
+                file_path, temp_file, title, author, comment
+            )
+        # Fall back to exiftool
+        return await apply_exiftool_metadata(
+            file_path, temp_file, title, author, comment
+        )
+
+    except Exception as e:
+        LOGGER.error(f"Error applying PDF metadata: {e}")
+        # Fall back to exiftool
+        return await apply_exiftool_metadata(
+            file_path, temp_file, title, author, comment
+        )
+
+
+async def apply_ebook_metadata(
+    file_path, temp_file, title=None, author=None, comment=None
+):
+    """Apply metadata to ebook files using ebook-meta or exiftool.
+
+    Args:
+        file_path: Path to the ebook file
+        temp_file: Path to the temporary file
+        title: Title metadata to apply
+        author: Author metadata to apply
+        comment: Comment metadata to apply
+
+    Returns:
+        bool: True if metadata was successfully applied, False otherwise
+    """
+    try:
+        # Check if ebook-meta (from Calibre) is available
+        ebook_meta_check = await cmd_exec(["which", "ebook-meta"])
+
+        if ebook_meta_check[0]:  # ebook-meta is available
+            LOGGER.info(f"Using ebook-meta to apply metadata to {file_path}")
+
+            # Create a copy of the file first
+            shutil.copy2(file_path, temp_file)
+
+            # Build the command
+            cmd = ["ebook-meta", temp_file]
+            if title:
+                cmd.extend(["--title", title])
+            if author:
+                cmd.extend(["--author", author])
+            if comment:
+                cmd.extend(["--comments", comment])
+
+            result = await cmd_exec(cmd)
+
+            if result[2] == 0:
+                os.replace(temp_file, file_path)
+                return True
+            if await aiopath.exists(temp_file):
+                await remove(temp_file)
+            LOGGER.error(f"ebook-meta failed: {result[1]}")
+            # Fall back to exiftool
+            return await apply_exiftool_metadata(
+                file_path, temp_file, title, author, comment
+            )
+        # Fall back to exiftool
+        return await apply_exiftool_metadata(
+            file_path, temp_file, title, author, comment
+        )
+
+    except Exception as e:
+        LOGGER.error(f"Error applying ebook metadata: {e}")
+        # Fall back to exiftool
+        return await apply_exiftool_metadata(
+            file_path, temp_file, title, author, comment
+        )
+
+
+async def apply_office_metadata(
+    file_path, temp_file, title=None, author=None, comment=None
+):
+    """Apply metadata to office document files.
+
+    Args:
+        file_path: Path to the office document file
+        temp_file: Path to the temporary file
+        title: Title metadata to apply
+        author: Author metadata to apply
+        comment: Comment metadata to apply
+
+    Returns:
+        bool: True if metadata was successfully applied, False otherwise
+    """
+    # For office documents, use exiftool
+    return await apply_exiftool_metadata(
+        file_path, temp_file, title, author, comment
+    )
+
+
+async def apply_text_metadata(
+    file_path, temp_file, title=None, author=None, comment=None
+):
+    """Apply metadata to text files by adding comments at the top.
+
+    Args:
+        file_path: Path to the text file
+        temp_file: Path to the temporary file
+        title: Title metadata to apply
+        author: Author metadata to apply
+        comment: Comment metadata to apply
+
+    Returns:
+        bool: True if metadata was successfully applied, False otherwise
+    """
+    try:
+        # For text files, we can add metadata as comments at the top of the file
+        with open(file_path, encoding="utf-8", errors="ignore") as f_in:
+            content = f_in.read()
+
+        with open(temp_file, "w", encoding="utf-8") as f_out:
+            # Add metadata as comments
+            if title or author or comment:
+                f_out.write("/*\n")
+                if title:
+                    f_out.write(f"Title: {title}\n")
+                if author:
+                    f_out.write(f"Author: {author}\n")
+                if comment:
+                    f_out.write(f"Comment: {comment}\n")
+                f_out.write("*/\n\n")
+
+            # Write the original content
+            f_out.write(content)
+
+        # Replace the original file
+        os.replace(temp_file, file_path)
+        return True
+
+    except Exception as e:
+        LOGGER.error(f"Error applying text metadata: {e}")
+        return False
+
+
+async def apply_exiftool_metadata(
+    file_path, temp_file, title=None, author=None, comment=None
+):
+    """Apply metadata to files using exiftool.
+
+    Args:
+        file_path: Path to the file
+        temp_file: Path to the temporary file
+        title: Title metadata to apply
+        author: Author metadata to apply
+        comment: Comment metadata to apply
+
+    Returns:
+        bool: True if metadata was successfully applied, False otherwise
+    """
+    try:
+        # Check if exiftool is available
+        exiftool_check = await cmd_exec(["which", "exiftool"])
+
+        if exiftool_check[0]:  # exiftool is available
+            LOGGER.info(f"Using exiftool to apply metadata to {file_path}")
+
+            cmd = ["exiftool"]
+            if title:
+                cmd.extend(["-Title=" + title])
+            if author:
+                cmd.extend(["-Author=" + author, "-Creator=" + author])
+            if comment:
+                cmd.extend(["-Subject=" + comment, "-Description=" + comment])
+
+            # Add output file
+            cmd.extend(["-o", temp_file, file_path])
+
+            result = await cmd_exec(cmd)
+
+            if result[2] == 0 and await aiopath.exists(temp_file):
+                os.replace(temp_file, file_path)
+                return True
+            if await aiopath.exists(temp_file):
+                await remove(temp_file)
+            LOGGER.error(f"exiftool failed: {result[1]}")
+            return False
+        LOGGER.warning("exiftool not found, cannot apply metadata")
+        return False
+
+    except Exception as e:
+        LOGGER.error(f"Error applying metadata with exiftool: {e}")
+        return False

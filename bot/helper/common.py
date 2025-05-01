@@ -38,7 +38,6 @@ from bot.helper.aeon_utils.command_gen import (
     get_trim_cmd,
     get_watermark_cmd,
 )
-from bot.helper.aeon_utils.document_utils import apply_document_metadata
 
 from .ext_utils.bot_utils import get_size_bytes, new_task, sync_to_async
 from .ext_utils.bulk_links import extract_bulk_links
@@ -59,9 +58,12 @@ from .ext_utils.links_utils import (
 )
 from .ext_utils.media_utils import (
     FFMpeg,
+    apply_document_metadata,
     create_thumb,
     get_document_type,
     is_mkv,
+    merge_documents,
+    merge_images,
     take_ss,
 )
 from .mirror_leech_utils.gdrive_utils.list import GoogleDriveList
@@ -8427,7 +8429,7 @@ class TaskConfig:
                 LOGGER.info("Special Flag Workflow: -merge-image")
 
                 # For image files, use PIL to merge images
-                from bot.helper.aeon_utils.media_merge import merge_images
+                # Using the function from ext_utils.media_utils
 
                 if analysis["image_files"]:
                     # Determine merge mode based on number of images
@@ -8483,7 +8485,7 @@ class TaskConfig:
                 LOGGER.info("Special Flag Workflow: -merge-pdf")
 
                 # For PDF files, use PyPDF2 to merge PDFs
-                from bot.helper.aeon_utils.media_merge import merge_documents
+                # Using the function from ext_utils.media_utils
 
                 # Check if we have PDF files
                 pdf_files = [
@@ -8716,7 +8718,7 @@ class TaskConfig:
                         )
                     elif approach == "image_merge" and analysis["image_files"]:
                         # For image files, use PIL to merge images
-                        from bot.helper.aeon_utils.media_merge import merge_images
+                        # Using the function from ext_utils.media_utils
 
                         # Determine merge mode based on number of images
                         if len(analysis["image_files"]) <= 2:
@@ -8756,7 +8758,7 @@ class TaskConfig:
 
                     elif approach == "document_merge" and analysis["document_files"]:
                         # For document files, use PyPDF2 to merge PDFs
-                        from bot.helper.aeon_utils.media_merge import merge_documents
+                        # Using the function from ext_utils.media_utils
 
                         # Check if we have PDF files
                         pdf_files = [
