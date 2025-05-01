@@ -2094,8 +2094,7 @@ async def get_media_tools_settings(from_user, stype="main", page_no=0):
             f"mediatools {user_id} tog TRIM_DELETE_ORIGINAL {'f' if delete_original else 't'}",
         )
 
-        # Add a header for format settings
-        buttons.data_button("⚙️ Format Settings", f"mediatools {user_id} help_trim")
+        # Format settings button removed as requested
 
         # Video trim settings
         video_enabled = user_dict.get("TRIM_VIDEO_ENABLED", False)

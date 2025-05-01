@@ -582,15 +582,23 @@ Please use /mediatools command to configure convert settings.
         cookies_path = f"cookies/{user_id}.txt"
         cookies_status = "Added" if await aiopath.exists(cookies_path) else "None"
 
-        buttons.data_button("Metadata", f"userset {user_id} metadata")
+        # Only show Metadata button if metadata tool is enabled
+        from bot.helper.ext_utils.bot_utils import is_media_tool_enabled
 
-        buttons.data_button("FFmpeg Cmds", f"userset {user_id} menu FFMPEG_CMDS")
-        if user_dict.get("FFMPEG_CMDS", False):
-            ffc = "Added by User"
-        elif "FFMPEG_CMDS" not in user_dict and Config.FFMPEG_CMDS:
-            ffc = "Added by Owner"
+        if is_media_tool_enabled("metadata"):
+            buttons.data_button("Metadata", f"userset {user_id} metadata")
+
+        # Only show FFmpeg Cmds button if ffmpeg tool is enabled
+        if is_media_tool_enabled("ffmpeg"):
+            buttons.data_button("FFmpeg Cmds", f"userset {user_id} menu FFMPEG_CMDS")
+            if user_dict.get("FFMPEG_CMDS", False):
+                ffc = "Added by User"
+            elif "FFMPEG_CMDS" not in user_dict and Config.FFMPEG_CMDS:
+                ffc = "Added by Owner"
+            else:
+                ffc = "None"
         else:
-            ffc = "None"
+            ffc = "Disabled"
 
         # Add MediaInfo toggle
         mediainfo_enabled = user_dict.get("MEDIAINFO_ENABLED", None)

@@ -485,18 +485,17 @@ def is_media_tool_enabled(tool_name):
     if not Config.ENABLE_EXTRA_MODULES:
         return False
 
-    # If media tools are completely disabled, return False
-    if not Config.MEDIA_TOOLS_ENABLED:
+    # If media tools are completely disabled (boolean False), return False
+    if Config.MEDIA_TOOLS_ENABLED is False:
         return False
 
     # If MEDIA_TOOLS_ENABLED is a string with comma-separated values
-    if (
-        isinstance(Config.MEDIA_TOOLS_ENABLED, str)
-        and "," in Config.MEDIA_TOOLS_ENABLED
-    ):
+    if isinstance(Config.MEDIA_TOOLS_ENABLED, str):
         # Split the string and check if the tool is in the list
         enabled_tools = [
-            t.strip().lower() for t in Config.MEDIA_TOOLS_ENABLED.split(",")
+            t.strip().lower()
+            for t in Config.MEDIA_TOOLS_ENABLED.split(",")
+            if t.strip()
         ]
 
         # If checking for 'mediatools' (general media tools status), return True if any tool is enabled
@@ -506,27 +505,80 @@ def is_media_tool_enabled(tool_name):
         # Otherwise, check if the specific tool is in the enabled list
         return tool_name.lower() in enabled_tools
 
-    # If MEDIA_TOOLS_ENABLED is True (boolean), check if the specific tool is disabled in ENABLE_EXTRA_MODULES
+    # If MEDIA_TOOLS_ENABLED is True (boolean), all tools are enabled
     if Config.MEDIA_TOOLS_ENABLED is True:
-        # If ENABLE_EXTRA_MODULES is a string with comma-separated values
-        if (
-            isinstance(Config.ENABLE_EXTRA_MODULES, str)
-            and "," in Config.ENABLE_EXTRA_MODULES
-        ):
-            # Split the string and check if the tool is in the list of disabled modules
-            disabled_modules = [
-                t.strip().lower() for t in Config.ENABLE_EXTRA_MODULES.split(",")
-            ]
+        # If checking for 'mediatools', return True
+        if tool_name.lower() == "mediatools":
+            return True
 
-            # If 'mediatools' is in the disabled modules list, all media tools are disabled
-            if "mediatools" in disabled_modules:
-                return False
-
-            # Otherwise, check if the specific tool is not in the disabled list
-            return tool_name.lower() not in disabled_modules
-
-        # If ENABLE_EXTRA_MODULES is True or any other value, return True
-        return True
+        # For specific tools, check if they're in the list of all available tools
+        all_tools = [
+            "watermark",
+            "merge",
+            "convert",
+            "compression",
+            "trim",
+            "extract",
+            "metadata",
+            "ffmpeg",
+            "sample",
+        ]
+        return tool_name.lower() in all_tools
 
     # Default case: media tools are disabled
     return False
+
+
+def is_flag_enabled(flag_name):
+    """Check if a specific command flag is enabled based on media tools configuration.
+
+    Args:
+        flag_name (str): The name of the flag to check (ff, sv, mt, etc.)
+
+    Returns:
+        bool: True if the flag is enabled, False otherwise
+    """
+    # Map flags to their corresponding media tools
+    flag_to_tool_map = {
+        "ff": "ffmpeg",  # Custom FFmpeg commands flag
+        "sv": "sample",  # Sample video flag
+        "mt": "mediatools",  # Media tools flag
+        "md": "metadata",  # Metadata flag
+        "merge-video": "merge",
+        "merge-audio": "merge",
+        "merge-subtitle": "merge",
+        "merge-all": "merge",
+        "merge-image": "merge",
+        "merge-pdf": "merge",
+        "watermark": "watermark",
+        "extract": "extract",
+        "extract-video": "extract",
+        "extract-audio": "extract",
+        "extract-subtitle": "extract",
+        "extract-attachment": "extract",
+        "trim": "trim",
+        "compress": "compression",
+        "comp-video": "compression",
+        "comp-audio": "compression",
+        "comp-image": "compression",
+        "comp-document": "compression",
+        "comp-subtitle": "compression",
+        "comp-archive": "compression",
+    }
+
+    # If the flag is not in the map, assume it's enabled
+    if flag_name.lstrip("-") not in flag_to_tool_map:
+        return True
+
+    # Get the tool name for this flag
+    tool_name = flag_to_tool_map[flag_name.lstrip("-")]
+
+    # Check if the tool is enabled
+    is_enabled = is_media_tool_enabled(tool_name)
+
+    # For debugging
+    from bot import LOGGER
+
+    LOGGER.debug(f"Flag {flag_name} maps to tool {tool_name}, enabled: {is_enabled}")
+
+    return is_enabled

@@ -1178,6 +1178,16 @@ async def media_tools_help_cmd(_, message):
 
     # Start with page 1
     current_page = 1
+
+    # Check if the user is trying to access a specific page
+    if hasattr(message, "text") and len(message.text.split()) > 1:
+        try:
+            requested_page = int(message.text.split()[1])
+            if 1 <= requested_page <= 21:  # Assuming 21 is the max page
+                current_page = requested_page
+        except ValueError:
+            pass
+
     content = get_page_content(current_page)
     buttons = get_pagination_buttons(current_page)
 

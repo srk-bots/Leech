@@ -783,6 +783,8 @@ async def get_buttons(key=None, edit_type=None, page=0, user_id=None):
                             "trim",
                             "extract",
                             "metadata",
+                            "ffmpeg",
+                            "sample",
                         ]
                         status = (
                             f"✅ ({len(enabled_tools)}/{len(all_tools)})"
@@ -3816,7 +3818,7 @@ async def edit_bot_settings(client, query):
     handler_dict[user_id] = False
     if data[1] == "close":
         await query.answer()
-        await delete_message(message.reply_to_message)
+        # Only delete the menu message, not the command that triggered it
         await delete_message(message)
     elif data[1] == "back":
         await query.answer()
@@ -5520,6 +5522,8 @@ async def edit_bot_settings(client, query):
                 "trim",
                 "extract",
                 "metadata",
+                "ffmpeg",
+                "sample",
             ]
 
             # If it's a string with comma-separated values, parse it
@@ -5712,6 +5716,7 @@ async def edit_bot_settings(client, query):
             "trim",
             "extract",
             "metadata",
+            "ffmpeg",
         ]
 
         # Parse current enabled tools
@@ -5776,6 +5781,8 @@ async def edit_bot_settings(client, query):
             "trim",
             "extract",
             "metadata",
+            "ffmpeg",
+            "sample",
         ]
 
         # Update the config - sort the tools to maintain consistent order
@@ -5830,6 +5837,8 @@ async def edit_bot_settings(client, query):
             "trim",
             "extract",
             "metadata",
+            "ffmpeg",
+            "sample",
         ]
 
         # Add toggle buttons for each tool
@@ -5951,6 +5960,8 @@ async def edit_bot_settings(client, query):
                     "trim",
                     "extract",
                     "metadata",
+                    "ffmpeg",
+                    "sample",
                 ]
                 # Sort the tools to maintain consistent order
                 all_tools.sort()
@@ -6010,7 +6021,8 @@ async def send_bot_settings(_, message):
     handler_dict[user_id] = False
     msg, button = await get_buttons(user_id=user_id)
     globals()["start"] = 0
-    await send_message(message, msg, button)
+    # Don't auto-delete the bot settings message
+    await send_message(message, msg, button, auto_delete=False)
 
 
 async def load_config():
