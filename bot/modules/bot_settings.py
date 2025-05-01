@@ -950,7 +950,9 @@ Timeout: 60 sec"""
         if is_media_tool_enabled("extract"):
             buttons.data_button("Extract Settings", "botset mediatools_extract")
 
-        buttons.data_button("Metadata Settings", "botset mediatools_metadata")
+        # Only show metadata settings if metadata tool is enabled
+        if is_media_tool_enabled("metadata"):
+            buttons.data_button("Metadata Settings", "botset mediatools_metadata")
 
         buttons.data_button("Back", "botset back", "footer")
         buttons.data_button("Close", "botset close", "footer")
@@ -5744,9 +5746,17 @@ async def edit_bot_settings(client, query):
                 except:
                     pass
 
+        # Check if we're disabling a tool
+        is_disabling = tool in enabled_tools
+
         # Toggle the tool
-        if tool in enabled_tools:
+        if is_disabling:
             enabled_tools.remove(tool)
+            # Import the reset function here to avoid circular imports
+            from bot.helper.ext_utils.config_utils import reset_tool_configs
+
+            # Reset tool-specific configurations when disabling a tool
+            await reset_tool_configs(tool, database)
         else:
             enabled_tools.append(tool)
 
@@ -5761,6 +5771,33 @@ async def edit_bot_settings(client, query):
 
         # Update the database
         await database.update_config({key: Config.get(key)})
+
+        # Force reload the current value after database update to ensure consistency
+        current_value = Config.get(key)
+
+        # Re-parse enabled tools after the update
+        enabled_tools = []
+        if isinstance(current_value, str):
+            # Handle both comma-separated and single values
+            if "," in current_value:
+                enabled_tools = [
+                    t.strip().lower() for t in current_value.split(",") if t.strip()
+                ]
+            elif current_value.strip():  # Single non-empty value
+                enabled_tools = [current_value.strip().lower()]
+        elif current_value is True:  # If it's True (boolean), all tools are enabled
+            enabled_tools = all_tools.copy()
+        elif current_value:  # Any other truthy value
+            if isinstance(current_value, (list, tuple, set)):
+                enabled_tools = [str(t).strip().lower() for t in current_value if t]
+            else:
+                # Try to convert to string and use as a single value
+                try:
+                    val = str(current_value).strip().lower()
+                    if val:
+                        enabled_tools = [val]
+                except:
+                    pass
 
         # Refresh the menu
         buttons = ButtonMaker()
@@ -5839,15 +5876,6 @@ async def edit_bot_settings(client, query):
         await query.answer("Disabling all media tools")
         key = data[2]  # MEDIA_TOOLS_ENABLED
 
-        # Update the config
-        Config.set(key, False)
-
-        # Update the database
-        await database.update_config({key: Config.get(key)})
-
-        # Refresh the menu
-        buttons = ButtonMaker()
-
         # List of all available tools
         all_tools = [
             "watermark",
@@ -5860,6 +5888,21 @@ async def edit_bot_settings(client, query):
             "ffmpeg",
             "sample",
         ]
+
+        # Reset configurations for all tools
+        from bot.helper.ext_utils.config_utils import reset_tool_configs
+
+        for tool in all_tools:
+            await reset_tool_configs(tool, database)
+
+        # Update the config
+        Config.set(key, False)
+
+        # Update the database
+        await database.update_config({key: Config.get(key)})
+
+        # Refresh the menu
+        buttons = ButtonMaker()
 
         # Add toggle buttons for each tool
         for tool in all_tools:
