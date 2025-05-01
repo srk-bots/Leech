@@ -298,6 +298,8 @@ async def get_buttons(key=None, edit_type=None, page=0, user_id=None):
                 buttons.data_button("Back", "botset mediatools_convert")
             elif key.startswith("TASK_MONITOR_"):
                 buttons.data_button("Back", "botset taskmonitor")
+            elif key.startswith("MISTRAL_"):
+                buttons.data_button("Back", "botset ai")
             elif key.startswith("MERGE_") and "MERGE_OUTPUT_FORMAT" in key:
                 # If it's a format setting, it's likely from the merge_config menu
                 buttons.data_button("Back", "botset mediatools_merge_config")
@@ -4899,6 +4901,9 @@ async def edit_bot_settings(client, query):
         elif data[2].startswith("TASK_MONITOR_"):
             LOGGER.debug(f"Setting return function for {data[2]} to taskmonitor")
             rfunc = partial(update_buttons, message, "taskmonitor")
+        elif data[2].startswith("MISTRAL_"):
+            LOGGER.debug(f"Setting return function for {data[2]} to ai")
+            rfunc = partial(update_buttons, message, "ai")
         elif data[2].startswith("MERGE_") or data[2] in [
             "CONCAT_DEMUXER_ENABLED",
             "FILTER_COMPLEX_ENABLED",
@@ -5107,6 +5112,9 @@ async def edit_bot_settings(client, query):
         "mediatools_metadata",
         "mediatools_convert",
         "mediatools_compression",
+        "mediatools_trim",
+        "mediatools_extract",
+        "ai",
         "taskmonitor",
     ] or data[1].startswith(
         "nzbser",
@@ -5257,6 +5265,9 @@ async def edit_bot_settings(client, query):
                 f"Setting return function for botvar {data[2]} to mediatools_convert"
             )
             rfunc = partial(update_buttons, message, "mediatools_convert")
+        elif data[2].startswith("MISTRAL_"):
+            LOGGER.debug(f"Setting return function for botvar {data[2]} to ai")
+            rfunc = partial(update_buttons, message, "ai")
         else:
             rfunc = partial(update_buttons, message, "var")
 
@@ -5443,6 +5454,9 @@ async def edit_bot_settings(client, query):
             LOGGER.debug(f"toggle: Setting return_menu for {key} to {return_menu}")
         elif key.startswith("EXTRACT_"):
             return_menu = "mediatools_extract"
+            LOGGER.debug(f"toggle: Setting return_menu for {key} to {return_menu}")
+        elif key.startswith("MISTRAL_"):
+            return_menu = "ai"
             LOGGER.debug(f"toggle: Setting return_menu for {key} to {return_menu}")
 
         await update_buttons(message, return_menu)

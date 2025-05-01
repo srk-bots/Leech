@@ -860,6 +860,8 @@ PASSWORD_ERROR_MESSAGE = """
 
 
 user_settings_text = {
+    "MISTRAL_API_KEY": "Send your Mistral AI API key. This will be used to access the Mistral AI API directly. Leave empty to use the bot owner's API key. Timeout: 60 sec",
+    "MISTRAL_API_URL": "Send your custom Mistral AI API URL. This will be used as a fallback if the API key is not provided or fails. Leave empty to use the bot owner's API URL. Timeout: 60 sec",
     "METADATA_KEY": "Send your text for change mkv medias metadata (title only). This is a legacy option, consider using the specific metadata options instead. Timeout: 60 sec",
     "METADATA_ALL": "Send metadata text to be used for all metadata fields (title, author, comment) for all track types. This takes priority over all other metadata settings. Timeout: 60 sec",
     "METADATA_TITLE": "Send metadata text to be used for the global title field. Timeout: 60 sec",
