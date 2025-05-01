@@ -14,22 +14,20 @@ jobs:
           BRANCH_NAME: ${{ github.ref_name }}
           USER: ${{ github.actor }}
           AUTHOR_URL: https://github.com/${{ github.actor }}
+          COMMITS_JSON: ${{ toJson(github.event.commits) }}
         run: |
           MESSAGE="*New Commit Pushed*\n\n"
           MESSAGE+="*Commit by:* [${USER}](${AUTHOR_URL})\n"
           MESSAGE+="*Repository:* ${REPO}\n"
           MESSAGE+="*Branch:* ${BRANCH_NAME}\n\n"
 
-          COMMITS=$(jq -c '.commits[]' <<< '${{ toJson(github.event.commits) }}')
-
-          while IFS= read -r commit; do
+          echo "$COMMITS_JSON" | jq -c '.[]' | while IFS= read -r commit; do
             HASH=$(jq -r '.id' <<< "$commit")
             MSG=$(jq -r '.message' <<< "$commit" | head -n 1)
             SHORT_HASH=${HASH:0:7}
             URL="https://github.com/${REPO}/commit/${HASH}"
-
             MESSAGE+="[${SHORT_HASH}](${URL}): ${MSG}\n"
-          done <<< "$COMMITS"
+          done
 
           curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
           -H "Content-Type: application/json" \
