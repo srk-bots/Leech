@@ -536,9 +536,11 @@ async def get_track_info(file_path: str) -> dict[str, list[dict]]:
             return tracks
 
         # Log all streams for debugging
+        LOGGER.debug(f"Found {len(streams)} streams in {file_path}")
         for i, stream in enumerate(streams):
             codec_type = stream.get("codec_type", "unknown")
             codec_name = stream.get("codec_name", "unknown")
+            LOGGER.debug(f"Stream {i}: type={codec_type}, codec={codec_name}")
 
         for i, stream in enumerate(streams):
             codec_type = stream.get("codec_type", "unknown")
@@ -547,6 +549,7 @@ async def get_track_info(file_path: str) -> dict[str, list[dict]]:
             if codec_type == "video":
                 # Skip attached pictures (cover art) for video tracks
                 if stream.get("disposition", {}).get("attached_pic", 0) == 1:
+                    LOGGER.debug(
                         f"Skipping stream {i} as it appears to be cover art"
                     )
                     continue
@@ -565,6 +568,7 @@ async def get_track_info(file_path: str) -> dict[str, list[dict]]:
                         "disposition": stream.get("disposition", {}),
                     }
                 )
+                LOGGER.debug(f"Added video track {i}: {codec_name}")
             elif codec_type == "audio":
                 tracks["audio"].append(
                     {
@@ -578,6 +582,7 @@ async def get_track_info(file_path: str) -> dict[str, list[dict]]:
                         ),
                     }
                 )
+                LOGGER.debug(f"Added audio track {i}: {codec_name}")
             elif codec_type == "subtitle":
                 tracks["subtitle"].append(
                     {
@@ -589,6 +594,7 @@ async def get_track_info(file_path: str) -> dict[str, list[dict]]:
                         ),
                     }
                 )
+                LOGGER.debug(
                     f"Added subtitle track {i}: {codec_name}, language: {stream.get('tags', {}).get('language', 'und')}"
                 )
             elif codec_type == "attachment":
@@ -603,11 +609,14 @@ async def get_track_info(file_path: str) -> dict[str, list[dict]]:
                         ),
                     }
                 )
+                LOGGER.debug(
                     f"Added attachment {i}: {stream.get('tags', {}).get('filename', f'Attachment {i}')}"
                 )
             else:
+                LOGGER.debug(f"Skipping unknown stream type {i}: {codec_type}")
 
         # Log summary of found tracks
+        LOGGER.debug(
             f"Found {len(tracks['video'])} video tracks, {len(tracks['audio'])} audio tracks, "
             f"{len(tracks['subtitle'])} subtitle tracks, and {len(tracks['attachment'])} attachments"
         )
@@ -616,6 +625,7 @@ async def get_track_info(file_path: str) -> dict[str, list[dict]]:
         # Log the full exception traceback for debugging
         import traceback
 
+        LOGGER.debug(f"Traceback: {traceback.format_exc()}")
 
     return tracks
 
@@ -676,6 +686,7 @@ async def extract_track(
                     for idx in track_indices
                 ):
                     extract_all = True
+                    LOGGER.debug(
                         f"Extract all {track_type} tracks: 'all' value found in list"
                     )
                 else:
@@ -686,6 +697,7 @@ async def extract_track(
                         elif isinstance(idx, str):
                             if idx.strip().lower() == "all":
                                 extract_all = True
+                                LOGGER.debug(
                                     f"Extract all {track_type} tracks: 'all' value found in list"
                                 )
                                 break
@@ -699,6 +711,7 @@ async def extract_track(
                 # Check if it's the special "all" value
                 if track_indices.strip().lower() == "all":
                     extract_all = True
+                    LOGGER.debug(
                         f"Extract all {track_type} tracks: 'all' value specified"
                     )
                 # Check if it's a comma-separated list
@@ -706,6 +719,7 @@ async def extract_track(
                     for idx in track_indices.split(","):
                         if idx.strip().lower() == "all":
                             extract_all = True
+                            LOGGER.debug(
                                 f"Extract all {track_type} tracks: 'all' value found in comma-separated list"
                             )
                             break
@@ -727,10 +741,13 @@ async def extract_track(
 
         # Log the indices we're looking for
         if indices_list:
+            LOGGER.debug(
                 f"Looking for {track_type} tracks with indices: {indices_list}"
             )
         elif extract_all:
+            LOGGER.debug(f"Extracting all {track_type} tracks")
         else:
+            LOGGER.debug(
                 f"No specific {track_type} indices provided, will extract all tracks"
             )
 
@@ -739,6 +756,7 @@ async def extract_track(
             for track in tracks[track_type]:
                 if track["index"] in indices_list:
                     tracks_to_extract.append(track)
+                    LOGGER.debug(
                         f"Found {track_type} track with index {track['index']}"
                     )
 
@@ -749,6 +767,7 @@ async def extract_track(
                 )
         else:
             # Extract all tracks of the specified type
+            LOGGER.debug(f"Extracting all {track_type} tracks")
             tracks_to_extract = tracks[track_type]
 
         if not tracks_to_extract:
@@ -845,6 +864,7 @@ async def extract_track(
             LOGGER.info(
                 f"Extracting {track_type} track {track['index']} from {file_path}"
             )
+            LOGGER.debug(f"FFmpeg command: {' '.join(cmd)}")
 
             try:
                 stdout, stderr, code = await cmd_exec(cmd)
@@ -1166,24 +1186,29 @@ async def proceed_extract(
             )
             return []
 
+        LOGGER.debug(f"Detected media type for extraction: {media_type}")
 
         # Check if the requested extraction is compatible with the media type
         if extract_video and media_type not in ["video"]:
+            LOGGER.debug(
                 f"Video extraction requested but file is not a video: {file_path} (type: {media_type})"
             )
             extract_video = False
 
         if extract_audio and media_type not in ["video", "audio"]:
+            LOGGER.debug(
                 f"Audio extraction requested but file has no audio: {file_path} (type: {media_type})"
             )
             extract_audio = False
 
         if extract_subtitle and media_type not in ["video", "subtitle"]:
+            LOGGER.debug(
                 f"Subtitle extraction requested but file has no subtitles: {file_path} (type: {media_type})"
             )
             extract_subtitle = False
 
         if extract_attachment and media_type not in ["video"]:
+            LOGGER.debug(
                 f"Attachment extraction requested but file likely has no attachments: {file_path} (type: {media_type})"
             )
             extract_attachment = False
@@ -1208,6 +1233,7 @@ async def proceed_extract(
 
     # Check if we have any tracks to extract
     if not any(tracks.values()):
+        LOGGER.debug(f"No extractable tracks found in {file_path}")
         return []
 
     # Prepare extraction commands
@@ -1222,6 +1248,7 @@ async def proceed_extract(
                 for idx in video_index.split(",")
                 if idx.strip().isdigit()
             ]
+            LOGGER.debug(
                 f"Converted video_index string '{video_index}' to indices: {video_indices}"
             )
         except Exception as e:
@@ -1235,6 +1262,7 @@ async def proceed_extract(
                 for idx in audio_index.split(",")
                 if idx.strip().isdigit()
             ]
+            LOGGER.debug(
                 f"Converted audio_index string '{audio_index}' to indices: {audio_indices}"
             )
         except Exception as e:
@@ -1248,6 +1276,7 @@ async def proceed_extract(
                 for idx in subtitle_index.split(",")
                 if idx.strip().isdigit()
             ]
+            LOGGER.debug(
                 f"Converted subtitle_index string '{subtitle_index}' to indices: {subtitle_indices}"
             )
         except Exception as e:
@@ -1261,6 +1290,7 @@ async def proceed_extract(
                 for idx in attachment_index.split(",")
                 if idx.strip().isdigit()
             ]
+            LOGGER.debug(
                 f"Converted attachment_index string '{attachment_index}' to indices: {attachment_indices}"
             )
         except Exception as e:
@@ -1278,6 +1308,7 @@ async def proceed_extract(
                         for idx in attachment_index.split(",")
                         if idx.strip().isdigit()
                     ]
+                    LOGGER.debug(
                         f"Converted attachment_index string '{attachment_index}' to indices: {attachment_indices}"
                     )
                 else:
@@ -1338,6 +1369,7 @@ async def proceed_extract(
                     output_path = os.path.join(output_dir, filename)
 
                     # Try to extract the attachment using multiple methods
+                    LOGGER.debug(
                         f"Extracting attachment {track['index']} from {file_path}"
                     )
 
@@ -1368,6 +1400,7 @@ async def proceed_extract(
                     await makedirs(temp_dir, exist_ok=True)
 
                     # Method 1: Use -dump_attachment option (works in some FFmpeg versions)
+                    LOGGER.debug(
                         f"Trying extraction method 1 for attachment {track['index']}"
                     )
                     cmd = [
@@ -1405,10 +1438,13 @@ async def proceed_extract(
                             stderr_text = (
                                 stderr.decode() if stderr else "Unknown error"
                             )
+                            LOGGER.debug(f"Method 1 failed: {stderr_text}")
                     except Exception as e:
+                        LOGGER.debug(f"Error in method 1: {e}")
 
                     # Method 2: Try using -map option with data format
                     if not extraction_success:
+                        LOGGER.debug(
                             f"Trying extraction method 2 for attachment {track['index']}"
                         )
                         temp_file = os.path.join(
@@ -1456,10 +1492,13 @@ async def proceed_extract(
                                     if alt_stderr
                                     else "Unknown error"
                                 )
+                                LOGGER.debug(f"Method 2 failed: {alt_stderr_text}")
                         except Exception as alt_e:
+                            LOGGER.debug(f"Error in method 2: {alt_e}")
 
                     # Method 3: Try using -c:t copy for attachments
                     if not extraction_success:
+                        LOGGER.debug(
                             f"Trying extraction method 3 for attachment {track['index']}"
                         )
                         temp_file = os.path.join(
@@ -1505,7 +1544,9 @@ async def proceed_extract(
                                     if alt_stderr
                                     else "Unknown error"
                                 )
+                                LOGGER.debug(f"Method 3 failed: {alt_stderr_text}")
                         except Exception as alt_e:
+                            LOGGER.debug(f"Error in method 3: {alt_e}")
 
                     # If all methods failed, create a placeholder file
                     if not extraction_success:
@@ -1518,6 +1559,7 @@ async def proceed_extract(
                                 await f.write(
                                     f"Failed to extract attachment {track['index']} - {track.get('filename', '')}"
                                 )
+                            LOGGER.debug(
                                 f"Created placeholder file for failed attachment extraction: {output_path}"
                             )
                         except Exception as write_e:
@@ -1538,6 +1580,7 @@ async def proceed_extract(
                 output_path = os.path.join(output_dir, filename)
 
                 # Try to extract the attachment using multiple methods
+                LOGGER.debug(
                     f"Extracting attachment {track['index']} from {file_path}"
                 )
 
@@ -1566,6 +1609,7 @@ async def proceed_extract(
                 await makedirs(temp_dir, exist_ok=True)
 
                 # Method 1: Use -dump_attachment option (works in some FFmpeg versions)
+                LOGGER.debug(
                     f"Trying extraction method 1 for attachment {track['index']}"
                 )
                 cmd = [
@@ -1601,10 +1645,13 @@ async def proceed_extract(
                         extraction_success = True
                     else:
                         stderr_text = stderr.decode() if stderr else "Unknown error"
+                        LOGGER.debug(f"Method 1 failed: {stderr_text}")
                 except Exception as e:
+                    LOGGER.debug(f"Error in method 1: {e}")
 
                 # Method 2: Try using -map option with data format
                 if not extraction_success:
+                    LOGGER.debug(
                         f"Trying extraction method 2 for attachment {track['index']}"
                     )
                     temp_file = os.path.join(
@@ -1652,10 +1699,13 @@ async def proceed_extract(
                                 if alt_stderr
                                 else "Unknown error"
                             )
+                            LOGGER.debug(f"Method 2 failed: {alt_stderr_text}")
                     except Exception as alt_e:
+                        LOGGER.debug(f"Error in method 2: {alt_e}")
 
                 # Method 3: Try using -c:t copy for attachments
                 if not extraction_success:
+                    LOGGER.debug(
                         f"Trying extraction method 3 for attachment {track['index']}"
                     )
                     temp_file = os.path.join(
@@ -1701,7 +1751,9 @@ async def proceed_extract(
                                 if alt_stderr
                                 else "Unknown error"
                             )
+                            LOGGER.debug(f"Method 3 failed: {alt_stderr_text}")
                     except Exception as alt_e:
+                        LOGGER.debug(f"Error in method 3: {alt_e}")
 
                 # If all methods failed, create a placeholder file
                 if not extraction_success:
@@ -1714,6 +1766,7 @@ async def proceed_extract(
                             await f.write(
                                 f"Failed to extract attachment {track['index']} - {track.get('filename', '')}"
                             )
+                        LOGGER.debug(
                             f"Created placeholder file for failed attachment extraction: {output_path}"
                         )
                     except Exception as write_e:
@@ -1731,6 +1784,7 @@ async def proceed_extract(
                         for idx in video_index.split(",")
                         if idx.strip().isdigit()
                     ]
+                    LOGGER.debug(
                         f"Converted video_index string '{video_index}' to indices: {video_indices}"
                     )
                 else:
@@ -1783,6 +1837,7 @@ async def proceed_extract(
                         "disposition" in track
                         and track["disposition"].get("attached_pic", 0) == 1
                     ):
+                        LOGGER.debug(
                             f"Skipping video track {track['index']} as it appears to be cover art"
                         )
                         continue
@@ -1864,6 +1919,7 @@ async def proceed_extract(
 
                     cmd.append(output_file)
 
+                    LOGGER.debug(
                         f"Extracting video track {track['index']} from {file_path}"
                     )
 
@@ -1879,6 +1935,7 @@ async def proceed_extract(
 
                         if proc.returncode == 0 and os.path.exists(output_file):
                             extracted_files.append(output_file)
+                            LOGGER.debug(
                                 f"Successfully extracted video to {output_file}"
                             )
                         else:
@@ -1887,11 +1944,13 @@ async def proceed_extract(
                             )
                             LOGGER.error(f"Failed to extract video: {stderr_text}")
                             # Log the command that failed
+                            LOGGER.debug(f"Failed command: {' '.join(cmd)}")
                     except Exception as e:
                         LOGGER.error(
                             f"Error running FFmpeg for video extraction: {e}"
                         )
                         # Log the command that failed
+                        LOGGER.debug(f"Failed command: {' '.join(cmd)}")
 
             # Check if any tracks were found
             if not found_tracks:
@@ -1982,6 +2041,7 @@ async def proceed_extract(
 
                 cmd.append(output_file)
 
+                LOGGER.debug(
                     f"Extracting video track {track['index']} from {file_path}"
                 )
 
@@ -2002,9 +2062,11 @@ async def proceed_extract(
                         stderr_text = stderr.decode() if stderr else "Unknown error"
                         LOGGER.error(f"Failed to extract video: {stderr_text}")
                         # Log the command that failed
+                        LOGGER.debug(f"Failed command: {' '.join(cmd)}")
                 except Exception as e:
                     LOGGER.error(f"Error running FFmpeg for video extraction: {e}")
                     # Log the command that failed
+                    LOGGER.debug(f"Failed command: {' '.join(cmd)}")
 
     # Extract audio tracks
     if extract_audio and tracks["audio"]:
@@ -2018,6 +2080,7 @@ async def proceed_extract(
                         for idx in audio_index.split(",")
                         if idx.strip().isdigit()
                     ]
+                    LOGGER.debug(
                         f"Converted audio_index string '{audio_index}' to indices: {audio_indices}"
                     )
                 else:
@@ -2138,6 +2201,7 @@ async def proceed_extract(
 
                     cmd.append(output_file)
 
+                    LOGGER.debug(
                         f"Extracting audio track {track['index']} from {file_path}"
                     )
 
@@ -2153,6 +2217,7 @@ async def proceed_extract(
 
                         if proc.returncode == 0 and os.path.exists(output_file):
                             extracted_files.append(output_file)
+                            LOGGER.debug(
                                 f"Successfully extracted audio to {output_file}"
                             )
                         else:
@@ -2161,11 +2226,13 @@ async def proceed_extract(
                             )
                             LOGGER.error(f"Failed to extract audio: {stderr_text}")
                             # Log the command that failed
+                            LOGGER.debug(f"Failed command: {' '.join(cmd)}")
                     except Exception as e:
                         LOGGER.error(
                             f"Error running FFmpeg for audio extraction: {e}"
                         )
                         # Log the command that failed
+                        LOGGER.debug(f"Failed command: {' '.join(cmd)}")
 
             # Check if any tracks were found
             if not found_tracks:
@@ -2243,6 +2310,7 @@ async def proceed_extract(
 
                 cmd.append(output_file)
 
+                LOGGER.debug(
                     f"Extracting audio track {track['index']} from {file_path}"
                 )
 
@@ -2263,9 +2331,11 @@ async def proceed_extract(
                         stderr_text = stderr.decode() if stderr else "Unknown error"
                         LOGGER.error(f"Failed to extract audio: {stderr_text}")
                         # Log the command that failed
+                        LOGGER.debug(f"Failed command: {' '.join(cmd)}")
                 except Exception as e:
                     LOGGER.error(f"Error running FFmpeg for audio extraction: {e}")
                     # Log the command that failed
+                    LOGGER.debug(f"Failed command: {' '.join(cmd)}")
 
     # Extract subtitle tracks
     if extract_subtitle and tracks["subtitle"]:
@@ -2308,6 +2378,7 @@ async def proceed_extract(
                 # Log the full exception traceback for debugging
                 import traceback
 
+                LOGGER.debug(f"Traceback: {traceback.format_exc()}")
 
         # Check if subtitle_indices contains the special value "all"
         extract_all_subtitles = False
@@ -2652,6 +2723,7 @@ async def proceed_extract(
                         # Log the full exception traceback for debugging
                         import traceback
 
+                        LOGGER.debug(f"Traceback: {traceback.format_exc()}")
 
             # Check if any tracks were found
             if not found_tracks:
@@ -2687,28 +2759,34 @@ async def proceed_extract(
                 output_format = None
                 if subtitle_format and subtitle_format.lower() != "none":
                     output_format = subtitle_format.lower()
+                    LOGGER.debug(f"Using specified subtitle format: {output_format}")
                 elif subtitle_codec and subtitle_codec.lower() != "none":
                     if subtitle_codec.lower() == "copy":
                         output_format = input_codec
+                        LOGGER.debug(
                             f"Using copy codec, preserving original format: {input_codec}"
                         )
                     else:
                         output_format = subtitle_codec.lower()
+                        LOGGER.debug(
                             f"Using specified subtitle codec as format: {output_format}"
                         )
                 # For ASS/SSA subtitles, preserve the format when using copy
                 elif input_codec in ["ass", "ssa"]:
                     output_format = "ass"
+                    LOGGER.debug(
                         f"Preserving ASS/SSA format for track {track['index']}"
                     )
                 else:
                     # Default to SRT if no format/codec specified
                     output_format = "srt"
+                    LOGGER.debug("No format/codec specified, defaulting to SRT")
 
                 # For ASS/SSA subtitles, make sure the extension matches the codec
                 if input_codec in ["ass", "ssa"] and output_format == "srt":
                     # Force output format to match the codec
                     output_ext = "srt"
+                    LOGGER.debug(
                         f"Forcing SRT extension for ASS/SSA subtitle track {track['index']}"
                     )
                 elif input_codec in ["ass", "ssa"] and (
@@ -2716,6 +2794,7 @@ async def proceed_extract(
                 ):
                     # Use ASS extension for ASS/SSA subtitles when copying
                     output_ext = "ass"
+                    LOGGER.debug(
                         f"Using ASS extension for ASS/SSA subtitle track {track['index']}"
                     )
 
@@ -2738,16 +2817,19 @@ async def proceed_extract(
 
                 # Handle subtitle codec based on input and output formats
                 input_codec = track.get("codec", "").lower()
+                LOGGER.debug(
                     f"Original input codec for track {track['index']}: {input_codec}"
                 )
 
                 # Normalize input codec names
                 if input_codec == "subrip":
                     input_codec = "srt"
+                    LOGGER.debug(
                         f"Normalized 'subrip' codec to 'srt' for track {track['index']}"
                     )
                 elif input_codec in ["ass", "ssa"]:
                     input_codec = "ass"
+                    LOGGER.debug(
                         f"Normalized '{input_codec}' codec to 'ass' for track {track['index']}"
                     )
 
@@ -2755,23 +2837,28 @@ async def proceed_extract(
                 output_format = None
                 if subtitle_format and subtitle_format.lower() != "none":
                     output_format = subtitle_format.lower()
+                    LOGGER.debug(f"Using specified subtitle format: {output_format}")
                 elif subtitle_codec and subtitle_codec.lower() != "none":
                     if subtitle_codec.lower() == "copy":
                         output_format = input_codec
+                        LOGGER.debug(
                             f"Using copy codec, preserving original format: {input_codec}"
                         )
                     else:
                         output_format = subtitle_codec.lower()
+                        LOGGER.debug(
                             f"Using specified subtitle codec as format: {output_format}"
                         )
                 # For ASS/SSA subtitles, preserve the format when using copy
                 elif input_codec in ["ass", "ssa"]:
                     output_format = "ass"
+                    LOGGER.debug(
                         f"Preserving ASS/SSA format for track {track['index']}"
                     )
                 else:
                     # Default to SRT if no format/codec specified
                     output_format = "srt"
+                    LOGGER.debug("No format/codec specified, defaulting to SRT")
 
                 # Handle format conversion
                 if output_format and output_format != input_codec:
@@ -2781,11 +2868,13 @@ async def proceed_extract(
                         cmd.extend(["-c:s", "srt"])
                         # Force SRT format for output
                         cmd.extend(["-f", "srt"])
+                        LOGGER.debug(
                             f"Converting from {input_codec} to SRT with forced format"
                         )
                     elif output_format == "ass" and input_codec == "srt":
                         # Converting from SRT to ASS
                         cmd.extend(["-c:s", "ass"])
+                        LOGGER.debug("Converting from SRT to ASS")
                     elif output_format == "vtt" and input_codec in [
                         "srt",
                         "ass",
@@ -2793,8 +2882,10 @@ async def proceed_extract(
                     ]:
                         # Converting to WebVTT
                         cmd.extend(["-c:s", "webvtt"])
+                        LOGGER.debug(f"Converting from {input_codec} to WebVTT")
                     else:
                         # For other conversions, let FFmpeg choose the appropriate codec
+                        LOGGER.debug(
                             f"Converting subtitle from {input_codec} to {output_format}"
                         )
                         if subtitle_codec and subtitle_codec.lower() != "none":
@@ -2802,8 +2893,10 @@ async def proceed_extract(
                 # No conversion needed, use copy if possible
                 elif input_codec in ["ass", "ssa", "srt", "vtt", "webvtt"]:
                     cmd.extend(["-c:s", "copy"])
+                    LOGGER.debug(f"Using copy codec for {input_codec}")
                 else:
                     # For other formats, let FFmpeg choose the appropriate codec
+                    LOGGER.debug(
                         f"Using default codec for subtitle format: {input_codec}"
                     )
                     if subtitle_codec and subtitle_codec.lower() != "none":
@@ -2811,6 +2904,7 @@ async def proceed_extract(
                     else:
                         # Default to SRT for unknown formats
                         cmd.extend(["-c:s", "srt"])
+                        LOGGER.debug("Using SRT codec for unknown format")
 
                 # Add subtitle language if specified
                 if subtitle_language:
@@ -2830,6 +2924,7 @@ async def proceed_extract(
 
                 cmd.append(output_file)
 
+                LOGGER.debug(
                     f"Extracting subtitle track {track['index']} from {file_path}"
                 )
 
@@ -2852,11 +2947,13 @@ async def proceed_extract(
                         stderr_text = stderr.decode() if stderr else "Unknown error"
                         LOGGER.error(f"Failed to extract subtitle: {stderr_text}")
                         # Log the command that failed
+                        LOGGER.debug(f"Failed command: {' '.join(cmd)}")
                 except Exception as e:
                     LOGGER.error(
                         f"Error running FFmpeg for subtitle extraction: {e}"
                     )
                     # Log the command that failed
+                    LOGGER.debug(f"Failed command: {' '.join(cmd)}")
 
     # Delete original file if requested
     if delete_original and extracted_files:
@@ -2883,9 +2980,11 @@ async def proceed_extract(
 async def create_default_audio_thumbnail(output_dir, user_id=None):
     # Try user thumbnail first if available
     if user_id and await aiopath.exists(f"thumbnails/{user_id}.jpg"):
+        LOGGER.debug("Using user thumbnail for audio file")
         return f"thumbnails/{user_id}.jpg"
     # Then try owner thumbnail
     if await aiopath.exists(f"thumbnails/{Config.OWNER_ID}.jpg"):
+        LOGGER.debug("Using owner thumbnail for audio file")
         return f"thumbnails/{Config.OWNER_ID}.jpg"
 
     # Create a default audio thumbnail if no user/owner thumbnail
@@ -2917,6 +3016,7 @@ async def create_default_audio_thumbnail(output_dir, user_id=None):
         _, err, code = await cmd_exec(cmd)
 
         if code != 0 or not await aiopath.exists(default_thumb):
+            LOGGER.debug(f"Failed to create default audio thumbnail: {err}")
             # Try with a different approach
             cmd = [
                 "xtra",  # Using xtra instead of ffmpeg
@@ -2935,6 +3035,7 @@ async def create_default_audio_thumbnail(output_dir, user_id=None):
             _, err, code = await cmd_exec(cmd)
 
             if code != 0 or not await aiopath.exists(default_thumb):
+                LOGGER.debug(
                     f"Failed to create default audio thumbnail with second method: {err}",
                 )
                 # As a last resort, try to create a simple image file directly
@@ -2947,7 +3048,9 @@ async def create_default_audio_thumbnail(output_dir, user_id=None):
 
                     img = Image.new("RGB", (320, 320), color=(0, 0, 255))
                     img.save(default_thumb)
+                    LOGGER.debug("Created default audio thumbnail using PIL")
                 except Exception as e:
+                    LOGGER.debug(
                         f"Failed to create default audio thumbnail with PIL: {e}",
                     )
                     # Create an even simpler fallback image
@@ -2958,11 +3061,14 @@ async def create_default_audio_thumbnail(output_dir, user_id=None):
 
                         img = Image.new("RGB", (32, 32), color=(0, 0, 255))
                         img.save(default_thumb)
+                        LOGGER.debug(
                             "Created tiny default audio thumbnail using PIL"
                         )
                     except Exception as e2:
+                        LOGGER.debug(f"All thumbnail creation methods failed: {e2}")
                         return None
     except Exception as e:
+        LOGGER.debug(f"Error creating default audio thumbnail: {e}")
         return None
 
     # Final check to make sure the thumbnail exists
@@ -3018,9 +3124,11 @@ async def get_video_thumbnail(video_file, duration):
 async def create_default_text_thumbnail(output_dir, user_id=None):
     # Try user thumbnail first if available
     if user_id and await aiopath.exists(f"thumbnails/{user_id}.jpg"):
+        LOGGER.debug("Using user thumbnail for text file")
         return f"thumbnails/{user_id}.jpg"
     # Then try owner thumbnail
     if await aiopath.exists(f"thumbnails/{Config.OWNER_ID}.jpg"):
+        LOGGER.debug("Using owner thumbnail for text file")
         return f"thumbnails/{Config.OWNER_ID}.jpg"
 
     # Create a default thumbnail for text files if no user/owner thumbnail
@@ -3048,7 +3156,9 @@ async def create_default_text_thumbnail(output_dir, user_id=None):
                 # Create a simple gray image
                 img = Image.new("RGB", (320, 320), color=(128, 128, 128))
                 img.save(default_thumb)
+                LOGGER.debug("Created default text thumbnail using PIL")
             except Exception as e:
+                LOGGER.debug(
                     f"Failed to create default text thumbnail with PIL: {e}"
                 )
                 return None
@@ -3061,9 +3171,11 @@ async def create_default_text_thumbnail(output_dir, user_id=None):
 async def create_default_video_thumbnail(output_dir, user_id=None):
     # Try user thumbnail first if available
     if user_id and await aiopath.exists(f"thumbnails/{user_id}.jpg"):
+        LOGGER.debug("Using user thumbnail for video file")
         return f"thumbnails/{user_id}.jpg"
     # Then try owner thumbnail
     if await aiopath.exists(f"thumbnails/{Config.OWNER_ID}.jpg"):
+        LOGGER.debug("Using owner thumbnail for video file")
         return f"thumbnails/{Config.OWNER_ID}.jpg"
 
     # Create a default thumbnail for video files if no user/owner thumbnail
@@ -3093,7 +3205,9 @@ async def create_default_video_thumbnail(output_dir, user_id=None):
                 # Create a simple black image
                 img = Image.new("RGB", (640, 360), color=(0, 0, 0))
                 img.save(default_thumb)
+                LOGGER.debug("Created default video thumbnail using PIL")
             except Exception as e:
+                LOGGER.debug(
                     f"Failed to create default video thumbnail with PIL: {e}"
                 )
                 return None
@@ -3106,9 +3220,11 @@ async def create_default_video_thumbnail(output_dir, user_id=None):
 async def create_default_image_thumbnail(output_dir, user_id=None):
     # Try user thumbnail first if available
     if user_id and await aiopath.exists(f"thumbnails/{user_id}.jpg"):
+        LOGGER.debug("Using user thumbnail for image file")
         return f"thumbnails/{user_id}.jpg"
     # Then try owner thumbnail
     if await aiopath.exists(f"thumbnails/{Config.OWNER_ID}.jpg"):
+        LOGGER.debug("Using owner thumbnail for image file")
         return f"thumbnails/{Config.OWNER_ID}.jpg"
 
     # Create a default thumbnail for image files if no user/owner thumbnail
@@ -3138,7 +3254,9 @@ async def create_default_image_thumbnail(output_dir, user_id=None):
                 # Create a simple purple image
                 img = Image.new("RGB", (640, 360), color=(128, 0, 128))
                 img.save(default_thumb)
+                LOGGER.debug("Created default image thumbnail using PIL")
             except Exception as e:
+                LOGGER.debug(
                     f"Failed to create default image thumbnail with PIL: {e}"
                 )
                 return None
@@ -3626,6 +3744,7 @@ class FFMpeg:
                                     else:
                                         self._eta_raw = 0
                             except Exception as e:
+                                LOGGER.debug(f"Error calculating trim progress: {e}")
 
                     elif key == "speed":
                         self._time_rate = max(0.1, float(value.strip("x")))
@@ -3661,6 +3780,7 @@ class FFMpeg:
         if "-del" in ffmpeg:
             ffmpeg.remove("-del")
             delete_files = True
+            LOGGER.debug(
                 "Detected -del flag, will delete original files after processing"
             )
 
@@ -3679,6 +3799,7 @@ class FFMpeg:
         for item in ffmpeg:
             if isinstance(item, str) and ".trim" in item:
                 is_trim_command = True
+                LOGGER.debug(f"Detected trim command: {' '.join(ffmpeg)}")
                 break
 
         # Find all output files in the command
@@ -3703,6 +3824,7 @@ class FFMpeg:
                     and not arg.startswith("-")
                 ):
                     output_file = arg
+                    LOGGER.debug(
                         f"Found output file with .trim. in name: {output_file}"
                     )
                     break
@@ -3722,6 +3844,7 @@ class FFMpeg:
                             output_file = ffmpeg[i]
 
                     if output_file:
+                        LOGGER.debug(
                             f"Found output file after input file: {output_file}"
                         )
 
@@ -3730,9 +3853,11 @@ class FFMpeg:
             if not output_file and len(ffmpeg) >= 2 and ffmpeg[-1] == "-y":
                 if not ffmpeg[-2].startswith("-") and "." in ffmpeg[-2]:
                     output_file = ffmpeg[-2]
+                    LOGGER.debug(f"Found output file before -y flag: {output_file}")
 
             # If we found an output file, add it to the outputs list
             if output_file:
+                LOGGER.debug(f"Using identified output file: {output_file}")
                 outputs = [output_file]
             else:
                 LOGGER.warning(
@@ -3763,6 +3888,7 @@ class FFMpeg:
                 ffmpeg[index] = output
 
             # Log the identified output files
+            LOGGER.debug(
                 f"Identified output files from mltb placeholders: {outputs}"
             )
 
@@ -3774,6 +3900,7 @@ class FFMpeg:
         try:
             if await aiopath.exists(f_path):
                 original_file_size = await aiopath.getsize(f_path)
+                LOGGER.debug(f"Original file size: {original_file_size} bytes")
         except Exception as e:
             LOGGER.error(f"Error getting original file size: {e}")
 
@@ -3828,6 +3955,7 @@ class FFMpeg:
                             f"Output file exists but has zero size: {output}"
                         )
                         break
+                    LOGGER.debug(
                         f"Output file is valid with size {output_size} bytes: {output}"
                     )
                 except Exception as e:
@@ -3988,6 +4116,7 @@ class FFMpeg:
         if "-del" in ffmpeg:
             ffmpeg.remove("-del")
             delete_files = True
+            LOGGER.debug(
                 "Detected -del flag, will delete original files after processing"
             )
 
@@ -4024,6 +4153,7 @@ class FFMpeg:
             try:
                 if await aiopath.exists(f_path):
                     original_file_size = await aiopath.getsize(f_path)
+                    LOGGER.debug(f"Original file size: {original_file_size} bytes")
             except Exception as e:
                 LOGGER.error(f"Error getting original file size: {e}")
 
@@ -4042,6 +4172,7 @@ class FFMpeg:
                             f"Output file exists but has zero size: {f_path}"
                         )
                     else:
+                        LOGGER.debug(
                             f"Output file is valid with size {output_size} bytes: {f_path}"
                         )
 
@@ -4111,8 +4242,10 @@ class FFMpeg:
         base_name = ospath.splitext(video_file)[0]
         output = f"{base_name}.{ext}"
 
+        LOGGER.debug(
             f"Input file: {video_file} (exists: {await aiopath.exists(video_file)})"
         )
+        LOGGER.debug(f"Output file: {output}")
 
         # Check if the output file already exists and is the same as input
         if output == video_file:
@@ -4121,6 +4254,7 @@ class FFMpeg:
 
         # Log if we're going to delete the original file after conversion
         if delete_original:
+            LOGGER.debug(f"Will delete original file after conversion: {video_file}")
 
         # Get custom video settings from listener if available
         video_codec = getattr(self._listener, "convert_video_codec", None)
@@ -4488,6 +4622,7 @@ class FFMpeg:
             LOGGER.info(
                 f"Copy codec failed for {video_file}, trying with transcoding"
             )
+            LOGGER.debug(
                 f"Passing delete_original={delete_original} to retry attempt"
             )
             return await self.convert_video(
@@ -4499,6 +4634,7 @@ class FFMpeg:
             LOGGER.info(
                 f"Full stream transcoding failed for {video_file}, trying with only video and audio streams"
             )
+            LOGGER.debug(
                 f"Passing delete_original={delete_original} to second retry attempt"
             )
             return await self.convert_video(
@@ -4610,8 +4746,10 @@ class FFMpeg:
         base_name = ospath.splitext(audio_file)[0]
         output = f"{base_name}.{ext}"
 
+        LOGGER.debug(
             f"Input file: {audio_file} (exists: {await aiopath.exists(audio_file)})"
         )
+        LOGGER.debug(f"Output file: {output}")
 
         # Check if the output file already exists and is the same as input
         if output == audio_file:
@@ -4767,6 +4905,7 @@ class FFMpeg:
             LOGGER.info(
                 f"Copy codec failed for {audio_file}, trying with transcoding"
             )
+            LOGGER.debug(
                 f"Passing delete_original={delete_original} to audio retry attempt"
             )
             return await self.convert_audio(audio_file, ext, True, delete_original)
@@ -4807,8 +4946,10 @@ class FFMpeg:
         file_ext = ospath.splitext(subtitle_file)[1].lower()
         output = f"{ospath.splitext(subtitle_file)[0]}.{ext}"
 
+        LOGGER.debug(
             f"Input file: {subtitle_file} (exists: {await aiopath.exists(subtitle_file)})"
         )
+        LOGGER.debug(f"Output file: {output}")
 
         # Get custom subtitle settings from listener if available
         subtitle_encoding = getattr(
@@ -4851,6 +4992,7 @@ class FFMpeg:
         else:
             input_format = "unknown"
 
+        LOGGER.debug(
             f"Detected subtitle format: {input_format} for file: {subtitle_file}"
         )
 
@@ -4965,8 +5107,10 @@ class FFMpeg:
         # Get base name and output path
         output = f"{ospath.splitext(document_file)[0]}.{ext}"
 
+        LOGGER.debug(
             f"Input file: {document_file} (exists: {await aiopath.exists(document_file)})"
         )
+        LOGGER.debug(f"Output file: {output}")
 
         # Check if the output file already exists and is the same as input
         if output == document_file:
@@ -5121,8 +5265,10 @@ class FFMpeg:
         # Get output path
         output = f"{ospath.splitext(archive_file)[0]}.{ext}"
 
+        LOGGER.debug(
             f"Input file: {archive_file} (exists: {await aiopath.exists(archive_file)})"
         )
+        LOGGER.debug(f"Output file: {output}")
 
         # Check if the output file already exists and is the same as input
         if output == archive_file:
@@ -5345,10 +5491,12 @@ class FFMpeg:
 
         # For equal splits, calculate the exact duration for each part
         if is_equal_splits and duration > 0:
+            LOGGER.debug(f"Using equal splits mode with {parts} parts")
             # Calculate duration per part (in seconds)
             duration_per_part = duration / parts
             # Reserve some buffer for each part (3 seconds)
             duration_per_part -= 3
+            LOGGER.debug(
                 f"Each part will be approximately {duration_per_part:.2f} seconds"
             )
 
@@ -5454,6 +5602,7 @@ class FFMpeg:
         # Apply an additional safety buffer for multi-part files
         if parts > 2:
             buffer_size = 5000000  # 5MB additional buffer for multi-part files
+            LOGGER.debug(
                 f"Applying additional buffer of {buffer_size} bytes for multi-part split"
             )
             split_size -= buffer_size
@@ -5608,6 +5757,7 @@ async def apply_document_metadata(file_path, title=None, author=None, comment=No
 
     # Skip if no metadata to apply
     if not title and not author and not comment:
+        LOGGER.debug("No metadata provided, skipping")
         return True
 
     # Get file extension

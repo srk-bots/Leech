@@ -385,6 +385,7 @@ class DbManager:
         if self.db is None:
             return
 
+        LOGGER.debug(
             f"Removing message {message_id} in chat {chat_id} from scheduled deletions",
         )
 

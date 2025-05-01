@@ -1211,12 +1211,15 @@ async def gen_mediainfo(
                             ):
                                 is_split_archive = True
                                 is_archive = True
+                                LOGGER.debug(
                                     f"Verified numeric extension is an archive: {filename}"
                                 )
                             else:
+                                LOGGER.debug(
                                     f"Numeric extension is not an archive: {filename} - {stdout}"
                                 )
                     except Exception as e:
+                        LOGGER.debug(
                             f"Error verifying archive with file command: {e}"
                         )
                         # Assume it's an archive if verification fails
@@ -1226,6 +1229,7 @@ async def gen_mediainfo(
                     # For non-numeric patterns, we're more confident it's an archive
                     is_split_archive = True
                     is_archive = True
+                    LOGGER.debug(f"Detected split archive file: {filename}")
 
         # Always use file command to verify archive type, even for known extensions
         # This provides more accurate information and handles cases where extensions don't match content
@@ -1259,6 +1263,7 @@ async def gen_mediainfo(
                         ]
                     ):
                         is_archive = True
+                        LOGGER.debug(
                             f"Confirmed archive type via file command: {filename} - {stdout}"
                         )
 
@@ -1282,9 +1287,11 @@ async def gen_mediainfo(
                         elif "iso 9660" in stdout_lower:
                             file_ext = ".iso"
                 elif return_code != 0:
+                    LOGGER.debug(
                         f"File command failed with return code {return_code}: {stderr}"
                     )
         except Exception as e:
+            LOGGER.debug(f"Error checking file type with file command: {e}")
             # Continue with the process, using the extension-based detection as fallback
 
         # Handle archive files
@@ -1396,6 +1403,7 @@ async def gen_mediainfo(
                         elif "Type = Cab" in stdout:
                             archive_format = "CAB"
             except Exception as e:
+                LOGGER.debug(f"Error verifying archive format: {e}")
                 # Keep the format determined from the extension if verification fails
 
             tc += f"{'Format':<28}: {archive_format} Archive\n"
@@ -1427,6 +1435,7 @@ async def gen_mediainfo(
             try:
                 # Use absolute path to avoid "No such file or directory" errors
                 abs_path = ospath.abspath(des_path)
+                LOGGER.debug(f"Using absolute path for file command: {abs_path}")
 
                 # Verify file exists before running file command
                 if not ospath.exists(abs_path):
@@ -1439,9 +1448,11 @@ async def gen_mediainfo(
                     if return_code == 0 and stdout:
                         tc += f"{'File analysis':<28}: {stdout.strip()}\n"
                     else:
+                        LOGGER.debug(
                             f"File command returned non-zero code: {return_code}, stderr: {stderr}"
                         )
             except Exception as e:
+                LOGGER.debug(
                     f"Error getting archive file info with file command: {e}"
                 )
                 # Continue without this info, it's not critical
@@ -1464,6 +1475,7 @@ async def gen_mediainfo(
                         stdout, stderr, return_code = await cmd_exec(cmd)
                         if return_code != 0:
                             # If 7z fails, try unrar
+                            LOGGER.debug(
                                 f"7z failed for RAR file, trying unrar: {abs_path}"
                             )
                             cmd = ["unrar", "l", abs_path]
@@ -1525,6 +1537,7 @@ async def gen_mediainfo(
 
                 # If 7z fails, try format-specific tools
                 if return_code != 0:
+                    LOGGER.debug(
                         f"7z failed for {file_ext} file, trying format-specific tool: {abs_path}"
                     )
 
@@ -1857,9 +1870,11 @@ async def gen_mediainfo(
                     if return_code == 0 and stdout:
                         tc += f"{'File analysis':<28}: {stdout.strip()}\n"
                     else:
+                        LOGGER.debug(
                             f"File command returned non-zero code: {return_code}, stderr: {stderr}"
                         )
             except Exception as e:
+                LOGGER.debug(f"Error getting image file info with file command: {e}")
                 # Continue without this info, it's not critical
 
             tc += "</pre><br>"
@@ -1910,9 +1925,11 @@ async def gen_mediainfo(
                     if return_code == 0 and stdout:
                         tc += f"{'File analysis':<28}: {stdout.strip()}\n"
                     else:
+                        LOGGER.debug(
                             f"File command returned non-zero code: {return_code}, stderr: {stderr}"
                         )
             except Exception as e:
+                LOGGER.debug(
                     f"Error getting document file info with file command: {e}"
                 )
                 # Continue without this info, it's not critical
@@ -1993,9 +2010,11 @@ async def gen_mediainfo(
                         ]:
                             format_info = "WebVTT (Web Video Text Tracks)"
                     else:
+                        LOGGER.debug(
                             f"File command returned non-zero code: {return_code}, stderr: {stderr}"
                         )
             except Exception as e:
+                LOGGER.debug(
                     f"Error getting subtitle file info with file command: {e}"
                 )
                 # Continue without this info, it's not critical
@@ -2183,8 +2202,10 @@ async def gen_mediainfo(
         if des_path and await aiopath.exists(des_path) and des_path != media_path:
             # Only delete files in the Mediainfo/ directory (temporary downloads)
             if des_path.startswith("Mediainfo/") or "Mediainfo/" in des_path:
+                LOGGER.debug(f"Cleaning up temporary MediaInfo file: {des_path}")
                 await aioremove(des_path)
             else:
+                LOGGER.debug(
                     f"Not cleaning up file as it's not a temporary MediaInfo file: {des_path}"
                 )
 
@@ -2386,6 +2407,7 @@ async def mediainfo(_, message):
     finally:
         # Calculate execution time
         execution_time = time() - start_time
+        LOGGER.debug(f"MediaInfo command executed in {execution_time:.2f} seconds")
 
         # Run garbage collection after command execution
         # Use aggressive mode for long-running commands

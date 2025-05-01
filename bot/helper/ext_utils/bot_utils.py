@@ -594,5 +594,6 @@ def is_flag_enabled(flag_name):
     # For debugging
     from bot import LOGGER
 
+    LOGGER.debug(f"Flag {flag_name} maps to tool {tool_name}, enabled: {is_enabled}")
 
     return is_enabled

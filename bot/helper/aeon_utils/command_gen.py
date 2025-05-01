@@ -150,9 +150,11 @@ async def get_watermark_cmd(
 
                     # Check if dimensions are divisible by 2
                     if width % 2 != 0 or height % 2 != 0:
+                        LOGGER.debug(
                             f"Video dimensions not divisible by 2: {width}x{height}, will apply padding"
                         )
                     else:
+                        LOGGER.debug(
                             f"Video dimensions are divisible by 2: {width}x{height}"
                         )
                         needs_padding = False
@@ -160,6 +162,7 @@ async def get_watermark_cmd(
         except Exception as e:
             LOGGER.warning(f"Error checking video dimensions: {e}")
 
+        LOGGER.debug(
             f"Padding decision for {os.path.basename(file)}: needs_padding={needs_padding}, dimensions={width}x{height}"
         )
 
@@ -279,6 +282,7 @@ async def get_watermark_cmd(
         # Add fast mode if needed
         if use_fast_mode:
             cmd.extend(["-preset", "ultrafast"])
+            LOGGER.debug(
                 f"Using fast mode for large file: {file_size / (1024 * 1024):.2f} MB"
             )
 
@@ -517,6 +521,7 @@ async def get_watermark_cmd(
                     temp_file,
                 ]
 
+            LOGGER.debug(f"Creating audio watermark for {os.path.basename(file)}")
 
         except Exception as e:
             LOGGER.error(f"Error creating audio watermark command: {e}")
@@ -525,6 +530,7 @@ async def get_watermark_cmd(
     elif media_type == "video_with_subtitle":
         # For videos with subtitle streams, we should handle them as regular videos
         # but skip the subtitle watermarking
+        LOGGER.debug(
             f"Detected video with subtitle streams: {os.path.basename(file)}"
         )
 
@@ -556,6 +562,7 @@ async def get_watermark_cmd(
         # Add fast mode if needed
         if use_fast_mode:
             cmd.extend(["-preset", "ultrafast"])
+            LOGGER.debug(
                 f"Using fast mode for large file: {file_size / (1024 * 1024):.2f} MB"
             )
 
@@ -568,6 +575,7 @@ async def get_watermark_cmd(
         # Skip subtitle watermarking if it's explicitly disabled
         if not subtitle_watermark_enabled:
             # For subtitle files with watermarking disabled, just return the file as is
+            LOGGER.debug(
                 f"Subtitle watermarking is disabled, skipping: {os.path.basename(file)}"
             )
             return None, None
@@ -696,6 +704,7 @@ async def get_watermark_cmd(
                     )
                     f.write(watermarked_content)
 
+                    LOGGER.debug(
                         f"Added watermark to subtitle file: {os.path.basename(file)}"
                     )
 
@@ -785,6 +794,7 @@ async def get_watermark_cmd(
                             )
                             f.write(modified_content)
 
+                            LOGGER.debug(
                                 f"Added watermark to ASS/SSA file: {os.path.basename(file)}"
                             )
                             return None, temp_file
@@ -795,6 +805,7 @@ async def get_watermark_cmd(
                         subtitle_watermark_text if subtitle_watermark_text else key
                     )
                     f.write(f"; Watermarked with: {watermark_text}\n{content}")
+                    LOGGER.debug(
                         f"Added watermark comment to ASS/SSA file: {os.path.basename(file)}"
                     )
                     return None, temp_file
@@ -844,6 +855,7 @@ async def get_watermark_cmd(
                     )
                     f.write(watermarked_content)
 
+                    LOGGER.debug(
                         f"Added watermark to WebVTT file: {os.path.basename(file)}"
                     )
                     return None, temp_file
@@ -855,6 +867,7 @@ async def get_watermark_cmd(
                 )
                 f.write(f"# Watermarked with: {watermark_text}\n{content}")
 
+                LOGGER.debug(
                     f"Added watermark comment to subtitle file: {os.path.basename(file)}"
                 )
                 return None, temp_file
@@ -872,6 +885,7 @@ async def get_watermark_cmd(
         cmd.extend(["-threads", f"{thread_count}", temp_file])
 
     # Log the generated command for debugging only
+    LOGGER.debug(f"Generated watermark command for {media_type}: {' '.join(cmd)}")
 
     return cmd, temp_file
 
@@ -927,9 +941,11 @@ async def get_metadata_cmd(
     # For subtitle files, use .srt for maximum compatibility
     if file_ext in [".hevc", ".mpeg"]:
         temp_file = f"{file_path}.temp.mp4"
+        LOGGER.debug(f"Using .mp4 container for {file_ext} file: {file_path}")
     elif file_ext in [".jpg", ".jpeg", ".png", ".gif", ".tiff", ".tif", ".webp"]:
         # For image files, keep the same extension for better compatibility
         temp_file = f"{file_path}.temp{file_ext}"
+        LOGGER.debug(f"Using {file_ext} container for image file: {file_path}")
     elif file_ext in [
         ".srt",
         ".ass",
@@ -942,6 +958,7 @@ async def get_metadata_cmd(
     ]:
         # For subtitle files, use .srt for maximum compatibility
         temp_file = f"{file_path}.temp.srt"
+        LOGGER.debug(f"Using .srt container for subtitle file: {file_path}")
     else:
         temp_file = f"{file_path}.temp.mkv"
 
@@ -991,6 +1008,7 @@ async def get_metadata_cmd(
             ".dfxp",
             ".sub",
         ]:
+            LOGGER.debug(
                 f"Converting subtitle format {file_ext} to SRT for better metadata support"
             )
 
@@ -1656,6 +1674,7 @@ async def get_metadata_cmd(
     cmd.append(temp_file)
 
     # Log the command for debugging
+    LOGGER.debug(f"Metadata command: {' '.join(cmd)}")
 
     return cmd, temp_file
 

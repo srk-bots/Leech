@@ -110,6 +110,7 @@ async def get_task_speed(task) -> int:
             return speed_string_to_bytes(speed)
         return speed
     except Exception as e:
+        LOGGER.debug(f"Error getting task speed: {e}")
         return 0
 
 
@@ -149,6 +150,7 @@ async def get_task_eta(task) -> int:
                 return float("inf")
         return eta
     except Exception as e:
+        LOGGER.debug(f"Error getting task ETA: {e}")
         return float("inf")  # Return infinite ETA on error
 
 
@@ -185,6 +187,7 @@ async def estimate_completion_time(task) -> int:
         return remaining_bytes / speed if speed > 0 else float("inf")
 
     except Exception as e:
+        LOGGER.debug(f"Error estimating completion time: {e}")
         return float("inf")
 
 
@@ -200,6 +203,7 @@ async def get_task_elapsed_time(task) -> int:
 
         return int(time.time() - task.listener.message.date.timestamp())
     except Exception as e:
+        LOGGER.debug(f"Error getting task elapsed time: {e}")
         return 0
 
 
@@ -231,6 +235,7 @@ async def should_cancel_task(task, gid: str) -> tuple[bool, str]:
         if status not in [MirrorStatus.STATUS_DOWNLOAD, MirrorStatus.STATUS_QUEUEDL]:
             return False, ""
     except Exception as e:
+        LOGGER.debug(f"Error checking task status: {e}")
         return False, ""
 
     elapsed_time = await get_task_elapsed_time(task)
@@ -400,7 +405,9 @@ async def identify_resource_intensive_tasks():
                         if size > 1024 * 1024 * 1024:  # 1GB
                             memory_intensive_tasks.append((mid, "memory"))
                     except Exception as e:
+                        LOGGER.debug(f"Error checking task size: {e}")
             except Exception as e:
+                LOGGER.debug(f"Error identifying resource intensive task {mid}: {e}")
 
 
 async def queue_task(mid: int, reason: str):

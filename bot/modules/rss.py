@@ -106,6 +106,7 @@ async def rss_sub(_, message, pre_event):
             continue
 
         # Log the item being processed
+        LOGGER.debug(f"Processing RSS subscription item {index}: {item}")
         args = item.split()
 
         title = args[0].strip()
@@ -194,6 +195,7 @@ async def rss_sub(_, message, pre_event):
                 site_name = parsed_url.netloc.replace("www.", "")
                 feed_msg += f"\n<b>Site: </b><code>{site_name}</code>"
             except Exception as e:
+                LOGGER.debug(f"Error extracting site name from URL: {e}")
 
             # Add a separator between feeds
             if msg:
@@ -206,6 +208,7 @@ async def rss_sub(_, message, pre_event):
                 parsed_url = urlparse(feed_link)
                 site_name = parsed_url.netloc.replace("www.", "")
             except Exception as e:
+                LOGGER.debug(f"Error extracting site name from URL: {e}")
                 site_name = "Unknown"
 
             async with rss_dict_lock:
@@ -240,6 +243,7 @@ async def rss_sub(_, message, pre_event):
             LOGGER.info(
                 f"RSS Feed Added: {title}",
             )
+            LOGGER.debug(
                 f"Full details - id: {user_id} - title: {title} - link: {feed_link} - c: {cmd} - inf: {inf} - exf: {exf} - stv {stv}"
             )
             success_count += 1
@@ -359,6 +363,7 @@ async def rss_update(_, message, pre_event, state):
                 await database.trunc_table("rss")
     if updated:
         LOGGER.info(f"RSS link(s) {state}d: {len(updated)}")
+        LOGGER.debug(f"RSS link with Title(s): {updated} has been {state}d!")
         await send_message(
             message,
             f"RSS links with Title(s): <code>{updated}</code> has been {state}d!",
@@ -898,6 +903,7 @@ async def rss_monitor():
                         # Check if feed_count is within the range of available entries
                         if feed_count >= len(rss_d.entries):
                             # Only log at debug level to avoid cluttering logs
+                            LOGGER.debug(
                                 f"Reached Max index no. {feed_count} for this feed: {title}. All available entries processed.",
                             )
                             break
@@ -939,6 +945,7 @@ async def rss_monitor():
                             size = 0
                     except IndexError:
                         # Only log at debug level to avoid cluttering logs
+                        LOGGER.debug(
                             f"Reached Max index no. {feed_count} for this feed: {title}. All available entries processed.",
                         )
                         break
@@ -1019,6 +1026,7 @@ async def rss_monitor():
                             parsed_url = urlparse(data["link"])
                             site_name = parsed_url.netloc.replace("www.", "")
                         except Exception as e:
+                            LOGGER.debug(f"Error extracting site name from URL: {e}")
                             site_name = "Unknown"
 
                     site_info = f" | <b>Site:</b> <code>{site_name}</code>"
@@ -1072,6 +1080,8 @@ async def rss_monitor():
 
                     rss_dict[user][title].update(update_data)
                 await database.rss_update(user)
+                LOGGER.debug(f"Feed Name: {title}")
+                LOGGER.debug(f"Last item: {last_link}")
             except RssShutdownException as ex:
                 LOGGER.warning(ex)
                 break

@@ -31,6 +31,7 @@ async def update_system_load():
         system_load["available_memory_mb"] = memory.available // (1024 * 1024)
         system_load["total_memory_mb"] = memory.total // (1024 * 1024)
 
+        LOGGER.debug(
             f"System load updated: CPU {system_load['cpu_percent']}%, "
             f"Memory {system_load['memory_percent']}%, "
             f"Available Memory: {system_load['available_memory_mb']} MB"
@@ -108,6 +109,7 @@ async def apply_resource_limits(cmd, process_id=None, task_type="FFmpeg"):
 
     # Log the process ID if provided
     if process_id:
+        LOGGER.debug(f"Applying resource limits to {task_type} process {process_id}")
     # Apply memory limits if configured
     memory_limit = Config.FFMPEG_MEMORY_LIMIT
 
@@ -121,6 +123,7 @@ async def apply_resource_limits(cmd, process_id=None, task_type="FFmpeg"):
         # Prepend ulimit command to limit memory
         # -v: virtual memory limit
         cmd = ["bash", "-c", f"ulimit -v {memory_limit_kb} && {escaped_cmd}"]
+        LOGGER.debug(
             f"Applied memory limit of {memory_limit} MB to {task_type} process"
         )
 
@@ -130,6 +133,7 @@ async def apply_resource_limits(cmd, process_id=None, task_type="FFmpeg"):
         # Use taskset to set CPU affinity
         affinity_str = ",".join(map(str, cpu_affinity))
         cmd = ["taskset", "-c", affinity_str, *cmd]
+        LOGGER.debug(f"Applied CPU affinity {affinity_str} to {task_type} process")
 
     # Apply thread count if dynamic threading is enabled
     if Config.FFMPEG_DYNAMIC_THREADS:
@@ -139,6 +143,7 @@ async def apply_resource_limits(cmd, process_id=None, task_type="FFmpeg"):
             for i, arg in enumerate(cmd):
                 if arg == "-threads" and i + 1 < len(cmd):
                     cmd[i + 1] = str(thread_count)
+                    LOGGER.debug(
                         f"Set dynamic thread count to {thread_count} for {task_type} process"
                     )
                     break

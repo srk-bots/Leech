@@ -62,6 +62,7 @@ class GoogleDriveUpload(GoogleDriveHelper):
 
         # Generate MediaInfo if enabled and it's a file (not a folder)
         if user_mediainfo_enabled and ospath.isfile(self._path):
+            LOGGER.debug("Generating MediaInfo for mirror task before upload...")
             from bot.modules.mediainfo import gen_mediainfo
 
             try:

@@ -60,6 +60,7 @@ class MyLogger:
         if msg != "ERROR: Cancelling...":
             # Don't log postprocessing errors related to output files
             if "Postprocessing: Error opening output files" in msg:
+                LOGGER.debug(f"Suppressed error: {msg}")
             # Log preprocessing errors with more details
             elif "Preprocessing: Error splitting the argument list" in msg:
                 LOGGER.error(f"E: {msg}")
@@ -351,6 +352,7 @@ class YoutubeDLHelper:
                                         self._ext = ext
                                     break
                             except Exception as e:
+                                LOGGER.debug(f"Error with template {outtmpl_}: {e}")
                                 continue
 
                         # If all templates failed, use entry ID
@@ -380,6 +382,7 @@ class YoutubeDLHelper:
                         realName = name
                         break
                 except Exception as e:
+                    LOGGER.debug(f"Error with template {outtmpl_}: {e}")
                     continue
 
             # If all templates failed, use video ID and timestamp
@@ -519,10 +522,12 @@ class YoutubeDLHelper:
                                     if (
                                         sys.getsizeof(obj) > 1024 * 1024
                                     ):  # Objects larger than 1MB
+                                        LOGGER.debug(
                                             f"Clearing large local variable: {name} ({sys.getsizeof(obj) / 1024 / 1024:.2f} MB)"
                                         )
                                         locals()[name] = None
                             except Exception as mem_e:
+                                LOGGER.debug(f"Error in memory cleanup: {mem_e}")
 
                     # Break out of retry loop if we got here
                     break
@@ -592,10 +597,12 @@ class YoutubeDLHelper:
                 # Find large objects in memory and clear them
                 for name, obj in list(locals().items()):
                     if sys.getsizeof(obj) > 1024 * 1024:  # Objects larger than 1MB
+                        LOGGER.debug(
                             f"Clearing large local variable: {name} ({sys.getsizeof(obj) / 1024 / 1024:.2f} MB)"
                         )
                         locals()[name] = None
             except Exception as mem_e:
+                LOGGER.debug(f"Error in memory cleanup: {mem_e}")
 
             # Try to provide more helpful error messages
             error_str = str(e)
