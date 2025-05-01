@@ -5395,6 +5395,7 @@ async def edit_bot_settings(client, query):
             or data[2].startswith("DEEPSEEK_")
             or data[2].startswith("CHATGPT_")
             or data[2].startswith("GEMINI_")
+            or data[2] == "CUSTOM_AI_API_URL"
         ):
             LOGGER.debug(f"Setting return function for botvar {data[2]} to ai")
             rfunc = partial(update_buttons, message, "ai")
@@ -5601,6 +5602,7 @@ async def edit_bot_settings(client, query):
             or key.startswith("DEEPSEEK_")
             or key.startswith("CHATGPT_")
             or key.startswith("GEMINI_")
+            or key == "CUSTOM_AI_API_URL"
         ):
             return_menu = "ai"
             LOGGER.debug(f"toggle: Setting return_menu for {key} to {return_menu}")
