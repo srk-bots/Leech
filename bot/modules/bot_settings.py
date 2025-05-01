@@ -635,14 +635,6 @@ async def get_buttons(key=None, edit_type=None, page=0, user_id=None):
                 msg += "Set the API URL for Truecaller phone number lookup.\n\n"
                 msg += "No default URL is provided. You must set your own API endpoint.\n\n"
                 msg += "The Truecaller module will not work until this is configured.\n\n"
-            elif key == "MISTRAL_API_KEY":
-                msg += "Set your Mistral AI API key for the AI chatbot.\n\n"
-                msg += "You can get an API key from https://console.mistral.ai/\n\n"
-                msg += "This will be used when users use the /ask command without their own API key.\n\n"
-            elif key == "MISTRAL_API_URL":
-                msg += "Set a custom API URL for Mistral AI chatbot.\n\n"
-                msg += "This is used as a fallback if the API key is not set or fails.\n\n"
-                msg += "You can use your own proxy endpoint if you have one.\n\n"
 
             msg += f"Send a valid value for {key}. Current value is '{Config.get(key)}'. Timeout: 60 sec"
         elif edit_type == "ariavar":
@@ -678,7 +670,7 @@ async def get_buttons(key=None, edit_type=None, page=0, user_id=None):
                 msg = f"Send a valid value for {key} in server {Config.USENET_SERVERS[index]['name']}. Current value is {Config.USENET_SERVERS[index][key]}. Timeout: 60 sec"
     elif key == "var":
         conf_dict = Config.get_all()
-        # Filter out watermark, merge configs, metadata, convert, and task monitor settings
+        # Filter out watermark, merge configs, metadata, convert, task monitor, and AI settings
         filtered_keys = [
             k
             for k in list(conf_dict.keys())
@@ -695,9 +687,18 @@ async def get_buttons(key=None, edit_type=None, page=0, user_id=None):
                         "TRIM_",
                         "EXTRACT_",
                         "TASK_MONITOR_",
+                        "MISTRAL_",
+                        "DEEPSEEK_",
+                        "CHATGPT_",
+                        "GEMINI_",
                     )
                 )
-                or k in ["CONCAT_DEMUXER_ENABLED", "FILTER_COMPLEX_ENABLED"]
+                or k
+                in [
+                    "CONCAT_DEMUXER_ENABLED",
+                    "FILTER_COMPLEX_ENABLED",
+                    "DEFAULT_AI_PROVIDER",
+                ]
             )
         ]
 
@@ -711,8 +712,6 @@ async def get_buttons(key=None, edit_type=None, page=0, user_id=None):
         # Add API settings to the config menu
         api_keys = [
             "TRUECALLER_API_URL",
-            "MISTRAL_API_KEY",
-            "MISTRAL_API_URL",
         ]
 
         # Add module control settings to the config menu
