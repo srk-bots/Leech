@@ -96,7 +96,6 @@ def force_garbage_collection(threshold_mb=100, log_stats=False, generation=None)
                 if (
                     log_stats and memory_freed > 50
                 ):  # Only log if more than 50MB freed
-                    LOGGER.debug(
                         f"Garbage collection: freed {total_collected} objects, "
                         f"memory freed: {memory_freed:.2f} MB"
                     )
@@ -258,11 +257,9 @@ def set_gc_parameters(threshold=700, interval=60):
         # Only change if significantly different to avoid unnecessary changes
         if abs(current_thresholds[0] - threshold) > 50:
             gc.set_threshold(threshold, current_thresholds[1], current_thresholds[2])
-            LOGGER.debug(f"Set garbage collection threshold to {threshold}")
 
         # Set our custom interval
         _gc_interval = interval
-        LOGGER.debug(f"Set garbage collection interval to {interval} seconds")
     except Exception as e:
         LOGGER.error(f"Failed to set garbage collection parameters: {e}")
 
@@ -289,7 +286,6 @@ def optimized_garbage_collection(aggressive=False, log_stats=False):
                 memory_info = process.memory_info()
                 memory_before = memory_info.rss / (1024 * 1024)
             except Exception as e:
-                LOGGER.debug(f"Error getting memory before collection: {e}")
 
         # First collect only generation 0 (youngest objects)
         # This is usually very fast and frees up most temporary objects
@@ -327,7 +323,6 @@ def optimized_garbage_collection(aggressive=False, log_stats=False):
 
                 # Only log if significant memory was freed or in debug mode
                 if memory_freed > 50:  # Only log if more than 50MB freed
-                    LOGGER.debug(
                         f"Optimized GC: freed {total_collected} objects, "
                         f"memory freed: {memory_freed:.2f} MB"
                     )
@@ -338,7 +333,6 @@ def optimized_garbage_collection(aggressive=False, log_stats=False):
                         f"Cleared {unreachable_count} unreachable objects"
                     )
             except Exception as e:
-                LOGGER.debug(f"Error logging GC stats: {e}")
 
         return True
     except Exception as e:
@@ -360,7 +354,6 @@ def cleanup_large_objects():
                 memory_info = process.memory_info()
                 memory_before = memory_info.rss / (1024 * 1024)
             except Exception as e:
-                LOGGER.debug(f"Error getting memory before cleanup: {e}")
 
         # Force a full collection first
         gc.collect()
@@ -447,7 +440,6 @@ def cleanup_large_objects():
 
                 # Only log if significant memory was freed
                 if memory_freed > 50:  # Only log if more than 50MB freed
-                    LOGGER.debug(
                         f"Large object cleanup: freed {count} large objects, "
                         f"memory freed: {memory_freed:.2f} MB"
                     )
@@ -457,7 +449,6 @@ def cleanup_large_objects():
                             f"Cleared {unreachable_count} unreachable objects"
                         )
             except Exception as e:
-                LOGGER.debug(f"Error logging memory stats after cleanup: {e}")
 
         return count
     except Exception as e:
@@ -489,7 +480,6 @@ def smart_garbage_collection(aggressive=False, for_split_file=False):
                 memory = psutil.virtual_memory()
                 memory_percent = memory.percent
             except Exception as e:
-                LOGGER.debug(f"Error getting memory usage: {e}")
 
         # For split files, always be more aggressive
         if for_split_file:
@@ -504,7 +494,6 @@ def smart_garbage_collection(aggressive=False, for_split_file=False):
 
             # For split files or very high memory usage, do extra cleanup
             if memory_percent > 90 or aggressive:
-                LOGGER.debug(
                     f"Memory usage critical ({memory_percent}%), cleaning up large objects"
                 )
                 cleanup_large_objects()
@@ -532,7 +521,6 @@ def smart_garbage_collection(aggressive=False, for_split_file=False):
                             ):
                                 module._cache.clear()
                     except Exception as e:
-                        LOGGER.debug(f"Error clearing caches: {e}")
 
             return True
         # Normal memory usage

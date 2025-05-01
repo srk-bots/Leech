@@ -388,7 +388,6 @@ class TaskListener(TaskConfig):
                     disable_web_page_preview=True,
                     disable_notification=True,
                 )
-                LOGGER.debug(
                     f"Sent mirror command message to owner's log chat ID: {Config.LOG_CHAT_ID}"
                 )
             except Exception as e:
@@ -409,7 +408,6 @@ class TaskListener(TaskConfig):
             if hasattr(tg, "log_msg") and tg.log_msg:
                 try:
                     await delete_message(tg.log_msg)
-                    LOGGER.debug(
                         f"Deleted leech command message in owner's dump: {tg.log_msg.id}"
                     )
                 except Exception as e:
@@ -477,7 +475,6 @@ class TaskListener(TaskConfig):
                     base_name = re.sub(r"\.part\d+(\..*)?$", "", current_name)
                     ext = current_name.split(".")[-1] if "." in current_name else ""
                     current_name = f"{base_name}.{ext}" if ext else base_name
-                LOGGER.debug(
                     f"Using uploaded filename for completion message: {current_name}"
                 )
 
@@ -506,7 +503,6 @@ class TaskListener(TaskConfig):
                 if user_mediainfo_enabled is None:
                     user_mediainfo_enabled = Config.MEDIAINFO_ENABLED
 
-                LOGGER.debug(
                     f"MediaInfo enabled: {user_mediainfo_enabled}, mime_type: {mime_type}"
                 )
 
@@ -516,7 +512,6 @@ class TaskListener(TaskConfig):
                     and hasattr(self, "mediainfo_link")
                     and self.mediainfo_link
                 ):
-                    LOGGER.debug(
                         f"Using pre-generated MediaInfo link: {self.mediainfo_link}"
                     )
                     msg += f"\n┖ <b>MediaInfo</b> → <a href='https://graph.org/{self.mediainfo_link}'>View</a>"
@@ -546,7 +541,6 @@ class TaskListener(TaskConfig):
                     if user_mediainfo_enabled is None:
                         user_mediainfo_enabled = Config.MEDIAINFO_ENABLED
 
-                    LOGGER.debug(
                         f"MediaInfo enabled for individual file: {user_mediainfo_enabled}, file: {name}"
                     )
 
@@ -558,17 +552,14 @@ class TaskListener(TaskConfig):
                         and self.mediainfo_link.strip()
                     ):
                         # Support all media types including archives, documents, images, etc.
-                        LOGGER.debug(
                             f"Using pre-generated MediaInfo link for individual file: {self.mediainfo_link}"
                         )
                         fmsg += f"\n┖ <b>MediaInfo</b> → <a href='https://graph.org/{self.mediainfo_link}'>View</a>"
                         # Log that MediaInfo link was successfully added to the message
-                        LOGGER.debug(
                             f"Added MediaInfo link to task completion message: {self.mediainfo_link}"
                         )
                     elif user_mediainfo_enabled and hasattr(self, "mediainfo_link"):
                         # MediaInfo was attempted but failed or returned empty
-                        LOGGER.debug(
                             f"MediaInfo generation was attempted but failed or returned empty: {getattr(self, 'mediainfo_link', None)}"
                         )
 
@@ -767,7 +758,6 @@ class TaskListener(TaskConfig):
             if user_mediainfo_enabled is None:
                 user_mediainfo_enabled = Config.MEDIAINFO_ENABLED
 
-            LOGGER.debug(
                 f"MediaInfo enabled for mirror task: {user_mediainfo_enabled}, mime_type: {mime_type}"
             )
 
@@ -779,17 +769,14 @@ class TaskListener(TaskConfig):
                 and self.mediainfo_link.strip()
             ):
                 # Support all media types including archives, documents, images, etc.
-                LOGGER.debug(
                     f"Using pre-generated MediaInfo link for mirror task: {self.mediainfo_link}"
                 )
                 msg += f"\n<b>MediaInfo</b> → <a href='https://graph.org/{self.mediainfo_link}'>View</a>"
                 # Log that MediaInfo link was successfully added to the message
-                LOGGER.debug(
                     f"Added MediaInfo link to mirror task completion message: {self.mediainfo_link}"
                 )
             elif user_mediainfo_enabled and hasattr(self, "mediainfo_link"):
                 # MediaInfo was attempted but failed or returned empty
-                LOGGER.debug(
                     f"MediaInfo generation was attempted but failed or returned empty for mirror task: {getattr(self, 'mediainfo_link', None)}"
                 )
             if link or (
@@ -897,14 +884,12 @@ class TaskListener(TaskConfig):
                 and self.message.chat.type != "private"
             ):
                 await delete_message(self.message)
-                LOGGER.debug(
                     f"Deleted command message after task completion: {self.message.id}"
                 )
 
             # Delete the mirror command message in the owner's log chat ID if it exists
             if hasattr(self, "log_msg") and self.log_msg:
                 await delete_message(self.log_msg)
-                LOGGER.debug(
                     f"Deleted mirror command message in owner's log chat ID: {self.log_msg.id}"
                 )
         except Exception as e:
@@ -919,7 +904,6 @@ class TaskListener(TaskConfig):
             return
 
         # Add a delay before cleaning up to ensure all processes are complete
-        LOGGER.debug(
             f"Waiting 3 seconds before cleaning up download directory: {self.dir}"
         )
         await sleep(3)
@@ -985,7 +969,6 @@ class TaskListener(TaskConfig):
         await start_from_queued()
 
         # Add a delay before cleaning up to ensure all processes are complete
-        LOGGER.debug(
             f"Waiting 5 seconds before cleaning up after download error: {self.dir}"
         )
         await sleep(5)
@@ -1031,7 +1014,6 @@ class TaskListener(TaskConfig):
         await start_from_queued()
 
         # Add a delay before cleaning up to ensure all processes are complete
-        LOGGER.debug(
             f"Waiting 5 seconds before cleaning up after upload error: {self.dir}"
         )
         await sleep(5)

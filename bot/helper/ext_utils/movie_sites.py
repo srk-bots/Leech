@@ -155,7 +155,6 @@ async def fetch_website_content(url, retries=0):
 
     # Skip fetching for magnet links - just return the link itself
     if url.startswith("magnet:"):
-        LOGGER.debug(f"Skipping HTTP fetch for magnet link: {url}")
         return url
 
     # Check if URL has a valid protocol
@@ -245,7 +244,6 @@ async def extract_movie_info(html_content, base_url, title_selector):
                     elif any(unit in size_unit for unit in ["kb", "kib", "k"]):
                         size = int(size_value * 1024)
             except Exception as e:
-                LOGGER.debug(f"Could not parse size from title: {size_str} - {e}")
 
         # Create a description
         description = f"<h3>{title}</h3>"
@@ -262,7 +260,6 @@ async def extract_movie_info(html_content, base_url, title_selector):
                     size_str = f"{size / 1024:.2f} KB"
                 description += f"<p><strong>Size:</strong> {size_str}</p>"
             except Exception as e:
-                LOGGER.debug(f"Error formatting size: {e}")
 
         # Add magnet link
         description += f"<p><strong>Magnet Link:</strong> <a href='{magnet_link}'>Download</a></p>"
@@ -327,7 +324,6 @@ async def extract_movie_info(html_content, base_url, title_selector):
             magnet_elements = soup.select('a[href^="magnet:"]')
             if magnet_elements:
                 magnet_link = magnet_elements[0]["href"]
-                LOGGER.debug("Found direct magnet link for TamilBlasters movie page")
 
             # Method 2: Look for data attributes
             if not magnet_link:
@@ -338,7 +334,6 @@ async def extract_movie_info(html_content, base_url, title_selector):
                     for attr in ["data-clipboard-text", "data-url"]:
                         if attr in element.attrs and "magnet:" in element[attr]:
                             magnet_link = element[attr]
-                            LOGGER.debug(
                                 "Found magnet link in data attribute for TamilBlasters movie page"
                             )
                             break
@@ -354,7 +349,6 @@ async def extract_movie_info(html_content, base_url, title_selector):
                         )
                         if magnet_match:
                             magnet_link = magnet_match.group(1)
-                            LOGGER.debug(
                                 "Found magnet link in text for TamilBlasters movie page"
                             )
                             break
@@ -369,7 +363,6 @@ async def extract_movie_info(html_content, base_url, title_selector):
             title_match = size_regex.search(title)
             if title_match:
                 size_str = title_match.group(1)
-                LOGGER.debug(
                     f"Found size information in title: {size_str} for TamilBlasters movie page"
                 )
                 try:
@@ -385,7 +378,6 @@ async def extract_movie_info(html_content, base_url, title_selector):
                         elif any(unit in size_unit for unit in ["kb", "kib", "k"]):
                             size = int(size_value * 1024)
                 except Exception as e:
-                    LOGGER.debug(
                         f"Could not parse size from title: {size_str} - {e}"
                     )
 
@@ -404,7 +396,6 @@ async def extract_movie_info(html_content, base_url, title_selector):
                         size_str = f"{size / 1024:.2f} KB"
                     description += f"<p><strong>Size:</strong> {size_str}</p>"
                 except Exception as e:
-                    LOGGER.debug(f"Error formatting size: {e}")
 
             # Add magnet link if available
             if magnet_link:
@@ -532,7 +523,6 @@ async def extract_movie_info(html_content, base_url, title_selector):
                             # Fetch the movie page to extract magnet links
                             try:
                                 # Changed to DEBUG level to reduce log clutter
-                                LOGGER.debug(f"Fetching movie page: {topic_url}")
                                 movie_page_content = await fetch_website_content(
                                     topic_url
                                 )
@@ -551,7 +541,6 @@ async def extract_movie_info(html_content, base_url, title_selector):
                                     if magnet_elements:
                                         magnet_link = magnet_elements[0]["href"]
                                         # Changed to DEBUG level to reduce log clutter
-                                        LOGGER.debug(
                                             f"Found direct magnet link for {topic_title}"
                                         )
 
@@ -586,7 +575,6 @@ async def extract_movie_info(html_content, base_url, title_selector):
                                     if title_match:
                                         size_str = title_match.group(1)
                                         # Changed to DEBUG level to reduce log clutter
-                                        LOGGER.debug(
                                             f"Found size information in title: {size_str} for {topic_title}"
                                         )
                                         try:
@@ -620,7 +608,6 @@ async def extract_movie_info(html_content, base_url, title_selector):
                                                 ):
                                                     size = int(size_value * 1024)
                                         except Exception as e:
-                                            LOGGER.debug(
                                                 f"Could not parse size from title: {size_str} - {e}"
                                             )
 
@@ -641,7 +628,6 @@ async def extract_movie_info(html_content, base_url, title_selector):
                                                 size_str = f"{size / 1024:.2f} KB"
                                             description += f"<p><strong>Size:</strong> {size_str}</p>"
                                         except Exception as e:
-                                            LOGGER.debug(
                                                 f"Error formatting size: {e}"
                                             )
 
@@ -785,7 +771,6 @@ async def extract_movie_info(html_content, base_url, title_selector):
         # Try to fetch the movie page to extract magnet links and size
         try:
             # Changed to DEBUG level to reduce log clutter
-            LOGGER.debug(f"Fetching movie page: {movie_page_link}")
             movie_page_content = await fetch_website_content(movie_page_link)
             if movie_page_content:
                 movie_page_soup = BeautifulSoup(movie_page_content, "html.parser")
@@ -796,7 +781,6 @@ async def extract_movie_info(html_content, base_url, title_selector):
                 if magnet_elements:
                     magnet_link = magnet_elements[0]["href"]
                     # Changed to DEBUG level to reduce log clutter
-                    LOGGER.debug(f"Found direct magnet link for {title}")
 
                 # Special handling for MovieRulz
                 if not magnet_link and "movierulz" in base_url.lower():
@@ -914,7 +898,6 @@ async def extract_movie_info(html_content, base_url, title_selector):
                 if title_match:
                     size_str = title_match.group(1)
                     # Changed to DEBUG level to reduce log clutter
-                    LOGGER.debug(
                         f"Found size information in title: {size_str} for {title}"
                     )
                     try:
@@ -934,7 +917,6 @@ async def extract_movie_info(html_content, base_url, title_selector):
                             ):
                                 size = int(size_value * 1024)
                     except Exception as e:
-                        LOGGER.debug(
                             f"Could not parse size from title: {size_str} - {e}"
                         )
 
@@ -945,7 +927,6 @@ async def extract_movie_info(html_content, base_url, title_selector):
                         if size_match:
                             size_str = size_match.group(1)
                             # Changed to DEBUG level to reduce log clutter
-                            LOGGER.debug(
                                 f"Found size information in page: {size_str} for {title}"
                             )
                             # Convert size to bytes for RSS feed
@@ -956,7 +937,6 @@ async def extract_movie_info(html_content, base_url, title_selector):
 
                                 size = get_size_bytes(size_str)
                             except Exception as e:
-                                LOGGER.debug(f"Using fallback size conversion: {e}")
                                 # Fallback if get_size_bytes is not available
                                 try:
                                     # Handle different formats (with or without space)
@@ -995,7 +975,6 @@ async def extract_movie_info(html_content, base_url, title_selector):
                                     ):
                                         size = int(size_value * 1024)
                                 except Exception as e:
-                                    LOGGER.debug(
                                         f"Could not parse size: {size_str} - {e}"
                                     )
                             if size > 0:
@@ -1008,7 +987,6 @@ async def extract_movie_info(html_content, base_url, title_selector):
                     if magnet_size_match:
                         size_str = magnet_size_match.group(1)
                         # Changed to DEBUG level to reduce log clutter
-                        LOGGER.debug(
                             f"Found size information in magnet link: {size_str} for {title}"
                         )
                         try:
@@ -1016,7 +994,6 @@ async def extract_movie_info(html_content, base_url, title_selector):
 
                             size = get_size_bytes(size_str)
                         except Exception as e:
-                            LOGGER.debug(
                                 f"Could not parse size from magnet link: {size_str} - {e}"
                             )
         except Exception as e:
@@ -1039,7 +1016,6 @@ async def extract_movie_info(html_content, base_url, title_selector):
                     size_str = f"{size / 1024:.2f} KB"
                 description += f"<p><strong>Size:</strong> {size_str}</p>"
             except Exception as e:
-                LOGGER.debug(f"Error formatting size: {e}")
 
         # Add magnet link if available
         if magnet_link:
@@ -1123,7 +1099,6 @@ def generate_rss_feed(movies, feed_title, feed_description, feed_link):
                 description += f"\n\nSize: {size_str}"
                 size_element = f"\n        <size>{movie['size']}</size>"
             except Exception as e:
-                LOGGER.debug(f"Could not format size: {e}")
 
         rss_items += """    <item>
         <title>{title}</title>
@@ -1169,7 +1144,6 @@ async def get_movie_site_url(site_key):
 
         # Return the URL with https:// protocol
         url = f"https://{domain}"
-        LOGGER.debug(f"Generated URL for {site_key}: {url}")
         return url
     except Exception as e:
         LOGGER.error(f"Error getting URL for {site_key}: {e}")
@@ -1214,7 +1188,6 @@ async def get_tamil_site_rss(site_key):
         # Ensure the URL has a protocol
         if not base_url.startswith(("http://", "https://")):
             base_url = "https://" + base_url
-            LOGGER.debug(f"Added https:// protocol to URL: {base_url}")
 
         # Hardcoded movie category URLs for TamilMV and TamilBlasters
         movie_category_urls = []
@@ -1301,7 +1274,6 @@ async def get_tamil_site_rss(site_key):
         for category_url in movie_category_urls:
             try:
                 # Fetch the movie category page
-                LOGGER.debug(f"Fetching movie category page: {category_url}")
                 category_content = await fetch_website_content(category_url)
                 if not category_content:
                     LOGGER.warning(f"Failed to fetch content from {category_url}")
@@ -1348,13 +1320,11 @@ async def get_tamil_site_rss(site_key):
 
                 # Use filtered topics
                 if filtered_topics:
-                    LOGGER.debug(
                         f"Found {len(filtered_topics)} topics after minimal filtering"
                     )
                     movie_topics = filtered_topics
                 else:
                     # Changed to DEBUG level to reduce log clutter
-                    LOGGER.debug(
                         f"No topics found after minimal filtering in {category_url}"
                     )
                     continue
@@ -1366,7 +1336,6 @@ async def get_tamil_site_rss(site_key):
 
                     try:
                         # Fetch the movie page to extract magnet links
-                        LOGGER.debug(f"Fetching movie page: {topic_url}")
                         movie_page_content = await fetch_website_content(topic_url)
                         if not movie_page_content:
                             LOGGER.warning(
@@ -1389,7 +1358,6 @@ async def get_tamil_site_rss(site_key):
                             )
                             if magnet_elements:
                                 magnet_link = magnet_elements[0]["href"]
-                                LOGGER.debug(
                                     f"Found direct magnet link for {topic_title}"
                                 )
 
@@ -1405,7 +1373,6 @@ async def get_tamil_site_rss(site_key):
                                         )
                                         if magnet_match:
                                             magnet_link = magnet_match.group(1)
-                                            LOGGER.debug(
                                                 f"Found magnet link in button onclick for {topic_title}"
                                             )
                                             break
@@ -1421,7 +1388,6 @@ async def get_tamil_site_rss(site_key):
                                     )
                                     if "magnet:" in data_text:
                                         magnet_link = data_text
-                                        LOGGER.debug(
                                             f"Found magnet link in data-clipboard-text for {topic_title}"
                                         )
                                         break
@@ -1439,7 +1405,6 @@ async def get_tamil_site_rss(site_key):
                                         )
                                         if magnet_match:
                                             magnet_link = magnet_match.group(1)
-                                            LOGGER.debug(
                                                 f"Found magnet link in code block for {topic_title}"
                                             )
                                             break
@@ -1452,7 +1417,6 @@ async def get_tamil_site_rss(site_key):
                             )
                             if magnet_elements:
                                 magnet_link = magnet_elements[0]["href"]
-                                LOGGER.debug(
                                     f"Found direct magnet link for TamilBlasters: {topic_title}"
                                 )
 
@@ -1472,7 +1436,6 @@ async def get_tamil_site_rss(site_key):
                                             )
                                             if magnet_match:
                                                 magnet_link = magnet_match.group(1)
-                                                LOGGER.debug(
                                                     f"Found magnet link in onclick for TamilBlasters: {topic_title}"
                                                 )
                                                 break
@@ -1489,7 +1452,6 @@ async def get_tamil_site_rss(site_key):
                                             and "magnet:" in element[attr]
                                         ):
                                             magnet_link = element[attr]
-                                            LOGGER.debug(
                                                 f"Found magnet link in data attribute for TamilBlasters: {topic_title}"
                                             )
                                             break
@@ -1508,7 +1470,6 @@ async def get_tamil_site_rss(site_key):
                                         )
                                         if magnet_match:
                                             magnet_link = magnet_match.group(1)
-                                            LOGGER.debug(
                                                 f"Found magnet link in div for TamilBlasters: {topic_title}"
                                             )
                                             break
@@ -1530,7 +1491,6 @@ async def get_tamil_site_rss(site_key):
                                             magnet_link = (
                                                 f"magnet:?xt=urn:btih:{torrent_hash}"
                                             )
-                                            LOGGER.debug(
                                                 f"Found hash and constructed magnet link for TamilBlasters: {topic_title}"
                                             )
                                             break
@@ -1542,7 +1502,6 @@ async def get_tamil_site_rss(site_key):
                             )
                             if magnet_elements:
                                 magnet_link = magnet_elements[0]["href"]
-                                LOGGER.debug(
                                     f"Found direct magnet link for {topic_title}"
                                 )
 
@@ -1555,7 +1514,6 @@ async def get_tamil_site_rss(site_key):
                                     )
                                     if magnet_match:
                                         magnet_link = magnet_match.group(1)
-                                        LOGGER.debug(
                                             f"Found magnet link in text for {topic_title}"
                                         )
                                         break
@@ -1570,7 +1528,6 @@ async def get_tamil_site_rss(site_key):
                                     torrent_hash = hash_match.group(1)
                                     # Construct a basic magnet link
                                     magnet_link = f"magnet:?xt=urn:btih:{torrent_hash}&dn={urllib.parse.quote(topic_title)}"
-                                    LOGGER.debug(
                                         f"Constructed magnet link from hash for {topic_title}"
                                     )
                                     break
@@ -1586,7 +1543,6 @@ async def get_tamil_site_rss(site_key):
                         title_match = size_regex.search(topic_title)
                         if title_match:
                             size_str = title_match.group(1)
-                            LOGGER.debug(
                                 f"Found size information in title: {size_str} for {topic_title}"
                             )
                             try:
@@ -1611,7 +1567,6 @@ async def get_tamil_site_rss(site_key):
                                     ):
                                         size = int(size_value * 1024)
                             except Exception as e:
-                                LOGGER.debug(
                                     f"Could not parse size from title: {size_str} - {e}"
                                 )
 
@@ -1634,7 +1589,6 @@ async def get_tamil_site_rss(site_key):
                                     f"<p><strong>Size:</strong> {size_str}</p>"
                                 )
                             except Exception as e:
-                                LOGGER.debug(f"Error formatting size: {e}")
 
                         # Add magnet link if available
                         if magnet_link:
@@ -1682,7 +1636,6 @@ async def get_tamil_site_rss(site_key):
         # If we found movies, generate the RSS feed
         if movies:
             # Generate RSS feed
-            LOGGER.debug(
                 f"Generating RSS feed for {site_key} with {len(movies)} movies"
             )
             rss_content = generate_rss_feed(
@@ -1729,7 +1682,6 @@ async def get_movie_site_rss(site_key, force_refresh=False):
 
     # Special handling for TamilMV and TamilBlasters
     if site_key in ["tamilmv", "tamilblasters"]:
-        LOGGER.debug(
             f"Special handling for {site_key}: navigating directly to movie category pages"
         )
         return await get_tamil_site_rss(site_key)
@@ -1749,7 +1701,6 @@ async def get_movie_site_rss(site_key, force_refresh=False):
             if force_refresh:
                 LOGGER.info(f"Force refreshing RSS feed for {site_key}")
             else:
-                LOGGER.debug(f"Using cached RSS feed for {site_key}")
                 return cached_content
         else:
             LOGGER.info(
@@ -1774,17 +1725,14 @@ async def get_movie_site_rss(site_key, force_refresh=False):
         # Ensure the URL has a protocol
         if not base_url.startswith(("http://", "https://")):
             base_url = "https://" + base_url
-            LOGGER.debug(f"Added https:// protocol to URL: {base_url}")
 
         # Fetch the website content
-        LOGGER.debug(f"Fetching content from {base_url}")
         html_content = await fetch_website_content(base_url)
         if not html_content:
             LOGGER.error(f"Failed to fetch content from {base_url}")
             return None
 
         # Extract movie information
-        LOGGER.debug(f"Extracting movie information from {base_url}")
         movies = await extract_movie_info(
             html_content, base_url, site_config["title_selector"]
         )
@@ -1794,7 +1742,6 @@ async def get_movie_site_rss(site_key, force_refresh=False):
             return None
 
         # Generate RSS feed
-        LOGGER.debug(f"Generating RSS feed for {site_key} with {len(movies)} movies")
         rss_content = generate_rss_feed(
             movies,
             site_config["feed_title"],

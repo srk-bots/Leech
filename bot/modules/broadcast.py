@@ -60,7 +60,6 @@ async def broadcast(_, message):
                 # Use copy method which handles all media types automatically
                 await msg_to_broadcast.copy(uid)
                 successful += 1
-                LOGGER.debug(f"Successfully sent broadcast to user {uid}")
             except FloodWait as e:
                 LOGGER.warning(
                     f"FloodWait detected during broadcast: {e.value} seconds"
@@ -69,7 +68,6 @@ async def broadcast(_, message):
                 try:
                     await msg_to_broadcast.copy(uid)
                     successful += 1
-                    LOGGER.debug(
                         f"Successfully sent broadcast to user {uid} after FloodWait"
                     )
                 except Exception as retry_err:

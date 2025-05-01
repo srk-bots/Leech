@@ -223,7 +223,6 @@ async def add_jd_download(listener, path):
                         pack_name = pack.get("name", "")
                         # Only log at debug level for common web elements
                         if any(element == pack_name for element in web_elements):
-                            LOGGER.debug(f"Ignoring web element: {pack_name}")
                         else:
                             LOGGER.error(f"Package has no online links: {pack_name}")
                         corrupted_packages.append(pack["uuid"])

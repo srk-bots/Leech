@@ -136,7 +136,6 @@ class TelegramUploader:
                     disable_web_page_preview=True,
                     disable_notification=True,
                 )
-                LOGGER.debug(
                     f"Sent command message to owner's dump: {Config.LEECH_DUMP_CHAT}"
                 )
                 # Store this message for potential deletion later
@@ -788,7 +787,6 @@ class TelegramUploader:
                                 # Skip deletion of list items as they'll be handled by the media group
                                 pass
                         except Exception as e:
-                            LOGGER.debug(
                                 f"Error cleaning up message during media group send: {e}"
                             )
 
@@ -830,7 +828,6 @@ class TelegramUploader:
                             # We would need to get the message object first, but we'll skip this
                             # to avoid potential errors
                         except Exception as e:
-                            LOGGER.debug(f"Error cleaning up message: {e}")
         except Exception as e:
             LOGGER.error(f"Error in _send_media_group: {e}")
         finally:
@@ -973,7 +970,6 @@ class TelegramUploader:
                             )
                             # Log the subkey to help with debugging
                             if self._lfilename:
-                                LOGGER.debug(
                                     f"Using leech filename template for media group: {subkey}"
                                 )
 
@@ -1034,7 +1030,6 @@ class TelegramUploader:
 
         # Generate MediaInfo if enabled
         if user_mediainfo_enabled:
-            LOGGER.debug("Generating MediaInfo immediately before upload...")
             from bot.modules.mediainfo import gen_mediainfo
 
             try:
@@ -1335,7 +1330,6 @@ class TelegramUploader:
 
         # Log the destinations for debugging
         if destinations:
-            LOGGER.debug(
                 f"Copying media group to additional destinations: {destinations}"
             )
 
@@ -1371,7 +1365,6 @@ class TelegramUploader:
                         media=media_ids,
                         disable_notification=True,
                     )
-                LOGGER.debug(
                     f"Successfully copied media group to destination: {dest}"
                 )
             except Exception as e:
@@ -1480,7 +1473,6 @@ class TelegramUploader:
 
         # Log the destinations for debugging
         if destinations:
-            LOGGER.debug(
                 f"Copying message to additional destinations: {destinations}"
             )
 

@@ -64,7 +64,6 @@ async def send_message(
 
     # Handle None message object
     if message is None:
-        LOGGER.debug("Received None message object in send_message")
         return "Cannot send message: message object is None"
 
     try:
@@ -91,7 +90,6 @@ async def send_message(
 
         # Check if message has required attributes
         if not hasattr(message, "chat") or not hasattr(message.chat, "id"):
-            LOGGER.debug(f"Invalid message object type: {type(message)}")
             # Try to send to chat directly if message has an id attribute
             if hasattr(message, "id"):
                 sent_msg = await client.send_message(
@@ -234,7 +232,6 @@ async def edit_message(
             "MESSAGE_ID_INVALID" in error_str
             or "message to edit not found" in error_str.lower()
         ):
-            LOGGER.debug(f"Cannot edit message: {error_str}")
         else:
             LOGGER.error(error_str)
         return error_str
@@ -513,7 +510,6 @@ async def get_tg_link_message(link, user_id=""):
             except TypeError as e:
                 # Handle case where get_messages has different parameters in Electrogram
                 if "unexpected keyword argument" in str(e):
-                    LOGGER.debug(f"Adapting to Electrogram API: {e}")
                     # Try alternative approach for Electrogram
                     message = await TgClient.bot.get_messages(
                         chat,  # chat_id as positional argument
@@ -541,7 +537,6 @@ async def get_tg_link_message(link, user_id=""):
             except TypeError as e:
                 # Handle case where get_messages has different parameters in Electrogram
                 if "unexpected keyword argument" in str(e):
-                    LOGGER.debug(f"Adapting to Electrogram API: {e}")
                     # Try alternative approach for Electrogram
                     user_message = await user_session.get_messages(
                         chat,  # chat_id as positional argument
@@ -600,7 +595,6 @@ async def update_status_message(sid, force=False):
                     or "MESSAGE_ID_INVALID" in message
                     or "message to edit not found" in message.lower()
                 ):
-                    LOGGER.debug(
                         f"Removing status message that can't be edited. SID: {sid}, Error: {message}"
                     )
                     del status_dict[sid]

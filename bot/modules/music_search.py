@@ -146,7 +146,6 @@ async def cache_cleanup_task():
 
             # Get current timestamp for logging
             current_time = time.strftime("%Y-%m-%d %H:%M:%S")
-            MUSIC_LOGGER.debug(f"[{current_time}] Running scheduled cache cleanup")
 
             # Clean up all caches
             for client_type in VALID_CHAT_IDS:
@@ -155,7 +154,6 @@ async def cache_cleanup_task():
                 cache._cleanup_expired()
                 after_size = len(cache.cache)
                 if before_size > after_size:
-                    MUSIC_LOGGER.debug(
                         f"Cleaned up {before_size - after_size} expired entries from {client_type} chat cache"
                     )
 
@@ -170,7 +168,6 @@ async def cache_cleanup_task():
             SEARCH_RESULTS_CACHE._cleanup_expired()
             after_size = len(SEARCH_RESULTS_CACHE.cache)
             if before_size > after_size:
-                MUSIC_LOGGER.debug(
                     f"Cleaned up {before_size - after_size} expired entries from search results cache"
                 )
 
@@ -275,7 +272,6 @@ async def validate_chat_id(client, chat_id: int, client_type: str) -> bool:
             # For user client, log the chat name for debugging
             if client_type == "user":
                 chat_title = getattr(chat, "title", str(chat_id))
-                MUSIC_LOGGER.debug(f"User client accessed channel: {chat_title}")
             return True
     except Exception as e:
         error_msg = str(e)
@@ -288,7 +284,6 @@ async def validate_chat_id(client, chat_id: int, client_type: str) -> bool:
                 f"The user account needs to join this channel/group first."
             )
         else:
-            LOGGER.debug(
                 f"Chat {chat_id} is not accessible by {client_type} client: {e}"
             )
         return False
@@ -309,7 +304,6 @@ async def search_music_in_chat(
     """
     # Check if this is a bot client - bots cannot search messages
     if client_type == "bot":
-        MUSIC_LOGGER.debug(
             f"Bots cannot search messages in chat {chat_id}, need user client"
         )
         return (
@@ -332,7 +326,6 @@ async def search_music_in_chat(
     cache_key = generate_search_key(chat_id, query, client_type)
     cached_result = SEARCH_RESULTS_CACHE.get(cache_key)
     if cached_result is not None:
-        MUSIC_LOGGER.debug(
             f"Using cached search results for {query} in chat {chat_id}"
         )
         return cached_result
@@ -363,7 +356,6 @@ async def search_music_in_chat(
                 SEARCH_RESULTS_CACHE.put(cache_key, result)
                 return result
             except Exception as e:
-                MUSIC_LOGGER.debug(
                     f"Error using offset parameter: {e}, trying without offset"
                 )
                 # Try without offset
@@ -386,7 +378,6 @@ async def search_music_in_chat(
 
         except (ImportError, AttributeError) as e:
             # If search_messages or MessagesFilter is not available, fall back to get_messages
-            MUSIC_LOGGER.debug(
                 f"search_messages not available, falling back to get_messages: {e}"
             )
 
@@ -606,7 +597,6 @@ async def music_search(_, message: Message):
             )
             cached_results = SEARCH_RESULTS_CACHE.get(task_cache_key)
             if cached_results is not None:
-                MUSIC_LOGGER.debug(
                     f"Using cached task results for {query} in chat {chat_id}"
                 )
                 return cached_results
@@ -634,7 +624,6 @@ async def music_search(_, message: Message):
             )
             if error:
                 # Log the error for debugging
-                MUSIC_LOGGER.debug(
                     f"Error searching in chat {chat_id} with {client_type} client: {error}"
                 )
                 if client_type == "bot":
@@ -736,7 +725,6 @@ async def music_search(_, message: Message):
     # Create search tasks - always use user client for searching since bots cannot search messages
     if TgClient.user:
         # User client can search messages
-        MUSIC_LOGGER.debug(
             f"Searching in {len(music_channels)} channels using user client"
         )
         for chat_id in music_channels:
@@ -745,7 +733,6 @@ async def music_search(_, message: Message):
             )
     elif TgClient.bot:
         # Only use bot client if user client is not available (will likely fail for searching)
-        MUSIC_LOGGER.debug(
             "User client not available. Bot client cannot search messages properly. "
             "Music search will likely fail. Please add a user session to enable music search."
         )
@@ -921,7 +908,6 @@ async def music_search(_, message: Message):
     # When search results are found, delete command and reply messages immediately
     try:
         await cmd_message.delete()
-        MUSIC_LOGGER.debug(
             "Command message deleted immediately after showing results"
         )
     except Exception as e:
@@ -933,7 +919,6 @@ async def music_search(_, message: Message):
     if reply_to:
         try:
             await reply_to.delete()
-            MUSIC_LOGGER.debug(
                 "Reply message deleted immediately after showing results"
             )
         except Exception as e:
@@ -972,7 +957,6 @@ async def music_get_callback(_, query):
         # We'll try to delete the message first, then proceed with downloading
         # This ensures the menu disappears immediately when user makes a selection
         await query.message.delete()
-        LOGGER.debug("Selection menu deleted immediately after user selection")
         # No need to send a status message - we'll just forward the audio directly
     except Exception as e:
         LOGGER.error(f"Error deleting selection menu: {e}")
@@ -1007,7 +991,6 @@ async def music_get_callback(_, query):
         return
 
     # Only log at debug level to avoid cluttering logs
-    MUSIC_LOGGER.debug(
         f"Attempting to get music with {client_type} client from chat {chat_id}"
     )
 
@@ -1040,13 +1023,11 @@ async def music_get_callback(_, query):
 
     # If the specified client is not valid, switch to the other one if available
     if client_type == "user" and not user_client_valid and bot_client_valid:
-        MUSIC_LOGGER.debug(
             "Switching from user client to bot client for message retrieval"
         )
         client = TgClient.bot
         client_type = "bot"
     elif client_type == "bot" and not bot_client_valid and user_client_valid:
-        MUSIC_LOGGER.debug(
             "Switching from bot client to user client for message retrieval"
         )
         client = TgClient.user
@@ -1066,9 +1047,7 @@ async def music_get_callback(_, query):
                 # This will validate if the peer is accessible
                 # We don't need to use the returned peer object, just checking if it resolves
                 _ = await client.resolve_peer(chat_id)
-                MUSIC_LOGGER.debug("Resolved peer for chat")
             except Exception as peer_error:
-                MUSIC_LOGGER.debug(
                     f"Failed to resolve peer for chat {chat_id}: {peer_error}"
                 )
                 # If we can't resolve the peer, we can't get the message
@@ -1087,7 +1066,6 @@ async def music_get_callback(_, query):
                     message = messages
 
                 if message and getattr(message, "audio", None):
-                    MUSIC_LOGGER.debug("Retrieved audio message successfully")
                 elif message:
                     MUSIC_LOGGER.warning(
                         f"Message found but no audio with {client_type} client"
@@ -1118,24 +1096,20 @@ async def music_get_callback(_, query):
             if client_type == "bot" and TgClient.user and user_client_valid:
                 fallback_client = TgClient.user
                 fallback_client_type = "user"
-                LOGGER.debug(
                     "Bot client failed, falling back to user client for message retrieval"
                 )
             # This case should rarely happen now, but keep it for completeness
             elif client_type == "user" and TgClient.bot and bot_client_valid:
                 fallback_client = TgClient.bot
                 fallback_client_type = "bot"
-                LOGGER.debug("User client failed, trying bot client as fallback")
 
             if fallback_client:
                 try:
-                    LOGGER.debug("Trying fallback client")
 
                     # First try to resolve the peer with fallback client
                     try:
                         # We don't need to use the returned peer object, just checking if it resolves
                         _ = await fallback_client.resolve_peer(chat_id)
-                        MUSIC_LOGGER.debug("Resolved peer with fallback client")
                     except Exception as peer_error:
                         MUSIC_LOGGER.warning(
                             f"Failed to resolve peer for chat {chat_id} with {fallback_client_type} client: {peer_error}"
@@ -1160,7 +1134,6 @@ async def music_get_callback(_, query):
                             message = fallback_messages
 
                         if message and getattr(message, "audio", None):
-                            MUSIC_LOGGER.debug(
                                 "Retrieved audio with fallback client"
                             )
                             client = fallback_client
@@ -1259,14 +1232,12 @@ async def music_get_callback(_, query):
             if client_type == "bot" and TgClient.user and user_client_valid:
                 fallback_client = TgClient.user
                 fallback_client_type = "user"
-                LOGGER.debug(
                     "Bot client failed with error, falling back to user client for message retrieval"
                 )
             # This case should rarely happen now, but keep it for completeness
             elif client_type == "user" and TgClient.bot and bot_client_valid:
                 fallback_client = TgClient.bot
                 fallback_client_type = "bot"
-                LOGGER.debug(
                     "User client failed with error, trying bot client as fallback"
                 )
 
@@ -1276,9 +1247,7 @@ async def music_get_callback(_, query):
                     try:
                         # We don't need to use the returned peer object, just checking if it resolves
                         _ = await fallback_client.resolve_peer(chat_id)
-                        LOGGER.debug("Resolved peer with fallback client")
                     except Exception as peer_error:
-                        LOGGER.debug(
                             f"Failed to resolve peer with fallback client: {peer_error}"
                         )
                         raise
@@ -1298,7 +1267,6 @@ async def music_get_callback(_, query):
                             message = messages
 
                         if message and getattr(message, "audio", None):
-                            LOGGER.debug("Retrieved audio with fallback client")
                             await message.forward(
                                 query.message.chat.id, disable_notification=True
                             )
@@ -1317,20 +1285,16 @@ async def music_get_callback(_, query):
                                 LOGGER.error(f"Error deleting messages: {e2}")
                             return
                         if message:
-                            LOGGER.debug(
                                 "Fallback client found message but no audio"
                             )
                         else:
-                            LOGGER.debug("Fallback client found no message")
                     except Exception as msg_error:
-                        LOGGER.debug(
                             f"Error getting message with fallback client: {msg_error}"
                         )
                         raise
                 except Exception as e3:
                     MUSIC_LOGGER.error(f"Error in fallback client attempt: {e3}")
             else:
-                MUSIC_LOGGER.debug("No valid fallback client available")
         except Exception as e2:
             MUSIC_LOGGER.error(f"Error in fallback handling: {e2}")
 
@@ -1387,7 +1351,6 @@ async def music_cancel_callback(_, query):
     # Delete the command message immediately
     try:
         await TgClient.bot.delete_messages(query.message.chat.id, cmd_message_id)
-        MUSIC_LOGGER.debug(f"Command message {cmd_message_id} deleted after cancel")
     except Exception as e:
         MUSIC_LOGGER.error(f"Error deleting command message: {e}")
 
@@ -1397,7 +1360,6 @@ async def music_cancel_callback(_, query):
             await TgClient.bot.delete_messages(
                 query.message.chat.id, reply_message_id
             )
-            MUSIC_LOGGER.debug(
                 f"Reply message {reply_message_id} deleted after cancel"
             )
         except Exception as e:

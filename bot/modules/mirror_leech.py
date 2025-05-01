@@ -518,7 +518,6 @@ class Mirror(TaskListener):
             return await auto_delete_message(x, time=300)
 
         if len(self.link) > 0:
-            LOGGER.debug(self.link)
 
         # Check if it's a Mega link but not using jdleech or jdmirror command
         if is_mega_link(self.link) and not self.is_jd:
