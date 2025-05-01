@@ -1,4 +1,4 @@
-from bot import LOGGER, user_data
+from bot import user_data
 from bot.core.config_manager import Config
 
 
@@ -9,8 +9,6 @@ async def reset_tool_configs(tool_name, database):
         tool_name (str): The name of the tool to reset configurations for
         database: The database instance to update configurations
     """
-    LOGGER.info(f"Resetting configurations for disabled tool: {tool_name}")
-
     # Define prefixes for each tool
     tool_prefixes = {
         "watermark": ["WATERMARK_", "AUDIO_WATERMARK_", "SUBTITLE_WATERMARK_"],
@@ -256,7 +254,6 @@ async def reset_tool_configs(tool_name, database):
     # Get prefixes for the specified tool
     prefixes = tool_prefixes.get(tool_name.lower(), [])
     if not prefixes:
-        LOGGER.debug(f"No specific configurations to reset for tool: {tool_name}")
         return
 
     # Step 1: Reset global (owner) configurations
@@ -266,7 +263,7 @@ async def reset_tool_configs(tool_name, database):
     all_configs = Config.get_all()
 
     # Find configurations that match the tool's prefixes
-    for key, value in all_configs.items():
+    for key in all_configs:
         for prefix in prefixes:
             if key.startswith(prefix):
                 # Get the default value if it exists, otherwise skip
@@ -278,24 +275,15 @@ async def reset_tool_configs(tool_name, database):
 
     # Update the database if there are configurations to reset
     if configs_to_reset:
-        LOGGER.info(
-            f"Resetting {len(configs_to_reset)} global configurations for tool: {tool_name}"
-        )
         await database.update_config(configs_to_reset)
-    else:
-        LOGGER.debug(
-            f"No global configurations found to reset for tool: {tool_name}"
-        )
 
     # Step 2: Reset user-specific configurations
-    users_updated = 0
-
     # Iterate through all users
     for user_id, user_dict in list(user_data.items()):
         user_configs_to_reset = False
 
         # Find user configurations that match the tool's prefixes
-        for key in list(user_dict.keys()):
+        for key in list(user_dict):
             for prefix in prefixes:
                 if key.startswith(prefix):
                     # Remove the configuration from the user's data
@@ -304,17 +292,4 @@ async def reset_tool_configs(tool_name, database):
 
         # Update the database if there are user configurations to reset
         if user_configs_to_reset:
-            users_updated += 1
-            LOGGER.info(
-                f"Resetting user {user_id} configurations for tool: {tool_name}"
-            )
             await database.update_user_data(user_id)
-
-    if users_updated > 0:
-        LOGGER.info(
-            f"Reset configurations for {users_updated} users for tool: {tool_name}"
-        )
-    else:
-        LOGGER.debug(
-            f"No user-specific configurations found to reset for tool: {tool_name}"
-        )
