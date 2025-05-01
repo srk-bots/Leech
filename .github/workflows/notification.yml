@@ -21,7 +21,8 @@ jobs:
           MESSAGE+="*Repository:* ${REPO}\n"
           MESSAGE+="*Branch:* ${BRANCH_NAME}\n\n"
 
-          echo "$COMMITS_JSON" | jq -c '.[]' | while IFS= read -r commit; do
+          mapfile -t COMMITS < <(echo "$COMMITS_JSON" | jq -c '.[]')
+          for commit in "${COMMITS[@]}"; do
             HASH=$(jq -r '.id' <<< "$commit")
             MSG=$(jq -r '.message' <<< "$commit" | head -n 1)
             SHORT_HASH=${HASH:0:7}
