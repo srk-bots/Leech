@@ -2,8 +2,9 @@ import logging
 from asyncio import sleep
 from functools import partial
 
+from pyrogram import filters
 from pyrogram.filters import create
-from pyrogram.handlers import MessageHandler
+from pyrogram.handlers import CallbackQueryHandler, MessageHandler
 
 from bot import user_data
 from bot.core.config_manager import Config
@@ -7113,3 +7114,176 @@ async def add_media_tools_button_to_bot_settings(buttons):
     """Add Media Tools button to bot settings."""
     buttons.data_button("Media Tools", "botset mediatools")
     return buttons
+
+
+async def show_media_tools_for_task(client, message, task_obj):
+    """Show media tools settings with a Done button for task execution.
+
+    This function is called when a command is used with the -mt flag.
+    It displays the media tools settings and adds a Done button to start the task.
+
+    Args:
+        client: The client instance
+        message: The message object containing the command
+        task_obj: The task object (Mirror instance) to be executed after settings
+
+    Returns:
+        bool: True if the task should proceed, False if it was cancelled
+    """
+    user_id = message.from_user.id if message.from_user else 0
+    handler_dict[user_id] = True
+
+    # Get media tools settings
+    msg, btns = await get_media_tools_settings(message.from_user)
+
+    # Create new buttons with the original menu buttons
+    buttons = ButtonMaker()
+
+    # Copy all buttons from the original menu except Close
+    for row in btns.inline_keyboard:
+        for btn in row:
+            if btn.text == "Close":
+                continue  # Skip the Close button
+            if "footer" in btn.callback_data:
+                buttons.data_button(btn.text, btn.callback_data, "footer")
+            else:
+                buttons.data_button(btn.text, btn.callback_data)
+
+    # Add the Done and Cancel buttons to the footer
+    buttons.data_button("Done", f"mediatools {user_id} task_done", "footer")
+    buttons.data_button("Cancel", f"mediatools {user_id} task_cancel", "footer")
+
+    # Send the message with the settings and buttons
+    settings_msg = await send_message(message, msg, buttons.build_menu(2))
+
+    # Create an event to wait for the user's response
+    from asyncio import Event
+
+    done_event = Event()
+    task_proceed = [True]  # Use a list to store the result (mutable)
+
+    # Define the callback handler for the buttons
+    async def task_button_callback(c, query):
+        if query.from_user.id != user_id:
+            await query.answer("Not Yours!", show_alert=True)
+            return
+
+        data = query.data.split()
+        if len(data) < 3:
+            return
+
+        if data[2] == "task_done":
+            # User clicked Done, proceed with the task
+            await query.answer("Starting task with current media tools settings...")
+            handler_dict[user_id] = False
+
+            # Send a confirmation message that will be auto-deleted
+            done_msg = await send_message(
+                message,
+                "✅ Starting task with current media tools settings...",
+            )
+            await auto_delete_message(
+                done_msg, time=5
+            )  # Auto-delete after 5 seconds
+
+            done_event.set()
+
+        elif data[2] == "task_cancel":
+            # User clicked Cancel, cancel the task
+            await query.answer("Task cancelled!")
+            task_proceed[0] = False
+            handler_dict[user_id] = False
+
+            # Send cancellation message and auto-delete after 5 minutes
+            cancel_msg = await send_message(
+                message,
+                "❌ Task cancelled by user.",
+            )
+            await auto_delete_message(cancel_msg, time=300)
+
+            done_event.set()
+
+        elif data[2] in [
+            "watermark",
+            "watermark_config",
+            "merge",
+            "convert",
+            "compression",
+            "compression_config",
+            "trim",
+            "trim_config",
+            "extract",
+            "extract_config",
+            "help",
+            "help_watermark",
+            "help_merge",
+            "help_convert",
+            "help_compression",
+            "help_trim",
+            "help_extract",
+            "help_priority",
+            "help_examples",
+            "convert_video",
+            "convert_audio",
+            "convert_subtitle",
+            "convert_document",
+            "convert_archive",
+            "merge_config",
+            "back",
+        ]:
+            # Handle navigation within the media tools settings
+            await query.answer()
+            await update_media_tools_settings(query, data[2])
+
+        elif (
+            data[2] == "tog"
+            or data[2] == "menu"
+            or data[2] == "set"
+            or data[2] == "reset"
+            or data[2].startswith("reset_")
+            or data[2].startswith("remove_")
+            or data[2] == "toggle_concat_filter"
+        ):
+            # Handle other media tools settings actions
+            # This will reuse the existing edit_media_tools_settings logic
+            await edit_media_tools_settings(c, query)
+
+    # Add the callback handler
+    handler = client.add_handler(
+        CallbackQueryHandler(
+            task_button_callback,
+            filters=filters.regex("^mediatools"),
+        ),
+        group=-1,
+    )
+
+    try:
+        # Wait for the user to click Done or Cancel, or for the timeout
+        timeout = 60  # 60 seconds timeout
+        for _ in range(timeout):
+            if done_event.is_set():
+                break
+            await sleep(1)
+
+        # If we timed out, cancel the task
+        if not done_event.is_set():
+            task_proceed[0] = False
+            handler_dict[user_id] = False
+
+            # Send timeout message
+            timeout_msg = await send_message(
+                message,
+                f"⏱️ Media tools settings timeout. Task has been cancelled!",
+            )
+
+            # Auto-delete the timeout message after 5 minutes
+            await auto_delete_message(timeout_msg, time=300)
+    finally:
+        # Clean up
+        client.remove_handler(*handler)
+
+        # Delete the settings message
+        await delete_message(settings_msg)
+
+    # Return whether to proceed with the task
+    return task_proceed[0]

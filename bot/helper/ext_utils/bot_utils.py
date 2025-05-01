@@ -158,6 +158,7 @@ def arg_parser(items, arg_base):
         "-extract-attachment",
         "-extract-priority",
         "-del",
+        "-mt",
     }
 
     while i < total:
@@ -209,6 +210,7 @@ def arg_parser(items, arg_base):
                 "-extract-subtitle",
                 "-extract-attachment",
                 "-del",
+                "-mt",
             ]:
                 arg_base[part] = True
             else:
