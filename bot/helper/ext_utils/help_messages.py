@@ -717,25 +717,31 @@ Here I will explain how to use mltb.* which is reference to files you want to wo
 
 ai_help = """<b>AI Chatbot</b>:
 
-Chat with Mistral AI using the /ask command.
+Chat with AI models using the bot commands.
+
+<b>Available AI Models:</b>
+1. <b>Mistral AI</b>: Use /ask command
+2. <b>DeepSeek AI</b>: Use /askds command
 
 <b>Usage:</b>
 /ask your question here
+/askds your question here
 
 <b>Configuration:</b>
-1. <b>Bot Owner</b>: Configure Mistral API Key or API URL in bot settings
-2. <b>Users</b>: Configure your own API Key or API URL in user settings
+1. <b>Bot Owner</b>: Configure API Keys or API URLs in bot settings
+2. <b>Users</b>: Configure your own API Keys or API URLs in user settings
 
 <b>Features:</b>
-- Uses Mistral AI's powerful language model
+- Uses powerful language models
 - Supports both direct API access and custom API endpoints
 - User settings take priority over bot owner settings
 - Messages auto-delete after 5 minutes
 
 <b>Examples:</b>
 /ask What is the capital of France?
-/ask Write a short poem about nature
+/askds Write a short poem about nature
 /ask Explain how quantum computing works
+/askds Translate this text to Spanish: Hello world
 """
 
 user_cookies_help = """<b>User Cookies</b>:
@@ -862,6 +868,8 @@ PASSWORD_ERROR_MESSAGE = """
 user_settings_text = {
     "MISTRAL_API_KEY": "Send your Mistral AI API key. This will be used to access the Mistral AI API directly. Leave empty to use the bot owner's API key. Timeout: 60 sec",
     "MISTRAL_API_URL": "Send your custom Mistral AI API URL. This will be used as a fallback if the API key is not provided or fails. Leave empty to use the bot owner's API URL. Timeout: 60 sec",
+    "DEEPSEEK_API_KEY": "Send your DeepSeek AI API key. This will be used to access the DeepSeek AI API directly. Leave empty to use the bot owner's API key. Timeout: 60 sec",
+    "DEEPSEEK_API_URL": "Send your custom DeepSeek AI API URL. This will be used as a fallback if the API key is not provided or fails. Leave empty to use the bot owner's API URL. Timeout: 60 sec",
     "METADATA_KEY": "Send your text for change mkv medias metadata (title only). This is a legacy option, consider using the specific metadata options instead. Timeout: 60 sec",
     "METADATA_ALL": "Send metadata text to be used for all metadata fields (title, author, comment) for all track types. This takes priority over all other metadata settings. Timeout: 60 sec",
     "METADATA_TITLE": "Send metadata text to be used for the global title field. Timeout: 60 sec",

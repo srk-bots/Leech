@@ -430,9 +430,14 @@ class Config:
     # Truecaller API Settings
     TRUECALLER_API_URL: str = "https://truecaller.privates-bots.workers.dev/"
 
+    # AI Settings
     # Mistral AI Settings
     MISTRAL_API_KEY: str = ""
     MISTRAL_API_URL: str = ""
+
+    # DeepSeek AI Settings
+    DEEPSEEK_API_KEY: str = ""
+    DEEPSEEK_API_URL: str = ""
 
     @classmethod
     def get(cls, key):

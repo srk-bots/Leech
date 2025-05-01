@@ -862,6 +862,8 @@ Timeout: 60 sec"""
         ai_settings = [
             "MISTRAL_API_KEY",
             "MISTRAL_API_URL",
+            "DEEPSEEK_API_KEY",
+            "DEEPSEEK_API_URL",
         ]
 
         for setting in ai_settings:
@@ -878,15 +880,22 @@ Timeout: 60 sec"""
         buttons.data_button("Close", "botset close", "footer")
 
         # Get current AI settings
-        api_key = "✅ Set" if Config.MISTRAL_API_KEY else "❌ Not Set"
-        api_url = Config.MISTRAL_API_URL or "Not Set"
+        mistral_api_key = "✅ Set" if Config.MISTRAL_API_KEY else "❌ Not Set"
+        mistral_api_url = Config.MISTRAL_API_URL or "Not Set"
+        deepseek_api_key = "✅ Set" if Config.DEEPSEEK_API_KEY else "❌ Not Set"
+        deepseek_api_url = Config.DEEPSEEK_API_URL or "Not Set"
 
         msg = f"""<b>AI Settings</b> | State: {state}
 
-<b>Mistral API Key:</b> {api_key}
-<b>Mistral API URL:</b> <code>{api_url}</code>
+<b>Mistral AI:</b>
+• <b>API Key:</b> {mistral_api_key}
+• <b>API URL:</b> <code>{mistral_api_url}</code>
 
-<i>Note: Configure either API Key or API URL. If both are set, API Key will be used first with fallback to API URL.</i>
+<b>DeepSeek AI:</b>
+• <b>API Key:</b> {deepseek_api_key}
+• <b>API URL:</b> <code>{deepseek_api_url}</code>
+
+<i>Note: For each AI provider, configure either API Key or API URL. If both are set, API Key will be used first with fallback to API URL.</i>
 <i>Users can override these settings in their user settings.</i>"""
 
     elif key == "taskmonitor":
@@ -4377,12 +4386,16 @@ async def edit_bot_settings(client, query):
         # Reset all AI settings to default
         Config.MISTRAL_API_KEY = ""
         Config.MISTRAL_API_URL = ""
+        Config.DEEPSEEK_API_KEY = ""
+        Config.DEEPSEEK_API_URL = ""
 
         # Update the database
         await database.update_config(
             {
                 "MISTRAL_API_KEY": "",
                 "MISTRAL_API_URL": "",
+                "DEEPSEEK_API_KEY": "",
+                "DEEPSEEK_API_URL": "",
             }
         )
         # Update the UI
@@ -4850,6 +4863,8 @@ async def edit_bot_settings(client, query):
         "TASK_MONITOR_MEMORY_LOW",
         "MISTRAL_API_KEY",
         "MISTRAL_API_URL",
+        "DEEPSEEK_API_KEY",
+        "DEEPSEEK_API_URL",
     ]:
         # Handle view mode for all settings
         if state == "view":
@@ -4914,7 +4929,7 @@ async def edit_bot_settings(client, query):
         elif data[2].startswith("TASK_MONITOR_"):
             LOGGER.debug(f"Setting return function for {data[2]} to taskmonitor")
             rfunc = partial(update_buttons, message, "taskmonitor")
-        elif data[2].startswith("MISTRAL_"):
+        elif data[2].startswith("MISTRAL_") or data[2].startswith("DEEPSEEK_"):
             LOGGER.debug(f"Setting return function for {data[2]} to ai")
             rfunc = partial(update_buttons, message, "ai")
         elif data[2].startswith("MERGE_") or data[2] in [
@@ -5278,7 +5293,7 @@ async def edit_bot_settings(client, query):
                 f"Setting return function for botvar {data[2]} to mediatools_convert"
             )
             rfunc = partial(update_buttons, message, "mediatools_convert")
-        elif data[2].startswith("MISTRAL_"):
+        elif data[2].startswith("MISTRAL_") or data[2].startswith("DEEPSEEK_"):
             LOGGER.debug(f"Setting return function for botvar {data[2]} to ai")
             rfunc = partial(update_buttons, message, "ai")
         else:
@@ -5468,7 +5483,7 @@ async def edit_bot_settings(client, query):
         elif key.startswith("EXTRACT_"):
             return_menu = "mediatools_extract"
             LOGGER.debug(f"toggle: Setting return_menu for {key} to {return_menu}")
-        elif key.startswith("MISTRAL_"):
+        elif key.startswith("MISTRAL_") or key.startswith("DEEPSEEK_"):
             return_menu = "ai"
             LOGGER.debug(f"toggle: Setting return_menu for {key} to {return_menu}")
 

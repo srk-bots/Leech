@@ -53,6 +53,8 @@ leech_options = [
 ai_options = [
     "MISTRAL_API_KEY",
     "MISTRAL_API_URL",
+    "DEEPSEEK_API_KEY",
+    "DEEPSEEK_API_URL",
 ]
 metadata_options = [
     "METADATA_ALL",
@@ -348,16 +350,25 @@ async def get_user_settings(from_user, stype="main"):
         buttons.data_button("Close", f"userset {user_id} close")
 
         # Get current AI settings
-        api_key = (
+        mistral_api_key = (
             "✅ Set" if user_dict.get("MISTRAL_API_KEY", False) else "❌ Not Set"
         )
-        api_url = user_dict.get("MISTRAL_API_URL", "Not Set")
+        mistral_api_url = user_dict.get("MISTRAL_API_URL", "Not Set")
+        deepseek_api_key = (
+            "✅ Set" if user_dict.get("DEEPSEEK_API_KEY", False) else "❌ Not Set"
+        )
+        deepseek_api_url = user_dict.get("DEEPSEEK_API_URL", "Not Set")
 
         text = f"""<u><b>AI Settings for {name}</b></u>
--> Mistral API Key: <b>{api_key}</b>
--> Mistral API URL: <code>{api_url}</code>
+<b>Mistral AI:</b>
+-> API Key: <b>{mistral_api_key}</b>
+-> API URL: <code>{mistral_api_url}</code>
 
-<i>Note: Configure either API Key or API URL. If both are set, API Key will be used first with fallback to API URL.</i>
+<b>DeepSeek AI:</b>
+-> API Key: <b>{deepseek_api_key}</b>
+-> API URL: <code>{deepseek_api_url}</code>
+
+<i>Note: For each AI provider, configure either API Key or API URL. If both are set, API Key will be used first with fallback to API URL.</i>
 <i>Your settings will take priority over the bot owner's settings.</i>
 """
 

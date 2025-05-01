@@ -1,4 +1,4 @@
-from .ai import ask_ai
+from .ai import ask_ai, ask_deepseek
 from .bot_settings import edit_bot_settings, send_bot_settings
 from .broadcast import (
     broadcast,
@@ -71,6 +71,7 @@ __all__ = [
     "aeon_callback",
     "aioexecute",
     "ask_ai",
+    "ask_deepseek",
     "arg_usage",
     "authorize",
     "bot_help",
