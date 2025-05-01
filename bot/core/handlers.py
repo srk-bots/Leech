@@ -16,6 +16,7 @@ from bot.modules import (
     aeon_callback,
     aioexecute,
     arg_usage,
+    ask_ai,
     authorize,
     bot_help,
     bot_stats,
