@@ -467,3 +467,66 @@ def loop_thread(func):
         return future.result() if wait else future
 
     return wrapper
+
+
+def is_media_tool_enabled(tool_name):
+    """Check if a specific media tool is enabled in the global configuration.
+
+    Args:
+        tool_name (str): The name of the tool to check (merge, watermark, convert, etc.)
+                         Use 'mediatools' to check if all media tools are enabled.
+
+    Returns:
+        bool: True if the tool is enabled, False otherwise
+    """
+    from bot.core.config_manager import Config
+
+    # If ENABLE_EXTRA_MODULES is False, all extra modules are disabled
+    if not Config.ENABLE_EXTRA_MODULES:
+        return False
+
+    # If media tools are completely disabled, return False
+    if not Config.MEDIA_TOOLS_ENABLED:
+        return False
+
+    # If MEDIA_TOOLS_ENABLED is a string with comma-separated values
+    if (
+        isinstance(Config.MEDIA_TOOLS_ENABLED, str)
+        and "," in Config.MEDIA_TOOLS_ENABLED
+    ):
+        # Split the string and check if the tool is in the list
+        enabled_tools = [
+            t.strip().lower() for t in Config.MEDIA_TOOLS_ENABLED.split(",")
+        ]
+
+        # If checking for 'mediatools' (general media tools status), return True if any tool is enabled
+        if tool_name.lower() == "mediatools":
+            return len(enabled_tools) > 0
+
+        # Otherwise, check if the specific tool is in the enabled list
+        return tool_name.lower() in enabled_tools
+
+    # If MEDIA_TOOLS_ENABLED is True (boolean), check if the specific tool is disabled in ENABLE_EXTRA_MODULES
+    if Config.MEDIA_TOOLS_ENABLED is True:
+        # If ENABLE_EXTRA_MODULES is a string with comma-separated values
+        if (
+            isinstance(Config.ENABLE_EXTRA_MODULES, str)
+            and "," in Config.ENABLE_EXTRA_MODULES
+        ):
+            # Split the string and check if the tool is in the list of disabled modules
+            disabled_modules = [
+                t.strip().lower() for t in Config.ENABLE_EXTRA_MODULES.split(",")
+            ]
+
+            # If 'mediatools' is in the disabled modules list, all media tools are disabled
+            if "mediatools" in disabled_modules:
+                return False
+
+            # Otherwise, check if the specific tool is not in the disabled list
+            return tool_name.lower() not in disabled_modules
+
+        # If ENABLE_EXTRA_MODULES is True or any other value, return True
+        return True
+
+    # Default case: media tools are disabled
+    return False

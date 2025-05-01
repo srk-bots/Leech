@@ -1159,7 +1159,19 @@ async def media_tools_help_cmd(_, message):
     """
     Display media tools help with pagination
     """
-    # Debug message removed to reduce logging
+    from bot.helper.ext_utils.bot_utils import is_media_tool_enabled
+
+    # Check if media tools are enabled
+    if not is_media_tool_enabled("mediatools"):
+        error_msg = await send_message(
+            message,
+            "<b>Media Tools are disabled</b>\n\nMedia Tools have been disabled by the bot owner.",
+        )
+        # Auto-delete the command message immediately
+        await delete_message(message)
+        # Auto-delete the error message after 5 minutes
+        await auto_delete_message(error_msg, time=300)
+        return
 
     # Delete the command message immediately
     await delete_message(message)

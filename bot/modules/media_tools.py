@@ -34,13 +34,27 @@ async def get_media_tools_settings(from_user, stype="main", page_no=0):
     text = ""  # Initialize text variable to avoid UnboundLocalError
 
     if stype == "main":
-        # Main Media Tools menu
-        buttons.data_button("Watermark", f"mediatools {user_id} watermark")
-        buttons.data_button("Merge", f"mediatools {user_id} merge")
-        buttons.data_button("Convert", f"mediatools {user_id} convert")
-        buttons.data_button("Compression", f"mediatools {user_id} compression")
-        buttons.data_button("Trim", f"mediatools {user_id} trim")
-        buttons.data_button("Extract", f"mediatools {user_id} extract")
+        # Main Media Tools menu - only show enabled tools
+        from bot.helper.ext_utils.bot_utils import is_media_tool_enabled
+
+        if is_media_tool_enabled("watermark"):
+            buttons.data_button("Watermark", f"mediatools {user_id} watermark")
+
+        if is_media_tool_enabled("merge"):
+            buttons.data_button("Merge", f"mediatools {user_id} merge")
+
+        if is_media_tool_enabled("convert"):
+            buttons.data_button("Convert", f"mediatools {user_id} convert")
+
+        if is_media_tool_enabled("compression"):
+            buttons.data_button("Compression", f"mediatools {user_id} compression")
+
+        if is_media_tool_enabled("trim"):
+            buttons.data_button("Trim", f"mediatools {user_id} trim")
+
+        if is_media_tool_enabled("extract"):
+            buttons.data_button("Extract", f"mediatools {user_id} extract")
+
         buttons.data_button("Help", f"mediatools {user_id} help")
         buttons.data_button("Remove All", f"mediatools {user_id} remove_all")
         buttons.data_button("Reset All", f"mediatools {user_id} reset_all")
@@ -6089,6 +6103,20 @@ async def event_handler(client, query, pfunc, rfunc, photo=False, document=False
 @new_task
 async def media_tools_settings(_, message):
     """Show media tools settings."""
+    from bot.helper.ext_utils.bot_utils import is_media_tool_enabled
+
+    # Check if media tools are enabled
+    if not is_media_tool_enabled("mediatools"):
+        error_msg = await send_message(
+            message,
+            "<b>Media Tools are disabled</b>\n\nMedia Tools have been disabled by the bot owner.",
+        )
+        # Auto-delete the command message immediately
+        await delete_message(message)
+        # Auto-delete the error message after 5 minutes
+        await auto_delete_message(error_msg, time=300)
+        return
+
     msg, btns = await get_media_tools_settings(message.from_user)
     settings_msg = await send_message(message, msg, btns)
     # Auto-delete the command message immediately
@@ -7117,7 +7145,12 @@ async def edit_media_tools_settings(client, query):
 
 async def add_media_tools_button_to_bot_settings(buttons):
     """Add Media Tools button to bot settings."""
-    buttons.data_button("Media Tools", "botset mediatools")
+    from bot.helper.ext_utils.bot_utils import is_media_tool_enabled
+
+    # Only add the Media Tools button if media tools are enabled
+    if is_media_tool_enabled("mediatools"):
+        buttons.data_button("Media Tools", "botset mediatools")
+
     return buttons
 
 
@@ -7135,6 +7168,18 @@ async def show_media_tools_for_task(client, message, task_obj):
     Returns:
         bool: True if the task should proceed, False if it was cancelled
     """
+    from bot.helper.ext_utils.bot_utils import is_media_tool_enabled
+
+    # Check if media tools are enabled
+    if not is_media_tool_enabled("mediatools"):
+        error_msg = await send_message(
+            message,
+            "<b>Media Tools are disabled</b>\n\nMedia Tools have been disabled by the bot owner. The -mt flag cannot be used.",
+        )
+        # Auto-delete the error message after 5 minutes
+        await auto_delete_message(error_msg, time=300)
+        return False
+
     user_id = message.from_user.id if message.from_user else 0
     handler_dict[user_id] = True
 

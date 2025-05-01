@@ -76,6 +76,7 @@ DEFAULT_VALUES = {
     "AUTO_RESTART_INTERVAL": 24,
     "EQUAL_SPLITS": False,
     "ENABLE_EXTRA_MODULES": True,
+    "MEDIA_TOOLS_ENABLED": True,
     # Watermark Settings
     "WATERMARK_ENABLED": False,
     "WATERMARK_KEY": "",
@@ -259,12 +260,19 @@ async def get_buttons(key=None, edit_type=None, page=0, user_id=None):
     buttons = ButtonMaker()
     msg = ""  # Initialize msg with a default value
     if key is None:
+        from bot.helper.ext_utils.bot_utils import is_media_tool_enabled
+
         buttons.data_button("Config", "botset var")
         buttons.data_button("Pvt Files", "botset private")
-        buttons.data_button("Media Tools", "botset mediatools")
+
+        # Only show Media Tools button if media tools are enabled
+        if is_media_tool_enabled("mediatools"):
+            buttons.data_button("Media Tools", "botset mediatools")
+
         # Only show AI Settings button if Extra Modules are enabled
         if Config.ENABLE_EXTRA_MODULES:
             buttons.data_button("AI Settings", "botset ai")
+
         buttons.data_button("Task Monitor", "botset taskmonitor")
         buttons.data_button("Qbit Settings", "botset qbit")
         buttons.data_button("Aria2c Settings", "botset aria")
@@ -717,7 +725,14 @@ async def get_buttons(key=None, edit_type=None, page=0, user_id=None):
         # Add module control settings to the config menu
         module_keys = [
             "ENABLE_EXTRA_MODULES",
+            "MEDIA_TOOLS_ENABLED",
         ]
+
+        # Add descriptions for module settings
+        module_descriptions = {
+            "ENABLE_EXTRA_MODULES": "Enable Extra Modules (AI, Truecaller, IMDB)",
+            "MEDIA_TOOLS_ENABLED": "Enable Media Tools",
+        }
 
         # Ensure resource keys are in the filtered keys list
         for rk in resource_keys:
@@ -748,7 +763,56 @@ async def get_buttons(key=None, edit_type=None, page=0, user_id=None):
                 buttons.data_button(f"🔌 {k}", f"botset botvar {k}")
             # Highlight module control settings
             elif k in module_keys:
-                buttons.data_button(f"🧩 {k}", f"botset botvar {k}")
+                # Use the module descriptions for better display
+                description = module_descriptions.get(k, k)
+                value = Config.get(k)
+
+                # For MEDIA_TOOLS_ENABLED, handle special case for comma-separated values
+                if k == "MEDIA_TOOLS_ENABLED":
+                    if isinstance(value, str) and "," in value:
+                        # Show the number of enabled tools
+                        enabled_tools = [
+                            t.strip() for t in value.split(",") if t.strip()
+                        ]
+                        # Get the list of all available tools
+                        all_tools = [
+                            "watermark",
+                            "merge",
+                            "convert",
+                            "compression",
+                            "trim",
+                            "extract",
+                            "metadata",
+                        ]
+                        status = (
+                            f"✅ ({len(enabled_tools)}/{len(all_tools)})"
+                            if enabled_tools
+                            else "❌"
+                        )
+                    else:
+                        status = "✅" if value else "❌"
+                    buttons.data_button(
+                        f"🧩 {description}: {status}", f"botset botvar {k}"
+                    )
+                # For ENABLE_EXTRA_MODULES, show status
+                elif k == "ENABLE_EXTRA_MODULES":
+                    if isinstance(value, str) and "," in value:
+                        # Show the number of disabled modules
+                        disabled_modules = [
+                            t.strip() for t in value.split(",") if t.strip()
+                        ]
+                        status = (
+                            f"✅ ({len(disabled_modules)} disabled)"
+                            if disabled_modules
+                            else "✅"
+                        )
+                    else:
+                        status = "✅" if value else "❌"
+                    buttons.data_button(
+                        f"🧩 {description}: {status}", f"botset botvar {k}"
+                    )
+                else:
+                    buttons.data_button(f"🧩 {k}", f"botset botvar {k}")
             else:
                 buttons.data_button(k, f"botset botvar {k}")
         if state == "view":
@@ -861,12 +925,29 @@ Timeout: 60 sec"""
                 )
         msg = f"Server Keys | Page: {int(start / 10)} | State: {state}"
     elif key == "mediatools":
-        buttons.data_button("Watermark Settings", "botset mediatools_watermark")
-        buttons.data_button("Merge Settings", "botset mediatools_merge")
-        buttons.data_button("Convert Settings", "botset mediatools_convert")
-        buttons.data_button("Compression Settings", "botset mediatools_compression")
-        buttons.data_button("Trim Settings", "botset mediatools_trim")
-        buttons.data_button("Extract Settings", "botset mediatools_extract")
+        from bot.helper.ext_utils.bot_utils import is_media_tool_enabled
+
+        # Only show enabled tools
+        if is_media_tool_enabled("watermark"):
+            buttons.data_button("Watermark Settings", "botset mediatools_watermark")
+
+        if is_media_tool_enabled("merge"):
+            buttons.data_button("Merge Settings", "botset mediatools_merge")
+
+        if is_media_tool_enabled("convert"):
+            buttons.data_button("Convert Settings", "botset mediatools_convert")
+
+        if is_media_tool_enabled("compression"):
+            buttons.data_button(
+                "Compression Settings", "botset mediatools_compression"
+            )
+
+        if is_media_tool_enabled("trim"):
+            buttons.data_button("Trim Settings", "botset mediatools_trim")
+
+        if is_media_tool_enabled("extract"):
+            buttons.data_button("Extract Settings", "botset mediatools_extract")
+
         buttons.data_button("Metadata Settings", "botset mediatools_metadata")
 
         buttons.data_button("Back", "botset back", "footer")
@@ -3754,17 +3835,53 @@ async def edit_bot_settings(client, query):
         )
         await sync_jdownloader()
     elif data[1] == "mediatools":
+        from bot.helper.ext_utils.bot_utils import is_media_tool_enabled
+
         await query.answer()
+        # Check if media tools are enabled
+        if not is_media_tool_enabled("mediatools"):
+            await query.answer(
+                "Media Tools are disabled by the bot owner.", show_alert=True
+            )
+            return
+
         await update_buttons(message, "mediatools")
     elif data[1] == "mediatools_watermark":
+        from bot.helper.ext_utils.bot_utils import is_media_tool_enabled
+
         await query.answer()
+        # Check if watermark is enabled
+        if not is_media_tool_enabled("watermark"):
+            await query.answer(
+                "Watermark tool is disabled by the bot owner.", show_alert=True
+            )
+            return
+
         await update_buttons(message, "mediatools_watermark")
     elif data[1] == "mediatools_merge":
+        from bot.helper.ext_utils.bot_utils import is_media_tool_enabled
+
         await query.answer()
+        # Check if merge is enabled
+        if not is_media_tool_enabled("merge"):
+            await query.answer(
+                "Merge tool is disabled by the bot owner.", show_alert=True
+            )
+            return
+
         # Always start at page 0 when first entering merge settings
         await update_buttons(message, "mediatools_merge", page=0)
     elif data[1] == "mediatools_merge_config":
+        from bot.helper.ext_utils.bot_utils import is_media_tool_enabled
+
         await query.answer()
+        # Check if merge is enabled
+        if not is_media_tool_enabled("merge"):
+            await query.answer(
+                "Merge tool is disabled by the bot owner.", show_alert=True
+            )
+            return
+
         # Always start at page 0 when first entering merge config settings
         await update_buttons(message, "mediatools_merge_config", page=0)
     elif data[1] == "mediatools_metadata":
@@ -3772,21 +3889,57 @@ async def edit_bot_settings(client, query):
         LOGGER.debug("mediatools_metadata button clicked")
         await update_buttons(message, "mediatools_metadata")
     elif data[1] == "mediatools_convert":
+        from bot.helper.ext_utils.bot_utils import is_media_tool_enabled
+
         await query.answer()
+        # Check if convert is enabled
+        if not is_media_tool_enabled("convert"):
+            await query.answer(
+                "Convert tool is disabled by the bot owner.", show_alert=True
+            )
+            return
+
         LOGGER.debug("mediatools_convert button clicked")
         await update_buttons(message, "mediatools_convert")
     elif data[1] == "mediatools_trim":
+        from bot.helper.ext_utils.bot_utils import is_media_tool_enabled
+
         await query.answer()
+        # Check if trim is enabled
+        if not is_media_tool_enabled("trim"):
+            await query.answer(
+                "Trim tool is disabled by the bot owner.", show_alert=True
+            )
+            return
+
         LOGGER.debug("mediatools_trim button clicked")
         await update_buttons(message, "mediatools_trim")
 
     elif data[1] == "mediatools_extract":
+        from bot.helper.ext_utils.bot_utils import is_media_tool_enabled
+
         await query.answer()
+        # Check if extract is enabled
+        if not is_media_tool_enabled("extract"):
+            await query.answer(
+                "Extract tool is disabled by the bot owner.", show_alert=True
+            )
+            return
+
         LOGGER.debug("mediatools_extract button clicked")
         await update_buttons(message, "mediatools_extract")
 
     elif data[1] == "mediatools_compression":
+        from bot.helper.ext_utils.bot_utils import is_media_tool_enabled
+
         await query.answer()
+        # Check if compression is enabled
+        if not is_media_tool_enabled("compression"):
+            await query.answer(
+                "Compression tool is disabled by the bot owner.", show_alert=True
+            )
+            return
+
         LOGGER.debug("mediatools_compression button clicked")
         await update_buttons(message, "mediatools_compression")
 
@@ -4984,11 +5137,11 @@ async def edit_bot_settings(client, query):
             LOGGER.debug("Setting up AI provider selection menu")
             # Create a special menu for selecting the AI provider
             buttons = ButtonMaker()
-            buttons.data_button("Mistral", f"botset setprovider mistral")
-            buttons.data_button("DeepSeek", f"botset setprovider deepseek")
-            buttons.data_button("ChatGPT", f"botset setprovider chatgpt")
-            buttons.data_button("Gemini", f"botset setprovider gemini")
-            buttons.data_button("Cancel", f"botset cancel")
+            buttons.data_button("Mistral", "botset setprovider mistral")
+            buttons.data_button("DeepSeek", "botset setprovider deepseek")
+            buttons.data_button("ChatGPT", "botset setprovider chatgpt")
+            buttons.data_button("Gemini", "botset setprovider gemini")
+            buttons.data_button("Cancel", "botset cancel")
 
             await edit_message(
                 message,
@@ -5350,6 +5503,57 @@ async def edit_bot_settings(client, query):
         await query.answer()
         LOGGER.debug(f"Handling botvar for {data[2]} in edit mode")
 
+        # Special handling for MEDIA_TOOLS_ENABLED
+        if data[2] == "MEDIA_TOOLS_ENABLED":
+            # Create a special menu for selecting media tools
+            buttons = ButtonMaker()
+
+            # Get current value
+            current_value = Config.get(data[2])
+
+            # List of all available media tools
+            all_tools = [
+                "watermark",
+                "merge",
+                "convert",
+                "compression",
+                "trim",
+                "extract",
+                "metadata",
+            ]
+
+            # If it's a string with comma-separated values, parse it
+            enabled_tools = []
+            if isinstance(current_value, str) and "," in current_value:
+                enabled_tools = [t.strip().lower() for t in current_value.split(",")]
+            elif (
+                current_value is True
+            ):  # If it's True (boolean), all tools are enabled
+                enabled_tools = all_tools.copy()
+
+            # Add toggle buttons for each tool
+            for tool in all_tools:
+                status = "✅" if tool in enabled_tools else "❌"
+                buttons.data_button(
+                    f"{tool.title()}: {status}",
+                    f"botset toggle_tool {data[2]} {tool}",
+                )
+
+            # Add buttons to enable/disable all tools
+            buttons.data_button("Enable All", f"botset enable_all_tools {data[2]}")
+            buttons.data_button("Disable All", f"botset disable_all_tools {data[2]}")
+
+            # Add cancel button
+            buttons.data_button("Done", "botset var")
+
+            # Show the number of enabled tools in the message
+            await edit_message(
+                message,
+                f"<b>Configure Media Tools</b>\n\nSelect which media tools to enable ({len(enabled_tools)}/{len(all_tools)} enabled):",
+                buttons.build_menu(2),
+            )
+            return
+
         # For other settings, proceed with normal botvar handling
         await update_buttons(message, data[2], data[1])
         pfunc = partial(edit_variable, pre_message=message, key=data[2])
@@ -5369,11 +5573,11 @@ async def edit_bot_settings(client, query):
             LOGGER.debug("Setting up AI provider selection menu for botvar")
             # Create a special menu for selecting the AI provider
             buttons = ButtonMaker()
-            buttons.data_button("Mistral", f"botset setprovider mistral")
-            buttons.data_button("DeepSeek", f"botset setprovider deepseek")
-            buttons.data_button("ChatGPT", f"botset setprovider chatgpt")
-            buttons.data_button("Gemini", f"botset setprovider gemini")
-            buttons.data_button("Cancel", f"botset cancel")
+            buttons.data_button("Mistral", "botset setprovider mistral")
+            buttons.data_button("DeepSeek", "botset setprovider deepseek")
+            buttons.data_button("ChatGPT", "botset setprovider chatgpt")
+            buttons.data_button("Gemini", "botset setprovider gemini")
+            buttons.data_button("Cancel", "botset cancel")
 
             await edit_message(
                 message,
@@ -5491,6 +5695,163 @@ async def edit_bot_settings(client, query):
         if value == "":
             value = None
         await query.answer(f"{value}", show_alert=True)
+    elif data[1] == "toggle_tool":
+        await query.answer()
+        key = data[2]  # MEDIA_TOOLS_ENABLED
+        tool = data[3]  # The tool to toggle
+
+        # Get current value
+        current_value = Config.get(key)
+
+        # List of all available tools
+        all_tools = [
+            "watermark",
+            "merge",
+            "convert",
+            "compression",
+            "trim",
+            "extract",
+            "metadata",
+        ]
+
+        # Parse current enabled tools
+        enabled_tools = []
+        if isinstance(current_value, str) and "," in current_value:
+            enabled_tools = [t.strip().lower() for t in current_value.split(",")]
+        elif current_value is True:  # If it's True (boolean), all tools are enabled
+            enabled_tools = all_tools.copy()
+
+        # Toggle the tool
+        if tool in enabled_tools:
+            enabled_tools.remove(tool)
+        else:
+            enabled_tools.append(tool)
+
+        # Update the config
+        if enabled_tools:
+            # Sort the tools to maintain consistent order
+            enabled_tools.sort()
+            Config.set(key, ",".join(enabled_tools))
+        else:
+            Config.set(key, False)
+
+        # Update the database
+        await database.update_config({key: Config.get(key)})
+
+        # Refresh the menu
+        buttons = ButtonMaker()
+
+        # Add toggle buttons for each tool
+        for t in all_tools:
+            status = "✅" if t in enabled_tools else "❌"
+            buttons.data_button(
+                f"{t.title()}: {status}",
+                f"botset toggle_tool {key} {t}",
+            )
+
+        # Add buttons to enable/disable all tools
+        buttons.data_button("Enable All", f"botset enable_all_tools {key}")
+        buttons.data_button("Disable All", f"botset disable_all_tools {key}")
+
+        # Add done button
+        buttons.data_button("Done", "botset var")
+
+        # Show the number of enabled tools in the message
+        await edit_message(
+            message,
+            f"<b>Configure Media Tools</b>\n\nSelect which media tools to enable ({len(enabled_tools)}/{len(all_tools)} enabled):",
+            buttons.build_menu(2),
+        )
+
+    elif data[1] == "enable_all_tools":
+        await query.answer("Enabling all media tools")
+        key = data[2]  # MEDIA_TOOLS_ENABLED
+
+        # List of all available tools
+        all_tools = [
+            "watermark",
+            "merge",
+            "convert",
+            "compression",
+            "trim",
+            "extract",
+            "metadata",
+        ]
+
+        # Update the config - sort the tools to maintain consistent order
+        all_tools.sort()
+        Config.set(key, ",".join(all_tools))
+
+        # Update the database
+        await database.update_config({key: Config.get(key)})
+
+        # Refresh the menu
+        buttons = ButtonMaker()
+
+        # Add toggle buttons for each tool
+        for tool in all_tools:
+            buttons.data_button(
+                f"{tool.title()}: ✅",
+                f"botset toggle_tool {key} {tool}",
+            )
+
+        # Add buttons to enable/disable all tools
+        buttons.data_button("Enable All", f"botset enable_all_tools {key}")
+        buttons.data_button("Disable All", f"botset disable_all_tools {key}")
+
+        # Add done button
+        buttons.data_button("Done", "botset var")
+
+        await edit_message(
+            message,
+            f"<b>Configure Media Tools</b>\n\nSelect which media tools to enable ({len(all_tools)}/{len(all_tools)} enabled):",
+            buttons.build_menu(2),
+        )
+
+    elif data[1] == "disable_all_tools":
+        await query.answer("Disabling all media tools")
+        key = data[2]  # MEDIA_TOOLS_ENABLED
+
+        # Update the config
+        Config.set(key, False)
+
+        # Update the database
+        await database.update_config({key: Config.get(key)})
+
+        # Refresh the menu
+        buttons = ButtonMaker()
+
+        # List of all available tools
+        all_tools = [
+            "watermark",
+            "merge",
+            "convert",
+            "compression",
+            "trim",
+            "extract",
+            "metadata",
+        ]
+
+        # Add toggle buttons for each tool
+        for tool in all_tools:
+            buttons.data_button(
+                f"{tool.title()}: ❌",
+                f"botset toggle_tool {key} {tool}",
+            )
+
+        # Add buttons to enable/disable all tools
+        buttons.data_button("Enable All", f"botset enable_all_tools {key}")
+        buttons.data_button("Disable All", f"botset disable_all_tools {key}")
+
+        # Add done button
+        buttons.data_button("Done", "botset var")
+
+        await edit_message(
+            message,
+            f"<b>Configure Media Tools</b>\n\nSelect which media tools to enable (0/{len(all_tools)} enabled):",
+            buttons.build_menu(2),
+        )
+
     elif data[1] == "setprovider":
         await query.answer(f"Setting default AI provider to {data[2].capitalize()}")
         # Update the default AI provider
@@ -5565,6 +5926,39 @@ async def edit_bot_settings(client, query):
         await query.answer()
         key = data[2]
         value = data[3].lower() == "true"
+
+        # Special handling for ENABLE_EXTRA_MODULES
+        if key == "ENABLE_EXTRA_MODULES":
+            # If it's a string with comma-separated values, toggle to True
+            # If it's True, toggle to False
+            # If it's False, toggle to True
+            if (
+                isinstance(Config.ENABLE_EXTRA_MODULES, str)
+                and "," in Config.ENABLE_EXTRA_MODULES
+            ):
+                value = True
+
+        # Special handling for MEDIA_TOOLS_ENABLED
+        elif key == "MEDIA_TOOLS_ENABLED":
+            # If toggling to True, set to a comma-separated list of all media tools
+            if value:
+                # List of all available media tools
+                all_tools = [
+                    "watermark",
+                    "merge",
+                    "convert",
+                    "compression",
+                    "trim",
+                    "extract",
+                    "metadata",
+                ]
+                # Sort the tools to maintain consistent order
+                all_tools.sort()
+                value = ",".join(all_tools)
+            # If toggling to False, set to False (boolean)
+            else:
+                value = False
+
         Config.set(key, value)
 
         # Determine which menu to return to based on the key
@@ -5585,6 +5979,9 @@ async def edit_bot_settings(client, query):
             return_menu = "mediatools_extract"
             LOGGER.debug(f"toggle: Setting return_menu for {key} to {return_menu}")
         elif key == "ENABLE_EXTRA_MODULES":
+            return_menu = "var"
+            LOGGER.debug(f"toggle: Setting return_menu for {key} to {return_menu}")
+        elif key == "MEDIA_TOOLS_ENABLED":
             return_menu = "var"
             LOGGER.debug(f"toggle: Setting return_menu for {key} to {return_menu}")
         elif (
