@@ -261,6 +261,7 @@ async def get_buttons(key=None, edit_type=None, page=0, user_id=None):
         buttons.data_button("Config", "botset var")
         buttons.data_button("Pvt Files", "botset private")
         buttons.data_button("Media Tools", "botset mediatools")
+        buttons.data_button("AI Settings", "botset ai")
         buttons.data_button("Task Monitor", "botset taskmonitor")
         buttons.data_button("Qbit Settings", "botset qbit")
         buttons.data_button("Aria2c Settings", "botset aria")
@@ -629,6 +630,14 @@ async def get_buttons(key=None, edit_type=None, page=0, user_id=None):
                 msg += "Set the API URL for Truecaller phone number lookup.\n\n"
                 msg += "Default: https://truecaller.privates-bots.workers.dev/\n\n"
                 msg += "You can use your own API endpoint if you have one.\n\n"
+            elif key == "MISTRAL_API_KEY":
+                msg += "Set your Mistral AI API key for the AI chatbot.\n\n"
+                msg += "You can get an API key from https://console.mistral.ai/\n\n"
+                msg += "This will be used when users use the /ask command without their own API key.\n\n"
+            elif key == "MISTRAL_API_URL":
+                msg += "Set a custom API URL for Mistral AI chatbot.\n\n"
+                msg += "This is used as a fallback if the API key is not set or fails.\n\n"
+                msg += "You can use your own proxy endpoint if you have one.\n\n"
 
             msg += f"Send a valid value for {key}. Current value is '{Config.get(key)}'. Timeout: 60 sec"
         elif edit_type == "ariavar":
@@ -697,6 +706,8 @@ async def get_buttons(key=None, edit_type=None, page=0, user_id=None):
         # Add API settings to the config menu
         api_keys = [
             "TRUECALLER_API_URL",
+            "MISTRAL_API_KEY",
+            "MISTRAL_API_URL",
         ]
 
         # Ensure resource keys are in the filtered keys list
@@ -844,6 +855,38 @@ Timeout: 60 sec"""
         buttons.data_button("Back", "botset back", "footer")
         buttons.data_button("Close", "botset close", "footer")
         msg = "<b>Media Tools Settings</b>\n\nConfigure global settings for media tools."
+    elif key == "ai":
+        # Add buttons for each AI setting
+        ai_settings = [
+            "MISTRAL_API_KEY",
+            "MISTRAL_API_URL",
+        ]
+
+        for setting in ai_settings:
+            display_name = setting.replace("_", " ").title()
+            buttons.data_button(display_name, f"botset editvar {setting}")
+
+        if state == "view":
+            buttons.data_button("Edit", "botset edit ai")
+        else:
+            buttons.data_button("View", "botset view ai")
+
+        buttons.data_button("Default", "botset default_ai")
+        buttons.data_button("Back", "botset back", "footer")
+        buttons.data_button("Close", "botset close", "footer")
+
+        # Get current AI settings
+        api_key = "✅ Set" if Config.MISTRAL_API_KEY else "❌ Not Set"
+        api_url = Config.MISTRAL_API_URL or "Not Set"
+
+        msg = f"""<b>AI Settings</b> | State: {state}
+
+<b>Mistral API Key:</b> {api_key}
+<b>Mistral API URL:</b> <code>{api_url}</code>
+
+<i>Note: Configure either API Key or API URL. If both are set, API Key will be used first with fallback to API URL.</i>
+<i>Users can override these settings in their user settings.</i>"""
+
     elif key == "taskmonitor":
         # Add buttons for each task monitoring setting
         task_monitor_settings = [
@@ -3330,6 +3373,11 @@ async def edit_variable(_, message, pre_message, key):
         LOGGER.debug(
             f"edit_variable: Setting return_menu for {key} to {return_menu}"
         )
+    elif key.startswith("MISTRAL_"):
+        return_menu = "ai"
+        LOGGER.debug(
+            f"edit_variable: Setting return_menu for {key} to {return_menu}"
+        )
     elif key.startswith("TASK_MONITOR_"):
         return_menu = "taskmonitor"
         LOGGER.debug(
@@ -4317,6 +4365,22 @@ async def edit_bot_settings(client, query):
         )
         # Update the UI - pass the current state to maintain edit/view mode
         await update_buttons(message, "mediatools_metadata")
+    elif data[1] == "default_ai":
+        await query.answer("Resetting all AI settings to default...")
+        # Reset all AI settings to default
+        Config.MISTRAL_API_KEY = ""
+        Config.MISTRAL_API_URL = ""
+
+        # Update the database
+        await database.update_config(
+            {
+                "MISTRAL_API_KEY": "",
+                "MISTRAL_API_URL": "",
+            }
+        )
+        # Update the UI
+        await update_buttons(message, "ai")
+
     elif data[1] == "default_taskmonitor":
         await query.answer("Resetting all task monitoring settings to default...")
         # Reset all task monitoring settings to default
@@ -4769,6 +4833,8 @@ async def edit_bot_settings(client, query):
         "TASK_MONITOR_CPU_LOW",
         "TASK_MONITOR_MEMORY_HIGH",
         "TASK_MONITOR_MEMORY_LOW",
+        "MISTRAL_API_KEY",
+        "MISTRAL_API_URL",
     ]:
         # Handle view mode for all settings
         if state == "view":

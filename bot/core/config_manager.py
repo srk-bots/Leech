@@ -430,6 +430,10 @@ class Config:
     # Truecaller API Settings
     TRUECALLER_API_URL: str = "https://truecaller.privates-bots.workers.dev/"
 
+    # Mistral AI Settings
+    MISTRAL_API_KEY: str = ""
+    MISTRAL_API_URL: str = ""
+
     @classmethod
     def get(cls, key):
         return getattr(cls, key) if hasattr(cls, key) else None

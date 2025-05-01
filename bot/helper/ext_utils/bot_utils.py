@@ -22,6 +22,7 @@ except ImportError:
     smart_garbage_collection = None
 
 from .help_messages import (
+    AI_HELP_DICT,
     CLONE_HELP_DICT,
     MIRROR_HELP_DICT,
     YT_HELP_DICT,
@@ -61,6 +62,7 @@ def create_help_buttons():
     _build_command_usage(MIRROR_HELP_DICT, "mirror")
     _build_command_usage(YT_HELP_DICT, "yt")
     _build_command_usage(CLONE_HELP_DICT, "clone")
+    _build_command_usage(AI_HELP_DICT, "ai")
 
 
 def bt_selection_buttons(id_):

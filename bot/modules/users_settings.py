@@ -49,6 +49,11 @@ leech_options = [
     "USER_DUMP",
     "USER_SESSION",
 ]
+
+ai_options = [
+    "MISTRAL_API_KEY",
+    "MISTRAL_API_URL",
+]
 metadata_options = [
     "METADATA_ALL",
     "METADATA_TITLE",
@@ -330,6 +335,32 @@ async def get_user_settings(from_user, stype="main"):
 -> Gdrive ID: <code>{gdrive_id}</code>
 -> Index URL: <code>{index}</code>
 -> Stop Duplicate: <b>{sd_msg}</b>"""
+    elif stype == "ai":
+        # Add buttons for each AI setting
+        for option in ai_options:
+            buttons.data_button(
+                option.replace("_", " ").title(),
+                f"userset {user_id} menu {option}",
+            )
+
+        buttons.data_button("Reset AI Settings", f"userset {user_id} reset ai")
+        buttons.data_button("Back", f"userset {user_id} back")
+        buttons.data_button("Close", f"userset {user_id} close")
+
+        # Get current AI settings
+        api_key = (
+            "✅ Set" if user_dict.get("MISTRAL_API_KEY", False) else "❌ Not Set"
+        )
+        api_url = user_dict.get("MISTRAL_API_URL", "Not Set")
+
+        text = f"""<u><b>AI Settings for {name}</b></u>
+-> Mistral API Key: <b>{api_key}</b>
+-> Mistral API URL: <code>{api_url}</code>
+
+<i>Note: Configure either API Key or API URL. If both are set, API Key will be used first with fallback to API URL.</i>
+<i>Your settings will take priority over the bot owner's settings.</i>
+"""
+
     elif stype == "convert":
         buttons.data_button("Back", f"userset {user_id} back")
         buttons.data_button("Close", f"userset {user_id} close")
@@ -443,6 +474,7 @@ Please use /mediatools command to configure convert settings.
         buttons.data_button("Leech", f"userset {user_id} leech")
         buttons.data_button("Rclone", f"userset {user_id} rclone")
         buttons.data_button("Gdrive API", f"userset {user_id} gdrive")
+        buttons.data_button("AI Settings", f"userset {user_id} ai")
 
         upload_paths = user_dict.get("UPLOAD_PATHS", {})
         if (
@@ -807,7 +839,8 @@ async def get_menu(option, message, user_id):
     elif option in metadata_options:
         back_to = "metadata"
     # Convert options have been moved to Media Tools settings
-
+    elif option in ai_options:
+        back_to = "ai"
     elif option in yt_dlp_options:
         back_to = "back"  # Go back to main menu
     else:
@@ -871,7 +904,7 @@ async def edit_user_settings(client, query):
         return
     if data[2] == "setevent":
         await query.answer()
-    elif data[2] in ["leech", "gdrive", "rclone", "metadata", "convert"]:
+    elif data[2] in ["leech", "gdrive", "rclone", "metadata", "convert", "ai"]:
         await query.answer()
         await update_user_settings(query, data[2])
     elif data[2] == "menu":
@@ -977,7 +1010,13 @@ You can provide your own cookies for YouTube and other yt-dlp downloads to acces
             await database.update_user_data(user_id)
     elif data[2] == "reset":
         await query.answer("Reseted!", show_alert=True)
-        if data[3] == "metadata_all":
+        if data[3] == "ai":
+            # Reset all AI settings
+            for key in ai_options:
+                if key in user_dict:
+                    user_dict.pop(key, None)
+            await update_user_settings(query, "ai")
+        elif data[3] == "metadata_all":
             # Reset all metadata settings
             for key in metadata_options:
                 if key in user_dict:

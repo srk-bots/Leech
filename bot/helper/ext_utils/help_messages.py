@@ -715,6 +715,29 @@ Here I will explain how to use mltb.* which is reference to files you want to wo
 3. Third cmd: the input in mltb.m4a so this cmd will work only on m4a audios and the output is mltb.mp3 so the output extension is mp3.
 4. Fourth cmd: the input is mltb.audio so this cmd will work on all audios and the output is mltb.mp3 so the output extension is mp3."""
 
+ai_help = """<b>AI Chatbot</b>:
+
+Chat with Mistral AI using the /ask command.
+
+<b>Usage:</b>
+/ask your question here
+
+<b>Configuration:</b>
+1. <b>Bot Owner</b>: Configure Mistral API Key or API URL in bot settings
+2. <b>Users</b>: Configure your own API Key or API URL in user settings
+
+<b>Features:</b>
+- Uses Mistral AI's powerful language model
+- Supports both direct API access and custom API endpoints
+- User settings take priority over bot owner settings
+- Messages auto-delete after 5 minutes
+
+<b>Examples:</b>
+/ask What is the capital of France?
+/ask Write a short poem about nature
+/ask Explain how quantum computing works
+"""
+
 user_cookies_help = """<b>User Cookies</b>:
 
 You can provide your own cookies for YouTube and other yt-dlp downloads to access restricted content.
@@ -788,6 +811,7 @@ MIRROR_HELP_DICT = {
     "Leech-Type": leech_as,
     "Leech-Filename": leech_filename,
     "FFmpeg-Cmds": ffmpeg_cmds,
+    "AI-Chatbot": ai_help,
 }
 
 CLONE_HELP_DICT = {
@@ -796,6 +820,10 @@ CLONE_HELP_DICT = {
     "Bulk": bulk,
     "Gdrive": gdrive,
     "Rclone": rclone_cl,
+}
+
+AI_HELP_DICT = {
+    "main": ai_help,
 }
 
 RSS_HELP_MESSAGE = """
@@ -1117,6 +1145,7 @@ NOTE: Try each command without any argument to see more detalis.
 /{BotCommands.IMDBCommand}: Search for movies or TV series info on IMDB.
 /{BotCommands.MusicSearchCommand[0]} or /{BotCommands.MusicSearchCommand[1]}: Search for music files in configured channels.
 /{BotCommands.CheckDeletionsCommand[0]} or /{BotCommands.CheckDeletionsCommand[1]}: Check and manage scheduled message deletions.
+/{BotCommands.AskCommand}: Chat with Mistral AI using the bot.
 /{BotCommands.LoginCommand}: Login to the bot using password for permanent access.
 /{BotCommands.RssCommand}: [Owner Only] Subscribe to RSS feeds.
 """

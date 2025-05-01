@@ -1,3 +1,4 @@
+from .ai import ask_ai
 from .bot_settings import edit_bot_settings, send_bot_settings
 from .broadcast import (
     broadcast,
@@ -69,6 +70,7 @@ __all__ = [
     "add_sudo",
     "aeon_callback",
     "aioexecute",
+    "ask_ai",
     "arg_usage",
     "authorize",
     "bot_help",
