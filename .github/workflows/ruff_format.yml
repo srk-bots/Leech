@@ -49,19 +49,16 @@ jobs:
           TELEGRAM_BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
           COMMIT_MSG: "format: auto-format code by ruff."
           REPO: ${{ github.repository }}
-          BRANCH: ${{ github.ref }}
+          BRANCH: ${{ github.ref_name }}
           COMMIT_URL: "https://github.com/${{ github.repository }}/commit/${{ github.sha }}"
           AUTHOR_URL: "https://github.com/${{ github.actor }}"
           USER: ${{ github.actor }}
         run: |
-          BD_TIMESTAMP=$(TZ="Asia/Dhaka" date "+%Y-%m-%d %H:%M:%S")
-
           MESSAGE="New Commit Pushed\n"
           MESSAGE+="\n"
           MESSAGE+="Commit by: [${USER}](${AUTHOR_URL})\n"
           MESSAGE+="Repository: ${REPO}\n"
           MESSAGE+="Branch: ${BRANCH}\n"
-          MESSAGE+="Pushed at: ${BD_TIMESTAMP}\n"
           MESSAGE+="\n"
           MESSAGE+="Commit Message:\n"
           MESSAGE+="${COMMIT_MSG}\n"
