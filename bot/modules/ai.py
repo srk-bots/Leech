@@ -1,5 +1,4 @@
 import json
-import urllib.parse
 from asyncio import create_task
 
 from httpx import AsyncClient, Timeout
@@ -429,8 +428,34 @@ async def get_response_with_api_url(question, api_url, user_id):
     """
     Get a response from Mistral AI using an external API URL
     """
-    # Use the more flexible custom AI response function
-    return await get_custom_ai_response(question, api_url, user_id)
+    # Ensure the URL doesn't end with a slash
+    api_url = api_url.rstrip("/")
+
+    data = {
+        "id": user_id,  # Using user's ID for history
+        "question": question,
+    }
+
+    timeout = Timeout(30.0, connect=10.0)
+
+    async with AsyncClient(timeout=timeout) as client:
+        response = await client.post(api_url, json=data)
+
+        if response.status_code != 200:
+            raise Exception(
+                f"API returned status code {response.status_code}: {response.text}"
+            )
+
+        try:
+            response_data = response.json()
+
+            if response_data.get("status") == "success":
+                return response_data.get("answer", "No answer provided")
+            raise Exception(
+                f"API returned error: {response_data.get('error', 'Unknown error')}"
+            )
+        except json.JSONDecodeError as e:
+            raise Exception("Invalid JSON response from API") from e
 
 
 async def get_deepseek_response(question, api_key, api_url, user_id):
@@ -501,8 +526,63 @@ async def get_deepseek_response_with_api_url(question, api_url, user_id):
     """
     Get a response from DeepSeek AI using an external API URL
     """
-    # Use the more flexible custom AI response function
-    return await get_custom_ai_response(question, api_url, user_id)
+    # Ensure the URL doesn't end with a slash
+    api_url = api_url.rstrip("/")
+
+    # Check if this is a specific API URL format
+    if "deepseek" in api_url and "workers.dev" in api_url:
+        # Use a GET request format with query parameter
+        full_url = f"{api_url}/?question={question}"
+
+        timeout = Timeout(30.0, connect=10.0)
+
+        async with AsyncClient(timeout=timeout) as client:
+            response = await client.get(full_url)
+
+            if response.status_code != 200:
+                raise Exception(
+                    f"API returned status code {response.status_code}: {response.text}"
+                )
+
+            try:
+                response_data = response.json()
+
+                if response_data.get("status") == "success":
+                    return response_data.get("message", "No message provided")
+                raise Exception(
+                    f"API returned error: {response_data.get('error', 'Unknown error')}"
+                )
+            except json.JSONDecodeError as e:
+                raise Exception("Invalid JSON response from API") from e
+    else:
+        # Use a more standard POST request format for custom endpoints
+        data = {
+            "id": user_id,  # Using user's ID for history
+            "question": question,
+        }
+
+        timeout = Timeout(30.0, connect=10.0)
+
+        async with AsyncClient(timeout=timeout) as client:
+            response = await client.post(api_url, json=data)
+
+            if response.status_code != 200:
+                raise Exception(
+                    f"API returned status code {response.status_code}: {response.text}"
+                )
+
+            try:
+                response_data = response.json()
+
+                if response_data.get("status") == "success":
+                    return response_data.get(
+                        "message", response_data.get("answer", "No answer provided")
+                    )
+                raise Exception(
+                    f"API returned error: {response_data.get('error', 'Unknown error')}"
+                )
+            except json.JSONDecodeError as e:
+                raise Exception("Invalid JSON response from API") from e
 
 
 async def get_chatgpt_response(question, api_key, api_url, user_id):
@@ -573,8 +653,36 @@ async def get_chatgpt_response_with_api_url(question, api_url, user_id):
     """
     Get a response from ChatGPT using an external API URL
     """
-    # Use the more flexible custom AI response function
-    return await get_custom_ai_response(question, api_url, user_id)
+    # Ensure the URL doesn't end with a slash
+    api_url = api_url.rstrip("/")
+
+    data = {
+        "id": user_id,  # Using user's ID for history
+        "question": question,
+    }
+
+    timeout = Timeout(30.0, connect=10.0)
+
+    async with AsyncClient(timeout=timeout) as client:
+        response = await client.post(api_url, json=data)
+
+        if response.status_code != 200:
+            raise Exception(
+                f"API returned status code {response.status_code}: {response.text}"
+            )
+
+        try:
+            response_data = response.json()
+
+            if response_data.get("status") == "success":
+                return response_data.get(
+                    "message", response_data.get("answer", "No answer provided")
+                )
+            raise Exception(
+                f"API returned error: {response_data.get('error', 'Unknown error')}"
+            )
+        except json.JSONDecodeError as e:
+            raise Exception("Invalid JSON response from API") from e
 
 
 async def get_gemini_response(question, api_key, api_url, user_id):
@@ -645,189 +753,87 @@ async def get_gemini_response_with_api_url(question, api_url, user_id):
     """
     Get a response from Gemini AI using an external API URL
     """
-    # Use the more flexible custom AI response function
-    return await get_custom_ai_response(question, api_url, user_id)
+    # Ensure the URL doesn't end with a slash
+    api_url = api_url.rstrip("/")
+
+    data = {
+        "id": user_id,  # Using user's ID for history
+        "question": question,
+    }
+
+    timeout = Timeout(30.0, connect=10.0)
+
+    async with AsyncClient(timeout=timeout) as client:
+        response = await client.post(api_url, json=data)
+
+        if response.status_code != 200:
+            raise Exception(
+                f"API returned status code {response.status_code}: {response.text}"
+            )
+
+        try:
+            response_data = response.json()
+
+            if response_data.get("status") == "success":
+                return response_data.get(
+                    "message", response_data.get("answer", "No answer provided")
+                )
+            raise Exception(
+                f"API returned error: {response_data.get('error', 'Unknown error')}"
+            )
+        except json.JSONDecodeError as e:
+            raise Exception("Invalid JSON response from API") from e
 
 
 async def get_custom_ai_response(question, api_url, user_id):
     """
     Get a response from a custom AI API URL
-    This function is designed to work with various API formats and automatically
-    detect the appropriate request method and parameters
+    This function is designed to work with any API that accepts a POST request
+    with a question parameter and returns a JSON response
     """
-    # Ensure the URL doesn't end with a slash if it doesn't have query parameters
-    if "?" not in api_url:
-        api_url = api_url.rstrip("/")
+    # Ensure the URL doesn't end with a slash
+    api_url = api_url.rstrip("/")
 
-    # Prepare common data payloads
-    json_data = {
+    # Prepare the data payload
+    data = {
         "id": user_id,  # Using user's ID for history/tracking
         "question": question,
     }
 
-    # URL encode the question for GET requests
-    encoded_question = urllib.parse.quote(question)
-    encoded_user_id = str(user_id)
-
     timeout = Timeout(30.0, connect=10.0)
-
-    # Detect if the URL already contains placeholders
-    has_question_placeholder = any(
-        ph in api_url
-        for ph in [
-            "{question}",
-            "{your_question}",
-            "{q}",
-            "{text}",
-            "{your_text}",
-            "{site}",
-            "{url}",
-            "{IMAGE_URL}",
-            "{TOOL_NAME}",
-        ]
-    )
-    has_id_placeholder = any(
-        ph in api_url for ph in ["{id}", "{your_telegram_id}", "{your_id}"]
-    )
-
-    # Replace placeholders if they exist in the URL
-    if has_question_placeholder:
-        api_url = (
-            api_url.replace("{question}", encoded_question)
-            .replace("{your_question}", encoded_question)
-            .replace("{q}", encoded_question)
-            .replace("{text}", encoded_question)
-            .replace("{your_text}", encoded_question)
-            .replace("{site}", encoded_question)
-            .replace("{url}", encoded_question)
-            .replace("{IMAGE_URL}", encoded_question)
-            .replace("{TOOL_NAME}", "text")  # Default tool is text
-        )
-
-    if has_id_placeholder:
-        api_url = (
-            api_url.replace("{id}", encoded_user_id)
-            .replace("{your_telegram_id}", encoded_user_id)
-            .replace("{your_id}", encoded_user_id)
-        )
-
-    # Prepare different GET URL formats based on the examples provided
-    get_url_formats = [
-        # Standard format with question parameter
-        f"{api_url}{'&' if '?' in api_url else '?'}question={encoded_question}",
-        # Format with q parameter (used by many APIs including Truecaller and OCR)
-        f"{api_url}{'&' if '?' in api_url else '?'}q={encoded_question}",
-        # Format with text parameter
-        f"{api_url}{'&' if '?' in api_url else '?'}text={encoded_question}",
-        # Format with id and question parameters
-        f"{api_url}{'&' if '?' in api_url else '?'}id={user_id}&question={encoded_question}",
-        # Format for PHP example with id and question
-        f"{api_url}{'&' if '?' in api_url else '?'}id={user_id}question={encoded_question}",
-        # Format with query parameter (used by Play Store API and others)
-        f"{api_url}{'&' if '?' in api_url else '?'}query={encoded_question}",
-        # Format for screenshot and image processing APIs
-        f"{api_url}{'&' if '?' in api_url else '?'}url={encoded_question}",
-        # Format for image processing APIs with tool parameter
-        f"{api_url}{'&' if '?' in api_url else '?'}url={encoded_question}&tool=text",
-    ]
-
-    # If URL already has placeholders, use it directly as the first option
-    if has_question_placeholder:
-        get_url_formats.insert(0, api_url)
-
-    LOGGER.debug(f"Custom AI API URL: {api_url}")
-    LOGGER.debug(f"URL has question placeholder: {has_question_placeholder}")
-    LOGGER.debug(f"URL has ID placeholder: {has_id_placeholder}")
 
     async with AsyncClient(timeout=timeout) as client:
         try:
-            response = None
-            error_messages = []
+            # Try POST request first (most common API format)
+            response = await client.post(api_url, json=data)
 
-            # Try POST request first with JSON data (most common for AI APIs)
-            try:
-                LOGGER.debug(f"Trying POST request to {api_url} with JSON data")
-                response = await client.post(api_url, json=json_data)
-                if response.status_code == 200:
-                    LOGGER.debug("POST request successful")
-                else:
-                    error_messages.append(
-                        f"POST with JSON data failed: {response.status_code}"
+            if response.status_code != 200:
+                # If POST fails, try GET request with query parameter
+                get_url = f"{api_url}/?question={question}"
+                response = await client.get(get_url)
+
+                if response.status_code != 200:
+                    raise Exception(
+                        f"API returned status code {response.status_code}: {response.text}"
                     )
-            except Exception as e:
-                error_messages.append(f"POST with JSON data error: {e!s}")
-                response = None
 
-            # If POST with JSON fails, try POST with form data
-            if not response or response.status_code != 200:
-                try:
-                    LOGGER.debug(f"Trying POST request to {api_url} with form data")
-                    form_data = {"question": question, "id": str(user_id)}
-                    response = await client.post(api_url, data=form_data)
-                    if response.status_code == 200:
-                        LOGGER.debug("POST with form data successful")
-                    else:
-                        error_messages.append(
-                            f"POST with form data failed: {response.status_code}"
-                        )
-                except Exception as e:
-                    error_messages.append(f"POST with form data error: {e!s}")
-                    response = None
-
-            # If both POST methods fail, try different GET URL formats
-            if not response or response.status_code != 200:
-                for i, get_url in enumerate(get_url_formats):
-                    try:
-                        LOGGER.debug(f"Trying GET request to {get_url}")
-                        response = await client.get(get_url)
-                        if response.status_code == 200:
-                            LOGGER.debug(
-                                f"GET request successful with format {i + 1}"
-                            )
-                            break
-
-                        error_messages.append(
-                            f"GET format {i + 1} failed: {response.status_code}"
-                        )
-                        response = None
-                    except Exception as e:
-                        error_messages.append(f"GET format {i + 1} error: {e!s}")
-                        response = None
-
-            # If all requests failed, raise an exception with all error messages
-            if not response or response.status_code != 200:
-                raise Exception(
-                    f"All API request methods failed: {'; '.join(error_messages)}"
-                )
-
-            # Try to parse the response
-            content_type = response.headers.get("content-type", "")
-            LOGGER.debug(f"Response content type: {content_type}")
-
-            # Handle image responses (for APIs that return images)
-            if "image" in content_type:
-                LOGGER.debug("Detected image response")
-                return "[Image response received. Cannot display in text format.]"
-
-            # Try to parse as JSON first
+            # Try to parse the response as JSON
             try:
                 response_data = response.json()
-                LOGGER.debug(f"Response JSON: {json.dumps(response_data)[:500]}...")
 
                 # Check for common response formats
-                # Format 1: {"status": "success", "answer": "..."}
                 if response_data.get("status") == "success":
-                    for key in [
+                    # Format 1: {"status": "success", "answer": "..."}
+                    return response_data.get(
                         "message",
-                        "answer",
-                        "content",
-                        "response",
-                        "result",
-                        "text",
-                    ]:
-                        if key in response_data:
-                            return response_data[key]
-                    return "Success response received but no content found."
+                        response_data.get(
+                            "answer",
+                            response_data.get(
+                                "content",
+                                response_data.get("response", "No answer provided"),
+                            ),
+                        ),
+                    )
 
                 # Format 2: OpenAI-like {"choices": [{"message": {"content": "..."}}]}
                 if "choices" in response_data and len(response_data["choices"]) > 0:
@@ -836,23 +842,11 @@ async def get_custom_ai_response(question, api_url, user_id):
                     except (KeyError, IndexError):
                         pass
 
-                # Format 3: Google Gemini-like {"candidates": [{"content": {"parts": [{"text": "..."}]}}]}
-                if (
-                    "candidates" in response_data
-                    and len(response_data["candidates"]) > 0
-                ):
-                    try:
-                        return response_data["candidates"][0]["content"]["parts"][0][
-                            "text"
-                        ]
-                    except (KeyError, IndexError):
-                        pass
-
-                # Format 4: Direct text in the response
+                # Format 3: Direct text in the response
                 if isinstance(response_data, str):
                     return response_data
 
-                # Format 5: Simple {"response": "..."} or {"answer": "..."} or {"message": "..."}
+                # Format 4: Simple {"response": "..."} or {"answer": "..."} or {"message": "..."}
                 for key in [
                     "response",
                     "answer",
@@ -860,36 +854,15 @@ async def get_custom_ai_response(question, api_url, user_id):
                     "content",
                     "text",
                     "result",
-                    "data",
-                    "output",
-                    "generated_text",
-                    "completion",
                 ]:
                     if key in response_data:
-                        if isinstance(response_data[key], str):
-                            return response_data[key]
-
-                        if isinstance(response_data[key], dict):
-                            # Handle nested structures
-                            for nested_key in [
-                                "text",
-                                "content",
-                                "message",
-                                "value",
-                                "result",
-                            ]:
-                                if nested_key in response_data[key]:
-                                    return response_data[key][nested_key]
-
-                # Format 6: Anthropic-like {"completion": "..."}
-                if "completion" in response_data:
-                    return response_data["completion"]
+                        return response_data[key]
 
                 # If we can't find a recognized format, return the raw JSON as string
                 return f"Received response: {json.dumps(response_data)}"
 
             except json.JSONDecodeError:
-                # If not JSON, return the raw text (which might be the actual response)
+                # If not JSON, return the raw text
                 return response.text
 
         except Exception as e:

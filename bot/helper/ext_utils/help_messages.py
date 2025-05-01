@@ -734,17 +734,10 @@ Use the /ask command with any of the following AI providers:
 1. <b>Bot Owner</b>: Configure API Keys or API URLs and default AI provider in bot settings
 2. <b>Users</b>: Configure your own API Keys or API URLs and default AI provider in user settings
 
-<b>Custom API Feature:</b>
-The Custom API option supports various API formats:
-- Standard APIs with POST/GET methods
-- URLs with placeholders like: https://example.com/?q={question}
-- Various parameter formats: question, q, text, query
-- Multiple response formats (JSON, plain text)
-- Automatic format detection - no need to specify the format
-
 <b>Features:</b>
 - Uses powerful language models
 - Supports both direct API access and custom API endpoints
+- Custom API option for any compatible AI service
 - User settings take priority over bot owner settings
 - Messages auto-delete after 5 minutes
 - Automatically selects the configured AI provider
@@ -886,8 +879,8 @@ user_settings_text = {
     "CHATGPT_API_KEY": "Send your ChatGPT API key. This will be used to access the OpenAI API directly. Leave empty to use the bot owner's API key. Timeout: 60 sec",
     "CHATGPT_API_URL": "Send your custom ChatGPT API URL. This will be used as a fallback if the API key is not provided or fails. Leave empty to use the bot owner's API URL. Timeout: 60 sec",
     "GEMINI_API_KEY": "Send your Gemini AI API key. This will be used to access the Google AI API directly. Leave empty to use the bot owner's API key. Timeout: 60 sec",
+    "CUSTOM_AI_API_URL": "Send your custom AI API URL. This can be any API endpoint that accepts a POST request with a 'question' parameter and returns a JSON response. Set DEFAULT_AI_PROVIDER to 'custom' to use this URL. Timeout: 60 sec",
     "GEMINI_API_URL": "Send your custom Gemini AI API URL. This will be used as a fallback if the API key is not provided or fails. Leave empty to use the bot owner's API URL. Timeout: 60 sec",
-    "CUSTOM_AI_API_URL": "Send your custom AI API URL. Supports various formats including placeholder URLs like 'https://example.com/?q={question}' or standard APIs that accept POST/GET requests. The system will automatically detect the appropriate format. Set DEFAULT_AI_PROVIDER to 'custom' to use this URL. Timeout: 60 sec",
     "METADATA_KEY": "Send your text for change mkv medias metadata (title only). This is a legacy option, consider using the specific metadata options instead. Timeout: 60 sec",
     "METADATA_ALL": "Send metadata text to be used for all metadata fields (title, author, comment) for all track types. This takes priority over all other metadata settings. Timeout: 60 sec",
     "METADATA_TITLE": "Send metadata text to be used for the global title field. Timeout: 60 sec",
