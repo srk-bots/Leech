@@ -860,10 +860,15 @@ Timeout: 60 sec"""
     elif key == "ai":
         # Add buttons for each AI setting
         ai_settings = [
+            "DEFAULT_AI_PROVIDER",
             "MISTRAL_API_KEY",
             "MISTRAL_API_URL",
             "DEEPSEEK_API_KEY",
             "DEEPSEEK_API_URL",
+            "CHATGPT_API_KEY",
+            "CHATGPT_API_URL",
+            "GEMINI_API_KEY",
+            "GEMINI_API_URL",
         ]
 
         for setting in ai_settings:
@@ -880,12 +885,19 @@ Timeout: 60 sec"""
         buttons.data_button("Close", "botset close", "footer")
 
         # Get current AI settings
+        default_ai = Config.DEFAULT_AI_PROVIDER.capitalize()
         mistral_api_key = "✅ Set" if Config.MISTRAL_API_KEY else "❌ Not Set"
         mistral_api_url = Config.MISTRAL_API_URL or "Not Set"
         deepseek_api_key = "✅ Set" if Config.DEEPSEEK_API_KEY else "❌ Not Set"
         deepseek_api_url = Config.DEEPSEEK_API_URL or "Not Set"
+        chatgpt_api_key = "✅ Set" if Config.CHATGPT_API_KEY else "❌ Not Set"
+        chatgpt_api_url = Config.CHATGPT_API_URL or "Not Set"
+        gemini_api_key = "✅ Set" if Config.GEMINI_API_KEY else "❌ Not Set"
+        gemini_api_url = Config.GEMINI_API_URL or "Not Set"
 
         msg = f"""<b>AI Settings</b> | State: {state}
+
+<b>Default AI Provider:</b> <code>{default_ai}</code>
 
 <b>Mistral AI:</b>
 • <b>API Key:</b> {mistral_api_key}
@@ -895,8 +907,17 @@ Timeout: 60 sec"""
 • <b>API Key:</b> {deepseek_api_key}
 • <b>API URL:</b> <code>{deepseek_api_url}</code>
 
+<b>ChatGPT:</b>
+• <b>API Key:</b> {chatgpt_api_key}
+• <b>API URL:</b> <code>{chatgpt_api_url}</code>
+
+<b>Gemini AI:</b>
+• <b>API Key:</b> {gemini_api_key}
+• <b>API URL:</b> <code>{gemini_api_url}</code>
+
 <i>Note: For each AI provider, configure either API Key or API URL. If both are set, API Key will be used first with fallback to API URL.</i>
-<i>Users can override these settings in their user settings.</i>"""
+<i>Users can override these settings in their user settings.</i>
+<i>Use /ask command to chat with the default AI provider.</i>"""
 
     elif key == "taskmonitor":
         # Add buttons for each task monitoring setting
@@ -4384,18 +4405,28 @@ async def edit_bot_settings(client, query):
     elif data[1] == "default_ai":
         await query.answer("Resetting all AI settings to default...")
         # Reset all AI settings to default
+        Config.DEFAULT_AI_PROVIDER = "mistral"
         Config.MISTRAL_API_KEY = ""
         Config.MISTRAL_API_URL = ""
         Config.DEEPSEEK_API_KEY = ""
         Config.DEEPSEEK_API_URL = ""
+        Config.CHATGPT_API_KEY = ""
+        Config.CHATGPT_API_URL = ""
+        Config.GEMINI_API_KEY = ""
+        Config.GEMINI_API_URL = ""
 
         # Update the database
         await database.update_config(
             {
+                "DEFAULT_AI_PROVIDER": "mistral",
                 "MISTRAL_API_KEY": "",
                 "MISTRAL_API_URL": "",
                 "DEEPSEEK_API_KEY": "",
                 "DEEPSEEK_API_URL": "",
+                "CHATGPT_API_KEY": "",
+                "CHATGPT_API_URL": "",
+                "GEMINI_API_KEY": "",
+                "GEMINI_API_URL": "",
             }
         )
         # Update the UI
@@ -4861,10 +4892,15 @@ async def edit_bot_settings(client, query):
         "TASK_MONITOR_CPU_LOW",
         "TASK_MONITOR_MEMORY_HIGH",
         "TASK_MONITOR_MEMORY_LOW",
+        "DEFAULT_AI_PROVIDER",
         "MISTRAL_API_KEY",
         "MISTRAL_API_URL",
         "DEEPSEEK_API_KEY",
         "DEEPSEEK_API_URL",
+        "CHATGPT_API_KEY",
+        "CHATGPT_API_URL",
+        "GEMINI_API_KEY",
+        "GEMINI_API_URL",
     ]:
         # Handle view mode for all settings
         if state == "view":
@@ -4929,7 +4965,28 @@ async def edit_bot_settings(client, query):
         elif data[2].startswith("TASK_MONITOR_"):
             LOGGER.debug(f"Setting return function for {data[2]} to taskmonitor")
             rfunc = partial(update_buttons, message, "taskmonitor")
-        elif data[2].startswith("MISTRAL_") or data[2].startswith("DEEPSEEK_"):
+        elif data[2] == "DEFAULT_AI_PROVIDER":
+            LOGGER.debug("Setting up AI provider selection menu")
+            # Create a special menu for selecting the AI provider
+            buttons = ButtonMaker()
+            buttons.data_button("Mistral", f"botset setprovider mistral")
+            buttons.data_button("DeepSeek", f"botset setprovider deepseek")
+            buttons.data_button("ChatGPT", f"botset setprovider chatgpt")
+            buttons.data_button("Gemini", f"botset setprovider gemini")
+            buttons.data_button("Cancel", f"botset cancel")
+
+            await editMessage(
+                message,
+                "<b>Select Default AI Provider</b>\n\nChoose which AI provider to use with the /ask command:",
+                buttons.build_menu(2),
+            )
+            return
+        elif (
+            data[2].startswith("MISTRAL_")
+            or data[2].startswith("DEEPSEEK_")
+            or data[2].startswith("CHATGPT_")
+            or data[2].startswith("GEMINI_")
+        ):
             LOGGER.debug(f"Setting return function for {data[2]} to ai")
             rfunc = partial(update_buttons, message, "ai")
         elif data[2].startswith("MERGE_") or data[2] in [
@@ -5293,7 +5350,28 @@ async def edit_bot_settings(client, query):
                 f"Setting return function for botvar {data[2]} to mediatools_convert"
             )
             rfunc = partial(update_buttons, message, "mediatools_convert")
-        elif data[2].startswith("MISTRAL_") or data[2].startswith("DEEPSEEK_"):
+        elif data[2] == "DEFAULT_AI_PROVIDER":
+            LOGGER.debug("Setting up AI provider selection menu for botvar")
+            # Create a special menu for selecting the AI provider
+            buttons = ButtonMaker()
+            buttons.data_button("Mistral", f"botset setprovider mistral")
+            buttons.data_button("DeepSeek", f"botset setprovider deepseek")
+            buttons.data_button("ChatGPT", f"botset setprovider chatgpt")
+            buttons.data_button("Gemini", f"botset setprovider gemini")
+            buttons.data_button("Cancel", f"botset cancel")
+
+            await editMessage(
+                message,
+                "<b>Select Default AI Provider</b>\n\nChoose which AI provider to use with the /ask command:",
+                buttons.build_menu(2),
+            )
+            return
+        elif (
+            data[2].startswith("MISTRAL_")
+            or data[2].startswith("DEEPSEEK_")
+            or data[2].startswith("CHATGPT_")
+            or data[2].startswith("GEMINI_")
+        ):
             LOGGER.debug(f"Setting return function for botvar {data[2]} to ai")
             rfunc = partial(update_buttons, message, "ai")
         else:
@@ -5398,6 +5476,14 @@ async def edit_bot_settings(client, query):
         if value == "":
             value = None
         await query.answer(f"{value}", show_alert=True)
+    elif data[1] == "setprovider":
+        await query.answer(f"Setting default AI provider to {data[2].capitalize()}")
+        # Update the default AI provider
+        Config.DEFAULT_AI_PROVIDER = data[2]
+        # Update the database
+        await database.update_config({"DEFAULT_AI_PROVIDER": data[2]})
+        # Update the UI
+        await update_buttons(message, "ai")
     elif data[1] == "edit":
         await query.answer()
         globals()["state"] = "edit"
@@ -5483,7 +5569,12 @@ async def edit_bot_settings(client, query):
         elif key.startswith("EXTRACT_"):
             return_menu = "mediatools_extract"
             LOGGER.debug(f"toggle: Setting return_menu for {key} to {return_menu}")
-        elif key.startswith("MISTRAL_") or key.startswith("DEEPSEEK_"):
+        elif (
+            key.startswith("MISTRAL_")
+            or key.startswith("DEEPSEEK_")
+            or key.startswith("CHATGPT_")
+            or key.startswith("GEMINI_")
+        ):
             return_menu = "ai"
             LOGGER.debug(f"toggle: Setting return_menu for {key} to {return_menu}")
 

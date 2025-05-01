@@ -55,4 +55,3 @@ class BotCommands:
     GenSessionCommand = [f"gensession{i}", f"gs{i}"]
     TruecallerCommand = f"truecaller{i}"
     AskCommand = f"ask{i}"
-    AskDeepSeekCommand = f"askds{i}"

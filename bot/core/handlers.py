@@ -17,7 +17,6 @@ from bot.modules import (
     aioexecute,
     arg_usage,
     ask_ai,
-    ask_deepseek,
     authorize,
     bot_help,
     bot_stats,
@@ -365,11 +364,6 @@ def add_handlers():
             BotCommands.AskCommand,
             CustomFilters.authorized,
         ),
-        "ask_deepseek": (
-            ask_deepseek,
-            BotCommands.AskDeepSeekCommand,
-            CustomFilters.authorized,
-        ),
     }
 
     for handler_func, command_name, custom_filter in command_filters.values():
@@ -491,7 +485,7 @@ def add_handlers():
         MessageHandler(
             handle_no_suffix_commands,
             filters=regex(
-                r"^/(mirror|leech|jdmirror|jdleech|nzbmirror|nzbleech|ytdl|ytdlleech|clone|count|del|list|search|mediainfo|mi|status|s|ping|help|speedtest|ask|askds)$"
+                r"^/(mirror|leech|jdmirror|jdleech|nzbmirror|nzbleech|ytdl|ytdlleech|clone|count|del|list|search|mediainfo|mi|status|s|ping|help|speedtest|ask)$"
             )
             & CustomFilters.authorized,
         ),

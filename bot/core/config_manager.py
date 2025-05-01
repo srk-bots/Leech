@@ -431,6 +431,9 @@ class Config:
     TRUECALLER_API_URL: str = "https://truecaller.privates-bots.workers.dev/"
 
     # AI Settings
+    # Default AI Provider (mistral, deepseek, chatgpt, gemini)
+    DEFAULT_AI_PROVIDER: str = "mistral"
+
     # Mistral AI Settings
     MISTRAL_API_KEY: str = ""
     MISTRAL_API_URL: str = ""
@@ -438,6 +441,14 @@ class Config:
     # DeepSeek AI Settings
     DEEPSEEK_API_KEY: str = ""
     DEEPSEEK_API_URL: str = ""
+
+    # ChatGPT Settings
+    CHATGPT_API_KEY: str = ""
+    CHATGPT_API_URL: str = ""
+
+    # Gemini AI Settings
+    GEMINI_API_KEY: str = ""
+    GEMINI_API_URL: str = ""
 
     @classmethod
     def get(cls, key):
