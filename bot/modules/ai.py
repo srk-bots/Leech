@@ -39,11 +39,14 @@ async def ask_ai(_, message):
         "DEFAULT_AI_PROVIDER", Config.DEFAULT_AI_PROVIDER
     ).lower()
 
-    # Check if message.command exists and has text after the command
+    # Check if this is a direct command without arguments (e.g., just "/ask")
+    # In this case, we should show the help message
     if (
-        not hasattr(message, "command")
-        or message.command is None
-        or len(message.command) < 2
+        not hasattr(message, "text")
+        or not message.text
+        or message.text.strip() == f"/{message.command[0]}"
+        if (hasattr(message, "command") and message.command)
+        else False
     ):
         provider_name = ai_provider.capitalize()
         help_msg = await send_message(
@@ -62,17 +65,29 @@ async def ask_ai(_, message):
 
     # Extract the question from the message
     try:
-        # Try to extract the question using command parsing first
-        if (
-            hasattr(message, "command")
-            and message.command
-            and len(message.command) >= 2
-        ):
-            question = message.text.split(" ", 1)[1].strip()
-        # Fallback to simple text parsing if command parsing fails
-        elif hasattr(message, "text") and message.text and " " in message.text:
-            # Skip the command part (assuming it starts with /)
-            question = message.text.split(" ", 1)[1].strip()
+        # Simple approach: if the message starts with a command (like /ask), extract everything after it
+        if hasattr(message, "text") and message.text:
+            # Check if the message starts with a command
+            if message.text.startswith("/"):
+                # Find the first space after the command
+                space_index = message.text.find(" ")
+                if space_index != -1:
+                    # Extract everything after the first space
+                    question = message.text[space_index + 1 :].strip()
+                else:
+                    # No space found, so no question
+                    error_msg = await send_message(
+                        message,
+                        "❌ <b>Error:</b> Could not extract your question. Please use the format: /ask your question here",
+                    )
+                    # Auto-delete error message after 5 minutes
+                    create_task(auto_delete_message(error_msg, time=300))  # noqa: RUF006
+                    # Auto-delete command message
+                    create_task(auto_delete_message(message, time=0))  # noqa: RUF006
+                    return
+            else:
+                # Not a command, use the entire message as the question
+                question = message.text.strip()
         else:
             # If we can't extract a question, show an error
             error_msg = await send_message(
@@ -84,8 +99,9 @@ async def ask_ai(_, message):
             # Auto-delete command message
             create_task(auto_delete_message(message, time=0))  # noqa: RUF006
             return
-    except IndexError:
-        # Handle the case where splitting the message fails
+    except Exception as e:
+        # Handle any exceptions that might occur
+        LOGGER.error(f"Error extracting question: {e!s}")
         error_msg = await send_message(
             message,
             "❌ <b>Error:</b> Could not extract your question. Please use the format: /ask your question here",
