@@ -512,7 +512,9 @@ Please use /mediatools command to configure convert settings.
         buttons.data_button("Leech", f"userset {user_id} leech")
         buttons.data_button("Rclone", f"userset {user_id} rclone")
         buttons.data_button("Gdrive API", f"userset {user_id} gdrive")
-        buttons.data_button("AI Settings", f"userset {user_id} ai")
+        # Only show AI Settings button if Extra Modules are enabled
+        if Config.ENABLE_EXTRA_MODULES:
+            buttons.data_button("AI Settings", f"userset {user_id} ai")
 
         upload_paths = user_dict.get("UPLOAD_PATHS", {})
         if (

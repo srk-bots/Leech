@@ -75,6 +75,7 @@ DEFAULT_VALUES = {
     "AUTO_RESTART_ENABLED": False,
     "AUTO_RESTART_INTERVAL": 24,
     "EQUAL_SPLITS": False,
+    "ENABLE_EXTRA_MODULES": True,
     # Watermark Settings
     "WATERMARK_ENABLED": False,
     "WATERMARK_KEY": "",
@@ -261,7 +262,9 @@ async def get_buttons(key=None, edit_type=None, page=0, user_id=None):
         buttons.data_button("Config", "botset var")
         buttons.data_button("Pvt Files", "botset private")
         buttons.data_button("Media Tools", "botset mediatools")
-        buttons.data_button("AI Settings", "botset ai")
+        # Only show AI Settings button if Extra Modules are enabled
+        if Config.ENABLE_EXTRA_MODULES:
+            buttons.data_button("AI Settings", "botset ai")
         buttons.data_button("Task Monitor", "botset taskmonitor")
         buttons.data_button("Qbit Settings", "botset qbit")
         buttons.data_button("Aria2c Settings", "botset aria")
@@ -630,8 +633,8 @@ async def get_buttons(key=None, edit_type=None, page=0, user_id=None):
                 msg += "Minimum value is 1 hour.\n\n"
             elif key == "TRUECALLER_API_URL":
                 msg += "Set the API URL for Truecaller phone number lookup.\n\n"
-                msg += "Default: https://truecaller.privates-bots.workers.dev/\n\n"
-                msg += "You can use your own API endpoint if you have one.\n\n"
+                msg += "No default URL is provided. You must set your own API endpoint.\n\n"
+                msg += "The Truecaller module will not work until this is configured.\n\n"
             elif key == "MISTRAL_API_KEY":
                 msg += "Set your Mistral AI API key for the AI chatbot.\n\n"
                 msg += "You can get an API key from https://console.mistral.ai/\n\n"
@@ -712,6 +715,11 @@ async def get_buttons(key=None, edit_type=None, page=0, user_id=None):
             "MISTRAL_API_URL",
         ]
 
+        # Add module control settings to the config menu
+        module_keys = [
+            "ENABLE_EXTRA_MODULES",
+        ]
+
         # Ensure resource keys are in the filtered keys list
         for rk in resource_keys:
             if rk not in filtered_keys:
@@ -721,6 +729,11 @@ async def get_buttons(key=None, edit_type=None, page=0, user_id=None):
         for ak in api_keys:
             if ak not in filtered_keys:
                 filtered_keys.append(ak)
+
+        # Ensure module keys are in the filtered keys list
+        for mk in module_keys:
+            if mk not in filtered_keys:
+                filtered_keys.append(mk)
 
         # Sort the keys alphabetically
         filtered_keys.sort()
@@ -734,6 +747,9 @@ async def get_buttons(key=None, edit_type=None, page=0, user_id=None):
             # Highlight API settings
             elif k in api_keys:
                 buttons.data_button(f"🔌 {k}", f"botset botvar {k}")
+            # Highlight module control settings
+            elif k in module_keys:
+                buttons.data_button(f"🧩 {k}", f"botset botvar {k}")
             else:
                 buttons.data_button(k, f"botset botvar {k}")
         if state == "view":
@@ -5568,6 +5584,9 @@ async def edit_bot_settings(client, query):
             LOGGER.debug(f"toggle: Setting return_menu for {key} to {return_menu}")
         elif key.startswith("EXTRACT_"):
             return_menu = "mediatools_extract"
+            LOGGER.debug(f"toggle: Setting return_menu for {key} to {return_menu}")
+        elif key == "ENABLE_EXTRA_MODULES":
+            return_menu = "var"
             LOGGER.debug(f"toggle: Setting return_menu for {key} to {return_menu}")
         elif (
             key.startswith("MISTRAL_")

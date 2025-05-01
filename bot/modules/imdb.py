@@ -102,6 +102,16 @@ def list_to_hash(k, country=False, emoji=False):
 
 async def imdb_search(_, message: Message):
     """Handle IMDB search command"""
+    # Check if Extra Modules are enabled
+    if not Config.ENABLE_EXTRA_MODULES:
+        error_msg = await send_message(
+            message,
+            "❌ <b>IMDB module is currently disabled.</b>\n\nPlease contact the bot owner to enable it.",
+        )
+        # Schedule for auto-deletion after 5 minutes
+        create_task(auto_delete_message(error_msg, message, time=300))  # noqa: RUF006
+        return
+
     # Default template with Telegram quote format
     default_template = """<b>🎬 Title:</b> <code>{title}</code> [{year}]
 <b>⭐ Rating:</b> <i>{rating}</i>

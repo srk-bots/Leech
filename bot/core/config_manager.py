@@ -428,7 +428,10 @@ class Config:
     TASK_MONITOR_MEMORY_LOW: int = 60  # percentage
 
     # Truecaller API Settings
-    TRUECALLER_API_URL: str = "https://truecaller.privates-bots.workers.dev/"
+    TRUECALLER_API_URL: str = ""
+
+    # Extra Modules Settings
+    ENABLE_EXTRA_MODULES: bool = True
 
     # AI Settings
     # Default AI Provider (mistral, deepseek, chatgpt, gemini)

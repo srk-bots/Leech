@@ -21,8 +21,7 @@ from bot.helper.telegram_helper.message_utils import (
 
 LOGGER = getLogger(__name__)
 
-# Default Truecaller API URL
-DEFAULT_TRUECALLER_API_URL = "https://truecaller.privates-bots.workers.dev/"
+# No default Truecaller API URL - must be configured by the user
 
 
 @new_task
@@ -33,6 +32,16 @@ async def truecaller_lookup(_, message):
     """
     # Delete the command message instantly
     await delete_message(message)
+
+    # Check if Extra Modules are enabled
+    if not Config.ENABLE_EXTRA_MODULES:
+        error_msg = await send_message(
+            message,
+            "❌ <b>Truecaller module is currently disabled.</b>\n\nPlease contact the bot owner to enable it.",
+        )
+        # Auto-delete error message after 5 minutes
+        await auto_delete_message(error_msg, time=300)
+        return
 
     # If this is a reply to another message, delete that too
     if message.reply_to_message:
@@ -69,8 +78,18 @@ async def truecaller_lookup(_, message):
         await auto_delete_message(error_msg, time=300)
         return
 
-    # Get the API URL from config or use default
-    api_url = getattr(Config, "TRUECALLER_API_URL", DEFAULT_TRUECALLER_API_URL)
+    # Get the API URL from config
+    api_url = Config.TRUECALLER_API_URL
+
+    # Check if API URL is configured
+    if not api_url:
+        error_msg = await send_message(
+            message,
+            "❌ <b>Truecaller API URL is not configured.</b>\n\nPlease contact the bot owner to set up the Truecaller API URL.",
+        )
+        # Auto-delete error message after 5 minutes
+        await auto_delete_message(error_msg, time=300)
+        return
 
     # Send initial status message
     status_msg = await send_message(
