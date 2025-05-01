@@ -884,7 +884,6 @@ Timeout: 60 sec"""
             "CHATGPT_API_URL",
             "GEMINI_API_KEY",
             "GEMINI_API_URL",
-            "CUSTOM_AI_API_URL",
         ]
 
         for setting in ai_settings:
@@ -910,7 +909,6 @@ Timeout: 60 sec"""
         chatgpt_api_url = Config.CHATGPT_API_URL or "Not Set"
         gemini_api_key = "✅ Set" if Config.GEMINI_API_KEY else "❌ Not Set"
         gemini_api_url = Config.GEMINI_API_URL or "Not Set"
-        custom_api_url = Config.CUSTOM_AI_API_URL or "Not Set"
 
         msg = f"""<b>AI Settings</b> | State: {state}
 
@@ -931,9 +929,6 @@ Timeout: 60 sec"""
 <b>Gemini AI:</b>
 • <b>API Key:</b> {gemini_api_key}
 • <b>API URL:</b> <code>{gemini_api_url}</code>
-
-<b>Custom API:</b>
-• <b>API URL:</b> <code>{custom_api_url}</code>
 
 <i>Note: For each AI provider, configure either API Key or API URL. If both are set, API Key will be used first with fallback to API URL.</i>
 <i>Users can override these settings in their user settings.</i>
@@ -4434,7 +4429,6 @@ async def edit_bot_settings(client, query):
         Config.CHATGPT_API_URL = ""
         Config.GEMINI_API_KEY = ""
         Config.GEMINI_API_URL = ""
-        Config.CUSTOM_AI_API_URL = ""
 
         # Update the database
         await database.update_config(
@@ -4448,7 +4442,6 @@ async def edit_bot_settings(client, query):
                 "CHATGPT_API_URL": "",
                 "GEMINI_API_KEY": "",
                 "GEMINI_API_URL": "",
-                "CUSTOM_AI_API_URL": "",
             }
         )
         # Update the UI
@@ -4995,7 +4988,6 @@ async def edit_bot_settings(client, query):
             buttons.data_button("DeepSeek", f"botset setprovider deepseek")
             buttons.data_button("ChatGPT", f"botset setprovider chatgpt")
             buttons.data_button("Gemini", f"botset setprovider gemini")
-            buttons.data_button("Custom", f"botset setprovider custom")
             buttons.data_button("Cancel", f"botset cancel")
 
             await edit_message(
@@ -5381,7 +5373,6 @@ async def edit_bot_settings(client, query):
             buttons.data_button("DeepSeek", f"botset setprovider deepseek")
             buttons.data_button("ChatGPT", f"botset setprovider chatgpt")
             buttons.data_button("Gemini", f"botset setprovider gemini")
-            buttons.data_button("Custom", f"botset setprovider custom")
             buttons.data_button("Cancel", f"botset cancel")
 
             await edit_message(

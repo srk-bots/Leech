@@ -60,7 +60,6 @@ ai_options = [
     "CHATGPT_API_URL",
     "GEMINI_API_KEY",
     "GEMINI_API_URL",
-    "CUSTOM_AI_API_URL",
 ]
 metadata_options = [
     "METADATA_ALL",
@@ -375,7 +374,6 @@ async def get_user_settings(from_user, stype="main"):
             "✅ Set" if user_dict.get("GEMINI_API_KEY", False) else "❌ Not Set"
         )
         gemini_api_url = user_dict.get("GEMINI_API_URL", "Not Set")
-        custom_api_url = user_dict.get("CUSTOM_AI_API_URL", "Not Set")
 
         text = f"""<u><b>AI Settings for {name}</b></u>
 <b>Default AI Provider:</b> <code>{default_ai}</code>
@@ -395,9 +393,6 @@ async def get_user_settings(from_user, stype="main"):
 <b>Gemini AI:</b>
 -> API Key: <b>{gemini_api_key}</b>
 -> API URL: <code>{gemini_api_url}</code>
-
-<b>Custom API:</b>
--> API URL: <code>{custom_api_url}</code>
 
 <i>Note: For each AI provider, configure either API Key or API URL. If both are set, API Key will be used first with fallback to API URL.</i>
 <i>Your settings will take priority over the bot owner's settings.</i>
@@ -1033,7 +1028,6 @@ You can provide your own cookies for YouTube and other yt-dlp downloads to acces
             )
             buttons.data_button("ChatGPT", f"userset {user_id} setprovider chatgpt")
             buttons.data_button("Gemini", f"userset {user_id} setprovider gemini")
-            buttons.data_button("Custom", f"userset {user_id} setprovider custom")
             buttons.data_button("Back", f"userset {user_id} setevent")
             buttons.data_button("Close", f"userset {user_id} close")
 

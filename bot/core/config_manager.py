@@ -434,7 +434,7 @@ class Config:
     ENABLE_EXTRA_MODULES: bool = True
 
     # AI Settings
-    # Default AI Provider (mistral, deepseek, chatgpt, gemini, custom)
+    # Default AI Provider (mistral, deepseek, chatgpt, gemini)
     DEFAULT_AI_PROVIDER: str = "mistral"
 
     # Mistral AI Settings
@@ -452,9 +452,6 @@ class Config:
     # Gemini AI Settings
     GEMINI_API_KEY: str = ""
     GEMINI_API_URL: str = ""
-
-    # Custom AI API Settings
-    CUSTOM_AI_API_URL: str = ""
 
     @classmethod
     def get(cls, key):
