@@ -725,6 +725,7 @@ Use the /ask command with any of the following AI providers:
 - <b>DeepSeek AI</b>
 - <b>ChatGPT</b>
 - <b>Gemini AI</b>
+- <b>Custom API</b>
 
 <b>Usage:</b>
 /ask your question here
@@ -736,6 +737,7 @@ Use the /ask command with any of the following AI providers:
 <b>Features:</b>
 - Uses powerful language models
 - Supports both direct API access and custom API endpoints
+- Custom API option for any compatible AI service
 - User settings take priority over bot owner settings
 - Messages auto-delete after 5 minutes
 - Automatically selects the configured AI provider
@@ -869,7 +871,7 @@ PASSWORD_ERROR_MESSAGE = """
 
 
 user_settings_text = {
-    "DEFAULT_AI_PROVIDER": "Select the default AI provider to use with the /ask command. Options: mistral, deepseek, chatgpt, gemini. Timeout: 60 sec",
+    "DEFAULT_AI_PROVIDER": "Select the default AI provider to use with the /ask command. Options: mistral, deepseek, chatgpt, gemini, custom. Timeout: 60 sec",
     "MISTRAL_API_KEY": "Send your Mistral AI API key. This will be used to access the Mistral AI API directly. Leave empty to use the bot owner's API key. Timeout: 60 sec",
     "MISTRAL_API_URL": "Send your custom Mistral AI API URL. This will be used as a fallback if the API key is not provided or fails. Leave empty to use the bot owner's API URL. Timeout: 60 sec",
     "DEEPSEEK_API_KEY": "Send your DeepSeek AI API key. This will be used to access the DeepSeek AI API directly. Leave empty to use the bot owner's API key. Timeout: 60 sec",
@@ -877,6 +879,7 @@ user_settings_text = {
     "CHATGPT_API_KEY": "Send your ChatGPT API key. This will be used to access the OpenAI API directly. Leave empty to use the bot owner's API key. Timeout: 60 sec",
     "CHATGPT_API_URL": "Send your custom ChatGPT API URL. This will be used as a fallback if the API key is not provided or fails. Leave empty to use the bot owner's API URL. Timeout: 60 sec",
     "GEMINI_API_KEY": "Send your Gemini AI API key. This will be used to access the Google AI API directly. Leave empty to use the bot owner's API key. Timeout: 60 sec",
+    "CUSTOM_AI_API_URL": "Send your custom AI API URL. This can be any API endpoint that accepts a POST request with a 'question' parameter and returns a JSON response. Set DEFAULT_AI_PROVIDER to 'custom' to use this URL. Timeout: 60 sec",
     "GEMINI_API_URL": "Send your custom Gemini AI API URL. This will be used as a fallback if the API key is not provided or fails. Leave empty to use the bot owner's API URL. Timeout: 60 sec",
     "METADATA_KEY": "Send your text for change mkv medias metadata (title only). This is a legacy option, consider using the specific metadata options instead. Timeout: 60 sec",
     "METADATA_ALL": "Send metadata text to be used for all metadata fields (title, author, comment) for all track types. This takes priority over all other metadata settings. Timeout: 60 sec",

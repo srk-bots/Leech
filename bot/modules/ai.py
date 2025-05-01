@@ -301,6 +301,27 @@ async def ask_ai(_, message):
             response = await get_gemini_response(question, api_key, api_url, user_id)
             provider_display = "Gemini AI"
 
+        elif ai_provider == "custom":
+            # Get Custom API URL
+            api_url = user_dict.get("CUSTOM_AI_API_URL", Config.CUSTOM_AI_API_URL)
+
+            # Check if we have a custom API URL
+            if not api_url:
+                error_msg = await send_message(
+                    message,
+                    "❌ <b>Error:</b> No custom API URL configured. Please set up a custom API URL in settings.",
+                )
+                # Auto-delete error message after 5 minutes
+                create_task(auto_delete_message(error_msg, time=300))  # noqa: RUF006
+                # Auto-delete command message after 5 minutes
+                create_task(auto_delete_message(message, time=300))  # noqa: RUF006
+                await delete_message(wait_msg)
+                return
+
+            # Get response from Custom API
+            response = await get_custom_ai_response(question, api_url, user_id)
+            provider_display = "Custom AI"
+
         else:
             # Default to Mistral if the provider is not recognized
             api_key = user_dict.get("MISTRAL_API_KEY", Config.MISTRAL_API_KEY)
@@ -762,3 +783,87 @@ async def get_gemini_response_with_api_url(question, api_url, user_id):
             )
         except json.JSONDecodeError as e:
             raise Exception("Invalid JSON response from API") from e
+
+
+async def get_custom_ai_response(question, api_url, user_id):
+    """
+    Get a response from a custom AI API URL
+    This function is designed to work with any API that accepts a POST request
+    with a question parameter and returns a JSON response
+    """
+    # Ensure the URL doesn't end with a slash
+    api_url = api_url.rstrip("/")
+
+    # Prepare the data payload
+    data = {
+        "id": user_id,  # Using user's ID for history/tracking
+        "question": question,
+    }
+
+    timeout = Timeout(30.0, connect=10.0)
+
+    async with AsyncClient(timeout=timeout) as client:
+        try:
+            # Try POST request first (most common API format)
+            response = await client.post(api_url, json=data)
+
+            if response.status_code != 200:
+                # If POST fails, try GET request with query parameter
+                get_url = f"{api_url}/?question={question}"
+                response = await client.get(get_url)
+
+                if response.status_code != 200:
+                    raise Exception(
+                        f"API returned status code {response.status_code}: {response.text}"
+                    )
+
+            # Try to parse the response as JSON
+            try:
+                response_data = response.json()
+
+                # Check for common response formats
+                if response_data.get("status") == "success":
+                    # Format 1: {"status": "success", "answer": "..."}
+                    return response_data.get(
+                        "message",
+                        response_data.get(
+                            "answer",
+                            response_data.get(
+                                "content",
+                                response_data.get("response", "No answer provided"),
+                            ),
+                        ),
+                    )
+
+                # Format 2: OpenAI-like {"choices": [{"message": {"content": "..."}}]}
+                if "choices" in response_data and len(response_data["choices"]) > 0:
+                    try:
+                        return response_data["choices"][0]["message"]["content"]
+                    except (KeyError, IndexError):
+                        pass
+
+                # Format 3: Direct text in the response
+                if isinstance(response_data, str):
+                    return response_data
+
+                # Format 4: Simple {"response": "..."} or {"answer": "..."} or {"message": "..."}
+                for key in [
+                    "response",
+                    "answer",
+                    "message",
+                    "content",
+                    "text",
+                    "result",
+                ]:
+                    if key in response_data:
+                        return response_data[key]
+
+                # If we can't find a recognized format, return the raw JSON as string
+                return f"Received response: {json.dumps(response_data)}"
+
+            except json.JSONDecodeError:
+                # If not JSON, return the raw text
+                return response.text
+
+        except Exception as e:
+            raise Exception(f"Error communicating with custom API: {e!s}") from e
