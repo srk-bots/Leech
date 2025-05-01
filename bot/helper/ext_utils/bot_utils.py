@@ -480,70 +480,68 @@ def is_media_tool_enabled(tool_name):
         bool: True if the tool is enabled, False otherwise
     """
     from bot.core.config_manager import Config
-    from bot import LOGGER
 
     # If ENABLE_EXTRA_MODULES is False, all extra modules are disabled
     if not Config.ENABLE_EXTRA_MODULES:
-        LOGGER.debug(f"Extra modules disabled, tool {tool_name} is disabled")
         return False
 
     # If media tools are completely disabled (boolean False), return False
     if Config.MEDIA_TOOLS_ENABLED is False:
-        LOGGER.debug(f"Media tools disabled, tool {tool_name} is disabled")
         return False
 
-    # If MEDIA_TOOLS_ENABLED is a string with comma-separated values
+    # List of all available tools
+    all_tools = [
+        "watermark",
+        "merge",
+        "convert",
+        "compression",
+        "trim",
+        "extract",
+        "metadata",
+        "ffmpeg",
+        "sample",
+    ]
+
+    # Parse enabled tools from the configuration
+    enabled_tools = []
+
+    # If MEDIA_TOOLS_ENABLED is a string
     if isinstance(Config.MEDIA_TOOLS_ENABLED, str):
-        # Split the string and check if the tool is in the list
-        enabled_tools = [
-            t.strip().lower()
-            for t in Config.MEDIA_TOOLS_ENABLED.split(",")
-            if t.strip()
-        ]
-
-        LOGGER.debug(f"Enabled tools from config: {enabled_tools}")
-
-        # If checking for 'mediatools' (general media tools status), return True if any tool is enabled
-        if tool_name.lower() == "mediatools":
-            is_enabled = len(enabled_tools) > 0
-            LOGGER.debug(f"Checking if any media tools are enabled: {is_enabled}")
-            return is_enabled
-
-        # Otherwise, check if the specific tool is in the enabled list
-        is_enabled = tool_name.lower() in enabled_tools
-        LOGGER.debug(
-            f"Checking if tool {tool_name} is in enabled list: {is_enabled}"
-        )
-        return is_enabled
+        # Handle both comma-separated and single values
+        if "," in Config.MEDIA_TOOLS_ENABLED:
+            enabled_tools = [
+                t.strip().lower()
+                for t in Config.MEDIA_TOOLS_ENABLED.split(",")
+                if t.strip()
+            ]
+        elif Config.MEDIA_TOOLS_ENABLED.strip():  # Single non-empty value
+            enabled_tools = [Config.MEDIA_TOOLS_ENABLED.strip().lower()]
 
     # If MEDIA_TOOLS_ENABLED is True (boolean), all tools are enabled
-    if Config.MEDIA_TOOLS_ENABLED is True:
-        # If checking for 'mediatools', return True
-        if tool_name.lower() == "mediatools":
-            LOGGER.debug("All media tools are enabled")
-            return True
+    elif Config.MEDIA_TOOLS_ENABLED is True:
+        enabled_tools = all_tools.copy()
 
-        # For specific tools, check if they're in the list of all available tools
-        all_tools = [
-            "watermark",
-            "merge",
-            "convert",
-            "compression",
-            "trim",
-            "extract",
-            "metadata",
-            "ffmpeg",
-            "sample",
-        ]
-        is_enabled = tool_name.lower() in all_tools
-        LOGGER.debug(
-            f"Checking if tool {tool_name} is in all tools list: {is_enabled}"
-        )
-        return is_enabled
+    # If MEDIA_TOOLS_ENABLED is some other truthy value
+    elif Config.MEDIA_TOOLS_ENABLED:
+        if isinstance(Config.MEDIA_TOOLS_ENABLED, (list, tuple, set)):
+            enabled_tools = [
+                str(t).strip().lower() for t in Config.MEDIA_TOOLS_ENABLED if t
+            ]
+        else:
+            # Try to convert to string and use as a single value
+            try:
+                val = str(Config.MEDIA_TOOLS_ENABLED).strip().lower()
+                if val:
+                    enabled_tools = [val]
+            except:
+                pass
 
-    # Default case: media tools are disabled
-    LOGGER.debug(f"Default case: media tools disabled, tool {tool_name} is disabled")
-    return False
+    # If checking for 'mediatools' (general media tools status), return True if any tool is enabled
+    if tool_name.lower() == "mediatools":
+        return len(enabled_tools) > 0
+
+    # Otherwise, check if the specific tool is in the enabled list
+    return tool_name.lower() in enabled_tools
 
 
 def is_flag_enabled(flag_name):

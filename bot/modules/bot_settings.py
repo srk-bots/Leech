@@ -5722,12 +5722,27 @@ async def edit_bot_settings(client, query):
 
         # Parse current enabled tools
         enabled_tools = []
-        if isinstance(current_value, str) and "," in current_value:
-            enabled_tools = [
-                t.strip().lower() for t in current_value.split(",") if t.strip()
-            ]
+        if isinstance(current_value, str):
+            # Handle both comma-separated and single values
+            if "," in current_value:
+                enabled_tools = [
+                    t.strip().lower() for t in current_value.split(",") if t.strip()
+                ]
+            elif current_value.strip():  # Single non-empty value
+                enabled_tools = [current_value.strip().lower()]
         elif current_value is True:  # If it's True (boolean), all tools are enabled
             enabled_tools = all_tools.copy()
+        elif current_value:  # Any other truthy value
+            if isinstance(current_value, (list, tuple, set)):
+                enabled_tools = [str(t).strip().lower() for t in current_value if t]
+            else:
+                # Try to convert to string and use as a single value
+                try:
+                    val = str(current_value).strip().lower()
+                    if val:
+                        enabled_tools = [val]
+                except:
+                    pass
 
         # Toggle the tool
         if tool in enabled_tools:
@@ -5739,7 +5754,8 @@ async def edit_bot_settings(client, query):
         if enabled_tools:
             # Sort the tools to maintain consistent order
             enabled_tools.sort()
-            Config.set(key, ",".join(enabled_tools))
+            new_value = ",".join(enabled_tools)
+            Config.set(key, new_value)
         else:
             Config.set(key, False)
 
@@ -5790,7 +5806,8 @@ async def edit_bot_settings(client, query):
 
         # Update the config - sort the tools to maintain consistent order
         all_tools.sort()
-        Config.set(key, ",".join(all_tools))
+        new_value = ",".join(all_tools)
+        Config.set(key, new_value)
 
         # Update the database
         await database.update_config({key: Config.get(key)})
