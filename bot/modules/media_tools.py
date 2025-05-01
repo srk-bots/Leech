@@ -744,9 +744,14 @@ async def get_media_tools_settings(from_user, stype="main", page_no=0):
         buttons.data_button(
             "Set Priority", f"mediatools {user_id} menu MERGE_PRIORITY"
         )
+
+        # Add Remove Original toggle button
+        remove_original = user_dict.get("MERGE_REMOVE_ORIGINAL", False)
         buttons.data_button(
-            "Remove Original", f"mediatools {user_id} menu MERGE_REMOVE_ORIGINAL"
+            f"Remove Original: {'✅ ON' if remove_original else '❌ OFF'}",
+            f"mediatools {user_id} tog MERGE_REMOVE_ORIGINAL {'f' if remove_original else 't'}",
         )
+
         buttons.data_button("Reset", f"mediatools {user_id} reset_merge")
         buttons.data_button("Remove", f"mediatools {user_id} remove_merge")
         buttons.data_button("Back", f"mediatools {user_id} back", "footer")

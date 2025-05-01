@@ -437,6 +437,25 @@ force_start = """<b>Force Start</b>: -f -fd -fu
 /cmd link -fd (force download only)
 /cmd link -fu (force upload directly after download finish)"""
 
+media_tools_flag = """<b>Media Tools Flag</b>: -mt
+
+/cmd link -mt (opens media tools settings before starting the task)
+
+When you use the -mt flag with any command:
+1. The bot will show the media tools settings menu
+2. You can customize settings as needed
+3. Click "Done" to start the task with your settings
+4. Click "Cancel" to abort the task
+5. If no action is taken within 60 seconds, the task will be cancelled
+
+All command and cancellation messages are auto-deleted after 5 minutes.
+
+Examples:
+/mirror https://example.com/video.mp4 -mt
+/leech https://example.com/files.zip -z -mt
+/ytdl https://youtube.com/watch?v=example -mt
+/mirror https://example.com/videos.zip -merge-video -mt"""
+
 gdrive = """<b>Gdrive</b>: link
 If DEFAULT_UPLOAD is `rc` then you can pass up: `gd` to upload using gdrive tools to GDRIVE_ID.
 /cmd gdriveLink or gdl or gdriveId -up gdl or gdriveId or gd
@@ -785,6 +804,7 @@ YT_HELP_DICT = {
     "Leech-Type": leech_as,
     "Leech-Filename": leech_filename,
     "FFmpeg-Cmds": ffmpeg_cmds,
+    "Media-Tools-Flag": media_tools_flag,
 }
 
 # Merge flags guide has been moved to media_tools_help.py
@@ -820,6 +840,7 @@ MIRROR_HELP_DICT = {
     "Leech-Type": leech_as,
     "Leech-Filename": leech_filename,
     "FFmpeg-Cmds": ffmpeg_cmds,
+    "Media-Tools-Flag": media_tools_flag,
     "AI-Chatbot": ai_help,
 }
 
