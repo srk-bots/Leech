@@ -4561,6 +4561,7 @@ async def edit_bot_settings(client, query):
         "mediatools_compression",
         "mediatools_trim",
         "mediatools_extract",
+        "ai",
     ]:
         await query.answer()
         # Set the global state to edit mode
@@ -4591,6 +4592,9 @@ async def edit_bot_settings(client, query):
         elif data[2] == "mediatools_extract":
             LOGGER.debug("Edit button clicked for extract settings")
             await update_buttons(message, "mediatools_extract")
+        elif data[2] == "ai":
+            LOGGER.debug("Edit button clicked for AI settings")
+            await update_buttons(message, "ai")
         else:
             await update_buttons(message, data[2])
     elif data[1] == "view" and data[2] in [
@@ -4602,6 +4606,7 @@ async def edit_bot_settings(client, query):
         "mediatools_compression",
         "mediatools_trim",
         "mediatools_extract",
+        "ai",
     ]:
         await query.answer()
         # Set the global state to view mode
@@ -4631,6 +4636,9 @@ async def edit_bot_settings(client, query):
         elif data[2] == "mediatools_extract":
             LOGGER.debug("View button clicked for extract settings")
             await update_buttons(message, "mediatools_extract")
+        elif data[2] == "ai":
+            LOGGER.debug("View button clicked for AI settings")
+            await update_buttons(message, "ai")
         else:
             await update_buttons(message, data[2])
         # This section is now handled above
