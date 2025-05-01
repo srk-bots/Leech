@@ -1,4 +1,4 @@
-from bot import LOGGER
+from bot import LOGGER, user_data
 from bot.core.config_manager import Config
 
 
@@ -259,7 +259,7 @@ async def reset_tool_configs(tool_name, database):
         LOGGER.debug(f"No specific configurations to reset for tool: {tool_name}")
         return
 
-    # Collect configurations to reset
+    # Step 1: Reset global (owner) configurations
     configs_to_reset = {}
 
     # Get all current configurations
@@ -279,8 +279,42 @@ async def reset_tool_configs(tool_name, database):
     # Update the database if there are configurations to reset
     if configs_to_reset:
         LOGGER.info(
-            f"Resetting {len(configs_to_reset)} configurations for tool: {tool_name}"
+            f"Resetting {len(configs_to_reset)} global configurations for tool: {tool_name}"
         )
         await database.update_config(configs_to_reset)
     else:
-        LOGGER.debug(f"No configurations found to reset for tool: {tool_name}")
+        LOGGER.debug(
+            f"No global configurations found to reset for tool: {tool_name}"
+        )
+
+    # Step 2: Reset user-specific configurations
+    users_updated = 0
+
+    # Iterate through all users
+    for user_id, user_dict in list(user_data.items()):
+        user_configs_to_reset = False
+
+        # Find user configurations that match the tool's prefixes
+        for key in list(user_dict.keys()):
+            for prefix in prefixes:
+                if key.startswith(prefix):
+                    # Remove the configuration from the user's data
+                    user_dict.pop(key, None)
+                    user_configs_to_reset = True
+
+        # Update the database if there are user configurations to reset
+        if user_configs_to_reset:
+            users_updated += 1
+            LOGGER.info(
+                f"Resetting user {user_id} configurations for tool: {tool_name}"
+            )
+            await database.update_user_data(user_id)
+
+    if users_updated > 0:
+        LOGGER.info(
+            f"Reset configurations for {users_updated} users for tool: {tool_name}"
+        )
+    else:
+        LOGGER.debug(
+            f"No user-specific configurations found to reset for tool: {tool_name}"
+        )
