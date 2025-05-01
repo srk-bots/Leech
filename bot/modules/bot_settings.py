@@ -4975,7 +4975,7 @@ async def edit_bot_settings(client, query):
             buttons.data_button("Gemini", f"botset setprovider gemini")
             buttons.data_button("Cancel", f"botset cancel")
 
-            await editMessage(
+            await edit_message(
                 message,
                 "<b>Select Default AI Provider</b>\n\nChoose which AI provider to use with the /ask command:",
                 buttons.build_menu(2),
@@ -5360,7 +5360,7 @@ async def edit_bot_settings(client, query):
             buttons.data_button("Gemini", f"botset setprovider gemini")
             buttons.data_button("Cancel", f"botset cancel")
 
-            await editMessage(
+            await edit_message(
                 message,
                 "<b>Select Default AI Provider</b>\n\nChoose which AI provider to use with the /ask command:",
                 buttons.build_menu(2),
