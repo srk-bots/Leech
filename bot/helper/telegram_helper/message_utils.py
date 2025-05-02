@@ -41,8 +41,6 @@ async def send_message(
     markdown=False,
     block=True,
     bot_client=None,
-    auto_delete=True,
-    delete_time=300,
 ):
     """Send a message using the specified bot client
 
@@ -54,8 +52,6 @@ async def send_message(
         markdown: Whether to use Markdown formatting
         block: Whether to block until the message is sent
         bot_client: Bot client to use for sending (default: main bot)
-        auto_delete: Whether to auto-delete the message (default: True)
-        delete_time: Time in seconds after which to delete the message (default: 300)
     """
     parse_mode = enums.ParseMode.MARKDOWN if markdown else enums.ParseMode.HTML
 
@@ -74,7 +70,7 @@ async def send_message(
             if isinstance(message, str) and message.isdigit():
                 message = int(message)
 
-            sent_msg = await client.send_message(
+            return await client.send_message(
                 chat_id=message,
                 text=text,
                 disable_web_page_preview=True,
@@ -83,18 +79,12 @@ async def send_message(
                 parse_mode=parse_mode,
             )
 
-            # Schedule message for auto-deletion if enabled
-            if auto_delete and delete_time > 0:
-                await auto_delete_message(sent_msg, time=delete_time)
-
-            return sent_msg
-
         # Check if message has required attributes
         if not hasattr(message, "chat") or not hasattr(message.chat, "id"):
             LOGGER.debug(f"Invalid message object type: {type(message)}")
             # Try to send to chat directly if message has an id attribute
             if hasattr(message, "id"):
-                sent_msg = await client.send_message(
+                return await client.send_message(
                     chat_id=message.id,
                     text=text,
                     disable_web_page_preview=True,
@@ -103,15 +93,10 @@ async def send_message(
                     parse_mode=parse_mode,
                 )
 
-                # Schedule message for auto-deletion if enabled
-                if auto_delete and delete_time > 0:
-                    await auto_delete_message(sent_msg, time=delete_time)
-
-                return sent_msg
             return f"Invalid message object: {type(message)}"
 
         if photo:
-            sent_msg = await message.reply_photo(
+            return await message.reply_photo(
                 photo=photo,
                 reply_to_message_id=message.id,
                 caption=text,
@@ -120,13 +105,7 @@ async def send_message(
                 parse_mode=parse_mode,
             )
 
-            # Schedule message for auto-deletion if enabled
-            if auto_delete and delete_time > 0:
-                await auto_delete_message(sent_msg, time=delete_time)
-
-            return sent_msg
-
-        sent_msg = await message.reply(
+        return await message.reply(
             text=text,
             quote=True,
             disable_web_page_preview=True,
@@ -135,11 +114,6 @@ async def send_message(
             parse_mode=parse_mode,
         )
 
-        # Schedule message for auto-deletion if enabled
-        if auto_delete and delete_time > 0:
-            await auto_delete_message(sent_msg, time=delete_time)
-
-        return sent_msg
     except FloodWait as f:
         LOGGER.warning(str(f))
         if not block:
@@ -153,8 +127,6 @@ async def send_message(
             markdown,
             block,
             bot_client,
-            auto_delete,
-            delete_time,
         )
     except Exception as e:
         LOGGER.error(str(e))
@@ -241,10 +213,9 @@ async def edit_message(
 
 
 async def send_file(
-    message, file, caption="", buttons=None, auto_delete=True, delete_time=300
-):
+    message, file, caption="", buttons=None):
     try:
-        sent_msg = await message.reply_document(
+        return await message.reply_document(
             document=file,
             quote=True,
             caption=caption,
@@ -252,23 +223,18 @@ async def send_file(
             reply_markup=buttons,
         )
 
-        # Schedule message for auto-deletion if enabled
-        if auto_delete and delete_time > 0:
-            await auto_delete_message(sent_msg, time=delete_time)
-
-        return sent_msg
     except FloodWait as f:
         LOGGER.warning(str(f))
         await sleep(f.value * 1.2)
         return await send_file(
-            message, file, caption, buttons, auto_delete, delete_time
+            message, file, caption, buttons
         )
     except Exception as e:
         LOGGER.error(str(e))
         return str(e)
 
 
-async def send_rss(text, chat_id, thread_id, auto_delete=True, delete_time=300):
+async def send_rss(text, chat_id, thread_id):
     # Validate input parameters
     if not text or not text.strip():
         LOGGER.error("Attempted to send empty RSS message")
@@ -285,7 +251,7 @@ async def send_rss(text, chat_id, thread_id, auto_delete=True, delete_time=300):
 
     try:
         app = TgClient.user or TgClient.bot
-        sent_msg = await app.send_message(
+        return await app.send_message(
             chat_id=chat_id,
             text=text,
             disable_web_page_preview=True,
@@ -293,17 +259,12 @@ async def send_rss(text, chat_id, thread_id, auto_delete=True, delete_time=300):
             disable_notification=True,
         )
 
-        # Schedule message for auto-deletion if enabled
-        if auto_delete and delete_time > 0:
-            await auto_delete_message(sent_msg, time=delete_time)
-
-        return sent_msg
     except MessageEmpty:
         LOGGER.error("Telegram says: Message is empty")
         # Try with a simplified message as a fallback
         try:
             simplified_text = "RSS Update: Unable to display full content due to formatting issues."
-            sent_msg = await app.send_message(
+            return await app.send_message(
                 chat_id=chat_id,
                 text=simplified_text,
                 disable_web_page_preview=True,
@@ -311,25 +272,20 @@ async def send_rss(text, chat_id, thread_id, auto_delete=True, delete_time=300):
                 disable_notification=True,
             )
 
-            # Schedule message for auto-deletion if enabled
-            if auto_delete and delete_time > 0:
-                await auto_delete_message(sent_msg, time=delete_time)
-
-            return sent_msg
         except Exception as e2:
             LOGGER.error(f"Failed to send simplified message too: {e2}")
             return str(e2)
     except (FloodWait, FloodPremiumWait) as f:
         LOGGER.warning(str(f))
         await sleep(f.value * 1.2)
-        return await send_rss(text, chat_id, thread_id, auto_delete, delete_time)
+        return await send_rss(text, chat_id, thread_id)
     except Exception as e:
         LOGGER.error(f"Error sending RSS message: {e!s}")
         # Try with a simplified message as a fallback if it seems to be a formatting issue
         if "MESSAGE_EMPTY" in str(e) or "400" in str(e):
             try:
                 simplified_text = "RSS Update: Unable to display full content due to formatting issues."
-                sent_msg = await app.send_message(
+                return await app.send_message(
                     chat_id=chat_id,
                     text=simplified_text,
                     disable_web_page_preview=True,
@@ -337,11 +293,6 @@ async def send_rss(text, chat_id, thread_id, auto_delete=True, delete_time=300):
                     disable_notification=True,
                 )
 
-                # Schedule message for auto-deletion if enabled
-                if auto_delete and delete_time > 0:
-                    await auto_delete_message(sent_msg, time=delete_time)
-
-                return sent_msg
             except Exception as e2:
                 LOGGER.error(f"Failed to send simplified message too: {e2}")
         return str(e)
