@@ -162,5 +162,4 @@ add_handlers()
 
 # Run Bot
 LOGGER.info("Bot Started!")
-bot_loop.run_forever()#
-
+bot_loop.run_forever()
