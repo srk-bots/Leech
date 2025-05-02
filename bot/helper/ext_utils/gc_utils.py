@@ -73,7 +73,6 @@ def force_garbage_collection(threshold_mb=100, log_stats=False, generation=None)
                 if generation is not None:
                     # Collect specific generation
                     collected = gc.collect(generation)
-                    total_collected = collected
                     collected_gen0 = collected if generation == 0 else 0
                     collected_gen1 = collected if generation == 1 else 0
                     collected_gen2 = collected if generation == 2 else 0
@@ -82,15 +81,11 @@ def force_garbage_collection(threshold_mb=100, log_stats=False, generation=None)
                     collected_gen0 = gc.collect(0)  # Collect youngest generation
                     collected_gen1 = gc.collect(1)  # Collect middle generation
                     collected_gen2 = gc.collect(2)  # Collect oldest generation
-                    total_collected = (
-                        collected_gen0 + collected_gen1 + collected_gen2
-                    )
+                    (collected_gen0 + collected_gen1 + collected_gen2)
 
                 # Get memory after collection
                 memory_after = process.memory_info().rss / (1024 * 1024)
-                memory_freed = max(
-                    0, memory_mb - memory_after
-                )  # Avoid negative values
+                max(0, memory_mb - memory_after)  # Avoid negative values
 
                 # Only log if explicitly requested or if there's a significant memory issue
                 # Log unreachable objects if there are any
@@ -277,7 +272,7 @@ def optimized_garbage_collection(aggressive=False, log_stats=False):
                 process = psutil.Process(os.getpid())
                 memory_info = process.memory_info()
                 memory_before = memory_info.rss / (1024 * 1024)
-            except Exception as e:
+            except Exception:
                 pass
 
         # First collect only generation 0 (youngest objects)
@@ -308,11 +303,9 @@ def optimized_garbage_collection(aggressive=False, log_stats=False):
                 # Get memory after collection
                 process = psutil.Process(os.getpid())
                 memory_after = process.memory_info().rss / (1024 * 1024)
-                memory_freed = max(
-                    0, memory_before - memory_after
-                )  # Avoid negative values
+                max(0, memory_before - memory_after)  # Avoid negative values
 
-                total_collected = collected_gen0 + collected_gen1 + collected_gen2
+                collected_gen0 + collected_gen1 + collected_gen2
 
                 # Only log if significant memory was freed or in debug mode
                 # Always log unreachable objects as they indicate potential memory leaks
@@ -320,7 +313,7 @@ def optimized_garbage_collection(aggressive=False, log_stats=False):
                     LOGGER.warning(
                         f"Cleared {unreachable_count} unreachable objects"
                     )
-            except Exception as e:
+            except Exception:
                 pass
 
         return True
@@ -342,7 +335,7 @@ def cleanup_large_objects():
                 process = psutil.Process(os.getpid())
                 memory_info = process.memory_info()
                 memory_before = memory_info.rss / (1024 * 1024)
-            except Exception as e:
+            except Exception:
                 pass
 
         # Force a full collection first
@@ -364,16 +357,13 @@ def cleanup_large_objects():
 
         # Log information about large objects
         if large_objects:
-            for i, (obj, size) in enumerate(
+            for _i, (obj, size) in enumerate(
                 sorted(large_objects, key=lambda x: x[1], reverse=True)[:5]
             ):
-
                 # Try to identify what the object is
                 try:
                     if hasattr(obj, "__dict__"):
-                        attrs = list(obj.__dict__.keys())[
-                            :5
-                        ]  # Get first 5 attributes
+                        list(obj.__dict__.keys())[:5]  # Get first 5 attributes
                     elif hasattr(obj, "__len__"):
                         pass
                 except Exception:
@@ -384,10 +374,8 @@ def cleanup_large_objects():
                     with contextlib.suppress(Exception):
                         pass
                 elif isinstance(obj, dict) and len(obj) > 0:
-                    try:
-                        first_key = next(iter(obj.keys()))
-                    except Exception:
-                        pass
+                    with contextlib.suppress(Exception):
+                        next(iter(obj.keys()))
 
         # Store the count before clearing references
         count = len(large_objects) if large_objects else 0
@@ -413,16 +401,14 @@ def cleanup_large_objects():
                 # Get memory after collection
                 process = psutil.Process(os.getpid())
                 memory_after = process.memory_info().rss / (1024 * 1024)
-                memory_freed = max(
-                    0, memory_before - memory_after
-                )  # Avoid negative values
+                max(0, memory_before - memory_after)  # Avoid negative values
 
                 # Only log if significant memory was freed
                 if unreachable_count > 0:
                     LOGGER.warning(
                         f"Cleared {unreachable_count} unreachable objects"
                     )
-            except Exception as e:
+            except Exception:
                 pass
 
         return count
@@ -454,7 +440,7 @@ def smart_garbage_collection(aggressive=False, for_split_file=False):
             try:
                 memory = psutil.virtual_memory()
                 memory_percent = memory.percent
-            except Exception as e:
+            except Exception:
                 pass
 
         # For split files, always be more aggressive
@@ -470,7 +456,6 @@ def smart_garbage_collection(aggressive=False, for_split_file=False):
 
             # For split files or very high memory usage, do extra cleanup
             if memory_percent > 90 or aggressive:
-
                 cleanup_large_objects()
 
                 # For split files, do an extra round of collection
@@ -495,7 +480,7 @@ def smart_garbage_collection(aggressive=False, for_split_file=False):
                                 module._cache, dict
                             ):
                                 module._cache.clear()
-                    except Exception as e:
+                    except Exception:
                         pass
 
             return True

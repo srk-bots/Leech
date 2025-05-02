@@ -336,9 +336,10 @@ async def split_file(f_path, split_size, listener):
         safety_margin = 20 * 1024 * 1024  # 20 MiB safety margin
 
         if split_size > (telegram_limit - safety_margin):
-            old_split_size = split_size
             split_size = telegram_limit - safety_margin
-            LOGGER.info(f"{split_size / (1024 * 1024 * 1024):.2f} GiB for extra safety")
+            LOGGER.info(
+                f"{split_size / (1024 * 1024 * 1024):.2f} GiB for extra safety"
+            )
     except Exception as e:
         LOGGER.error(f"Error calculating file size: {e}")
         # Continue with the split operation anyway

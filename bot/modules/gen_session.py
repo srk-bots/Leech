@@ -606,8 +606,14 @@ async def cleanup_session(user_id):
         for field in sensitive_fields:
             if field in session_state[user_id]:
                 # Overwrite with None to help with garbage collection
-                session_state[user_id][field] = None# Remove user from session state
-        del session_state[user_id]# We don't need to remove handlers anymore since we're using a persistent handler@new_task
+                session_state[user_id][field] = (
+                    None  # Remove user from session state
+                )
+        del session_state[
+            user_id
+        ]  # We don't need to remove handlers anymore since we're using a persistent handler@new_task
+
+
 async def gen_session(_, callback_query=None, message=None):
     """Handle both command and callback for session generation"""
     # If called from callback query

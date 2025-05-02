@@ -942,7 +942,7 @@ async def gen_mediainfo(
                                             temp_send,
                                             f"Downloading sample of {filename} for analysis... ({downloaded_size / (1024 * 1024):.1f} MB)",
                                         )
-                                except Exception as chunk_error:
+                                except Exception:
                                     break
 
                             # If we got at least some data, consider it a success
@@ -1033,7 +1033,7 @@ async def gen_mediainfo(
                                         temp_send,
                                         f"Downloading sample of {media.file_name} for analysis... ({downloaded_size / (1024 * 1024):.1f} MB)",
                                     )
-                            except Exception as chunk_error:
+                            except Exception:
                                 break
 
                     # If we got at least some data, consider it a success
@@ -1207,14 +1207,14 @@ async def gen_mediainfo(
                                 is_archive = True
                             else:
                                 pass
-                    except Exception as e:
+                    except Exception:
                         # Assume it's an archive if verification fails
                         is_split_archive = True
                         is_archive = True
                 else:
                     # For non-numeric patterns, we're more confident it's an archive
                     is_split_archive = True
-                    is_archive = True# Always use file command to verify archive type, even for known extensions
+                    is_archive = True  # Always use file command to verify archive type, even for known extensions
         # This provides more accurate information and handles cases where extensions don't match content
         try:
             # Verify file exists before running file command
@@ -1243,7 +1243,7 @@ async def gen_mediainfo(
                             "archive",
                         ]
                     ):
-                        is_archive = True# Try to determine the specific archive format from file output
+                        is_archive = True  # Try to determine the specific archive format from file output
                         if "rar archive" in stdout_lower:
                             file_ext = (
                                 ".rar"  # Override extension for correct handling
@@ -1264,7 +1264,7 @@ async def gen_mediainfo(
                             file_ext = ".iso"
                 elif return_code != 0:
                     pass
-        except Exception as e:
+        except Exception:
             # Continue with the process, using the extension-based detection as fallback
             pass
 
@@ -1376,7 +1376,7 @@ async def gen_mediainfo(
                             archive_format = "ISO"
                         elif "Type = Cab" in stdout:
                             archive_format = "CAB"
-            except Exception as e:
+            except Exception:
                 # Keep the format determined from the extension if verification fails
                 pass
 
@@ -1419,7 +1419,7 @@ async def gen_mediainfo(
                         tc += f"{'File analysis':<28}: {stdout.strip()}\n"
                     else:
                         pass
-            except Exception as e:
+            except Exception:
                 # Continue without this info, it's not critical
                 pass
 
@@ -1828,7 +1828,7 @@ async def gen_mediainfo(
                         tc += f"{'File analysis':<28}: {stdout.strip()}\n"
                     else:
                         pass
-            except Exception as e:
+            except Exception:
                 # Continue without this info, it's not critical
                 pass
 
@@ -1879,7 +1879,7 @@ async def gen_mediainfo(
                         tc += f"{'File analysis':<28}: {stdout.strip()}\n"
                     else:
                         pass
-            except Exception as e:
+            except Exception:
                 # Continue without this info, it's not critical
                 pass
 
@@ -1958,7 +1958,7 @@ async def gen_mediainfo(
                             format_info = "WebVTT (Web Video Text Tracks)"
                     else:
                         pass
-            except Exception as e:
+            except Exception:
                 # Continue without this info, it's not critical
                 pass
 
@@ -2342,7 +2342,9 @@ async def mediainfo(_, message):
         create_task(auto_delete_message(error_message, time=300))
     finally:
         # Calculate execution time
-        execution_time = time() - start_time# Run garbage collection after command execution
+        execution_time = (
+            time() - start_time
+        )  # Run garbage collection after command execution
         # Use aggressive mode for long-running commands
         if execution_time > 10:  # If command took more than 10 seconds
             smart_garbage_collection(aggressive=True)

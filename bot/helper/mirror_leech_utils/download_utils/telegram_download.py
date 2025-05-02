@@ -121,7 +121,9 @@ class TelegramDownloadHelper:
                 )
             except TypeError as e:
                 # Handle case where get_messages has different parameters in Electrogram
-                if "unexpected keyword argument" in str(e):# Try alternative approach for Electrogram
+                if "unexpected keyword argument" in str(
+                    e
+                ):  # Try alternative approach for Electrogram
                     message = await self.session.get_messages(
                         message.chat.id,  # chat_id as positional argument
                         message.id,  # message_ids as positional argument
@@ -184,7 +186,9 @@ class TelegramDownloadHelper:
                             if self._id in GLOBAL_GID:
                                 GLOBAL_GID.remove(self._id)
                             elif self._id:  # Only log if _id is not empty
-                                LOGGER.debug(f"ID {self._id} not found in GLOBAL_GID")
+                                LOGGER.debug(
+                                    f"ID {self._id} not found in GLOBAL_GID"
+                                )
                             return
 
                 self._start_time = time()

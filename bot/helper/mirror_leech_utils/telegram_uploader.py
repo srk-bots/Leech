@@ -135,7 +135,7 @@ class TelegramUploader:
                     text=msg,
                     disable_web_page_preview=True,
                     disable_notification=True,
-                )# Store this message for potential deletion later
+                )  # Store this message for potential deletion later
                 self.log_msg = owner_dump_msg
             except Exception as e:
                 LOGGER.error(f"Failed to send command message to owner's dump: {e}")
@@ -956,7 +956,8 @@ class TelegramUploader:
                                 f"Processing remaining media group with {len(msgs_copy)} messages for {subkey}"
                             )
                             # Log the subkey to help with debugging
-                            if self._lfilename:await self._send_media_group(subkey, key, msgs_copy)
+                            if self._lfilename:
+                                await self._send_media_group(subkey, key, msgs_copy)
                         except Exception as e:
                             LOGGER.info(
                                 f"While sending media group at the end of task. Error: {e}",
@@ -1014,6 +1015,7 @@ class TelegramUploader:
         # Generate MediaInfo if enabled
         if user_mediainfo_enabled:
             from bot.modules.mediainfo import gen_mediainfo
+
             try:
                 # Generate MediaInfo for the file
                 self._listener.mediainfo_link = await gen_mediainfo(
@@ -1318,13 +1320,17 @@ class TelegramUploader:
                     media_ids = []
                     for msg in msgs_list:
                         if hasattr(msg, "video") and msg.video:
-                            media_ids.append(InputMediaVideo(media=msg.video.file_id))
+                            media_ids.append(
+                                InputMediaVideo(media=msg.video.file_id)
+                            )
                         elif hasattr(msg, "document") and msg.document:
                             media_ids.append(
                                 InputMediaDocument(media=msg.document.file_id)
                             )
                         elif hasattr(msg, "photo") and msg.photo:
-                            media_ids.append(InputMediaPhoto(media=msg.photo.file_id))
+                            media_ids.append(
+                                InputMediaPhoto(media=msg.photo.file_id)
+                            )
 
                     # Add caption to the first media item only
                     if media_ids and msgs_list[0].caption:

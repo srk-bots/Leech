@@ -153,7 +153,7 @@ async def get_watermark_cmd(
                     else:
                         needs_padding = False
 
-        except Exception as e:
+        except Exception:
             pass
 
     # Determine output file extension based on input file
@@ -960,7 +960,7 @@ async def get_metadata_cmd(
             ".ttml",
             ".dfxp",
             ".sub",
-        ]:# First, try to convert using FFmpeg
+        ]:  # First, try to convert using FFmpeg
             cmd = [
                 "xtra",
                 "-hide_banner",
@@ -1334,14 +1334,12 @@ async def get_metadata_cmd(
 
     # Extract language information from streams
     languages = {}
-    try:
+    with contextlib.suppress(Exception):
         languages = {
             stream["index"]: stream["tags"]["language"]
             for stream in streams
             if "tags" in stream and "language" in stream["tags"]
         }
-    except Exception as e:
-        pass
 
     # Use default thread count
     thread_count = max(1, cpu_no // 2)
@@ -1754,7 +1752,7 @@ async def get_merge_concat_demuxer_cmd(files, output_format="mkv", media_type=No
             # Check if all codecs are the same
             if len(set(codecs)) > 1:
                 pass
-        except Exception as e:
+        except Exception:
             pass
 
     # Create a temporary file list for concat demuxer
@@ -2104,7 +2102,7 @@ async def get_merge_filter_complex_cmd(files, media_type, output_format=None):
 
             # Log the media information for debugging
             LOGGER.info(f"Media info for {media_type} files: {media_info}")
-        except Exception as e:
+        except Exception:
             media_info = []
 
     # Determine output path based on first file and media type
@@ -2942,7 +2940,7 @@ async def get_merge_mixed_cmd(
                                             video_duration = float(
                                                 data["format"]["duration"]
                                             )
-                                except Exception as e:
+                                except Exception:
                                     pass
 
                     # If we have video duration, create a temporary subtitle file with correct duration
@@ -3033,7 +3031,7 @@ async def get_merge_mixed_cmd(
                                     LOGGER.info(
                                         f"Created adjusted subtitle file with scale factor {scale_factor}"
                                     )
-                        except Exception as e:
+                        except Exception:
                             pass
 
                         # Add input with the adjusted subtitle file
@@ -3198,7 +3196,7 @@ async def get_merge_mixed_cmd(
                             data = json.loads(result.stdout)
                             if "format" in data and "duration" in data["format"]:
                                 video_duration = float(data["format"]["duration"])
-                    except Exception as e:
+                    except Exception:
                         pass
 
                 # Create a temporary subtitle file with adjusted timestamps
@@ -3266,7 +3264,7 @@ async def get_merge_mixed_cmd(
                             # Use the temporary subtitle file instead
                             sub_file = temp_sub_path
 
-                except Exception as e:
+                except Exception:
                     pass
 
                 # Add input with the adjusted subtitle file
@@ -3671,7 +3669,7 @@ async def get_convert_cmd(
         tuple: FFmpeg command and temporary output file path, or None, None if not supported
     """
     # Import necessary modules
-    from bot import LOGGER, cpu_no
+    from bot import cpu_no
     from bot.helper.ext_utils.media_utils import get_media_type
 
     # Determine media type if not provided

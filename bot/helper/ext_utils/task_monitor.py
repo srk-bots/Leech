@@ -109,7 +109,7 @@ async def get_task_speed(task) -> int:
             # Convert string speed (like "1.5 MB/s") to bytes
             return speed_string_to_bytes(speed)
         return speed
-    except Exception as e:
+    except Exception:
         return 0
 
 
@@ -148,7 +148,7 @@ async def get_task_eta(task) -> int:
                 # If parsing fails, return infinite ETA
                 return float("inf")
         return eta
-    except Exception as e:
+    except Exception:
         return float("inf")  # Return infinite ETA on error
 
 
@@ -184,7 +184,7 @@ async def estimate_completion_time(task) -> int:
         remaining_bytes = size - processed
         return remaining_bytes / speed if speed > 0 else float("inf")
 
-    except Exception as e:
+    except Exception:
         return float("inf")
 
 
@@ -199,7 +199,7 @@ async def get_task_elapsed_time(task) -> int:
             return 0
 
         return int(time.time() - task.listener.message.date.timestamp())
-    except Exception as e:
+    except Exception:
         return 0
 
 
@@ -230,7 +230,7 @@ async def should_cancel_task(task, gid: str) -> tuple[bool, str]:
         # Only monitor download tasks
         if status not in [MirrorStatus.STATUS_DOWNLOAD, MirrorStatus.STATUS_QUEUEDL]:
             return False, ""
-    except Exception as e:
+    except Exception:
         return False, ""
 
     elapsed_time = await get_task_elapsed_time(task)
@@ -399,9 +399,9 @@ async def identify_resource_intensive_tasks():
                         )
                         if size > 1024 * 1024 * 1024:  # 1GB
                             memory_intensive_tasks.append((mid, "memory"))
-                    except Exception as e:
+                    except Exception:
                         pass
-            except Exception as e:
+            except Exception:
                 pass
 
 

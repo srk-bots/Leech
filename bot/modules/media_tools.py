@@ -933,7 +933,6 @@ async def get_media_tools_settings(from_user, stype="main", page_no=0):
                 # Use the global variable
                 page_no = merge_config_page
                 # This else block is not needed since we're already setting page_no
-                pass
         else:
             # Use the global variable if no page is specified
             page_no = merge_config_page
@@ -946,7 +945,9 @@ async def get_media_tools_settings(from_user, stype="main", page_no=0):
             page_no = 0
             merge_config_page = 0  # Update global variableelif page_no < 0:
             page_no = total_pages - 1
-            merge_config_page = total_pages - 1  # Update global variable# Get settings for current page
+            merge_config_page = (
+                total_pages - 1
+            )  # Update global variable# Get settings for current page
         current_page_settings = merge_settings[
             page_no * items_per_page : (page_no * items_per_page) + items_per_page
         ]
@@ -961,16 +962,20 @@ async def get_media_tools_settings(from_user, stype="main", page_no=0):
         buttons.data_button("Close", f"mediatools {user_id} close", "footer")
 
         # Add pagination buttons in a separate row below action buttons
-        if total_pages > 1:# Log the current state of the buttons}, Header: {len(buttons._header_button)}, Footer: {len(buttons._footer_button)}, Page: {len(buttons._page_button)}"
+        if (
+            total_pages > 1
+        ):  # Log the current state of the buttons}, Header: {len(buttons._header_button)}, Footer: {len(buttons._footer_button)}, Page: {len(buttons._page_button)}"
             for i in range(total_pages):
                 # Make the current page button different
-                if i == page_no:# Make sure the page number is passed as a separate parameter
+                if (
+                    i == page_no
+                ):  # Make sure the page number is passed as a separate parameter
                     buttons.data_button(
                         f"[{i + 1}]",
                         f"mediatools {user_id} merge_config {i}",
                         "page",
                     )
-                else:# Make sure the page number is passed as a separate parameter
+                else:  # Make sure the page number is passed as a separate parameter
                     buttons.data_button(
                         str(i + 1), f"mediatools {user_id} merge_config {i}", "page"
                     )
@@ -2131,7 +2136,7 @@ async def get_media_tools_settings(from_user, stype="main", page_no=0):
 
         buttons.data_button("Back", f"mediatools {user_id} trim", "footer")
         buttons.data_button("Close", f"mediatools {user_id} close", "footer")
-        btns = buttons.build_menu(2)# Get start and end time settings
+        btns = buttons.build_menu(2)  # Get start and end time settings
         start_time = user_dict.get("TRIM_START_TIME", None)
         if start_time is None and hasattr(Config, "TRIM_START_TIME"):
             start_time = Config.TRIM_START_TIME
@@ -4974,16 +4979,13 @@ async def update_media_tools_settings(query, stype="main"):
     page_no = 0
     global merge_config_page
     # Add more detailed logging for trim and trim_config
-    if stype == "trim":
-        pass
-    elif stype == "trim_config":
+    if stype in {"trim", "trim_config"}:
         pass
     elif stype.startswith("merge_config "):
         try:
             # Format: merge_config X
             page_no = int(stype.split(" ")[1])
             # Update the global variable
-            old_page = merge_config_page
             merge_config_page = page_no
             stype = "merge_config"
         except (ValueError, IndexError) as e:
@@ -5952,7 +5954,9 @@ async def set_option(_, message, option, rfunc):
             page_no = int(page_info) - 1
             # Update the global merge_config_page variable
             global merge_config_page
-            merge_config_page = page_no# Create a new rfunc that will return to the correct page
+            merge_config_page = (
+                page_no  # Create a new rfunc that will return to the correct page
+            )
             await update_media_tools_settings(message, f"merge_config {page_no}")
         except (ValueError, IndexError) as e:
             LOGGER.error(f"Failed to extract page number from message text: {e}")
@@ -6063,37 +6067,41 @@ async def edit_media_tools_settings(client, query):
     elif data[2] == "close":
         await query.answer()
         await delete_message(message)
-    elif data[2] in [
-        "watermark",
-        "watermark_config",
-        "merge",
-        "convert",
-        "compression",
-        "compression_config",
-        "trim",
-        "trim_config",
-        "extract",
-        "extract_config",
-    ]:
-        await query.answer()
-        await update_media_tools_settings(query, data[2])
-    elif data[2] in [
-        "convert_video",
-        "convert_audio",
-        "convert_subtitle",
-        "convert_document",
-        "convert_archive",
-    ] or data[2] in [
-        "help",
-        "help_watermark",
-        "help_merge",
-        "help_convert",
-        "help_compression",
-        "help_trim",
-        "help_extract",
-        "help_priority",
-        "help_examples",
-    ]:
+    elif (
+        data[2]
+        in [
+            "watermark",
+            "watermark_config",
+            "merge",
+            "convert",
+            "compression",
+            "compression_config",
+            "trim",
+            "trim_config",
+            "extract",
+            "extract_config",
+        ]
+        or data[2]
+        in [
+            "convert_video",
+            "convert_audio",
+            "convert_subtitle",
+            "convert_document",
+            "convert_archive",
+        ]
+        or data[2]
+        in [
+            "help",
+            "help_watermark",
+            "help_merge",
+            "help_convert",
+            "help_compression",
+            "help_trim",
+            "help_extract",
+            "help_priority",
+            "help_examples",
+        ]
+    ):
         await query.answer()
         await update_media_tools_settings(query, data[2])
     elif data[2] == "merge_config" or (len(data) > 3 and data[2] == "merge_config"):
@@ -6106,7 +6114,6 @@ async def edit_media_tools_settings(client, query):
                 # Format: merge_config X
                 page_no = int(data[3])
                 # Update the global variable
-                old_page = merge_config_page
                 merge_config_page = page_no
                 await update_media_tools_settings(query, f"merge_config {page_no}")
             except ValueError as e:

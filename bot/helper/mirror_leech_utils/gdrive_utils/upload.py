@@ -63,6 +63,7 @@ class GoogleDriveUpload(GoogleDriveHelper):
         # Generate MediaInfo if enabled and it's a file (not a folder)
         if user_mediainfo_enabled and ospath.isfile(self._path):
             from bot.modules.mediainfo import gen_mediainfo
+
             try:
                 # Generate MediaInfo for the file
                 self.listener.mediainfo_link = async_to_sync(

@@ -507,7 +507,8 @@ async def apply_font_style(text, style):
         return text
 
     # Handle the literal string "style" as a special case
-    if style.lower() == "style":return f"<code>{text}</code>"
+    if style.lower() == "style":
+        return f"<code>{text}</code>"
 
     style_lower = style.lower()
 
@@ -644,7 +645,8 @@ async def is_google_font(font_name):
         bool: True if the font is a valid Google Font, False otherwise
     """
     # Check if it's just a numeric weight (like "400")
-    if font_name.isdigit():return False
+    if font_name.isdigit():
+        return False
 
     # Extract just the font name if weight is included
     if ":" in font_name:
@@ -659,7 +661,8 @@ async def is_google_font(font_name):
         return False
 
     # If it's the literal string "style", it's not a valid font
-    if font_name.lower() == "style":return False
+    if font_name.lower() == "style":
+        return False
 
     # Try to download the font to check if it exists
     font_path = await download_google_font(font_name)

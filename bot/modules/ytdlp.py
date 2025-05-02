@@ -879,7 +879,7 @@ class YtDlp(TaskListener):
                         ]
 
                     result = await sync_to_async(extract_info, self.link, options)
-                except Exception as e2:
+                except Exception:
                     try:
                         # Last resort: try with web client
                         if (

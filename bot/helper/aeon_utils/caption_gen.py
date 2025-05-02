@@ -1,3 +1,4 @@
+import contextlib
 import gc
 import json
 import os
@@ -115,7 +116,7 @@ async def generate_caption(filename, directory, caption_template):
                 "`",
                 "\\",
             ]
-        ) and os.path.exists(file_path):# Create a temporary file with a safe name
+        ) and os.path.exists(file_path):  # Create a temporary file with a safe name
             import tempfile
             from time import time
 
@@ -142,7 +143,7 @@ async def generate_caption(filename, directory, caption_template):
                     os.link(file_path, safe_path)
                     file_path_to_use = safe_path
                     temp_file_created = True
-                except Exception as e:# Fall back to copying a portion of the file
+                except Exception:  # Fall back to copying a portion of the file
                     try:
                         # Only copy a small portion of the file for MediaInfo analysis
                         # This is much faster than copying the entire file
@@ -413,17 +414,15 @@ async def generate_caption(filename, directory, caption_template):
                 )
             # Clean up temporary resources
             if temp_file_created and os.path.exists(file_path_to_use):
-                try:
+                with contextlib.suppress(Exception):
                     os.remove(file_path_to_use)
-                except Exception as e:
-                    pass
             # Clean up temporary directory if created
             if temp_dir and os.path.exists(temp_dir):
                 try:
                     import shutil
 
                     shutil.rmtree(temp_dir)
-                except Exception as e:
+                except Exception:
                     pass
             # Force garbage collection after processing media info
             # This can create large objects in memory

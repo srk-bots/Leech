@@ -192,7 +192,7 @@ async def rss_sub(_, message, pre_event):
                 parsed_url = urlparse(feed_link)
                 site_name = parsed_url.netloc.replace("www.", "")
                 feed_msg += f"\n<b>Site: </b><code>{site_name}</code>"
-            except Exception as e:
+            except Exception:
                 pass
             # Add a separator between feeds
             if msg:
@@ -204,7 +204,8 @@ async def rss_sub(_, message, pre_event):
 
                 parsed_url = urlparse(feed_link)
                 site_name = parsed_url.netloc.replace("www.", "")
-            except Exception as e:site_name = "Unknown"
+            except Exception:
+                site_name = "Unknown"
 
             async with rss_dict_lock:
                 if rss_dict.get(user_id, False):
@@ -354,7 +355,9 @@ async def rss_update(_, message, pre_event, state):
             if not rss_dict:
                 await database.trunc_table("rss")
     if updated:
-        LOGGER.info(f"RSS link(s) {state}d: {len(updated)}. {updated} has been {state}d!")
+        LOGGER.info(
+            f"RSS link(s) {state}d: {len(updated)}. {updated} has been {state}d!"
+        )
         await send_message(
             message,
             f"RSS links with Title(s): <code>{updated}</code> has been {state}d!",
@@ -864,7 +867,7 @@ async def rss_monitor():
                         last_link = rss_d.entries[0]["links"][1]["href"]
                     else:
                         last_link = rss_d.entries[0]["link"]
-                except (IndexError, KeyError) as e:
+                except (IndexError, KeyError):
                     continue
 
                 # Safely get the last title
@@ -1004,7 +1007,8 @@ async def rss_monitor():
 
                             parsed_url = urlparse(data["link"])
                             site_name = parsed_url.netloc.replace("www.", "")
-                        except Exception as e:site_name = "Unknown"
+                        except Exception:
+                            site_name = "Unknown"
 
                     site_info = f" | <b>Site:</b> <code>{site_name}</code>"
                     feed_msg += f"\n<b>Tag: </b><code>{data['tag']}</code> <code>{user}</code>{site_info}\n\n<blockquote><b>>> Powered by @aimmirror <<</b></blockquote>"
@@ -1054,7 +1058,7 @@ async def rss_monitor():
 
                     rss_dict[user][title].update(update_data)
                 await database.rss_update(user)
-            except RssShutdownException as ex:
+            except RssShutdownException:
                 break
             except Exception as e:
                 LOGGER.error(f"{e} - Feed Name: {title} - Feed Link: {data['link']}")

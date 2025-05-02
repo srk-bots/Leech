@@ -346,7 +346,7 @@ class YoutubeDLHelper:
                                     if not self._ext:
                                         self._ext = ext
                                     break
-                            except Exception as e:
+                            except Exception:
                                 continue
 
                         # If all templates failed, use entry ID
@@ -375,7 +375,7 @@ class YoutubeDLHelper:
                     if name and not name.startswith("NA."):
                         realName = name
                         break
-                except Exception as e:
+                except Exception:
                     continue
 
             # If all templates failed, use video ID and timestamp
@@ -510,7 +510,7 @@ class YoutubeDLHelper:
                                         sys.getsizeof(obj) > 1024 * 1024
                                     ):  # Objects larger than 1MB
                                         locals()[name] = None
-                            except Exception as mem_e:
+                            except Exception:
                                 pass
                     # Break out of retry loop if we got here
                     break
@@ -581,7 +581,7 @@ class YoutubeDLHelper:
                 for name, obj in list(locals().items()):
                     if sys.getsizeof(obj) > 1024 * 1024:  # Objects larger than 1MB
                         locals()[name] = None
-            except Exception as mem_e:
+            except Exception:
                 pass
             # Try to provide more helpful error messages
             error_str = str(e)

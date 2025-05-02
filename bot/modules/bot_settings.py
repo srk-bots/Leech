@@ -3247,7 +3247,9 @@ Configure advanced merge settings that will be used when user settings are not a
 
 async def update_buttons(message, key=None, edit_type=None, page=0):
     user_id = message.chat.id
-    LOGGER.debug(f"Updating buttons for user {user_id} with key {key}, edit_type {edit_type}")
+    LOGGER.debug(
+        f"Updating buttons for user {user_id} with key {key}, edit_type {edit_type}"
+    )
 
     msg, button = await get_buttons(key, edit_type, page, user_id)
     await edit_message(message, msg, button)
@@ -3739,7 +3741,8 @@ async def update_private_file(_, message, pre_message):
 async def event_handler(client, query, pfunc, rfunc, document=False):
     chat_id = query.message.chat.id
     handler_dict[chat_id] = True
-    start_time = time()# pylint: disable=unused-argument
+    start_time = time()  # pylint: disable=unused-argument
+
     async def event_filter(_, *args):
         event = args[1]  # The event is the second argument
         user = event.from_user or event.sender_chat
@@ -4739,12 +4742,18 @@ async def edit_bot_settings(client, query):
             await update_buttons(
                 message, "mediatools_merge", page=globals()["merge_page"]
             )
-        elif data[2] == "mediatools_metadata":await update_buttons(message, "mediatools_metadata")
-        elif data[2] == "mediatools_convert":await update_buttons(message, "mediatools_convert")
-        elif data[2] == "mediatools_compression":await update_buttons(message, "mediatools_compression")
-        elif data[2] == "mediatools_trim":await update_buttons(message, "mediatools_trim")
-        elif data[2] == "mediatools_extract":await update_buttons(message, "mediatools_extract")
-        elif data[2] == "ai":await update_buttons(message, "ai")
+        elif data[2] == "mediatools_metadata":
+            await update_buttons(message, "mediatools_metadata")
+        elif data[2] == "mediatools_convert":
+            await update_buttons(message, "mediatools_convert")
+        elif data[2] == "mediatools_compression":
+            await update_buttons(message, "mediatools_compression")
+        elif data[2] == "mediatools_trim":
+            await update_buttons(message, "mediatools_trim")
+        elif data[2] == "mediatools_extract":
+            await update_buttons(message, "mediatools_extract")
+        elif data[2] == "ai":
+            await update_buttons(message, "ai")
         else:
             await update_buttons(message, data[2])
     elif data[1] == "view" and data[2] in [
@@ -4767,12 +4776,18 @@ async def edit_bot_settings(client, query):
             await update_buttons(
                 message, "mediatools_merge", page=globals()["merge_page"]
             )
-        elif data[2] == "mediatools_metadata":await update_buttons(message, "mediatools_metadata")
-        elif data[2] == "mediatools_convert":await update_buttons(message, "mediatools_convert")
-        elif data[2] == "mediatools_compression":await update_buttons(message, "mediatools_compression")
-        elif data[2] == "mediatools_trim":await update_buttons(message, "mediatools_trim")
-        elif data[2] == "mediatools_extract":await update_buttons(message, "mediatools_extract")
-        elif data[2] == "ai":await update_buttons(message, "ai")
+        elif data[2] == "mediatools_metadata":
+            await update_buttons(message, "mediatools_metadata")
+        elif data[2] == "mediatools_convert":
+            await update_buttons(message, "mediatools_convert")
+        elif data[2] == "mediatools_compression":
+            await update_buttons(message, "mediatools_compression")
+        elif data[2] == "mediatools_trim":
+            await update_buttons(message, "mediatools_trim")
+        elif data[2] == "mediatools_extract":
+            await update_buttons(message, "mediatools_extract")
+        elif data[2] == "ai":
+            await update_buttons(message, "ai")
         else:
             await update_buttons(message, data[2])
         # This section is now handled above
@@ -5015,14 +5030,23 @@ async def edit_bot_settings(client, query):
             data[2].startswith("WATERMARK_")
             or data[2].startswith("AUDIO_WATERMARK_")
             or data[2].startswith("SUBTITLE_WATERMARK_")
-        ):rfunc = partial(update_buttons, message, "mediatools_watermark")
-        elif data[2].startswith("METADATA_"):rfunc = partial(update_buttons, message, "mediatools_metadata")
-        elif data[2].startswith("CONVERT_"):rfunc = partial(update_buttons, message, "mediatools_convert")
-        elif data[2].startswith("COMPRESSION_"):rfunc = partial(update_buttons, message, "mediatools_compression")
-        elif data[2].startswith("TRIM_"):rfunc = partial(update_buttons, message, "mediatools_trim")
-        elif data[2].startswith("EXTRACT_"):rfunc = partial(update_buttons, message, "mediatools_extract")
-        elif data[2].startswith("TASK_MONITOR_"):rfunc = partial(update_buttons, message, "taskmonitor")
-        elif data[2] == "DEFAULT_AI_PROVIDER":# Create a special menu for selecting the AI provider
+        ):
+            rfunc = partial(update_buttons, message, "mediatools_watermark")
+        elif data[2].startswith("METADATA_"):
+            rfunc = partial(update_buttons, message, "mediatools_metadata")
+        elif data[2].startswith("CONVERT_"):
+            rfunc = partial(update_buttons, message, "mediatools_convert")
+        elif data[2].startswith("COMPRESSION_"):
+            rfunc = partial(update_buttons, message, "mediatools_compression")
+        elif data[2].startswith("TRIM_"):
+            rfunc = partial(update_buttons, message, "mediatools_trim")
+        elif data[2].startswith("EXTRACT_"):
+            rfunc = partial(update_buttons, message, "mediatools_extract")
+        elif data[2].startswith("TASK_MONITOR_"):
+            rfunc = partial(update_buttons, message, "taskmonitor")
+        elif (
+            data[2] == "DEFAULT_AI_PROVIDER"
+        ):  # Create a special menu for selecting the AI provider
             buttons = ButtonMaker()
             buttons.data_button("Mistral", "botset setprovider mistral")
             buttons.data_button("DeepSeek", "botset setprovider deepseek")
@@ -5041,7 +5065,8 @@ async def edit_bot_settings(client, query):
             or data[2].startswith("DEEPSEEK_")
             or data[2].startswith("CHATGPT_")
             or data[2].startswith("GEMINI_")
-        ):rfunc = partial(update_buttons, message, "ai")
+        ):
+            rfunc = partial(update_buttons, message, "ai")
         elif data[2].startswith("MERGE_") or data[2] in [
             "CONCAT_DEMUXER_ENABLED",
             "FILTER_COMPLEX_ENABLED",
@@ -5385,7 +5410,7 @@ async def edit_bot_settings(client, query):
         rfunc = partial(update_buttons, message)
         await event_handler(client, query, pfunc, rfunc, True)
     elif data[1] == "botvar" and state == "edit":
-        await query.answer()# Special handling for MEDIA_TOOLS_ENABLED
+        await query.answer()  # Special handling for MEDIA_TOOLS_ENABLED
         if data[2] == "MEDIA_TOOLS_ENABLED":
             # Create a special menu for selecting media tools
             buttons = ButtonMaker()
@@ -5443,9 +5468,13 @@ async def edit_bot_settings(client, query):
         pfunc = partial(edit_variable, pre_message=message, key=data[2])
 
         # Determine which menu to return to based on the key
-        if data[2].startswith("METADATA_"):rfunc = partial(update_buttons, message, "mediatools_metadata")
-        elif data[2].startswith("CONVERT_"):rfunc = partial(update_buttons, message, "mediatools_convert")
-        elif data[2] == "DEFAULT_AI_PROVIDER":# Create a special menu for selecting the AI provider
+        if data[2].startswith("METADATA_"):
+            rfunc = partial(update_buttons, message, "mediatools_metadata")
+        elif data[2].startswith("CONVERT_"):
+            rfunc = partial(update_buttons, message, "mediatools_convert")
+        elif (
+            data[2] == "DEFAULT_AI_PROVIDER"
+        ):  # Create a special menu for selecting the AI provider
             buttons = ButtonMaker()
             buttons.data_button("Mistral", "botset setprovider mistral")
             buttons.data_button("DeepSeek", "botset setprovider deepseek")
@@ -5464,7 +5493,8 @@ async def edit_bot_settings(client, query):
             or data[2].startswith("DEEPSEEK_")
             or data[2].startswith("CHATGPT_")
             or data[2].startswith("GEMINI_")
-        ):rfunc = partial(update_buttons, message, "ai")
+        ):
+            rfunc = partial(update_buttons, message, "ai")
         else:
             rfunc = partial(update_buttons, message, "var")
 

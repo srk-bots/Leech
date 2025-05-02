@@ -57,23 +57,27 @@ async def process_template(template, data_dict):
         style1 = match.group(2).strip() if match.group(2) else None
         style2 = match.group(3).strip() if match.group(3) else None
         style3 = match.group(4).strip() if match.group(4) else None
-        original_match = match.group(0)
+        match.group(0)
 
         if var_name in data_dict:
             value = str(data_dict[var_name])
         else:
             # If it's not a template variable, treat it as custom text
-            value = var_name# Apply first style (innermost)
+            value = var_name  # Apply first style (innermost)
         if style1:
-            try:# Check if it's a Google Font
+            try:  # Check if it's a Google Font
                 if await is_google_font(style1):
-                    value = await apply_google_font_style(value, style1)# Check if it's an HTML style
+                    value = await apply_google_font_style(
+                        value, style1
+                    )  # Check if it's an HTML style
                 elif style1.lower() in FONT_STYLES:
-                    value = await apply_font_style(value, style1)# Check if it's a single character (emoji/unicode)
+                    value = await apply_font_style(
+                        value, style1
+                    )  # Check if it's a single character (emoji/unicode)
                 elif (
                     len(style1) == 1 or len(style1) == 2
                 ):  # Support for emoji (which can be 2 chars)
-                    value = f"{style1}{value}{style1}"# Special handling for the literal string "style"
+                    value = f"{style1}{value}{style1}"  # Special handling for the literal string "style"
                 elif style1.lower() == "style":
                     value = f"<code>{value}</code>"
                 else:
@@ -83,9 +87,11 @@ async def process_template(template, data_dict):
 
             # Apply second style
             if style2:
-                try:# Check if it's a Google Font
+                try:  # Check if it's a Google Font
                     if await is_google_font(style2):
-                        value = await apply_google_font_style(value, style2)# Check if it's an HTML style
+                        value = await apply_google_font_style(
+                            value, style2
+                        )  # Check if it's an HTML style
                     elif style2.lower() in FONT_STYLES:
                         value = await apply_font_style(value, style2)
                         # Special handling for combined HTML styles
@@ -95,7 +101,7 @@ async def process_template(template, data_dict):
                     elif (
                         len(style2) == 1 or len(style2) == 2
                     ):  # Support for emoji (which can be 2 chars)
-                        value = f"{style2}{value}{style2}"# Special handling for the literal string "style"
+                        value = f"{style2}{value}{style2}"  # Special handling for the literal string "style"
                     elif style2.lower() == "style":
                         value = f"<code>{value}</code>"
                     else:
@@ -105,9 +111,11 @@ async def process_template(template, data_dict):
 
             # Apply third style (outermost)
             if style3:
-                try:# Check if it's a Google Font
+                try:  # Check if it's a Google Font
                     if await is_google_font(style3):
-                        value = await apply_google_font_style(value, style3)# Check if it's an HTML style
+                        value = await apply_google_font_style(
+                            value, style3
+                        )  # Check if it's an HTML style
                     elif style3.lower() in FONT_STYLES:
                         value = await apply_font_style(value, style3)
                         # Special handling for combined HTML styles
@@ -117,7 +125,7 @@ async def process_template(template, data_dict):
                     elif (
                         len(style3) == 1 or len(style3) == 2
                     ):  # Support for emoji (which can be 2 chars)
-                        value = f"{style3}{value}{style3}"# Special handling for the literal string "style"
+                        value = f"{style3}{value}{style3}"  # Special handling for the literal string "style"
                     elif style3.lower() == "style":
                         value = f"<code>{value}</code>"
                     else:
@@ -133,23 +141,27 @@ async def process_template(template, data_dict):
         var_name = match.group(1).strip()
         inner_style = match.group(2).strip() if match.group(2) else None
         outer_style = match.group(3).strip() if match.group(3) else None
-        original_match = match.group(0)
+        match.group(0)
 
         if var_name in data_dict:
             value = str(data_dict[var_name])
         else:
             # If it's not a template variable, treat it as custom text
-            value = var_name# Apply inner style first
+            value = var_name  # Apply inner style first
         if inner_style:
-            try:# Check if it's a Google Font
+            try:  # Check if it's a Google Font
                 if await is_google_font(inner_style):
-                    value = await apply_google_font_style(value, inner_style)# Check if it's an HTML style
+                    value = await apply_google_font_style(
+                        value, inner_style
+                    )  # Check if it's an HTML style
                 elif inner_style.lower() in FONT_STYLES:
-                    value = await apply_font_style(value, inner_style)# Check if it's a single character (emoji/unicode)
+                    value = await apply_font_style(
+                        value, inner_style
+                    )  # Check if it's a single character (emoji/unicode)
                 elif (
                     len(inner_style) == 1 or len(inner_style) == 2
                 ):  # Support for emoji (which can be 2 chars)
-                    value = f"{inner_style}{value}{inner_style}"# Special handling for the literal string "style"
+                    value = f"{inner_style}{value}{inner_style}"  # Special handling for the literal string "style"
                 elif inner_style.lower() == "style":
                     value = f"<code>{value}</code>"
                 else:
@@ -159,9 +171,11 @@ async def process_template(template, data_dict):
 
             # Apply outer style
             if outer_style:
-                try:# Check if it's a Google Font
+                try:  # Check if it's a Google Font
                     if await is_google_font(outer_style):
-                        value = await apply_google_font_style(value, outer_style)# Check if it's an HTML style
+                        value = await apply_google_font_style(
+                            value, outer_style
+                        )  # Check if it's an HTML style
                     elif outer_style.lower() in FONT_STYLES:
                         value = await apply_font_style(value, outer_style)
                         # Special handling for combined HTML styles to ensure proper nesting
@@ -171,7 +185,7 @@ async def process_template(template, data_dict):
                     elif (
                         len(outer_style) == 1 or len(outer_style) == 2
                     ):  # Support for emoji (which can be 2 chars)
-                        value = f"{outer_style}{value}{outer_style}"# Special handling for the literal string "style"
+                        value = f"{outer_style}{value}{outer_style}"  # Special handling for the literal string "style"
                     elif outer_style.lower() == "style":
                         value = f"<code>{value}</code>"
                     else:
@@ -187,26 +201,23 @@ async def process_template(template, data_dict):
         if match.group(1) is not None:
             # Format: {{variable}style}
             var_name = match.group(1).strip()
-            style_name = match.group(2).strip() if match.group(2) else None# Get the variable value
+            style_name = (
+                match.group(2).strip() if match.group(2) else None
+            )  # Get the variable value
             if var_name in data_dict:
-                value = str(data_dict[var_name])# Apply styling if specified
+                value = str(data_dict[var_name])  # Apply styling if specified
                 if style_name:
-                    try:# Check if it's a Google Font
+                    try:  # Check if it's a Google Font
                         if await is_google_font(style_name):
-                            styled_value = await apply_google_font_style(
-                                value, style_name
-                            )
-                            return styled_value
+                            return await apply_google_font_style(value, style_name)
                         # Check if it's an HTML style
                         if style_name.lower() in FONT_STYLES:
-                            styled_value = await apply_font_style(value, style_name)
-                            return styled_value
+                            return await apply_font_style(value, style_name)
                         # Check if it's a single character (emoji/unicode)
                         if (
                             len(style_name) == 1 or len(style_name) == 2
                         ):  # Support for emoji (which can be 2 chars)
-                            styled_value = f"{style_name}{value}{style_name}"
-                            return styled_value
+                            return f"{style_name}{value}{style_name}"
                         # Special handling for the literal string "style"
                         if style_name.lower() == "style":
                             return f"<code>{value}</code>"
@@ -216,14 +227,11 @@ async def process_template(template, data_dict):
                         return value
                 return value
             # If it's not a template variable, treat it as custom text
-            value = var_name# Apply styling if specified
+            value = var_name  # Apply styling if specified
             if style_name:
-                try:# Check if it's a Google Font
+                try:  # Check if it's a Google Font
                     if await is_google_font(style_name):
-                        styled_value = await apply_google_font_style(
-                            value, style_name
-                        )
-                        return styled_value
+                        return await apply_google_font_style(value, style_name)
                     # Check if it's an HTML style
                     if style_name.lower() in FONT_STYLES:
                         styled_value = await apply_font_style(value, style_name)
@@ -234,8 +242,7 @@ async def process_template(template, data_dict):
                     if (
                         len(style_name) == 1 or len(style_name) == 2
                     ):  # Support for emoji (which can be 2 chars)
-                        styled_value = f"{style_name}{value}{style_name}"
-                        return styled_value
+                        return f"{style_name}{value}{style_name}"
                     # Special handling for the literal string "style"
                     if style_name.lower() == "style":
                         return f"<code>{value}</code>"
@@ -248,8 +255,7 @@ async def process_template(template, data_dict):
         # Format: {variable}
         var_name = match.group(3).strip()
         if var_name in data_dict:
-            value = str(data_dict[var_name])
-            return value# For simple variables, we don't treat them as custom text
+            return str(data_dict[var_name])
         # to maintain backward compatibility
         return match.group(0)  # Return the original if variable not found
 

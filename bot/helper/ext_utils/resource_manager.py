@@ -116,12 +116,21 @@ async def apply_resource_limits(cmd, process_id=None, task_type="FFmpeg"):
 
         # Prepend ulimit command to limit memory
         # -v: virtual memory limit
-        cmd = ["bash", "-c", f"ulimit -v {memory_limit_kb} && {escaped_cmd}"]# Apply CPU affinity if configured
+        cmd = [
+            "bash",
+            "-c",
+            f"ulimit -v {memory_limit_kb} && {escaped_cmd}",
+        ]  # Apply CPU affinity if configured
     cpu_affinity = get_cpu_affinity()
     if cpu_affinity:
         # Use taskset to set CPU affinity
         affinity_str = ",".join(map(str, cpu_affinity))
-        cmd = ["taskset", "-c", affinity_str, *cmd]# Apply thread count if dynamic threading is enabled
+        cmd = [
+            "taskset",
+            "-c",
+            affinity_str,
+            *cmd,
+        ]  # Apply thread count if dynamic threading is enabled
     if Config.FFMPEG_DYNAMIC_THREADS:
         thread_count = await get_optimal_thread_count()
         if thread_count is not None:

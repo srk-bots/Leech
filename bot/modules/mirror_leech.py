@@ -520,9 +520,7 @@ class Mirror(TaskListener):
         if len(self.link) > 0:
             # Check if it's a Mega link but not using jdleech or jdmirror command
             if is_mega_link(self.link) and not self.is_jd:
-                error_msg = (
-                    "⚠️ For Mega links, please use /jdleech or /jdmirror command instead."
-                )
+                error_msg = "⚠️ For Mega links, please use /jdleech or /jdmirror command instead."
                 x = await send_message(self.message, error_msg)
                 await self.remove_from_same_dir()
                 await delete_links(self.message)

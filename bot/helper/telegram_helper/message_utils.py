@@ -59,7 +59,8 @@ async def send_message(
     client = bot_client or TgClient.bot
 
     # Handle None message object
-    if message is None:return "Cannot send message: message object is None"
+    if message is None:
+        return "Cannot send message: message object is None"
 
     try:
         # Handle case where message is a chat_id (int or string)
@@ -450,7 +451,9 @@ async def get_tg_link_message(link, user_id=""):
                 )
             except TypeError as e:
                 # Handle case where get_messages has different parameters in Electrogram
-                if "unexpected keyword argument" in str(e):# Try alternative approach for Electrogram
+                if "unexpected keyword argument" in str(
+                    e
+                ):  # Try alternative approach for Electrogram
                     message = await TgClient.bot.get_messages(
                         chat,  # chat_id as positional argument
                         msg_id,  # message_ids as positional argument
@@ -476,7 +479,9 @@ async def get_tg_link_message(link, user_id=""):
                 )
             except TypeError as e:
                 # Handle case where get_messages has different parameters in Electrogram
-                if "unexpected keyword argument" in str(e):# Try alternative approach for Electrogram
+                if "unexpected keyword argument" in str(
+                    e
+                ):  # Try alternative approach for Electrogram
                     user_message = await user_session.get_messages(
                         chat,  # chat_id as positional argument
                         msg_id,  # message_ids as positional argument

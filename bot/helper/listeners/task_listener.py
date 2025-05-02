@@ -474,7 +474,6 @@ class TaskListener(TaskConfig):
                     ext = current_name.split(".")[-1] if "." in current_name else ""
                     current_name = f"{base_name}.{ext}" if ext else base_name
 
-
         msg = f"<b>Name: </b><code>{escape(current_name)}</code>\n\n<blockquote><b>Size: </b>{get_readable_file_size(self.size)}"
         done_msg = f"<b><blockquote>Hey, {self.tag}</blockquote>\nYour task is complete\nPlease check your inbox.</b>"
         LOGGER.info(f"Task Done: {current_name}")
@@ -498,12 +497,15 @@ class TaskListener(TaskConfig):
                     "MEDIAINFO_ENABLED", None
                 )
                 if user_mediainfo_enabled is None:
-                    user_mediainfo_enabled = Config.MEDIAINFO_ENABLED# Use the pre-generated MediaInfo link if available
+                    user_mediainfo_enabled = (
+                        Config.MEDIAINFO_ENABLED
+                    )  # Use the pre-generated MediaInfo link if available
                 if (
                     user_mediainfo_enabled
                     and hasattr(self, "mediainfo_link")
                     and self.mediainfo_link
-                ):msg += f"\n┖ <b>MediaInfo</b> → <a href='https://graph.org/{self.mediainfo_link}'>View</a>"
+                ):
+                    msg += f"\n┖ <b>MediaInfo</b> → <a href='https://graph.org/{self.mediainfo_link}'>View</a>"
 
             msg += "</blockquote>\n\n"
 
@@ -528,7 +530,7 @@ class TaskListener(TaskConfig):
                         "MEDIAINFO_ENABLED", None
                     )
                     if user_mediainfo_enabled is None:
-                        user_mediainfo_enabled = Config.MEDIAINFO_ENABLED# Use the pre-generated MediaInfo link if available and valid
+                        user_mediainfo_enabled = Config.MEDIAINFO_ENABLED  # Use the pre-generated MediaInfo link if available and valid
                     if (
                         user_mediainfo_enabled
                         and hasattr(self, "mediainfo_link")
@@ -735,7 +737,9 @@ class TaskListener(TaskConfig):
             # Check if MediaInfo is enabled for this user
             user_mediainfo_enabled = self.user_dict.get("MEDIAINFO_ENABLED", None)
             if user_mediainfo_enabled is None:
-                user_mediainfo_enabled = Config.MEDIAINFO_ENABLED# Use the pre-generated MediaInfo link if available and valid
+                user_mediainfo_enabled = (
+                    Config.MEDIAINFO_ENABLED
+                )  # Use the pre-generated MediaInfo link if available and valid
             if (
                 user_mediainfo_enabled
                 and hasattr(self, "mediainfo_link")
