@@ -267,13 +267,13 @@ class YtSelection:
             # Audio options
             buttons.data_button("MP3 Audio", "ytq mp3")
             buttons.data_button("Other Audio Formats", "ytq audio")
-            buttons.data_button("Best Audio", "ytq ba/b")
+            buttons.data_button("Best Audio", "ytq bestaudio")
 
         # Quick options section is the same for both playlist and single videos
         elif section == "quick":
             # Quick options
-            buttons.data_button("Best Video", "ytq bv*+ba/b")
-            buttons.data_button("Best Audio", "ytq ba/b")
+            buttons.data_button("Best Video", "ytq bestvideo+bestaudio")
+            buttons.data_button("Best Audio", "ytq bestaudio")
 
         # Add back button
         buttons.data_button("Back", "ytq back", "footer")
@@ -341,9 +341,6 @@ class YtSelection:
                 b_data = f"{i}|av1"
                 self.formats[b_data] = video_format
 
-            # Add Best Video option
-            buttons.data_button("🔹 BEST VIDEO 🔹", "ytq bv*+ba/b")
-
             # Add all video formats directly to the main menu in ascending order
             # SD formats (144p, 240p, 360p, 480p)
             for i in ["144", "240", "360", "480"]:
@@ -383,8 +380,11 @@ class YtSelection:
                 b_data = f"{i}|av1"
                 buttons.data_button(f"{i}p AV1", f"ytq {b_data}")
 
+            # Add Best Video option after all video formats
+            buttons.data_button("🔹 BEST VIDEO 🔹", "ytq bestvideo+bestaudio")
+
             # Best Audio and Audios buttons
-            buttons.data_button("🔹 BEST AUDIO 🔹", "ytq ba/b")
+            buttons.data_button("🔹 BEST AUDIO 🔹", "ytq bestaudio")
             buttons.data_button("🔹 AUDIOS 🔹", "ytq section audio")
             buttons.data_button("Cancel", "ytq cancel", "footer")
 
@@ -456,9 +456,6 @@ class YtSelection:
                         # Group by codec for better UI organization
                         codec_groups.setdefault(codec_group, []).append(b_name)
 
-                # Add Best Video option
-                buttons.data_button("🔹 BEST VIDEO 🔹", "ytq bv*+ba/b")
-
                 # Sort formats by resolution (height)
                 sorted_formats = []
                 for b_name in self.formats:
@@ -491,8 +488,11 @@ class YtSelection:
                     else:
                         buttons.data_button(b_name, f"ytq dict {b_name}")
 
+                # Add Best Video option after all video formats
+                buttons.data_button("🔹 BEST VIDEO 🔹", "ytq bestvideo+bestaudio")
+
             # Best Audio and Audios buttons
-            buttons.data_button("🔹 BEST AUDIO 🔹", "ytq ba/b")
+            buttons.data_button("🔹 BEST AUDIO 🔹", "ytq bestaudio")
             buttons.data_button("🔹 AUDIOS 🔹", "ytq section audio")
             buttons.data_button("Cancel", "ytq cancel", "footer")
 
