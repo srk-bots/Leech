@@ -4978,10 +4978,9 @@ async def update_media_tools_settings(query, stype="main"):
     # Extract page number if present in stype
     page_no = 0
     global merge_config_page
-    # Add more detailed logging for trim and trim_config
-    if stype in {"trim", "trim_config"}:
-        pass
-    elif stype.startswith("merge_config "):
+
+    # Process stype and extract page number if needed
+    if stype.startswith("merge_config "):
         try:
             # Format: merge_config X
             page_no = int(stype.split(" ")[1])
@@ -4997,9 +4996,13 @@ async def update_media_tools_settings(query, stype="main"):
     elif stype == "merge_config":
         # Use the global variable for merge_config
         page_no = merge_config_page
-        msg, button = await get_media_tools_settings(
-            query.from_user, stype, page_no=page_no
-        )
+
+    # Get the settings for the current stype
+    msg, button = await get_media_tools_settings(
+        query.from_user, stype, page_no=page_no
+    )
+
+    # Update the message with the new settings
     await edit_message(query.message, msg, button)
 
 
