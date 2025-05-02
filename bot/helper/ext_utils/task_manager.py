@@ -17,20 +17,20 @@ from .links_utils import is_gdrive_id
 
 
 async def stop_duplicate_check(listener):
-    # Skip duplicate check in certain conditions
     if (
         isinstance(listener.up_dest, int)
+        or listener.is_leech
         or listener.select
-        or (listener.up_dest and listener.up_dest.startswith("mtp:"))
-        or not Config.STOP_DUPLICATE  # Only use global setting
+        or not is_gdrive_id(listener.up_dest)
+        or (listener.up_dest.startswith("mtp:") and listener.stop_duplicate)
+        or not listener.stop_duplicate
         or listener.same_dir
     ):
         return False, None
 
     name = listener.name
-    LOGGER.info(f"Checking if file/folder already exists: {name}")
+    LOGGER.info(f"Checking File/Folder if already in Drive: {name}")
 
-    # Process name based on compression/extraction settings
     if listener.compress:
         # Check if it's the new compression feature or the old 7z compression
         if hasattr(listener, "compression_enabled") and listener.compression_enabled:
@@ -46,46 +46,7 @@ async def stop_duplicate_check(listener):
         except Exception:
             name = None
 
-    if not name:
-        return False, None
-
-    # Import here to avoid circular imports
-    from bot.helper.ext_utils.file_tracker import check_duplicate, format_duplicate_message
-
-    # Prepare parameters for duplicate check
-    file_size = getattr(listener, "size", 0)
-    file_path = getattr(listener, "path", "")
-    telegram_id = ""
-    torrent_hash = ""
-    metadata = {}
-
-    # Get torrent hash if available
-    if hasattr(listener, "is_torrent") and listener.is_torrent:
-        torrent_hash = getattr(listener, "hash", "")
-
-    # Get telegram file ID if available
-    if hasattr(listener, "message") and hasattr(listener.message, "document"):
-        telegram_id = getattr(listener.message.document, "file_id", "")
-
-    # Check for duplicates using our enhanced system
-    is_duplicate, match_type, matches = await check_duplicate(
-        file_name=name,
-        file_size=file_size,
-        file_path=file_path,
-        telegram_id=telegram_id,
-        torrent_hash=torrent_hash,
-        metadata=metadata,
-        user_id=listener.user_id
-    )
-
-    # If duplicate found, format message and return
-    if is_duplicate and matches:
-        msg, button = await format_duplicate_message(match_type, matches, name)
-        return msg, button
-
-    # If not a leech operation and uploading to Google Drive, also check Drive
-    if not listener.is_leech and is_gdrive_id(listener.up_dest):
-        LOGGER.info(f"Checking File/Folder if already in Drive: {name}")
+    if name is not None:
         telegraph_content, contents_no = await sync_to_async(
             GoogleDriveSearch(stop_dup=True, no_multi=listener.is_clone).drive_list,
             name,
