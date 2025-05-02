@@ -421,7 +421,7 @@ class TaskListener(TaskConfig):
                 buttons = ButtonMaker()
                 button = buttons.url_button("Go to inbox", f"https://t.me/{Config.BOT_USERNAME.lstrip("@").strip()}")
 
-                await send_message(self.message, done_msg, button)
+                await send_message(self.message, done_msg, buttons=button)
         else:
             msg += f"\n\n<b>Type: </b>{mime_type}"
             if mime_type == "Folder":
@@ -464,10 +464,10 @@ class TaskListener(TaskConfig):
                 await send_message(int(Config.LOG_CHAT_ID), msg, button)
                 buttons = ButtonMaker()
                 button = buttons.url_button("Go to inbox", f"https://t.me/{Config.BOT_USERNAME.lstrip('@')}")
-                await send_message(self.message, done_msg, button)
+                await send_message(self.message, done_msg, buttons=button)
             buttons = ButtonMaker()
             button = buttons.url_button("Go to inbox", f"https://t.me/{Config.BOT_USERNAME.lstrip('@')}")
-            await send_message(self.message, done_msg, button)
+            await send_message(self.message, done_msg, buttons=button)
         if self.seed:
             await clean_target(self.up_dir)
             async with queue_dict_lock:
