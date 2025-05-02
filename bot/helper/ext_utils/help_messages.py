@@ -437,6 +437,25 @@ force_start = """<b>Force Start</b>: -f -fd -fu
 /cmd link -fd (force download only)
 /cmd link -fu (force upload directly after download finish)"""
 
+media_tools_flag = """<b>Media Tools Flag</b>: -mt
+
+/cmd link -mt (opens media tools settings before starting the task)
+
+When you use the -mt flag with any command:
+1. The bot will show the media tools settings menu
+2. You can customize settings as needed
+3. Click "Done" to start the task with your settings
+4. Click "Cancel" to abort the task
+5. If no action is taken within 60 seconds, the task will be cancelled
+
+All command and cancellation messages are auto-deleted after 5 minutes.
+
+Examples:
+/mirror https://example.com/video.mp4 -mt
+/leech https://example.com/files.zip -z -mt
+/ytdl https://youtube.com/watch?v=example -mt
+/mirror https://example.com/videos.zip -merge-video -mt"""
+
 gdrive = """<b>Gdrive</b>: link
 If DEFAULT_UPLOAD is `rc` then you can pass up: `gd` to upload using gdrive tools to GDRIVE_ID.
 /cmd gdriveLink or gdl or gdriveId -up gdl or gdriveId or gd
@@ -715,6 +734,38 @@ Here I will explain how to use mltb.* which is reference to files you want to wo
 3. Third cmd: the input in mltb.m4a so this cmd will work only on m4a audios and the output is mltb.mp3 so the output extension is mp3.
 4. Fourth cmd: the input is mltb.audio so this cmd will work on all audios and the output is mltb.mp3 so the output extension is mp3."""
 
+ai_help = """<b>AI Chatbot</b>:
+
+Chat with AI models using the bot commands.
+
+<b>Available AI Models:</b>
+Use the /ask command with any of the following AI providers:
+- <b>Mistral AI</b>
+- <b>DeepSeek AI</b>
+- <b>ChatGPT</b>
+- <b>Gemini AI</b>
+
+<b>Usage:</b>
+/ask your question here
+
+<b>Configuration:</b>
+1. <b>Bot Owner</b>: Configure API Keys or API URLs and default AI provider in bot settings
+2. <b>Users</b>: Configure your own API Keys or API URLs and default AI provider in user settings
+
+<b>Features:</b>
+- Uses powerful language models
+- Supports both direct API access and custom API endpoints
+- User settings take priority over bot owner settings
+- Messages auto-delete after 5 minutes
+- Automatically selects the configured AI provider
+
+<b>Examples:</b>
+/ask What is the capital of France?
+/ask Write a short poem about nature
+/ask Explain how quantum computing works
+/ask Translate this text to Spanish: Hello world
+"""
+
 user_cookies_help = """<b>User Cookies</b>:
 
 You can provide your own cookies for YouTube and other yt-dlp downloads to access restricted content.
@@ -753,6 +804,7 @@ YT_HELP_DICT = {
     "Leech-Type": leech_as,
     "Leech-Filename": leech_filename,
     "FFmpeg-Cmds": ffmpeg_cmds,
+    "Media-Tools-Flag": media_tools_flag,
 }
 
 # Merge flags guide has been moved to media_tools_help.py
@@ -788,6 +840,8 @@ MIRROR_HELP_DICT = {
     "Leech-Type": leech_as,
     "Leech-Filename": leech_filename,
     "FFmpeg-Cmds": ffmpeg_cmds,
+    "Media-Tools-Flag": media_tools_flag,
+    "AI-Chatbot": ai_help,
 }
 
 CLONE_HELP_DICT = {
@@ -796,6 +850,10 @@ CLONE_HELP_DICT = {
     "Bulk": bulk,
     "Gdrive": gdrive,
     "Rclone": rclone_cl,
+}
+
+AI_HELP_DICT = {
+    "main": ai_help,
 }
 
 RSS_HELP_MESSAGE = """
@@ -832,6 +890,15 @@ PASSWORD_ERROR_MESSAGE = """
 
 
 user_settings_text = {
+    "DEFAULT_AI_PROVIDER": "Select the default AI provider to use with the /ask command. Options: mistral, deepseek, chatgpt, gemini. Timeout: 60 sec",
+    "MISTRAL_API_KEY": "Send your Mistral AI API key. This will be used to access the Mistral AI API directly. Leave empty to use the bot owner's API key. Timeout: 60 sec",
+    "MISTRAL_API_URL": "Send your custom Mistral AI API URL. This will be used as a fallback if the API key is not provided or fails. Leave empty to use the bot owner's API URL. Timeout: 60 sec",
+    "DEEPSEEK_API_KEY": "Send your DeepSeek AI API key. This will be used to access the DeepSeek AI API directly. Leave empty to use the bot owner's API key. Timeout: 60 sec",
+    "DEEPSEEK_API_URL": "Send your custom DeepSeek AI API URL. This will be used as a fallback if the API key is not provided or fails. Leave empty to use the bot owner's API URL. Timeout: 60 sec",
+    "CHATGPT_API_KEY": "Send your ChatGPT API key. This will be used to access the OpenAI API directly. Leave empty to use the bot owner's API key. Timeout: 60 sec",
+    "CHATGPT_API_URL": "Send your custom ChatGPT API URL. This will be used as a fallback if the API key is not provided or fails. Leave empty to use the bot owner's API URL. Timeout: 60 sec",
+    "GEMINI_API_KEY": "Send your Gemini AI API key. This will be used to access the Google AI API directly. Leave empty to use the bot owner's API key. Timeout: 60 sec",
+    "GEMINI_API_URL": "Send your custom Gemini AI API URL. This will be used as a fallback if the API key is not provided or fails. Leave empty to use the bot owner's API URL. Timeout: 60 sec",
     "METADATA_KEY": "Send your text for change mkv medias metadata (title only). This is a legacy option, consider using the specific metadata options instead. Timeout: 60 sec",
     "METADATA_ALL": "Send metadata text to be used for all metadata fields (title, author, comment) for all track types. This takes priority over all other metadata settings. Timeout: 60 sec",
     "METADATA_TITLE": "Send metadata text to be used for the global title field. Timeout: 60 sec",
@@ -1117,6 +1184,7 @@ NOTE: Try each command without any argument to see more detalis.
 /{BotCommands.IMDBCommand}: Search for movies or TV series info on IMDB.
 /{BotCommands.MusicSearchCommand[0]} or /{BotCommands.MusicSearchCommand[1]}: Search for music files in configured channels.
 /{BotCommands.CheckDeletionsCommand[0]} or /{BotCommands.CheckDeletionsCommand[1]}: Check and manage scheduled message deletions.
+/{BotCommands.AskCommand}: Chat with Mistral AI using the bot.
 /{BotCommands.LoginCommand}: Login to the bot using password for permanent access.
 /{BotCommands.RssCommand}: [Owner Only] Subscribe to RSS feeds.
 """

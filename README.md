@@ -172,7 +172,7 @@ sudo chmod +x open_ports.sh
 ```
 
 ```
-sudo chmod +x open_ports.sh
+sudo ./open_ports.sh
 ```
 
 2. Set `BASE_URL_PORT` and `RCLONE_SERVE_PORT` variables to any port you want to use. Default is `80` and `8080`

@@ -1,3 +1,5 @@
+import asyncio
+
 from pyrogram import filters
 from pyrogram.filters import command, regex
 from pyrogram.handlers import (
@@ -6,6 +8,7 @@ from pyrogram.handlers import (
     MessageHandler,
 )
 
+from bot.core.config_manager import Config
 from bot.helper.telegram_helper.bot_commands import BotCommands
 from bot.helper.telegram_helper.filters import CustomFilters
 from bot.modules import (
@@ -13,10 +16,14 @@ from bot.modules import (
     aeon_callback,
     aioexecute,
     arg_usage,
+    ask_ai,
     authorize,
     bot_help,
     bot_stats,
-    broadcast,
+    broadcast_media,
+    handle_broadcast_command,
+    handle_broadcast_media,
+    handle_cancel_broadcast_command,
     cancel,
     cancel_all_buttons,
     cancel_all_update,
@@ -78,10 +85,12 @@ from bot.modules import (
     task_status,
     torrent_search,
     torrent_search_update,
+    truecaller_lookup,
     unauthorize,
     ytdl,
     ytdl_leech,
 )
+from bot.modules.broadcast import broadcast_awaiting_message
 from bot.modules.font_styles import font_styles_callback
 from bot.modules.media_tools_help import media_tools_help_callback
 
@@ -291,7 +300,7 @@ def add_handlers():
             CustomFilters.authorized,
         ),
         "broadcast": (
-            broadcast,
+            handle_broadcast_command,
             BotCommands.BroadcastCommand,
             CustomFilters.owner,
         ),
@@ -345,6 +354,16 @@ def add_handlers():
             BotCommands.GenSessionCommand,
             filters.private,  # Only allow in private chats
         ),
+        "truecaller_lookup": (
+            truecaller_lookup,
+            BotCommands.TruecallerCommand,
+            CustomFilters.authorized,
+        ),
+        "ask_ai": (
+            ask_ai,
+            BotCommands.AskCommand,
+            CustomFilters.authorized,
+        ),
     }
 
     for handler_func, command_name, custom_filter in command_filters.values():
@@ -360,6 +379,7 @@ def add_handlers():
                 handler_func,
                 filters=filters_to_apply,
             ),
+            group=0,
         )
 
     regex_filters = {
@@ -386,49 +406,11 @@ def add_handlers():
         "force_delete_all": force_delete_all_messages,
     }
 
-    # Special handling for settings callbacks to allow in PMs without auth
-    settings_callbacks = {
-        "^userset": edit_user_settings,
-        "^mediatools": edit_media_tools_settings,
-        "^fontstyles": font_styles_callback,
-        "^mthelp": media_tools_help_callback,
-    }
-
-    # Remove settings callbacks from the main regex_filters
-    for pattern in settings_callbacks:
-        regex_filters.pop(pattern, None)
-
-    # Add handlers for settings callbacks in groups with authorization
-    for regex_filter, handler_func in settings_callbacks.items():
-        TgClient.bot.add_handler(
-            CallbackQueryHandler(
-                handler_func,
-                filters=regex(regex_filter)
-                & CustomFilters.authorized
-                & filters.create(
-                    lambda *args: args[2].message
-                    and args[2].message.chat.type != "private"
-                ),
-            ),
-        )
-
-    # Add handlers for settings callbacks in private chats without authorization
-    for regex_filter, handler_func in settings_callbacks.items():
-        TgClient.bot.add_handler(
-            CallbackQueryHandler(
-                handler_func,
-                filters=regex(regex_filter)
-                & filters.create(
-                    lambda *args: args[2].message
-                    and args[2].message.chat.type == "private"
-                ),
-            ),
-        )
-
     # Add handlers for other callbacks
     for regex_filter, handler_func in regex_filters.items():
         TgClient.bot.add_handler(
             CallbackQueryHandler(handler_func, filters=regex(regex_filter)),
+            group=0,
         )
 
     TgClient.bot.add_handler(
@@ -437,12 +419,14 @@ def add_handlers():
             filters=command(BotCommands.ShellCommand, case_sensitive=True)
             & CustomFilters.owner,
         ),
+        group=0,
     )
     TgClient.bot.add_handler(
         MessageHandler(
             cancel,
             filters=regex(r"^/stop(_\w+)?(?!all)") & CustomFilters.authorized,
         ),
+        group=0,
     )
 
     # Add handler for deprecated commands (qbleech, qbmirror) with any suffix
@@ -452,6 +436,7 @@ def add_handlers():
             filters=regex(r"^/qb(leech|mirror)(\d+|[a-zA-Z0-9_]+)?")
             & CustomFilters.authorized,
         ),
+        group=0,
     )
 
     # Add handler for commands without suffix
@@ -459,10 +444,11 @@ def add_handlers():
         MessageHandler(
             handle_no_suffix_commands,
             filters=regex(
-                r"^/(mirror|leech|jdmirror|jdleech|nzbmirror|nzbleech|ytdl|ytdlleech|clone|count|del|list|search|mediainfo|mi|status|s|ping|help|speedtest)$"
+                r"^/(mirror|leech|jdmirror|jdleech|nzbmirror|nzbleech|ytdl|ytdlleech|clone|count|del|list|search|mediainfo|mi|status|s|ping|help|speedtest|ask)$"
             )
             & CustomFilters.authorized,
         ),
+        group=0,
     )
 
     # Add a handler for /gensession in groups to guide users to PM
@@ -472,6 +458,7 @@ def add_handlers():
             filters=command(BotCommands.GenSessionCommand, case_sensitive=True)
             & filters.group,
         ),
+        group=0,
     )
 
     # Add handlers for settings commands in private chats without authorization
@@ -481,6 +468,7 @@ def add_handlers():
             filters=command(BotCommands.UserSetCommand, case_sensitive=True)
             & filters.private,
         ),
+        group=0,
     )
 
     TgClient.bot.add_handler(
@@ -489,6 +477,7 @@ def add_handlers():
             filters=command(BotCommands.MediaToolsCommand, case_sensitive=True)
             & filters.private,
         ),
+        group=0,
     )
 
     TgClient.bot.add_handler(
@@ -497,6 +486,7 @@ def add_handlers():
             filters=command(BotCommands.MediaToolsHelpCommand, case_sensitive=True)
             & filters.private,
         ),
+        group=0,
     )
 
     TgClient.bot.add_handler(
@@ -505,6 +495,7 @@ def add_handlers():
             filters=command(BotCommands.FontStylesCommand, case_sensitive=True)
             & filters.private,
         ),
+        group=0,
     )
 
     # Add a handler for /cancel command in private chats
@@ -513,6 +504,72 @@ def add_handlers():
             handle_cancel_command,
             filters=command("cancel", case_sensitive=False) & filters.private,
         ),
+        group=0,
+    )
+
+    # Add a handler for /cancelbc command for broadcast cancellation
+    TgClient.bot.add_handler(
+        MessageHandler(
+            # Use our dedicated cancel function
+            handle_cancel_broadcast_command,
+            filters=command("cancelbc", case_sensitive=False)
+            & filters.private
+            & filters.create(
+                lambda _, __, m: m.from_user and m.from_user.id == Config.OWNER_ID
+                # We don't check broadcast_awaiting_message here to allow cancellation
+                # even if the state tracking has issues
+            ),
+        ),
+        group=4,  # Use a specific group number for this handler
+    )
+
+    # Add handler for broadcast media (second step) - text messages
+    TgClient.bot.add_handler(
+        MessageHandler(
+            # Use our dedicated media handler function (works for text too)
+            handle_broadcast_media,
+            filters=filters.private
+            & filters.text
+            & filters.create(
+                lambda _, __, m: (
+                    # Must be from owner
+                    m.from_user
+                    and m.from_user.id == Config.OWNER_ID
+                    # Exclude commands
+                    and not (
+                        hasattr(m, "text") and m.text and m.text.startswith("/")
+                    )
+                )
+                # We'll check broadcast_awaiting_message inside the handler
+            ),
+        ),
+        group=5,  # Use a higher group number to ensure it's processed after command handlers
+    )
+
+    # Add handler for broadcast media (second step) - media messages
+    TgClient.bot.add_handler(
+        MessageHandler(
+            # Use our dedicated media handler function
+            handle_broadcast_media,
+            filters=filters.private
+            & (
+                filters.photo
+                | filters.video
+                | filters.document
+                | filters.audio
+                | filters.voice
+                | filters.sticker
+                | filters.animation
+            )
+            & filters.create(
+                lambda _, __, m: (
+                    # Must be from owner
+                    m.from_user and m.from_user.id == Config.OWNER_ID
+                )
+                # We'll check broadcast_awaiting_message inside the handler
+            ),
+        ),
+        group=3,  # Use a lower group number to ensure it's processed before other handlers
     )
 
     # Define a custom filter for non-command messages, but allow /cancel

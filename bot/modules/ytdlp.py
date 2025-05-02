@@ -643,7 +643,23 @@ class YtDlp(TaskListener):
             "-ff": set(),
         }
 
+        # Parse arguments from the command
         arg_parser(input_list[1:], args)
+
+        # Check if media tools flags are enabled
+        from bot.helper.ext_utils.bot_utils import is_flag_enabled
+
+        # Disable flags that depend on disabled media tools
+        for flag in list(args.keys()):
+            if flag.startswith("-") and not is_flag_enabled(flag):
+                if isinstance(args[flag], bool):
+                    args[flag] = False
+                elif isinstance(args[flag], set):
+                    args[flag] = set()
+                elif isinstance(args[flag], str):
+                    args[flag] = ""
+                elif isinstance(args[flag], int):
+                    args[flag] = 0
 
         try:
             self.multi = int(args["-i"])

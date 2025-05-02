@@ -53,3 +53,5 @@ class BotCommands:
     MediaToolsCommand = [f"mediatools{i}", f"mt{i}"]
     MediaToolsHelpCommand = [f"mthelp{i}", f"mth{i}"]
     GenSessionCommand = [f"gensession{i}", f"gs{i}"]
+    TruecallerCommand = f"truecaller{i}"
+    AskCommand = f"ask{i}"

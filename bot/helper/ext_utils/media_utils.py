@@ -1,10 +1,13 @@
 import contextlib
+import gc
 import json
 import os
 import resource
+import shutil
 from asyncio import create_subprocess_exec, gather, sleep, wait_for
 from asyncio.subprocess import PIPE
 from os import path as ospath
+from pathlib import Path
 from re import escape
 from re import search as re_search
 from time import time
@@ -13,7 +16,8 @@ import aiofiles
 from aiofiles.os import makedirs, remove
 from aiofiles.os import path as aiopath
 from aioshutil import rmtree
-from PIL import Image
+from PIL import Image, ImageDraw, ImageFont
+from PyPDF2 import PdfMerger, PdfReader, PdfWriter
 
 from bot import DOWNLOAD_DIR, LOGGER, cpu_no
 from bot.core.config_manager import Config
@@ -22,8 +26,12 @@ from .bot_utils import cmd_exec, sync_to_async
 from .files_utils import get_mime_type, get_path_size, is_archive, is_archive_split
 from .status_utils import time_to_seconds
 
+try:
+    from bot.helper.ext_utils.gc_utils import smart_garbage_collection
+except ImportError:
+    smart_garbage_collection = None
 
-# Function to limit memory usage for PIL operations
+
 def limit_memory_for_pil():
     """Apply memory limits for PIL operations based on config."""
     try:
@@ -37,9 +45,6 @@ def limit_memory_for_pil():
             # Set soft limit (warning) and hard limit (error)
             resource.setrlimit(
                 resource.RLIMIT_AS, (memory_limit_bytes, memory_limit_bytes)
-            )
-            LOGGER.debug(
-                f"Applied memory limit of {memory_limit} MB for image processing"
             )
 
         return True
@@ -4010,18 +4015,19 @@ class FFMpeg:
             ffmpeg
             and len(ffmpeg) >= 2
             and ffmpeg[0] == "echo"
-            and "document_utils" in ffmpeg[1]
+            and "apply_document_metadata" in ffmpeg[1]
         ):
-            # This is a document file that should be processed with document_utils
-            LOGGER.info(f"Processing document file with document_utils: {f_path}")
+            # This is a document file that should be processed with apply_document_metadata
+            LOGGER.info(
+                f"Processing document file with apply_document_metadata: {f_path}"
+            )
 
             # Get the original file path (remove .temp extension if present)
             original_file = f_path
             if ".temp" in original_file:
                 original_file = original_file.replace(".temp", "")
 
-            # Import the document_utils module
-            from bot.helper.aeon_utils.document_utils import apply_document_metadata
+            # Use the apply_document_metadata function from this module
 
             # Get metadata from listener
             try:
@@ -5731,3 +5737,958 @@ class FFMpeg:
             i += 1
 
         return True
+
+
+async def apply_document_metadata(file_path, title=None, author=None, comment=None):
+    """Apply metadata to document files like PDF using appropriate tools.
+
+    Args:
+        file_path: Path to the document file
+        title: Title metadata to apply
+        author: Author metadata to apply
+        comment: Comment metadata to apply
+
+    Returns:
+        bool: True if metadata was successfully applied, False otherwise
+    """
+    if not file_path or not await aiopath.exists(file_path):
+        LOGGER.error(f"File not found: {file_path}")
+        return False
+
+    # Skip if no metadata to apply
+    if not title and not author and not comment:
+        LOGGER.debug("No metadata provided, skipping")
+        return True
+
+    # Get file extension
+    ext = os.path.splitext(file_path)[1].lower()
+
+    # Create a temporary file for output
+    temp_file = f"{file_path}.temp{ext}"
+
+    # Handle different document types
+    if ext == ".pdf":
+        return await apply_pdf_metadata(file_path, temp_file, title, author, comment)
+    if ext in [".epub", ".mobi", ".azw", ".azw3"]:
+        return await apply_ebook_metadata(
+            file_path, temp_file, title, author, comment
+        )
+    if ext in [
+        ".doc",
+        ".docx",
+        ".xls",
+        ".xlsx",
+        ".ppt",
+        ".pptx",
+        ".odt",
+        ".ods",
+        ".odp",
+    ]:
+        return await apply_office_metadata(
+            file_path, temp_file, title, author, comment
+        )
+    if ext in [".txt", ".md", ".csv", ".rtf"]:
+        return await apply_text_metadata(
+            file_path, temp_file, title, author, comment
+        )
+    # Try exiftool for other document types
+    return await apply_exiftool_metadata(
+        file_path, temp_file, title, author, comment
+    )
+
+
+async def apply_pdf_metadata(
+    file_path, temp_file, title=None, author=None, comment=None
+):
+    """Apply metadata to PDF files using pdftk or exiftool.
+
+    Args:
+        file_path: Path to the PDF file
+        temp_file: Path to the temporary file
+        title: Title metadata to apply
+        author: Author metadata to apply
+        comment: Comment metadata to apply
+
+    Returns:
+        bool: True if metadata was successfully applied, False otherwise
+    """
+    try:
+        # Check if pdftk is available
+        pdftk_check = await cmd_exec(["which", "pdftk"])
+
+        if pdftk_check[0]:  # pdftk is available
+            LOGGER.info(f"Using pdftk to apply metadata to {file_path}")
+
+            # Create a temporary info file
+            info_file = f"{file_path}.info"
+            with open(info_file, "w") as f:
+                if title:
+                    f.write(f"InfoKey: Title\nInfoValue: {title}\n")
+                if author:
+                    f.write(f"InfoKey: Author\nInfoValue: {author}\n")
+                if comment:
+                    f.write(f"InfoKey: Subject\nInfoValue: {comment}\n")
+
+            # Apply metadata
+            cmd = ["pdftk", file_path, "update_info", info_file, "output", temp_file]
+
+            result = await cmd_exec(cmd)
+
+            # Clean up
+            if await aiopath.exists(info_file):
+                await remove(info_file)
+
+            if result[2] == 0 and await aiopath.exists(temp_file):
+                os.replace(temp_file, file_path)
+                return True
+            if await aiopath.exists(temp_file):
+                await remove(temp_file)
+            LOGGER.error(f"pdftk failed: {result[1]}")
+            # Fall back to exiftool
+            return await apply_exiftool_metadata(
+                file_path, temp_file, title, author, comment
+            )
+        # Fall back to exiftool
+        return await apply_exiftool_metadata(
+            file_path, temp_file, title, author, comment
+        )
+
+    except Exception as e:
+        LOGGER.error(f"Error applying PDF metadata: {e}")
+        # Fall back to exiftool
+        return await apply_exiftool_metadata(
+            file_path, temp_file, title, author, comment
+        )
+
+
+async def apply_ebook_metadata(
+    file_path, temp_file, title=None, author=None, comment=None
+):
+    """Apply metadata to ebook files using ebook-meta or exiftool.
+
+    Args:
+        file_path: Path to the ebook file
+        temp_file: Path to the temporary file
+        title: Title metadata to apply
+        author: Author metadata to apply
+        comment: Comment metadata to apply
+
+    Returns:
+        bool: True if metadata was successfully applied, False otherwise
+    """
+    try:
+        # Check if ebook-meta (from Calibre) is available
+        ebook_meta_check = await cmd_exec(["which", "ebook-meta"])
+
+        if ebook_meta_check[0]:  # ebook-meta is available
+            LOGGER.info(f"Using ebook-meta to apply metadata to {file_path}")
+
+            # Create a copy of the file first
+            shutil.copy2(file_path, temp_file)
+
+            # Build the command
+            cmd = ["ebook-meta", temp_file]
+            if title:
+                cmd.extend(["--title", title])
+            if author:
+                cmd.extend(["--author", author])
+            if comment:
+                cmd.extend(["--comments", comment])
+
+            result = await cmd_exec(cmd)
+
+            if result[2] == 0:
+                os.replace(temp_file, file_path)
+                return True
+            if await aiopath.exists(temp_file):
+                await remove(temp_file)
+            LOGGER.error(f"ebook-meta failed: {result[1]}")
+            # Fall back to exiftool
+            return await apply_exiftool_metadata(
+                file_path, temp_file, title, author, comment
+            )
+        # Fall back to exiftool
+        return await apply_exiftool_metadata(
+            file_path, temp_file, title, author, comment
+        )
+
+    except Exception as e:
+        LOGGER.error(f"Error applying ebook metadata: {e}")
+        # Fall back to exiftool
+        return await apply_exiftool_metadata(
+            file_path, temp_file, title, author, comment
+        )
+
+
+async def apply_office_metadata(
+    file_path, temp_file, title=None, author=None, comment=None
+):
+    """Apply metadata to office document files.
+
+    Args:
+        file_path: Path to the office document file
+        temp_file: Path to the temporary file
+        title: Title metadata to apply
+        author: Author metadata to apply
+        comment: Comment metadata to apply
+
+    Returns:
+        bool: True if metadata was successfully applied, False otherwise
+    """
+    # For office documents, use exiftool
+    return await apply_exiftool_metadata(
+        file_path, temp_file, title, author, comment
+    )
+
+
+async def apply_text_metadata(
+    file_path, temp_file, title=None, author=None, comment=None
+):
+    """Apply metadata to text files by adding comments at the top.
+
+    Args:
+        file_path: Path to the text file
+        temp_file: Path to the temporary file
+        title: Title metadata to apply
+        author: Author metadata to apply
+        comment: Comment metadata to apply
+
+    Returns:
+        bool: True if metadata was successfully applied, False otherwise
+    """
+    try:
+        # For text files, we can add metadata as comments at the top of the file
+        with open(file_path, encoding="utf-8", errors="ignore") as f_in:
+            content = f_in.read()
+
+        with open(temp_file, "w", encoding="utf-8") as f_out:
+            # Add metadata as comments
+            if title or author or comment:
+                f_out.write("/*\n")
+                if title:
+                    f_out.write(f"Title: {title}\n")
+                if author:
+                    f_out.write(f"Author: {author}\n")
+                if comment:
+                    f_out.write(f"Comment: {comment}\n")
+                f_out.write("*/\n\n")
+
+            # Write the original content
+            f_out.write(content)
+
+        # Replace the original file
+        os.replace(temp_file, file_path)
+        return True
+
+    except Exception as e:
+        LOGGER.error(f"Error applying text metadata: {e}")
+        return False
+
+
+async def apply_exiftool_metadata(
+    file_path, temp_file, title=None, author=None, comment=None
+):
+    """Apply metadata to files using exiftool.
+
+    Args:
+        file_path: Path to the file
+        temp_file: Path to the temporary file
+        title: Title metadata to apply
+        author: Author metadata to apply
+        comment: Comment metadata to apply
+
+    Returns:
+        bool: True if metadata was successfully applied, False otherwise
+    """
+    try:
+        # Check if exiftool is available
+        exiftool_check = await cmd_exec(["which", "exiftool"])
+
+        if exiftool_check[0]:  # exiftool is available
+            LOGGER.info(f"Using exiftool to apply metadata to {file_path}")
+
+            cmd = ["exiftool"]
+            if title:
+                cmd.extend(["-Title=" + title])
+            if author:
+                cmd.extend(["-Author=" + author, "-Creator=" + author])
+            if comment:
+                cmd.extend(["-Subject=" + comment, "-Description=" + comment])
+
+            # Add output file
+            cmd.extend(["-o", temp_file, file_path])
+
+            result = await cmd_exec(cmd)
+
+            if result[2] == 0 and await aiopath.exists(temp_file):
+                os.replace(temp_file, file_path)
+                return True
+            if await aiopath.exists(temp_file):
+                await remove(temp_file)
+            LOGGER.error(f"exiftool failed: {result[1]}")
+            return False
+        LOGGER.warning("exiftool not found, cannot apply metadata")
+        return False
+
+    except Exception as e:
+        LOGGER.error(f"Error applying metadata with exiftool: {e}")
+        return False
+
+
+async def merge_pdfs(files, output_filename="merged.pdf"):
+    """
+    Merge multiple PDF files into a single PDF.
+
+    Args:
+        files: List of PDF file paths
+        output_filename: Name of the output PDF file
+
+    Returns:
+        str: Path to the merged PDF file
+    """
+    if not files:
+        LOGGER.error("No PDF files provided for merging")
+        return None
+
+    try:
+        # Use files in the order they were provided
+        # (No sorting to preserve user's intended order)
+
+        # Create a PDF merger object
+        merger = PdfMerger()
+
+        # Add each PDF to the merger with error handling
+        valid_pdfs = 0
+        for pdf in files:
+            try:
+                # Check if the PDF is valid and not password-protected
+                with open(pdf, "rb") as pdf_file:
+                    reader = PdfReader(pdf_file)
+                    if reader.is_encrypted:
+                        LOGGER.warning(f"Skipping encrypted PDF: {pdf}")
+                        continue
+
+                # Add the PDF to the merger
+                merger.append(pdf)
+                valid_pdfs += 1
+            except Exception as pdf_error:
+                LOGGER.error(f"Error processing PDF {pdf}: {pdf_error}")
+                continue
+
+        if valid_pdfs == 0:
+            LOGGER.error("No valid PDFs found for merging")
+            return None
+
+        # Determine output path
+        base_dir = os.path.dirname(files[0])
+        output_file = os.path.join(base_dir, output_filename)
+
+        # Write the merged PDF to file
+        with open(output_file, "wb") as f:
+            merger.write(f)
+
+        # Close the merger
+        merger.close()
+
+        LOGGER.info(f"Successfully merged {valid_pdfs} PDFs into {output_file}")
+
+        # Force garbage collection after PDF merging
+        # This can create large objects in memory
+        if smart_garbage_collection:
+            smart_garbage_collection(aggressive=True)
+        else:
+            gc.collect()
+
+        return output_file
+
+    except Exception as e:
+        LOGGER.error(f"Error merging PDFs: {e}")
+        return None
+
+
+async def create_pdf_from_images(
+    image_files, output_file="merged.pdf", page_size=None
+):
+    """
+    Create a PDF from multiple image files.
+
+    Args:
+        image_files: List of image file paths
+        output_file: Path to the output PDF file
+        page_size: Size of the PDF pages (default: letter size)
+
+    Returns:
+        str: Path to the created PDF file
+    """
+    # Default to letter size if not specified
+    if page_size is None:
+        page_size = (612, 792)  # Standard letter size
+    if not image_files:
+        LOGGER.error("No image files provided for PDF creation")
+        return None
+
+    # Apply memory limits for PIL operations
+    limit_memory_for_pil()
+
+    try:
+        # Use files in the order they were provided
+        # (No sorting to preserve user's intended order)
+
+        # Create a PDF writer
+        writer = PdfWriter()
+
+        # Process each image
+        valid_images = 0
+        for img_path in image_files:
+            try:
+                # Try to open as an image
+                img = Image.open(img_path)
+
+                # Convert to RGB if needed (handle more color modes)
+                if img.mode == "RGBA":
+                    # Create white background for transparent images
+                    background = Image.new("RGB", img.size, (255, 255, 255))
+                    background.paste(
+                        img, mask=img.split()[3]
+                    )  # Use alpha channel as mask
+                    img = background
+                elif img.mode != "RGB":
+                    img = img.convert("RGB")
+
+                # Create a temporary file for the image
+                temp_pdf = f"{img_path}.temp.pdf"
+
+                # Save the image as a PDF with better quality
+                img.save(temp_pdf, "PDF", resolution=300.0, quality=95)
+
+                # Add the PDF to the writer
+                reader = PdfReader(temp_pdf)
+                writer.add_page(reader.pages[0])
+
+                # Remove the temporary file
+                os.remove(temp_pdf)
+                valid_images += 1
+
+            except Exception as e:
+                LOGGER.error(f"Error processing image {img_path}: {e}")
+                continue
+
+        if valid_images == 0:
+            LOGGER.error("No valid images could be processed for PDF creation")
+            return None
+
+        # Write the output PDF
+        with open(output_file, "wb") as f:
+            writer.write(f)
+
+        LOGGER.info(
+            f"Successfully created PDF with {valid_images} images: {output_file}"
+        )
+        return output_file
+
+    except Exception as e:
+        LOGGER.error(f"Error creating PDF from images: {e}")
+        return None
+
+
+async def merge_images(
+    files, output_format="jpg", mode="collage", columns=None, quality=85
+):
+    """
+    Merge multiple image files into a single image.
+
+    Args:
+        files: List of image file paths
+        output_format: Output format (jpg, png, etc.)
+        mode: 'collage' or 'vertical' or 'horizontal'
+        columns: Number of columns for collage mode (auto-calculated if None)
+        quality: Output image quality (1-100, only for jpg)
+
+    Returns:
+        str: Path to the merged image file
+    """
+    if not files:
+        LOGGER.error("No image files provided for merging")
+        return None
+
+    # Apply memory limits for PIL operations
+    limit_memory_for_pil()
+
+    try:
+        # Filter valid image files
+        valid_files = []
+        for f in files:
+            if os.path.exists(f) and os.path.getsize(f) > 0:
+                valid_files.append(f)
+            else:
+                LOGGER.warning(f"Skipping invalid or empty image file: {f}")
+
+        if not valid_files:
+            LOGGER.error("No valid image files found for merging")
+            return None
+
+        # Normalize output format
+        output_format = output_format.lower().strip(".")
+        if output_format not in ["jpg", "jpeg", "png", "webp", "tiff", "bmp", "gif"]:
+            LOGGER.warning(
+                f"Unsupported output format: {output_format}. Using jpg instead."
+            )
+            output_format = "jpg"
+
+        # Determine base directory for output
+        base_dir = os.path.dirname(valid_files[0])
+        output_file = os.path.join(base_dir, f"merged.{int(time())}.{output_format}")
+
+        # Open all valid images
+        images = []
+        for f in valid_files:
+            try:
+                # Skip the merged output file if it exists in the input list
+                if os.path.basename(f) == f"merged.{output_format}":
+                    LOGGER.info(f"Skipping previous merged output file: {f}")
+                    continue
+
+                # Skip any extremely large images (potential memory issues)
+                file_size = os.path.getsize(f)
+                if file_size > 50 * 1024 * 1024:  # 50 MB limit
+                    LOGGER.warning(
+                        f"Skipping very large image file ({file_size / 1024 / 1024:.2f} MB): {f}"
+                    )
+                    continue
+
+                img = Image.open(f)
+
+                # Skip images with extreme dimensions
+                if img.width > 5000 or img.height > 5000:
+                    LOGGER.warning(
+                        f"Skipping image with extreme dimensions ({img.width}x{img.height}): {f}"
+                    )
+                    continue
+
+                # Convert to RGB if needed (handle more color modes)
+                if img.mode == "RGBA" and output_format.lower() in ["jpg", "jpeg"]:
+                    # Create white background for transparent images
+                    background = Image.new("RGB", img.size, (255, 255, 255))
+                    background.paste(
+                        img, mask=img.split()[3]
+                    )  # Use alpha channel as mask
+                    img = background
+                elif img.mode != "RGB" and output_format.lower() in ["jpg", "jpeg"]:
+                    img = img.convert("RGB")
+
+                images.append(img)
+            except Exception as e:
+                LOGGER.error(f"Error opening image {f}: {e}")
+                # Skip invalid images
+                continue
+
+        if not images:
+            LOGGER.error("No valid images found for merging")
+            return None
+
+        # Determine merge mode
+        if mode not in ["collage", "vertical", "horizontal"]:
+            LOGGER.warning(
+                f"Invalid merge mode: {mode}. Using 'collage' as default."
+            )
+            mode = "collage"
+
+        # For collage mode, determine number of columns
+        if mode == "collage":
+            if columns is None:
+                # Auto-calculate columns based on number of images
+                if len(images) <= 2:
+                    columns = 1
+                elif len(images) <= 6:
+                    columns = 2
+                elif len(images) <= 12:
+                    columns = 3
+                else:
+                    columns = 4
+
+            columns = max(1, min(columns, len(images)))  # Ensure valid column count
+            rows = (len(images) + columns - 1) // columns  # Ceiling division
+
+            # Find the average dimensions for better proportions
+            avg_width = sum(img.width for img in images) // len(images)
+            avg_height = sum(img.height for img in images) // len(images)
+
+            # Decide on cell dimensions - can use average or maximum
+            # Using average dimensions with a margin for better aesthetics
+            cell_width = int(avg_width * 1.1)  # 10% margin
+            cell_height = int(avg_height * 1.1)  # 10% margin
+
+            # Check if the total dimensions would be too large
+            MAX_DIMENSION = 10000  # Maximum dimension in pixels
+            total_width = cell_width * columns
+            total_height = cell_height * rows
+
+            if total_width > MAX_DIMENSION or total_height > MAX_DIMENSION:
+                # Scale down to fit within limits
+                scale_factor = min(
+                    MAX_DIMENSION / total_width, MAX_DIMENSION / total_height
+                )
+                cell_width = int(cell_width * scale_factor)
+                cell_height = int(cell_height * scale_factor)
+                total_width = cell_width * columns
+                total_height = cell_height * rows
+
+            # Create a new image with the calculated dimensions
+            if output_format.lower() in ["jpg", "jpeg"]:
+                merged_image = Image.new(
+                    "RGB", (total_width, total_height), (255, 255, 255)
+                )
+            else:
+                merged_image = Image.new(
+                    "RGBA", (total_width, total_height), (255, 255, 255, 0)
+                )
+
+            # Paste each image into the grid
+            for i, img in enumerate(images):
+                if i >= rows * columns:  # Skip if we've filled all cells
+                    break
+
+                row = i // columns
+                col = i % columns
+
+                # Calculate position
+                x = col * cell_width
+                y = row * cell_height
+
+                # Resize image to fit cell (preserving aspect ratio)
+                img_aspect = img.width / img.height
+                cell_aspect = cell_width / cell_height
+
+                if img_aspect > cell_aspect:  # Image is wider than cell
+                    new_width = cell_width
+                    new_height = int(cell_width / img_aspect)
+                else:  # Image is taller than cell
+                    new_height = cell_height
+                    new_width = int(cell_height * img_aspect)
+
+                # Resize with high quality
+                resized_img = img.resize(
+                    (new_width, new_height), Image.Resampling.LANCZOS
+                )
+
+                # Center in cell
+                paste_x = x + (cell_width - new_width) // 2
+                paste_y = y + (cell_height - new_height) // 2
+
+                # Paste the image
+                if resized_img.mode == "RGBA" and merged_image.mode == "RGB":
+                    # Handle transparency for RGB output
+                    background = Image.new("RGB", resized_img.size, (255, 255, 255))
+                    background.paste(
+                        resized_img, mask=resized_img.split()[3]
+                    )  # Use alpha channel as mask
+                    merged_image.paste(background, (paste_x, paste_y))
+                else:
+                    # Direct paste for compatible modes
+                    merged_image.paste(resized_img, (paste_x, paste_y))
+
+        elif mode == "vertical":
+            # Stack images vertically
+            total_width = max(img.width for img in images)
+            total_height = sum(img.height for img in images)
+
+            # Check if the total dimensions would be too large
+            MAX_DIMENSION = 10000  # Maximum dimension in pixels
+            if total_height > MAX_DIMENSION:
+                # Scale down to fit within limits
+                scale_factor = MAX_DIMENSION / total_height
+                total_width = int(total_width * scale_factor)
+                total_height = MAX_DIMENSION
+
+                # Resize all images proportionally
+                scaled_images = []
+                for img in images:
+                    new_width = int(img.width * scale_factor)
+                    new_height = int(img.height * scale_factor)
+                    scaled_img = img.resize(
+                        (new_width, new_height), Image.Resampling.LANCZOS
+                    )
+                    scaled_images.append(scaled_img)
+                images = scaled_images
+
+            # Create a new image
+            if output_format.lower() in ["jpg", "jpeg"]:
+                merged_image = Image.new(
+                    "RGB", (total_width, total_height), (255, 255, 255)
+                )
+            else:
+                merged_image = Image.new(
+                    "RGBA", (total_width, total_height), (255, 255, 255, 0)
+                )
+
+            # Paste each image
+            y_offset = 0
+            for img in images:
+                # Center horizontally
+                x_offset = (total_width - img.width) // 2
+
+                # Paste the image
+                if img.mode == "RGBA" and merged_image.mode == "RGB":
+                    # Handle transparency for RGB output
+                    background = Image.new("RGB", img.size, (255, 255, 255))
+                    background.paste(
+                        img, mask=img.split()[3]
+                    )  # Use alpha channel as mask
+                    merged_image.paste(background, (x_offset, y_offset))
+                else:
+                    # Direct paste for compatible modes
+                    merged_image.paste(img, (x_offset, y_offset))
+
+                y_offset += img.height
+
+        elif mode == "horizontal":
+            # Place images side by side
+            total_width = sum(img.width for img in images)
+            total_height = max(img.height for img in images)
+
+            # Check if the total dimensions would be too large
+            MAX_DIMENSION = 10000  # Maximum dimension in pixels
+            if total_width > MAX_DIMENSION:
+                # Scale down to fit within limits
+                scale_factor = MAX_DIMENSION / total_width
+                total_width = MAX_DIMENSION
+                total_height = int(total_height * scale_factor)
+
+                # Resize all images proportionally
+                scaled_images = []
+                for img in images:
+                    new_width = int(img.width * scale_factor)
+                    new_height = int(img.height * scale_factor)
+                    scaled_img = img.resize(
+                        (new_width, new_height), Image.Resampling.LANCZOS
+                    )
+                    scaled_images.append(scaled_img)
+                images = scaled_images
+
+            # Create a new image
+            if output_format.lower() in ["jpg", "jpeg"]:
+                merged_image = Image.new(
+                    "RGB", (total_width, total_height), (255, 255, 255)
+                )
+            else:
+                merged_image = Image.new(
+                    "RGBA", (total_width, total_height), (255, 255, 255, 0)
+                )
+
+            # Paste each image
+            x_offset = 0
+            for img in images:
+                # Center vertically
+                y_offset = (total_height - img.height) // 2
+
+                # Paste the image
+                if img.mode == "RGBA" and merged_image.mode == "RGB":
+                    # Handle transparency for RGB output
+                    background = Image.new("RGB", img.size, (255, 255, 255))
+                    background.paste(
+                        img, mask=img.split()[3]
+                    )  # Use alpha channel as mask
+                    merged_image.paste(background, (x_offset, y_offset))
+                else:
+                    # Direct paste for compatible modes
+                    merged_image.paste(img, (x_offset, y_offset))
+
+                x_offset += img.width
+
+        # Save the merged image
+        if output_format.lower() in ["jpg", "jpeg"]:
+            merged_image.save(output_file, quality=quality, optimize=True)
+        elif output_format.lower() == "png":
+            merged_image.save(output_file, optimize=True)
+        elif output_format.lower() == "webp":
+            merged_image.save(output_file, quality=quality, method=4)
+        elif output_format.lower() == "gif":
+            if merged_image.mode == "RGBA":
+                # Use transparency mask for GIF
+                mask = Image.eval(
+                    merged_image.split()[3], lambda a: 255 if a <= 128 else 0
+                )
+                merged_image.save(
+                    output_file, transparency=255, optimize=True, mask=mask
+                )
+            else:
+                merged_image.save(output_file)
+        else:
+            # Default save for other formats
+            merged_image.save(output_file)
+
+        LOGGER.info(f"Successfully merged {len(images)} images into {output_file}")
+
+        # Force garbage collection after image merging
+        # This can create large objects in memory
+        if smart_garbage_collection:
+            smart_garbage_collection(aggressive=True)
+        else:
+            gc.collect()
+
+        return output_file
+
+    except Exception as e:
+        LOGGER.error(f"Error merging images: {e}")
+        return None
+
+
+async def merge_documents(files, output_format="pdf"):
+    """
+    Merge multiple document files into a single document.
+    Supports PDF merging and converting images to PDF.
+
+    Args:
+        files: List of document file paths
+        output_format: Output format (currently only 'pdf' is supported)
+
+    Returns:
+        str: Path to the merged document file
+    """
+    if not files:
+        LOGGER.error("No document files provided for merging")
+        return None
+
+    if output_format.lower() != "pdf":
+        LOGGER.error(
+            f"Unsupported output format: {output_format}. Only PDF is supported."
+        )
+        return None
+
+    # Apply memory limits for PIL operations (for image processing)
+    limit_memory_for_pil()
+
+    # Group files by extension with validation
+    file_groups = {}
+    valid_files = []
+
+    for file_path in files:
+        # Check if file exists
+        if not os.path.exists(file_path):
+            LOGGER.error(f"Document file not found: {file_path}")
+            continue
+
+        # Get file extension
+        ext = Path(file_path).suffix.lower()[1:]  # Remove the dot
+        if not ext:
+            LOGGER.error(f"File has no extension: {file_path}")
+            continue
+
+        # Group by extension
+        if ext not in file_groups:
+            file_groups[ext] = []
+        file_groups[ext].append(file_path)
+        valid_files.append(file_path)
+
+    if not valid_files:
+        LOGGER.error("No valid files found for merging")
+        return None
+
+    # Determine base directory for output
+    base_dir = os.path.dirname(valid_files[0])
+    output_file = os.path.join(base_dir, f"merged.{int(time())}.pdf")
+
+    # Case 1: Only PDF files
+    if len(file_groups) == 1 and "pdf" in file_groups:
+        LOGGER.info("Merging PDF files only")
+        return await merge_pdfs(file_groups["pdf"], output_file)
+
+    # Case 2: Only image files
+    image_extensions = ["jpg", "jpeg", "png", "bmp", "gif", "tiff", "webp"]
+    image_files = []
+    for ext in image_extensions:
+        if ext in file_groups:
+            image_files.extend(file_groups[ext])
+
+    if len(image_files) == len(valid_files):
+        LOGGER.info("Converting and merging image files to PDF")
+        return await create_pdf_from_images(image_files, output_file)
+
+    # Case 3: Mixed file types (PDFs and images)
+    LOGGER.info("Processing mixed file types (PDFs and images)")
+
+    # Create a PDF writer for the final output
+    writer = PdfWriter()
+
+    # Process PDF files first
+    pdf_count = 0
+    if "pdf" in file_groups:
+        for pdf_path in file_groups["pdf"]:
+            try:
+                # Check if the PDF is valid and not password-protected
+                with open(pdf_path, "rb") as pdf_file:
+                    reader = PdfReader(pdf_file)
+                    if reader.is_encrypted:
+                        LOGGER.warning(f"Skipping encrypted PDF: {pdf_path}")
+                        continue
+
+                    # Add all pages from this PDF
+                    for page in reader.pages:
+                        writer.add_page(page)
+
+                    pdf_count += 1
+            except Exception as e:
+                LOGGER.error(f"Error processing PDF {pdf_path}: {e}")
+                continue
+
+    # Process image files
+    image_count = 0
+    for img_path in image_files:
+        try:
+            # Try to open as an image
+            img = Image.open(img_path)
+
+            # Convert to RGB if needed
+            if img.mode == "RGBA":
+                # Create white background for transparent images
+                background = Image.new("RGB", img.size, (255, 255, 255))
+                background.paste(
+                    img, mask=img.split()[3]
+                )  # Use alpha channel as mask
+                img = background
+            elif img.mode != "RGB":
+                img = img.convert("RGB")
+
+            # Create a temporary file for the image
+            temp_pdf = f"{img_path}.temp.pdf"
+
+            # Save the image as a PDF with better quality
+            img.save(temp_pdf, "PDF", resolution=300.0, quality=95)
+
+            # Add the PDF to the writer
+            reader = PdfReader(temp_pdf)
+            writer.add_page(reader.pages[0])
+
+            # Remove the temporary file
+            os.remove(temp_pdf)
+            image_count += 1
+
+        except Exception as e:
+            LOGGER.error(f"Error processing image {img_path}: {e}")
+            continue
+
+    # Check if we have any valid files to merge
+    if pdf_count == 0 and image_count == 0:
+        LOGGER.error("No valid files found for merging")
+        return None
+
+    # Write the merged PDF
+    try:
+        with open(output_file, "wb") as f:
+            writer.write(f)
+
+        LOGGER.info(
+            f"Successfully merged {pdf_count} PDFs and {image_count} images into {output_file}"
+        )
+
+        # Force garbage collection after document merging
+        # This can create large objects in memory
+        if smart_garbage_collection:
+            smart_garbage_collection(aggressive=True)
+        else:
+            gc.collect()
+
+        return output_file
+    except Exception as e:
+        LOGGER.error(f"Error writing merged PDF: {e}")
+        return None

@@ -47,6 +47,7 @@ COMMANDS = {
     "MusicSearchCommand": "- Search for music files (/ms) or reply to a message",
     "SpeedTest": "- Get speedtest result",
     "GenSessionCommand": "- Generate Pyrogram session string",
+    "TruecallerCommand": "- Lookup phone numbers using Truecaller",
     "BotSetCommand": "- [ADMIN] Open Bot settings",
     "LogCommand": "- [ADMIN] View log",
     "RestartCommand": "- [ADMIN] Restart the bot",

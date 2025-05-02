@@ -427,6 +427,32 @@ class Config:
     TASK_MONITOR_MEMORY_HIGH: int = 75  # percentage
     TASK_MONITOR_MEMORY_LOW: int = 60  # percentage
 
+    # Truecaller API Settings
+    TRUECALLER_API_URL: str = ""
+
+    # Extra Modules Settings
+    ENABLE_EXTRA_MODULES: bool = True
+
+    # AI Settings
+    # Default AI Provider (mistral, deepseek, chatgpt, gemini)
+    DEFAULT_AI_PROVIDER: str = "mistral"
+
+    # Mistral AI Settings
+    MISTRAL_API_KEY: str = ""
+    MISTRAL_API_URL: str = ""
+
+    # DeepSeek AI Settings
+    DEEPSEEK_API_KEY: str = ""
+    DEEPSEEK_API_URL: str = ""
+
+    # ChatGPT Settings
+    CHATGPT_API_KEY: str = ""
+    CHATGPT_API_URL: str = ""
+
+    # Gemini AI Settings
+    GEMINI_API_KEY: str = ""
+    GEMINI_API_URL: str = ""
+
     @classmethod
     def get(cls, key):
         return getattr(cls, key) if hasattr(cls, key) else None

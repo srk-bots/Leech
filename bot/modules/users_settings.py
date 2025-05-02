@@ -49,6 +49,18 @@ leech_options = [
     "USER_DUMP",
     "USER_SESSION",
 ]
+
+ai_options = [
+    "DEFAULT_AI_PROVIDER",
+    "MISTRAL_API_KEY",
+    "MISTRAL_API_URL",
+    "DEEPSEEK_API_KEY",
+    "DEEPSEEK_API_URL",
+    "CHATGPT_API_KEY",
+    "CHATGPT_API_URL",
+    "GEMINI_API_KEY",
+    "GEMINI_API_URL",
+]
 metadata_options = [
     "METADATA_ALL",
     "METADATA_TITLE",
@@ -330,6 +342,63 @@ async def get_user_settings(from_user, stype="main"):
 -> Gdrive ID: <code>{gdrive_id}</code>
 -> Index URL: <code>{index}</code>
 -> Stop Duplicate: <b>{sd_msg}</b>"""
+    elif stype == "ai":
+        # Add buttons for each AI setting
+        for option in ai_options:
+            buttons.data_button(
+                option.replace("_", " ").title(),
+                f"userset {user_id} menu {option}",
+            )
+
+        buttons.data_button("Reset AI Settings", f"userset {user_id} reset ai")
+        buttons.data_button("Back", f"userset {user_id} back")
+        buttons.data_button("Close", f"userset {user_id} close")
+
+        # Get current AI settings
+        default_ai = user_dict.get(
+            "DEFAULT_AI_PROVIDER", Config.DEFAULT_AI_PROVIDER
+        ).capitalize()
+        mistral_api_key = (
+            "✅ Set" if user_dict.get("MISTRAL_API_KEY", False) else "❌ Not Set"
+        )
+        mistral_api_url = user_dict.get("MISTRAL_API_URL", "Not Set")
+        deepseek_api_key = (
+            "✅ Set" if user_dict.get("DEEPSEEK_API_KEY", False) else "❌ Not Set"
+        )
+        deepseek_api_url = user_dict.get("DEEPSEEK_API_URL", "Not Set")
+        chatgpt_api_key = (
+            "✅ Set" if user_dict.get("CHATGPT_API_KEY", False) else "❌ Not Set"
+        )
+        chatgpt_api_url = user_dict.get("CHATGPT_API_URL", "Not Set")
+        gemini_api_key = (
+            "✅ Set" if user_dict.get("GEMINI_API_KEY", False) else "❌ Not Set"
+        )
+        gemini_api_url = user_dict.get("GEMINI_API_URL", "Not Set")
+
+        text = f"""<u><b>AI Settings for {name}</b></u>
+<b>Default AI Provider:</b> <code>{default_ai}</code>
+
+<b>Mistral AI:</b>
+-> API Key: <b>{mistral_api_key}</b>
+-> API URL: <code>{mistral_api_url}</code>
+
+<b>DeepSeek AI:</b>
+-> API Key: <b>{deepseek_api_key}</b>
+-> API URL: <code>{deepseek_api_url}</code>
+
+<b>ChatGPT:</b>
+-> API Key: <b>{chatgpt_api_key}</b>
+-> API URL: <code>{chatgpt_api_url}</code>
+
+<b>Gemini AI:</b>
+-> API Key: <b>{gemini_api_key}</b>
+-> API URL: <code>{gemini_api_url}</code>
+
+<i>Note: For each AI provider, configure either API Key or API URL. If both are set, API Key will be used first with fallback to API URL.</i>
+<i>Your settings will take priority over the bot owner's settings.</i>
+<i>Use /ask command to chat with the default AI provider.</i>
+"""
+
     elif stype == "convert":
         buttons.data_button("Back", f"userset {user_id} back")
         buttons.data_button("Close", f"userset {user_id} close")
@@ -443,6 +512,9 @@ Please use /mediatools command to configure convert settings.
         buttons.data_button("Leech", f"userset {user_id} leech")
         buttons.data_button("Rclone", f"userset {user_id} rclone")
         buttons.data_button("Gdrive API", f"userset {user_id} gdrive")
+        # Only show AI Settings button if Extra Modules are enabled
+        if Config.ENABLE_EXTRA_MODULES:
+            buttons.data_button("AI Settings", f"userset {user_id} ai")
 
         upload_paths = user_dict.get("UPLOAD_PATHS", {})
         if (
@@ -510,15 +582,23 @@ Please use /mediatools command to configure convert settings.
         cookies_path = f"cookies/{user_id}.txt"
         cookies_status = "Added" if await aiopath.exists(cookies_path) else "None"
 
-        buttons.data_button("Metadata", f"userset {user_id} metadata")
+        # Only show Metadata button if metadata tool is enabled
+        from bot.helper.ext_utils.bot_utils import is_media_tool_enabled
 
-        buttons.data_button("FFmpeg Cmds", f"userset {user_id} menu FFMPEG_CMDS")
-        if user_dict.get("FFMPEG_CMDS", False):
-            ffc = "Added by User"
-        elif "FFMPEG_CMDS" not in user_dict and Config.FFMPEG_CMDS:
-            ffc = "Added by Owner"
+        if is_media_tool_enabled("metadata"):
+            buttons.data_button("Metadata", f"userset {user_id} metadata")
+
+        # Only show FFmpeg Cmds button if ffmpeg tool is enabled
+        if is_media_tool_enabled("ffmpeg"):
+            buttons.data_button("FFmpeg Cmds", f"userset {user_id} menu FFMPEG_CMDS")
+            if user_dict.get("FFMPEG_CMDS", False):
+                ffc = "Added by User"
+            elif "FFMPEG_CMDS" not in user_dict and Config.FFMPEG_CMDS:
+                ffc = "Added by Owner"
+            else:
+                ffc = "None"
         else:
-            ffc = "None"
+            ffc = "Disabled"
 
         # Add MediaInfo toggle
         mediainfo_enabled = user_dict.get("MEDIAINFO_ENABLED", None)
@@ -807,7 +887,8 @@ async def get_menu(option, message, user_id):
     elif option in metadata_options:
         back_to = "metadata"
     # Convert options have been moved to Media Tools settings
-
+    elif option in ai_options:
+        back_to = "ai"
     elif option in yt_dlp_options:
         back_to = "back"  # Go back to main menu
     else:
@@ -871,7 +952,7 @@ async def edit_user_settings(client, query):
         return
     if data[2] == "setevent":
         await query.answer()
-    elif data[2] in ["leech", "gdrive", "rclone", "metadata", "convert"]:
+    elif data[2] in ["leech", "gdrive", "rclone", "metadata", "convert", "ai"]:
         await query.answer()
         await update_user_settings(query, data[2])
     elif data[2] == "menu":
@@ -936,7 +1017,39 @@ You can provide your own cookies for YouTube and other yt-dlp downloads to acces
             document=data[3] != "THUMBNAIL",
         )
         await get_menu(data[3], message, user_id)
+    elif data[2] == "setprovider":
+        await query.answer(f"Setting default AI provider to {data[3].capitalize()}")
+        # Update the default AI provider in user settings
+        user_dict["DEFAULT_AI_PROVIDER"] = data[3]
+        # Update the database
+        await database.update_user_data(user_id)
+        # Update the UI
+        await update_user_settings(query, "ai")
     elif data[2] in ["set", "addone", "rmone"]:
+        # Special handling for DEFAULT_AI_PROVIDER
+        if data[2] == "set" and data[3] == "DEFAULT_AI_PROVIDER":
+            await query.answer()
+            buttons = ButtonMaker()
+            buttons.data_button("Mistral", f"userset {user_id} setprovider mistral")
+            buttons.data_button(
+                "DeepSeek", f"userset {user_id} setprovider deepseek"
+            )
+            buttons.data_button("ChatGPT", f"userset {user_id} setprovider chatgpt")
+            buttons.data_button("Gemini", f"userset {user_id} setprovider gemini")
+            buttons.data_button("Back", f"userset {user_id} setevent")
+            buttons.data_button("Close", f"userset {user_id} close")
+
+            edit_msg = await edit_message(
+                message,
+                "<b>Select Default AI Provider</b>\n\nChoose which AI provider to use with the /ask command:",
+                buttons.build_menu(2),
+            )
+            create_task(  # noqa: RUF006
+                auto_delete_message(edit_msg, time=300),
+            )  # Auto delete edit stage after 5 minutes
+            return
+
+        # Normal handling for other settings
         await query.answer()
         buttons = ButtonMaker()
         if data[2] == "set":
@@ -977,7 +1090,13 @@ You can provide your own cookies for YouTube and other yt-dlp downloads to acces
             await database.update_user_data(user_id)
     elif data[2] == "reset":
         await query.answer("Reseted!", show_alert=True)
-        if data[3] == "metadata_all":
+        if data[3] == "ai":
+            # Reset all AI settings
+            for key in ai_options:
+                if key in user_dict:
+                    user_dict.pop(key, None)
+            await update_user_settings(query, "ai")
+        elif data[3] == "metadata_all":
             # Reset all metadata settings
             for key in metadata_options:
                 if key in user_dict:

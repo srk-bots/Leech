@@ -2,8 +2,9 @@ import logging
 from asyncio import sleep
 from functools import partial
 
+from pyrogram import filters
 from pyrogram.filters import create
-from pyrogram.handlers import MessageHandler
+from pyrogram.handlers import CallbackQueryHandler, MessageHandler
 
 from bot import user_data
 from bot.core.config_manager import Config
@@ -33,13 +34,27 @@ async def get_media_tools_settings(from_user, stype="main", page_no=0):
     text = ""  # Initialize text variable to avoid UnboundLocalError
 
     if stype == "main":
-        # Main Media Tools menu
-        buttons.data_button("Watermark", f"mediatools {user_id} watermark")
-        buttons.data_button("Merge", f"mediatools {user_id} merge")
-        buttons.data_button("Convert", f"mediatools {user_id} convert")
-        buttons.data_button("Compression", f"mediatools {user_id} compression")
-        buttons.data_button("Trim", f"mediatools {user_id} trim")
-        buttons.data_button("Extract", f"mediatools {user_id} extract")
+        # Main Media Tools menu - only show enabled tools
+        from bot.helper.ext_utils.bot_utils import is_media_tool_enabled
+
+        if is_media_tool_enabled("watermark"):
+            buttons.data_button("Watermark", f"mediatools {user_id} watermark")
+
+        if is_media_tool_enabled("merge"):
+            buttons.data_button("Merge", f"mediatools {user_id} merge")
+
+        if is_media_tool_enabled("convert"):
+            buttons.data_button("Convert", f"mediatools {user_id} convert")
+
+        if is_media_tool_enabled("compression"):
+            buttons.data_button("Compression", f"mediatools {user_id} compression")
+
+        if is_media_tool_enabled("trim"):
+            buttons.data_button("Trim", f"mediatools {user_id} trim")
+
+        if is_media_tool_enabled("extract"):
+            buttons.data_button("Extract", f"mediatools {user_id} extract")
+
         buttons.data_button("Help", f"mediatools {user_id} help")
         buttons.data_button("Remove All", f"mediatools {user_id} remove_all")
         buttons.data_button("Reset All", f"mediatools {user_id} reset_all")
@@ -743,9 +758,14 @@ async def get_media_tools_settings(from_user, stype="main", page_no=0):
         buttons.data_button(
             "Set Priority", f"mediatools {user_id} menu MERGE_PRIORITY"
         )
+
+        # Add Remove Original toggle button
+        remove_original = user_dict.get("MERGE_REMOVE_ORIGINAL", False)
         buttons.data_button(
-            "Remove Original", f"mediatools {user_id} menu MERGE_REMOVE_ORIGINAL"
+            f"Remove Original: {'✅ ON' if remove_original else '❌ OFF'}",
+            f"mediatools {user_id} tog MERGE_REMOVE_ORIGINAL {'f' if remove_original else 't'}",
         )
+
         buttons.data_button("Reset", f"mediatools {user_id} reset_merge")
         buttons.data_button("Remove", f"mediatools {user_id} remove_merge")
         buttons.data_button("Back", f"mediatools {user_id} back", "footer")
@@ -2074,8 +2094,7 @@ async def get_media_tools_settings(from_user, stype="main", page_no=0):
             f"mediatools {user_id} tog TRIM_DELETE_ORIGINAL {'f' if delete_original else 't'}",
         )
 
-        # Add a header for format settings
-        buttons.data_button("⚙️ Format Settings", f"mediatools {user_id} help_trim")
+        # Format settings button removed as requested
 
         # Video trim settings
         video_enabled = user_dict.get("TRIM_VIDEO_ENABLED", False)
@@ -6083,6 +6102,20 @@ async def event_handler(client, query, pfunc, rfunc, photo=False, document=False
 @new_task
 async def media_tools_settings(_, message):
     """Show media tools settings."""
+    from bot.helper.ext_utils.bot_utils import is_media_tool_enabled
+
+    # Check if media tools are enabled
+    if not is_media_tool_enabled("mediatools"):
+        error_msg = await send_message(
+            message,
+            "<b>Media Tools are disabled</b>\n\nMedia Tools have been disabled by the bot owner.",
+        )
+        # Auto-delete the command message immediately
+        await delete_message(message)
+        # Auto-delete the error message after 5 minutes
+        await auto_delete_message(error_msg, time=300)
+        return
+
     msg, btns = await get_media_tools_settings(message.from_user)
     settings_msg = await send_message(message, msg, btns)
     # Auto-delete the command message immediately
@@ -7111,5 +7144,195 @@ async def edit_media_tools_settings(client, query):
 
 async def add_media_tools_button_to_bot_settings(buttons):
     """Add Media Tools button to bot settings."""
-    buttons.data_button("Media Tools", "botset mediatools")
+    from bot.helper.ext_utils.bot_utils import is_media_tool_enabled
+
+    # Only add the Media Tools button if media tools are enabled
+    if is_media_tool_enabled("mediatools"):
+        buttons.data_button("Media Tools", "botset mediatools")
+
     return buttons
+
+
+async def show_media_tools_for_task(client, message, task_obj):
+    """Show media tools settings with a Done button for task execution.
+
+    This function is called when a command is used with the -mt flag.
+    It displays the media tools settings and adds a Done button to start the task.
+
+    Args:
+        client: The client instance
+        message: The message object containing the command
+        task_obj: The task object (Mirror instance) to be executed after settings
+
+    Returns:
+        bool: True if the task should proceed, False if it was cancelled
+    """
+    from bot.helper.ext_utils.bot_utils import is_media_tool_enabled
+
+    # Check if media tools are enabled
+    if not is_media_tool_enabled("mediatools"):
+        error_msg = await send_message(
+            message,
+            "<b>Media Tools are disabled</b>\n\nMedia Tools have been disabled by the bot owner. The -mt flag cannot be used.",
+        )
+        # Auto-delete the error message after 5 minutes
+        await auto_delete_message(error_msg, time=300)
+        return False
+
+    user_id = message.from_user.id if message.from_user else 0
+    handler_dict[user_id] = True
+
+    # Get media tools settings
+    msg, btns = await get_media_tools_settings(message.from_user)
+
+    # Create new buttons with the original menu buttons
+    buttons = ButtonMaker()
+
+    # Copy all buttons from the original menu except Close
+    for row in btns.inline_keyboard:
+        for btn in row:
+            if btn.text == "Close":
+                continue  # Skip the Close button
+            if "footer" in btn.callback_data:
+                buttons.data_button(btn.text, btn.callback_data, "footer")
+            else:
+                buttons.data_button(btn.text, btn.callback_data)
+
+    # Add the Done and Cancel buttons to the footer
+    buttons.data_button("Done", f"mediatools {user_id} task_done", "footer")
+    buttons.data_button("Cancel", f"mediatools {user_id} task_cancel", "footer")
+
+    # Send the message with the settings and buttons
+    settings_msg = await send_message(message, msg, buttons.build_menu(2))
+
+    # Create an event to wait for the user's response
+    from asyncio import Event
+
+    done_event = Event()
+    task_proceed = [True]  # Use a list to store the result (mutable)
+
+    # Define the callback handler for the buttons
+    async def task_button_callback(c, query):
+        if query.from_user.id != user_id:
+            await query.answer("Not Yours!", show_alert=True)
+            return
+
+        data = query.data.split()
+        if len(data) < 3:
+            return
+
+        if data[2] == "task_done":
+            # User clicked Done, proceed with the task
+            await query.answer("Starting task with current media tools settings...")
+            handler_dict[user_id] = False
+
+            # Send a confirmation message that will be auto-deleted
+            done_msg = await send_message(
+                message,
+                "✅ Starting task with current media tools settings...",
+            )
+            await auto_delete_message(
+                done_msg, time=5
+            )  # Auto-delete after 5 seconds
+
+            done_event.set()
+
+        elif data[2] == "task_cancel":
+            # User clicked Cancel, cancel the task
+            await query.answer("Task cancelled!")
+            task_proceed[0] = False
+            handler_dict[user_id] = False
+
+            # Send cancellation message and auto-delete after 5 minutes
+            cancel_msg = await send_message(
+                message,
+                "❌ Task cancelled by user.",
+            )
+            await auto_delete_message(cancel_msg, time=300)
+
+            done_event.set()
+
+        elif data[2] in [
+            "watermark",
+            "watermark_config",
+            "merge",
+            "convert",
+            "compression",
+            "compression_config",
+            "trim",
+            "trim_config",
+            "extract",
+            "extract_config",
+            "help",
+            "help_watermark",
+            "help_merge",
+            "help_convert",
+            "help_compression",
+            "help_trim",
+            "help_extract",
+            "help_priority",
+            "help_examples",
+            "convert_video",
+            "convert_audio",
+            "convert_subtitle",
+            "convert_document",
+            "convert_archive",
+            "merge_config",
+            "back",
+        ]:
+            # Handle navigation within the media tools settings
+            await query.answer()
+            await update_media_tools_settings(query, data[2])
+
+        elif (
+            data[2] == "tog"
+            or data[2] == "menu"
+            or data[2] == "set"
+            or data[2] == "reset"
+            or data[2].startswith("reset_")
+            or data[2].startswith("remove_")
+            or data[2] == "toggle_concat_filter"
+        ):
+            # Handle other media tools settings actions
+            # This will reuse the existing edit_media_tools_settings logic
+            await edit_media_tools_settings(c, query)
+
+    # Add the callback handler
+    handler = client.add_handler(
+        CallbackQueryHandler(
+            task_button_callback,
+            filters=filters.regex("^mediatools"),
+        ),
+        group=-1,
+    )
+
+    try:
+        # Wait for the user to click Done or Cancel, or for the timeout
+        timeout = 60  # 60 seconds timeout
+        for _ in range(timeout):
+            if done_event.is_set():
+                break
+            await sleep(1)
+
+        # If we timed out, cancel the task
+        if not done_event.is_set():
+            task_proceed[0] = False
+            handler_dict[user_id] = False
+
+            # Send timeout message
+            timeout_msg = await send_message(
+                message,
+                f"⏱️ Media tools settings timeout. Task has been cancelled!",
+            )
+
+            # Auto-delete the timeout message after 5 minutes
+            await auto_delete_message(timeout_msg, time=300)
+    finally:
+        # Clean up
+        client.remove_handler(*handler)
+
+        # Delete the settings message
+        await delete_message(settings_msg)
+
+    # Return whether to proceed with the task
+    return task_proceed[0]

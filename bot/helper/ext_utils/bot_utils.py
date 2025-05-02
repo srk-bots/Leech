@@ -22,6 +22,7 @@ except ImportError:
     smart_garbage_collection = None
 
 from .help_messages import (
+    AI_HELP_DICT,
     CLONE_HELP_DICT,
     MIRROR_HELP_DICT,
     YT_HELP_DICT,
@@ -61,6 +62,7 @@ def create_help_buttons():
     _build_command_usage(MIRROR_HELP_DICT, "mirror")
     _build_command_usage(YT_HELP_DICT, "yt")
     _build_command_usage(CLONE_HELP_DICT, "clone")
+    _build_command_usage(AI_HELP_DICT, "ai")
 
 
 def bt_selection_buttons(id_):
@@ -156,6 +158,7 @@ def arg_parser(items, arg_base):
         "-extract-attachment",
         "-extract-priority",
         "-del",
+        "-mt",
     }
 
     while i < total:
@@ -207,6 +210,7 @@ def arg_parser(items, arg_base):
                 "-extract-subtitle",
                 "-extract-attachment",
                 "-del",
+                "-mt",
             ]:
                 arg_base[part] = True
             else:
@@ -463,3 +467,133 @@ def loop_thread(func):
         return future.result() if wait else future
 
     return wrapper
+
+
+def is_media_tool_enabled(tool_name):
+    """Check if a specific media tool is enabled in the global configuration.
+
+    Args:
+        tool_name (str): The name of the tool to check (merge, watermark, convert, etc.)
+                         Use 'mediatools' to check if all media tools are enabled.
+
+    Returns:
+        bool: True if the tool is enabled, False otherwise
+    """
+    from bot.core.config_manager import Config
+
+    # If ENABLE_EXTRA_MODULES is False, all extra modules are disabled
+    if not Config.ENABLE_EXTRA_MODULES:
+        return False
+
+    # If media tools are completely disabled (boolean False), return False
+    if Config.MEDIA_TOOLS_ENABLED is False:
+        return False
+
+    # List of all available tools
+    all_tools = [
+        "watermark",
+        "merge",
+        "convert",
+        "compression",
+        "trim",
+        "extract",
+        "metadata",
+        "ffmpeg",
+        "sample",
+    ]
+
+    # Parse enabled tools from the configuration
+    enabled_tools = []
+
+    # If MEDIA_TOOLS_ENABLED is a string
+    if isinstance(Config.MEDIA_TOOLS_ENABLED, str):
+        # Handle both comma-separated and single values
+        if "," in Config.MEDIA_TOOLS_ENABLED:
+            enabled_tools = [
+                t.strip().lower()
+                for t in Config.MEDIA_TOOLS_ENABLED.split(",")
+                if t.strip()
+            ]
+        elif Config.MEDIA_TOOLS_ENABLED.strip():  # Single non-empty value
+            enabled_tools = [Config.MEDIA_TOOLS_ENABLED.strip().lower()]
+
+    # If MEDIA_TOOLS_ENABLED is True (boolean), all tools are enabled
+    elif Config.MEDIA_TOOLS_ENABLED is True:
+        enabled_tools = all_tools.copy()
+
+    # If MEDIA_TOOLS_ENABLED is some other truthy value
+    elif Config.MEDIA_TOOLS_ENABLED:
+        if isinstance(Config.MEDIA_TOOLS_ENABLED, (list, tuple, set)):
+            enabled_tools = [
+                str(t).strip().lower() for t in Config.MEDIA_TOOLS_ENABLED if t
+            ]
+        else:
+            # Try to convert to string and use as a single value
+            try:
+                val = str(Config.MEDIA_TOOLS_ENABLED).strip().lower()
+                if val:
+                    enabled_tools = [val]
+            except:
+                pass
+
+    # If checking for 'mediatools' (general media tools status), return True if any tool is enabled
+    if tool_name.lower() == "mediatools":
+        return len(enabled_tools) > 0
+
+    # Otherwise, check if the specific tool is in the enabled list
+    return tool_name.lower() in enabled_tools
+
+
+def is_flag_enabled(flag_name):
+    """Check if a specific command flag is enabled based on media tools configuration.
+
+    Args:
+        flag_name (str): The name of the flag to check (ff, sv, mt, etc.)
+
+    Returns:
+        bool: True if the flag is enabled, False otherwise
+    """
+    # Map flags to their corresponding media tools
+    flag_to_tool_map = {
+        "ff": "ffmpeg",  # Custom FFmpeg commands flag
+        "sv": "sample",  # Sample video flag
+        "mt": "mediatools",  # Media tools flag
+        "md": "metadata",  # Metadata flag
+        "merge-video": "merge",
+        "merge-audio": "merge",
+        "merge-subtitle": "merge",
+        "merge-all": "merge",
+        "merge-image": "merge",
+        "merge-pdf": "merge",
+        "watermark": "watermark",
+        "extract": "extract",
+        "extract-video": "extract",
+        "extract-audio": "extract",
+        "extract-subtitle": "extract",
+        "extract-attachment": "extract",
+        "trim": "trim",
+        "compress": "compression",
+        "comp-video": "compression",
+        "comp-audio": "compression",
+        "comp-image": "compression",
+        "comp-document": "compression",
+        "comp-subtitle": "compression",
+        "comp-archive": "compression",
+    }
+
+    # If the flag is not in the map, assume it's enabled
+    if flag_name.lstrip("-") not in flag_to_tool_map:
+        return True
+
+    # Get the tool name for this flag
+    tool_name = flag_to_tool_map[flag_name.lstrip("-")]
+
+    # Check if the tool is enabled
+    is_enabled = is_media_tool_enabled(tool_name)
+
+    # For debugging
+    from bot import LOGGER
+
+    LOGGER.debug(f"Flag {flag_name} maps to tool {tool_name}, enabled: {is_enabled}")
+
+    return is_enabled

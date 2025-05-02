@@ -75,6 +75,8 @@ DEFAULT_VALUES = {
     "AUTO_RESTART_ENABLED": False,
     "AUTO_RESTART_INTERVAL": 24,
     "EQUAL_SPLITS": False,
+    "ENABLE_EXTRA_MODULES": True,
+    "MEDIA_TOOLS_ENABLED": True,
     # Watermark Settings
     "WATERMARK_ENABLED": False,
     "WATERMARK_KEY": "",
@@ -258,9 +260,19 @@ async def get_buttons(key=None, edit_type=None, page=0, user_id=None):
     buttons = ButtonMaker()
     msg = ""  # Initialize msg with a default value
     if key is None:
+        from bot.helper.ext_utils.bot_utils import is_media_tool_enabled
+
         buttons.data_button("Config", "botset var")
         buttons.data_button("Pvt Files", "botset private")
-        buttons.data_button("Media Tools", "botset mediatools")
+
+        # Only show Media Tools button if media tools are enabled
+        if is_media_tool_enabled("mediatools"):
+            buttons.data_button("Media Tools", "botset mediatools")
+
+        # Only show AI Settings button if Extra Modules are enabled
+        if Config.ENABLE_EXTRA_MODULES:
+            buttons.data_button("AI Settings", "botset ai")
+
         buttons.data_button("Task Monitor", "botset taskmonitor")
         buttons.data_button("Qbit Settings", "botset qbit")
         buttons.data_button("Aria2c Settings", "botset aria")
@@ -297,6 +309,8 @@ async def get_buttons(key=None, edit_type=None, page=0, user_id=None):
                 buttons.data_button("Back", "botset mediatools_convert")
             elif key.startswith("TASK_MONITOR_"):
                 buttons.data_button("Back", "botset taskmonitor")
+            elif key.startswith("MISTRAL_"):
+                buttons.data_button("Back", "botset ai")
             elif key.startswith("MERGE_") and "MERGE_OUTPUT_FORMAT" in key:
                 # If it's a format setting, it's likely from the merge_config menu
                 buttons.data_button("Back", "botset mediatools_merge_config")
@@ -625,6 +639,10 @@ async def get_buttons(key=None, edit_type=None, page=0, user_id=None):
                 )
                 msg += "Example: 24 (for daily restart)\n\n"
                 msg += "Minimum value is 1 hour.\n\n"
+            elif key == "TRUECALLER_API_URL":
+                msg += "Set the API URL for Truecaller phone number lookup.\n\n"
+                msg += "No default URL is provided. You must set your own API endpoint.\n\n"
+                msg += "The Truecaller module will not work until this is configured.\n\n"
 
             msg += f"Send a valid value for {key}. Current value is '{Config.get(key)}'. Timeout: 60 sec"
         elif edit_type == "ariavar":
@@ -660,7 +678,7 @@ async def get_buttons(key=None, edit_type=None, page=0, user_id=None):
                 msg = f"Send a valid value for {key} in server {Config.USENET_SERVERS[index]['name']}. Current value is {Config.USENET_SERVERS[index][key]}. Timeout: 60 sec"
     elif key == "var":
         conf_dict = Config.get_all()
-        # Filter out watermark, merge configs, metadata, convert, and task monitor settings
+        # Filter out watermark, merge configs, metadata, convert, task monitor, and AI settings
         filtered_keys = [
             k
             for k in list(conf_dict.keys())
@@ -677,9 +695,18 @@ async def get_buttons(key=None, edit_type=None, page=0, user_id=None):
                         "TRIM_",
                         "EXTRACT_",
                         "TASK_MONITOR_",
+                        "MISTRAL_",
+                        "DEEPSEEK_",
+                        "CHATGPT_",
+                        "GEMINI_",
                     )
                 )
-                or k in ["CONCAT_DEMUXER_ENABLED", "FILTER_COMPLEX_ENABLED"]
+                or k
+                in [
+                    "CONCAT_DEMUXER_ENABLED",
+                    "FILTER_COMPLEX_ENABLED",
+                    "DEFAULT_AI_PROVIDER",
+                ]
             )
         ]
 
@@ -690,10 +717,37 @@ async def get_buttons(key=None, edit_type=None, page=0, user_id=None):
             "AUTO_RESTART_INTERVAL",
         ]
 
+        # Add API settings to the config menu
+        api_keys = [
+            "TRUECALLER_API_URL",
+        ]
+
+        # Add module control settings to the config menu
+        module_keys = [
+            "ENABLE_EXTRA_MODULES",
+            "MEDIA_TOOLS_ENABLED",
+        ]
+
+        # Add descriptions for module settings
+        module_descriptions = {
+            "ENABLE_EXTRA_MODULES": "Enable Extra Modules (AI, Truecaller, IMDB)",
+            "MEDIA_TOOLS_ENABLED": "Enable Media Tools",
+        }
+
         # Ensure resource keys are in the filtered keys list
         for rk in resource_keys:
             if rk not in filtered_keys:
                 filtered_keys.append(rk)
+
+        # Ensure API keys are in the filtered keys list
+        for ak in api_keys:
+            if ak not in filtered_keys:
+                filtered_keys.append(ak)
+
+        # Ensure module keys are in the filtered keys list
+        for mk in module_keys:
+            if mk not in filtered_keys:
+                filtered_keys.append(mk)
 
         # Sort the keys alphabetically
         filtered_keys.sort()
@@ -704,6 +758,63 @@ async def get_buttons(key=None, edit_type=None, page=0, user_id=None):
             # Highlight resource management settings
             if k in resource_keys:
                 buttons.data_button(f"⚙️ {k}", f"botset botvar {k}")
+            # Highlight API settings
+            elif k in api_keys:
+                buttons.data_button(f"🔌 {k}", f"botset botvar {k}")
+            # Highlight module control settings
+            elif k in module_keys:
+                # Use the module descriptions for better display
+                description = module_descriptions.get(k, k)
+                value = Config.get(k)
+
+                # For MEDIA_TOOLS_ENABLED, handle special case for comma-separated values
+                if k == "MEDIA_TOOLS_ENABLED":
+                    if isinstance(value, str) and "," in value:
+                        # Show the number of enabled tools
+                        enabled_tools = [
+                            t.strip() for t in value.split(",") if t.strip()
+                        ]
+                        # Get the list of all available tools
+                        all_tools = [
+                            "watermark",
+                            "merge",
+                            "convert",
+                            "compression",
+                            "trim",
+                            "extract",
+                            "metadata",
+                            "ffmpeg",
+                            "sample",
+                        ]
+                        status = (
+                            f"✅ ({len(enabled_tools)}/{len(all_tools)})"
+                            if enabled_tools
+                            else "❌"
+                        )
+                    else:
+                        status = "✅" if value else "❌"
+                    buttons.data_button(
+                        f"🧩 {description}: {status}", f"botset botvar {k}"
+                    )
+                # For ENABLE_EXTRA_MODULES, show status
+                elif k == "ENABLE_EXTRA_MODULES":
+                    if isinstance(value, str) and "," in value:
+                        # Show the number of disabled modules
+                        disabled_modules = [
+                            t.strip() for t in value.split(",") if t.strip()
+                        ]
+                        status = (
+                            f"✅ ({len(disabled_modules)} disabled)"
+                            if disabled_modules
+                            else "✅"
+                        )
+                    else:
+                        status = "✅" if value else "❌"
+                    buttons.data_button(
+                        f"🧩 {description}: {status}", f"botset botvar {k}"
+                    )
+                else:
+                    buttons.data_button(f"🧩 {k}", f"botset botvar {k}")
             else:
                 buttons.data_button(k, f"botset botvar {k}")
         if state == "view":
@@ -816,17 +927,98 @@ Timeout: 60 sec"""
                 )
         msg = f"Server Keys | Page: {int(start / 10)} | State: {state}"
     elif key == "mediatools":
-        buttons.data_button("Watermark Settings", "botset mediatools_watermark")
-        buttons.data_button("Merge Settings", "botset mediatools_merge")
-        buttons.data_button("Convert Settings", "botset mediatools_convert")
-        buttons.data_button("Compression Settings", "botset mediatools_compression")
-        buttons.data_button("Trim Settings", "botset mediatools_trim")
-        buttons.data_button("Extract Settings", "botset mediatools_extract")
-        buttons.data_button("Metadata Settings", "botset mediatools_metadata")
+        from bot.helper.ext_utils.bot_utils import is_media_tool_enabled
+
+        # Only show enabled tools
+        if is_media_tool_enabled("watermark"):
+            buttons.data_button("Watermark Settings", "botset mediatools_watermark")
+
+        if is_media_tool_enabled("merge"):
+            buttons.data_button("Merge Settings", "botset mediatools_merge")
+
+        if is_media_tool_enabled("convert"):
+            buttons.data_button("Convert Settings", "botset mediatools_convert")
+
+        if is_media_tool_enabled("compression"):
+            buttons.data_button(
+                "Compression Settings", "botset mediatools_compression"
+            )
+
+        if is_media_tool_enabled("trim"):
+            buttons.data_button("Trim Settings", "botset mediatools_trim")
+
+        if is_media_tool_enabled("extract"):
+            buttons.data_button("Extract Settings", "botset mediatools_extract")
+
+        # Only show metadata settings if metadata tool is enabled
+        if is_media_tool_enabled("metadata"):
+            buttons.data_button("Metadata Settings", "botset mediatools_metadata")
 
         buttons.data_button("Back", "botset back", "footer")
         buttons.data_button("Close", "botset close", "footer")
         msg = "<b>Media Tools Settings</b>\n\nConfigure global settings for media tools."
+    elif key == "ai":
+        # Add buttons for each AI setting
+        ai_settings = [
+            "DEFAULT_AI_PROVIDER",
+            "MISTRAL_API_KEY",
+            "MISTRAL_API_URL",
+            "DEEPSEEK_API_KEY",
+            "DEEPSEEK_API_URL",
+            "CHATGPT_API_KEY",
+            "CHATGPT_API_URL",
+            "GEMINI_API_KEY",
+            "GEMINI_API_URL",
+        ]
+
+        for setting in ai_settings:
+            display_name = setting.replace("_", " ").title()
+            buttons.data_button(display_name, f"botset editvar {setting}")
+
+        if state == "view":
+            buttons.data_button("Edit", "botset edit ai")
+        else:
+            buttons.data_button("View", "botset view ai")
+
+        buttons.data_button("Default", "botset default_ai")
+        buttons.data_button("Back", "botset back", "footer")
+        buttons.data_button("Close", "botset close", "footer")
+
+        # Get current AI settings
+        default_ai = Config.DEFAULT_AI_PROVIDER.capitalize()
+        mistral_api_key = "✅ Set" if Config.MISTRAL_API_KEY else "❌ Not Set"
+        mistral_api_url = Config.MISTRAL_API_URL or "Not Set"
+        deepseek_api_key = "✅ Set" if Config.DEEPSEEK_API_KEY else "❌ Not Set"
+        deepseek_api_url = Config.DEEPSEEK_API_URL or "Not Set"
+        chatgpt_api_key = "✅ Set" if Config.CHATGPT_API_KEY else "❌ Not Set"
+        chatgpt_api_url = Config.CHATGPT_API_URL or "Not Set"
+        gemini_api_key = "✅ Set" if Config.GEMINI_API_KEY else "❌ Not Set"
+        gemini_api_url = Config.GEMINI_API_URL or "Not Set"
+
+        msg = f"""<b>AI Settings</b> | State: {state}
+
+<b>Default AI Provider:</b> <code>{default_ai}</code>
+
+<b>Mistral AI:</b>
+• <b>API Key:</b> {mistral_api_key}
+• <b>API URL:</b> <code>{mistral_api_url}</code>
+
+<b>DeepSeek AI:</b>
+• <b>API Key:</b> {deepseek_api_key}
+• <b>API URL:</b> <code>{deepseek_api_url}</code>
+
+<b>ChatGPT:</b>
+• <b>API Key:</b> {chatgpt_api_key}
+• <b>API URL:</b> <code>{chatgpt_api_url}</code>
+
+<b>Gemini AI:</b>
+• <b>API Key:</b> {gemini_api_key}
+• <b>API URL:</b> <code>{gemini_api_url}</code>
+
+<i>Note: For each AI provider, configure either API Key or API URL. If both are set, API Key will be used first with fallback to API URL.</i>
+<i>Users can override these settings in their user settings.</i>
+<i>Use /ask command to chat with the default AI provider.</i>"""
+
     elif key == "taskmonitor":
         # Add buttons for each task monitoring setting
         task_monitor_settings = [
@@ -3313,6 +3505,11 @@ async def edit_variable(_, message, pre_message, key):
         LOGGER.debug(
             f"edit_variable: Setting return_menu for {key} to {return_menu}"
         )
+    elif key.startswith("MISTRAL_"):
+        return_menu = "ai"
+        LOGGER.debug(
+            f"edit_variable: Setting return_menu for {key} to {return_menu}"
+        )
     elif key.startswith("TASK_MONITOR_"):
         return_menu = "taskmonitor"
         LOGGER.debug(
@@ -3623,7 +3820,7 @@ async def edit_bot_settings(client, query):
     handler_dict[user_id] = False
     if data[1] == "close":
         await query.answer()
-        await delete_message(message.reply_to_message)
+        # Only delete the menu message, not the command that triggered it
         await delete_message(message)
     elif data[1] == "back":
         await query.answer()
@@ -3642,17 +3839,53 @@ async def edit_bot_settings(client, query):
         )
         await sync_jdownloader()
     elif data[1] == "mediatools":
+        from bot.helper.ext_utils.bot_utils import is_media_tool_enabled
+
         await query.answer()
+        # Check if media tools are enabled
+        if not is_media_tool_enabled("mediatools"):
+            await query.answer(
+                "Media Tools are disabled by the bot owner.", show_alert=True
+            )
+            return
+
         await update_buttons(message, "mediatools")
     elif data[1] == "mediatools_watermark":
+        from bot.helper.ext_utils.bot_utils import is_media_tool_enabled
+
         await query.answer()
+        # Check if watermark is enabled
+        if not is_media_tool_enabled("watermark"):
+            await query.answer(
+                "Watermark tool is disabled by the bot owner.", show_alert=True
+            )
+            return
+
         await update_buttons(message, "mediatools_watermark")
     elif data[1] == "mediatools_merge":
+        from bot.helper.ext_utils.bot_utils import is_media_tool_enabled
+
         await query.answer()
+        # Check if merge is enabled
+        if not is_media_tool_enabled("merge"):
+            await query.answer(
+                "Merge tool is disabled by the bot owner.", show_alert=True
+            )
+            return
+
         # Always start at page 0 when first entering merge settings
         await update_buttons(message, "mediatools_merge", page=0)
     elif data[1] == "mediatools_merge_config":
+        from bot.helper.ext_utils.bot_utils import is_media_tool_enabled
+
         await query.answer()
+        # Check if merge is enabled
+        if not is_media_tool_enabled("merge"):
+            await query.answer(
+                "Merge tool is disabled by the bot owner.", show_alert=True
+            )
+            return
+
         # Always start at page 0 when first entering merge config settings
         await update_buttons(message, "mediatools_merge_config", page=0)
     elif data[1] == "mediatools_metadata":
@@ -3660,23 +3893,64 @@ async def edit_bot_settings(client, query):
         LOGGER.debug("mediatools_metadata button clicked")
         await update_buttons(message, "mediatools_metadata")
     elif data[1] == "mediatools_convert":
+        from bot.helper.ext_utils.bot_utils import is_media_tool_enabled
+
         await query.answer()
+        # Check if convert is enabled
+        if not is_media_tool_enabled("convert"):
+            await query.answer(
+                "Convert tool is disabled by the bot owner.", show_alert=True
+            )
+            return
+
         LOGGER.debug("mediatools_convert button clicked")
         await update_buttons(message, "mediatools_convert")
     elif data[1] == "mediatools_trim":
+        from bot.helper.ext_utils.bot_utils import is_media_tool_enabled
+
         await query.answer()
+        # Check if trim is enabled
+        if not is_media_tool_enabled("trim"):
+            await query.answer(
+                "Trim tool is disabled by the bot owner.", show_alert=True
+            )
+            return
+
         LOGGER.debug("mediatools_trim button clicked")
         await update_buttons(message, "mediatools_trim")
 
     elif data[1] == "mediatools_extract":
+        from bot.helper.ext_utils.bot_utils import is_media_tool_enabled
+
         await query.answer()
+        # Check if extract is enabled
+        if not is_media_tool_enabled("extract"):
+            await query.answer(
+                "Extract tool is disabled by the bot owner.", show_alert=True
+            )
+            return
+
         LOGGER.debug("mediatools_extract button clicked")
         await update_buttons(message, "mediatools_extract")
 
     elif data[1] == "mediatools_compression":
+        from bot.helper.ext_utils.bot_utils import is_media_tool_enabled
+
         await query.answer()
+        # Check if compression is enabled
+        if not is_media_tool_enabled("compression"):
+            await query.answer(
+                "Compression tool is disabled by the bot owner.", show_alert=True
+            )
+            return
+
         LOGGER.debug("mediatools_compression button clicked")
         await update_buttons(message, "mediatools_compression")
+
+    elif data[1] == "ai":
+        await query.answer()
+        LOGGER.debug("ai button clicked")
+        await update_buttons(message, "ai")
 
     elif data[1] == "default_watermark":
         await query.answer("Resetting all watermark settings to default...")
@@ -4300,6 +4574,36 @@ async def edit_bot_settings(client, query):
         )
         # Update the UI - pass the current state to maintain edit/view mode
         await update_buttons(message, "mediatools_metadata")
+    elif data[1] == "default_ai":
+        await query.answer("Resetting all AI settings to default...")
+        # Reset all AI settings to default
+        Config.DEFAULT_AI_PROVIDER = "mistral"
+        Config.MISTRAL_API_KEY = ""
+        Config.MISTRAL_API_URL = ""
+        Config.DEEPSEEK_API_KEY = ""
+        Config.DEEPSEEK_API_URL = ""
+        Config.CHATGPT_API_KEY = ""
+        Config.CHATGPT_API_URL = ""
+        Config.GEMINI_API_KEY = ""
+        Config.GEMINI_API_URL = ""
+
+        # Update the database
+        await database.update_config(
+            {
+                "DEFAULT_AI_PROVIDER": "mistral",
+                "MISTRAL_API_KEY": "",
+                "MISTRAL_API_URL": "",
+                "DEEPSEEK_API_KEY": "",
+                "DEEPSEEK_API_URL": "",
+                "CHATGPT_API_KEY": "",
+                "CHATGPT_API_URL": "",
+                "GEMINI_API_KEY": "",
+                "GEMINI_API_URL": "",
+            }
+        )
+        # Update the UI
+        await update_buttons(message, "ai")
+
     elif data[1] == "default_taskmonitor":
         await query.answer("Resetting all task monitoring settings to default...")
         # Reset all task monitoring settings to default
@@ -4478,6 +4782,7 @@ async def edit_bot_settings(client, query):
         "mediatools_compression",
         "mediatools_trim",
         "mediatools_extract",
+        "ai",
     ]:
         await query.answer()
         # Set the global state to edit mode
@@ -4508,6 +4813,9 @@ async def edit_bot_settings(client, query):
         elif data[2] == "mediatools_extract":
             LOGGER.debug("Edit button clicked for extract settings")
             await update_buttons(message, "mediatools_extract")
+        elif data[2] == "ai":
+            LOGGER.debug("Edit button clicked for AI settings")
+            await update_buttons(message, "ai")
         else:
             await update_buttons(message, data[2])
     elif data[1] == "view" and data[2] in [
@@ -4519,6 +4827,7 @@ async def edit_bot_settings(client, query):
         "mediatools_compression",
         "mediatools_trim",
         "mediatools_extract",
+        "ai",
     ]:
         await query.answer()
         # Set the global state to view mode
@@ -4548,6 +4857,9 @@ async def edit_bot_settings(client, query):
         elif data[2] == "mediatools_extract":
             LOGGER.debug("View button clicked for extract settings")
             await update_buttons(message, "mediatools_extract")
+        elif data[2] == "ai":
+            LOGGER.debug("View button clicked for AI settings")
+            await update_buttons(message, "ai")
         else:
             await update_buttons(message, data[2])
         # This section is now handled above
@@ -4752,6 +5064,15 @@ async def edit_bot_settings(client, query):
         "TASK_MONITOR_CPU_LOW",
         "TASK_MONITOR_MEMORY_HIGH",
         "TASK_MONITOR_MEMORY_LOW",
+        "DEFAULT_AI_PROVIDER",
+        "MISTRAL_API_KEY",
+        "MISTRAL_API_URL",
+        "DEEPSEEK_API_KEY",
+        "DEEPSEEK_API_URL",
+        "CHATGPT_API_KEY",
+        "CHATGPT_API_URL",
+        "GEMINI_API_KEY",
+        "GEMINI_API_URL",
     ]:
         # Handle view mode for all settings
         if state == "view":
@@ -4816,6 +5137,30 @@ async def edit_bot_settings(client, query):
         elif data[2].startswith("TASK_MONITOR_"):
             LOGGER.debug(f"Setting return function for {data[2]} to taskmonitor")
             rfunc = partial(update_buttons, message, "taskmonitor")
+        elif data[2] == "DEFAULT_AI_PROVIDER":
+            LOGGER.debug("Setting up AI provider selection menu")
+            # Create a special menu for selecting the AI provider
+            buttons = ButtonMaker()
+            buttons.data_button("Mistral", "botset setprovider mistral")
+            buttons.data_button("DeepSeek", "botset setprovider deepseek")
+            buttons.data_button("ChatGPT", "botset setprovider chatgpt")
+            buttons.data_button("Gemini", "botset setprovider gemini")
+            buttons.data_button("Cancel", "botset cancel")
+
+            await edit_message(
+                message,
+                "<b>Select Default AI Provider</b>\n\nChoose which AI provider to use with the /ask command:",
+                buttons.build_menu(2),
+            )
+            return
+        elif (
+            data[2].startswith("MISTRAL_")
+            or data[2].startswith("DEEPSEEK_")
+            or data[2].startswith("CHATGPT_")
+            or data[2].startswith("GEMINI_")
+        ):
+            LOGGER.debug(f"Setting return function for {data[2]} to ai")
+            rfunc = partial(update_buttons, message, "ai")
         elif data[2].startswith("MERGE_") or data[2] in [
             "CONCAT_DEMUXER_ENABLED",
             "FILTER_COMPLEX_ENABLED",
@@ -5024,6 +5369,9 @@ async def edit_bot_settings(client, query):
         "mediatools_metadata",
         "mediatools_convert",
         "mediatools_compression",
+        "mediatools_trim",
+        "mediatools_extract",
+        "ai",
         "taskmonitor",
     ] or data[1].startswith(
         "nzbser",
@@ -5159,6 +5507,59 @@ async def edit_bot_settings(client, query):
         await query.answer()
         LOGGER.debug(f"Handling botvar for {data[2]} in edit mode")
 
+        # Special handling for MEDIA_TOOLS_ENABLED
+        if data[2] == "MEDIA_TOOLS_ENABLED":
+            # Create a special menu for selecting media tools
+            buttons = ButtonMaker()
+
+            # Get current value
+            current_value = Config.get(data[2])
+
+            # List of all available media tools
+            all_tools = [
+                "watermark",
+                "merge",
+                "convert",
+                "compression",
+                "trim",
+                "extract",
+                "metadata",
+                "ffmpeg",
+                "sample",
+            ]
+
+            # If it's a string with comma-separated values, parse it
+            enabled_tools = []
+            if isinstance(current_value, str) and "," in current_value:
+                enabled_tools = [t.strip().lower() for t in current_value.split(",")]
+            elif (
+                current_value is True
+            ):  # If it's True (boolean), all tools are enabled
+                enabled_tools = all_tools.copy()
+
+            # Add toggle buttons for each tool
+            for tool in all_tools:
+                status = "✅" if tool in enabled_tools else "❌"
+                buttons.data_button(
+                    f"{tool.title()}: {status}",
+                    f"botset toggle_tool {data[2]} {tool}",
+                )
+
+            # Add buttons to enable/disable all tools
+            buttons.data_button("Enable All", f"botset enable_all_tools {data[2]}")
+            buttons.data_button("Disable All", f"botset disable_all_tools {data[2]}")
+
+            # Add cancel button
+            buttons.data_button("Done", "botset var")
+
+            # Show the number of enabled tools in the message
+            await edit_message(
+                message,
+                f"<b>Configure Media Tools</b>\n\nSelect which media tools to enable ({len(enabled_tools)}/{len(all_tools)} enabled):",
+                buttons.build_menu(2),
+            )
+            return
+
         # For other settings, proceed with normal botvar handling
         await update_buttons(message, data[2], data[1])
         pfunc = partial(edit_variable, pre_message=message, key=data[2])
@@ -5174,6 +5575,30 @@ async def edit_bot_settings(client, query):
                 f"Setting return function for botvar {data[2]} to mediatools_convert"
             )
             rfunc = partial(update_buttons, message, "mediatools_convert")
+        elif data[2] == "DEFAULT_AI_PROVIDER":
+            LOGGER.debug("Setting up AI provider selection menu for botvar")
+            # Create a special menu for selecting the AI provider
+            buttons = ButtonMaker()
+            buttons.data_button("Mistral", "botset setprovider mistral")
+            buttons.data_button("DeepSeek", "botset setprovider deepseek")
+            buttons.data_button("ChatGPT", "botset setprovider chatgpt")
+            buttons.data_button("Gemini", "botset setprovider gemini")
+            buttons.data_button("Cancel", "botset cancel")
+
+            await edit_message(
+                message,
+                "<b>Select Default AI Provider</b>\n\nChoose which AI provider to use with the /ask command:",
+                buttons.build_menu(2),
+            )
+            return
+        elif (
+            data[2].startswith("MISTRAL_")
+            or data[2].startswith("DEEPSEEK_")
+            or data[2].startswith("CHATGPT_")
+            or data[2].startswith("GEMINI_")
+        ):
+            LOGGER.debug(f"Setting return function for botvar {data[2]} to ai")
+            rfunc = partial(update_buttons, message, "ai")
         else:
             rfunc = partial(update_buttons, message, "var")
 
@@ -5276,6 +5701,237 @@ async def edit_bot_settings(client, query):
         if value == "":
             value = None
         await query.answer(f"{value}", show_alert=True)
+    elif data[1] == "toggle_tool":
+        await query.answer()
+        key = data[2]  # MEDIA_TOOLS_ENABLED
+        tool = data[3]  # The tool to toggle
+
+        # Get current value
+        current_value = Config.get(key)
+
+        # List of all available tools
+        all_tools = [
+            "watermark",
+            "merge",
+            "convert",
+            "compression",
+            "trim",
+            "extract",
+            "metadata",
+            "ffmpeg",
+            "sample",
+        ]
+
+        # Parse current enabled tools
+        enabled_tools = []
+        if isinstance(current_value, str):
+            # Handle both comma-separated and single values
+            if "," in current_value:
+                enabled_tools = [
+                    t.strip().lower() for t in current_value.split(",") if t.strip()
+                ]
+            elif current_value.strip():  # Single non-empty value
+                enabled_tools = [current_value.strip().lower()]
+        elif current_value is True:  # If it's True (boolean), all tools are enabled
+            enabled_tools = all_tools.copy()
+        elif current_value:  # Any other truthy value
+            if isinstance(current_value, (list, tuple, set)):
+                enabled_tools = [str(t).strip().lower() for t in current_value if t]
+            else:
+                # Try to convert to string and use as a single value
+                try:
+                    val = str(current_value).strip().lower()
+                    if val:
+                        enabled_tools = [val]
+                except:
+                    pass
+
+        # Check if we're disabling a tool
+        is_disabling = tool in enabled_tools
+
+        # Toggle the tool
+        if is_disabling:
+            enabled_tools.remove(tool)
+            # Import the reset function here to avoid circular imports
+            from bot.helper.ext_utils.config_utils import reset_tool_configs
+
+            # Reset tool-specific configurations when disabling a tool
+            await reset_tool_configs(tool, database)
+        else:
+            enabled_tools.append(tool)
+
+        # Update the config
+        if enabled_tools:
+            # Sort the tools to maintain consistent order
+            enabled_tools.sort()
+            new_value = ",".join(enabled_tools)
+            Config.set(key, new_value)
+        else:
+            Config.set(key, False)
+
+        # Update the database
+        await database.update_config({key: Config.get(key)})
+
+        # Force reload the current value after database update to ensure consistency
+        current_value = Config.get(key)
+
+        # Re-parse enabled tools after the update
+        enabled_tools = []
+        if isinstance(current_value, str):
+            # Handle both comma-separated and single values
+            if "," in current_value:
+                enabled_tools = [
+                    t.strip().lower() for t in current_value.split(",") if t.strip()
+                ]
+            elif current_value.strip():  # Single non-empty value
+                enabled_tools = [current_value.strip().lower()]
+        elif current_value is True:  # If it's True (boolean), all tools are enabled
+            enabled_tools = all_tools.copy()
+        elif current_value:  # Any other truthy value
+            if isinstance(current_value, (list, tuple, set)):
+                enabled_tools = [str(t).strip().lower() for t in current_value if t]
+            else:
+                # Try to convert to string and use as a single value
+                try:
+                    val = str(current_value).strip().lower()
+                    if val:
+                        enabled_tools = [val]
+                except:
+                    pass
+
+        # Refresh the menu
+        buttons = ButtonMaker()
+
+        # Add toggle buttons for each tool
+        for t in all_tools:
+            status = "✅" if t in enabled_tools else "❌"
+            buttons.data_button(
+                f"{t.title()}: {status}",
+                f"botset toggle_tool {key} {t}",
+            )
+
+        # Add buttons to enable/disable all tools
+        buttons.data_button("Enable All", f"botset enable_all_tools {key}")
+        buttons.data_button("Disable All", f"botset disable_all_tools {key}")
+
+        # Add done button
+        buttons.data_button("Done", "botset var")
+
+        # Show the number of enabled tools in the message
+        await edit_message(
+            message,
+            f"<b>Configure Media Tools</b>\n\nSelect which media tools to enable ({len(enabled_tools)}/{len(all_tools)} enabled):",
+            buttons.build_menu(2),
+        )
+
+    elif data[1] == "enable_all_tools":
+        await query.answer("Enabling all media tools")
+        key = data[2]  # MEDIA_TOOLS_ENABLED
+
+        # List of all available tools
+        all_tools = [
+            "watermark",
+            "merge",
+            "convert",
+            "compression",
+            "trim",
+            "extract",
+            "metadata",
+            "ffmpeg",
+            "sample",
+        ]
+
+        # Update the config - sort the tools to maintain consistent order
+        all_tools.sort()
+        new_value = ",".join(all_tools)
+        Config.set(key, new_value)
+
+        # Update the database
+        await database.update_config({key: Config.get(key)})
+
+        # Refresh the menu
+        buttons = ButtonMaker()
+
+        # Add toggle buttons for each tool
+        for tool in all_tools:
+            buttons.data_button(
+                f"{tool.title()}: ✅",
+                f"botset toggle_tool {key} {tool}",
+            )
+
+        # Add buttons to enable/disable all tools
+        buttons.data_button("Enable All", f"botset enable_all_tools {key}")
+        buttons.data_button("Disable All", f"botset disable_all_tools {key}")
+
+        # Add done button
+        buttons.data_button("Done", "botset var")
+
+        await edit_message(
+            message,
+            f"<b>Configure Media Tools</b>\n\nSelect which media tools to enable ({len(all_tools)}/{len(all_tools)} enabled):",
+            buttons.build_menu(2),
+        )
+
+    elif data[1] == "disable_all_tools":
+        await query.answer("Disabling all media tools")
+        key = data[2]  # MEDIA_TOOLS_ENABLED
+
+        # List of all available tools
+        all_tools = [
+            "watermark",
+            "merge",
+            "convert",
+            "compression",
+            "trim",
+            "extract",
+            "metadata",
+            "ffmpeg",
+            "sample",
+        ]
+
+        # Reset configurations for all tools
+        from bot.helper.ext_utils.config_utils import reset_tool_configs
+
+        for tool in all_tools:
+            await reset_tool_configs(tool, database)
+
+        # Update the config
+        Config.set(key, False)
+
+        # Update the database
+        await database.update_config({key: Config.get(key)})
+
+        # Refresh the menu
+        buttons = ButtonMaker()
+
+        # Add toggle buttons for each tool
+        for tool in all_tools:
+            buttons.data_button(
+                f"{tool.title()}: ❌",
+                f"botset toggle_tool {key} {tool}",
+            )
+
+        # Add buttons to enable/disable all tools
+        buttons.data_button("Enable All", f"botset enable_all_tools {key}")
+        buttons.data_button("Disable All", f"botset disable_all_tools {key}")
+
+        # Add done button
+        buttons.data_button("Done", "botset var")
+
+        await edit_message(
+            message,
+            f"<b>Configure Media Tools</b>\n\nSelect which media tools to enable (0/{len(all_tools)} enabled):",
+            buttons.build_menu(2),
+        )
+
+    elif data[1] == "setprovider":
+        await query.answer(f"Setting default AI provider to {data[2].capitalize()}")
+        # Update the default AI provider
+        Config.DEFAULT_AI_PROVIDER = data[2]
+        # Update the database
+        await database.update_config({"DEFAULT_AI_PROVIDER": data[2]})
+        # Update the UI
+        await update_buttons(message, "ai")
     elif data[1] == "edit":
         await query.answer()
         globals()["state"] = "edit"
@@ -5342,6 +5998,41 @@ async def edit_bot_settings(client, query):
         await query.answer()
         key = data[2]
         value = data[3].lower() == "true"
+
+        # Special handling for ENABLE_EXTRA_MODULES
+        if key == "ENABLE_EXTRA_MODULES":
+            # If it's a string with comma-separated values, toggle to True
+            # If it's True, toggle to False
+            # If it's False, toggle to True
+            if (
+                isinstance(Config.ENABLE_EXTRA_MODULES, str)
+                and "," in Config.ENABLE_EXTRA_MODULES
+            ):
+                value = True
+
+        # Special handling for MEDIA_TOOLS_ENABLED
+        elif key == "MEDIA_TOOLS_ENABLED":
+            # If toggling to True, set to a comma-separated list of all media tools
+            if value:
+                # List of all available media tools
+                all_tools = [
+                    "watermark",
+                    "merge",
+                    "convert",
+                    "compression",
+                    "trim",
+                    "extract",
+                    "metadata",
+                    "ffmpeg",
+                    "sample",
+                ]
+                # Sort the tools to maintain consistent order
+                all_tools.sort()
+                value = ",".join(all_tools)
+            # If toggling to False, set to False (boolean)
+            else:
+                value = False
+
         Config.set(key, value)
 
         # Determine which menu to return to based on the key
@@ -5361,6 +6052,20 @@ async def edit_bot_settings(client, query):
         elif key.startswith("EXTRACT_"):
             return_menu = "mediatools_extract"
             LOGGER.debug(f"toggle: Setting return_menu for {key} to {return_menu}")
+        elif key == "ENABLE_EXTRA_MODULES":
+            return_menu = "var"
+            LOGGER.debug(f"toggle: Setting return_menu for {key} to {return_menu}")
+        elif key == "MEDIA_TOOLS_ENABLED":
+            return_menu = "var"
+            LOGGER.debug(f"toggle: Setting return_menu for {key} to {return_menu}")
+        elif (
+            key.startswith("MISTRAL_")
+            or key.startswith("DEEPSEEK_")
+            or key.startswith("CHATGPT_")
+            or key.startswith("GEMINI_")
+        ):
+            return_menu = "ai"
+            LOGGER.debug(f"toggle: Setting return_menu for {key} to {return_menu}")
 
         await update_buttons(message, return_menu)
         await database.update_config({key: value})
@@ -5379,7 +6084,8 @@ async def send_bot_settings(_, message):
     handler_dict[user_id] = False
     msg, button = await get_buttons(user_id=user_id)
     globals()["start"] = 0
-    await send_message(message, msg, button)
+    # Don't auto-delete the bot settings message
+    await send_message(message, msg, button, auto_delete=False)
 
 
 async def load_config():

@@ -14,6 +14,7 @@ from bot.helper.ext_utils.bot_utils import (
     get_content_type,
     sync_to_async,
 )
+from bot.modules.media_tools import show_media_tools_for_task
 from bot.helper.ext_utils.exceptions import DirectDownloadLinkException
 from bot.helper.ext_utils.links_utils import (
     is_gdrive_id,
@@ -108,6 +109,7 @@ class Mirror(TaskListener):
             "-hl": False,
             "-bt": False,
             "-ut": False,
+            "-mt": False,
             "-merge-video": False,
             "-merge-audio": False,
             "-merge-subtitle": False,
@@ -193,7 +195,23 @@ class Mirror(TaskListener):
             "-ati": "",
         }
 
+        # Parse arguments from the command
         arg_parser(input_list[1:], args)
+
+        # Check if media tools flags are enabled
+        from bot.helper.ext_utils.bot_utils import is_flag_enabled
+
+        # Disable flags that depend on disabled media tools
+        for flag in list(args.keys()):
+            if flag.startswith("-") and not is_flag_enabled(flag):
+                if isinstance(args[flag], bool):
+                    args[flag] = False
+                elif isinstance(args[flag], set):
+                    args[flag] = set()
+                elif isinstance(args[flag], str):
+                    args[flag] = ""
+                elif isinstance(args[flag], int):
+                    args[flag] = 0
 
         self.select = args["-s"]
         self.seed = args["-d"]
@@ -218,6 +236,7 @@ class Mirror(TaskListener):
         self.thumbnail_layout = args["-tl"]
         self.as_doc = args["-doc"]
         self.as_med = args["-med"]
+        self.media_tools = args["-mt"]
         self.metadata = args["-md"]
         self.metadata_title = args["-metadata-title"]
         self.metadata_author = args["-metadata-author"]
@@ -510,6 +529,19 @@ class Mirror(TaskListener):
             await self.remove_from_same_dir()
             await delete_links(self.message)
             return await auto_delete_message(x, time=300)
+
+        # Check if media tools flag is set
+        if self.media_tools:
+            # Show media tools settings and wait for user to click Done or timeout
+            proceed = await show_media_tools_for_task(
+                self.client, self.message, self
+            )
+            if not proceed:
+                # User cancelled or timeout occurred
+                await self.remove_from_same_dir()
+                # Delete the command message
+                await delete_links(self.message)
+                return None
 
         try:
             await self.before_start()

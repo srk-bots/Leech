@@ -3945,8 +3945,7 @@ async def get_trim_cmd(
     import os
 
     from bot import LOGGER
-    from bot.helper.aeon_utils.media_utils import get_streams
-    from bot.helper.ext_utils.media_utils import get_media_type
+    from bot.helper.ext_utils.media_utils import get_media_type, get_streams
 
     # First try to determine media type using get_media_type
     media_type = await get_media_type(file)

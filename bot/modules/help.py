@@ -1,5 +1,6 @@
 from bot.helper.ext_utils.bot_utils import COMMAND_USAGE, new_task
 from bot.helper.ext_utils.help_messages import (
+    AI_HELP_DICT,
     CLONE_HELP_DICT,
     MIRROR_HELP_DICT,
     YT_HELP_DICT,
@@ -60,6 +61,12 @@ async def arg_usage(_, query):
                 COMMAND_USAGE["clone"][0],
                 COMMAND_USAGE["clone"][1],
             )
+        elif data[2] == "a":
+            await edit_message(
+                message,
+                COMMAND_USAGE["ai"][0],
+                COMMAND_USAGE["ai"][1],
+            )
     elif data[1] == "mirror":
         buttons = ButtonMaker()
         buttons.data_button("Back", "help back m")
@@ -78,6 +85,12 @@ async def arg_usage(_, query):
         buttons.data_button("Close", "help close")
         button = buttons.build_menu(2)
         await edit_message(message, CLONE_HELP_DICT[data[2]], button)
+    elif data[1] == "ai":
+        buttons = ButtonMaker()
+        buttons.data_button("Back", "help back a")
+        buttons.data_button("Close", "help close")
+        button = buttons.build_menu(2)
+        await edit_message(message, AI_HELP_DICT[data[2]], button)
 
     try:
         await query.answer()
