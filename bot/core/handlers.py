@@ -406,47 +406,6 @@ def add_handlers():
         "force_delete_all": force_delete_all_messages,
     }
 
-    # Special handling for settings callbacks to allow in PMs without auth
-    settings_callbacks = {
-        "^userset": edit_user_settings,
-        "^mediatools": edit_media_tools_settings,
-        "^fontstyles": font_styles_callback,
-        "^mthelp": media_tools_help_callback,
-    }
-
-    # Remove settings callbacks from the main regex_filters
-    for pattern in settings_callbacks:
-        regex_filters.pop(pattern, None)
-
-    # Add handlers for settings callbacks in groups with authorization
-    for regex_filter, handler_func in settings_callbacks.items():
-        TgClient.bot.add_handler(
-            CallbackQueryHandler(
-                handler_func,
-                filters=regex(regex_filter)
-                & CustomFilters.authorized
-                & filters.create(
-                    lambda *args: args[2].message
-                    and args[2].message.chat.type != "private"
-                ),
-            ),
-            group=0,
-        )
-
-    # Add handlers for settings callbacks in private chats without authorization
-    for regex_filter, handler_func in settings_callbacks.items():
-        TgClient.bot.add_handler(
-            CallbackQueryHandler(
-                handler_func,
-                filters=regex(regex_filter)
-                & filters.create(
-                    lambda *args: args[2].message
-                    and args[2].message.chat.type == "private"
-                ),
-            ),
-            group=0,
-        )
-
     # Add handlers for other callbacks
     for regex_filter, handler_func in regex_filters.items():
         TgClient.bot.add_handler(
