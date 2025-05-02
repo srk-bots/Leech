@@ -419,7 +419,7 @@ class TaskListener(TaskConfig):
                             f"{msg}<blockquote expandable>{fmsg}</blockquote>",
                         )
                 buttons = ButtonMaker()
-                button = buttons.url_button("Go to inbox", f"https://t.me/{Config.BOT_USERNAME.lstrip("@")}")
+                button = buttons.url_button("Go to inbox", f"https://t.me/{Config.BOT_USERNAME.lstrip("@").strip()}")
 
                 await send_message(self.message, done_msg, button)
         else:
@@ -465,6 +465,8 @@ class TaskListener(TaskConfig):
                 buttons = ButtonMaker()
                 button = buttons.url_button("Go to inbox", f"https://t.me/{Config.BOT_USERNAME.lstrip('@')}")
                 await send_message(self.message, done_msg, button)
+            buttons = ButtonMaker()
+            button = buttons.url_button("Go to inbox", f"https://t.me/{Config.BOT_USERNAME.lstrip('@')}")
             await send_message(self.message, done_msg, button)
         if self.seed:
             await clean_target(self.up_dir)
