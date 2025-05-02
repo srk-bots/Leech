@@ -296,9 +296,6 @@ class YoutubeDLHelper:
                     # Reset the warning flag for future downloads
                     MyLogger.title_extraction_warning = False
 
-                    # Log all available metadata for debugging
-                    LOGGER.debug(f"Available metadata keys: {list(result.keys())}")
-
                     # Try multiple approaches to extract title
 
                     # 1. Try direct extraction with format template first
@@ -309,8 +306,8 @@ class YoutubeDLHelper:
                             if temp_name and temp_name != "NA":
                                 result["title"] = temp_name
                                 LOGGER.info(f"Successfully extracted title using format template: {temp_name}")
-                    except Exception as e:
-                        LOGGER.debug(f"Format template title extraction failed: {str(e)}")
+                    except Exception:
+                        pass
 
                     # 2. Try to extract title from webpage_url
                     if not result.get("title") and result.get("webpage_url"):
@@ -330,8 +327,8 @@ class YoutubeDLHelper:
                                 # Try to get title from YouTube API (simulated)
                                 result["title"] = f"youtube_video_{video_id}"
                                 LOGGER.info(f"Using video ID as title: {result['title']}")
-                        except Exception as e:
-                            LOGGER.debug(f"URL title extraction failed: {str(e)}")
+                        except Exception:
+                            pass
 
                 # If title is still missing and no name is set, try fallbacks
                 if (not result.get("title") or result.get("title") == "NA") and not self._listener.name:
@@ -357,9 +354,7 @@ class YoutubeDLHelper:
                             self._listener.name = (
                                 f"{result.get('extractor', 'video')}_{field_value}"
                             )
-                            LOGGER.info(
-                                f"Using fallback title from {field}: {self._listener.name}"
-                            )
+                            # Title found from fallback field
                             break
                     else:
                         # If no title found, use video ID if available, otherwise timestamp
@@ -367,15 +362,15 @@ class YoutubeDLHelper:
 
                         if result.get("id"):
                             self._listener.name = f"{result.get('extractor', 'video')}_{result['id']}"
-                            LOGGER.info(f"Using ID as fallback title: {self._listener.name}")
+                            # Using ID as fallback title
                         else:
                             self._listener.name = f"untitled_video_{int(time.time())}"
-                            LOGGER.info(f"Using timestamp as fallback title: {self._listener.name}")
+                            # Using timestamp as fallback title
 
                 # If we have a title but no listener name, use the title
                 if result.get("title") and not self._listener.name:
                     self._listener.name = result.get("title")
-                    LOGGER.info(f"Using extracted title: {self._listener.name}")
+                    # Using extracted title
 
                 # Handle YouTube SSAP experiment issues
                 if result.get("extractor") == "youtube" and not result.get(
@@ -431,9 +426,7 @@ class YoutubeDLHelper:
                                 "uploader", entry.get("channel", "unknown")
                             )
                             self._listener.name = f"{entry_id}_{uploader}"
-                            LOGGER.info(
-                                f"Using fallback playlist entry name: {self._listener.name}"
-                            )
+                            # Using fallback playlist entry name
                 return None
 
             # Try multiple templates for better title extraction
@@ -461,10 +454,10 @@ class YoutubeDLHelper:
                     name = ydl.prepare_filename(result, outtmpl=outtmpl_)
                     if name and not name.startswith("NA.") and "NA" not in name:
                         realName = name
-                        LOGGER.info(f"Successfully extracted filename using template: {outtmpl_}")
+                        # Successfully extracted filename using template
                         break
                 except Exception as e:
-                    LOGGER.debug(f"Template {outtmpl_} failed: {str(e)}")
+                    pass
                     continue
 
             # If all templates failed, use video ID and timestamp with more info
@@ -490,10 +483,9 @@ class YoutubeDLHelper:
                 else:
                     realName = f"youtube_video_{video_id}_{int(time.time())}.{ext}"
 
-                LOGGER.info(f"Using fallback video name: {realName}")
+                # Using fallback video name
 
-            # Log the final name for debugging
-            LOGGER.info(f"Final filename after template processing: {realName}")
+            # Final filename processed
 
             ext = ospath.splitext(realName)[-1]
             self._listener.name = (
@@ -762,8 +754,7 @@ class YoutubeDLHelper:
             )
             self._ext = ".mp3"
 
-            # Log that we're downloading audio only
-            LOGGER.info("Downloading audio-only format (MP3)")
+            # Downloading audio-only format (MP3)
 
             # Add audio format to the filename for clarity
             if self._listener.name and not self._listener.name.endswith(self._ext):
