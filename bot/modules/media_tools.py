@@ -929,22 +929,14 @@ async def get_media_tools_settings(from_user, stype="main", page_no=0):
                 page_no = int(stype.split()[1])
                 # Update the global variable
                 merge_config_page = page_no
-                LOGGER.debug(
-                    f"Setting merge_config_page to {page_no} from stype parameter"
-                )
             except (ValueError, IndexError):
                 # Use the global variable
                 page_no = merge_config_page
-                LOGGER.debug(
-                    f"Invalid page in stype, using global merge_config_page: {page_no}"
-                )
+                # This else block is not needed since we're already setting page_no
+                pass
         else:
             # Use the global variable if no page is specified
             page_no = merge_config_page
-            LOGGER.debug(
-                f"No page specified, using global merge_config_page: {page_no}"
-            )
-
         # 5 rows per page, 2 columns = 10 items per page
         items_per_page = 10  # 5 rows * 2 columns
         total_pages = (len(merge_settings) + items_per_page - 1) // items_per_page
@@ -952,16 +944,9 @@ async def get_media_tools_settings(from_user, stype="main", page_no=0):
         # Ensure page_no is valid
         if page_no >= total_pages:
             page_no = 0
-            merge_config_page = 0  # Update global variable
-            LOGGER.debug(f"Page number {page_no} is too large, resetting to 0")
-        elif page_no < 0:
+            merge_config_page = 0  # Update global variableelif page_no < 0:
             page_no = total_pages - 1
-            merge_config_page = total_pages - 1  # Update global variable
-            LOGGER.debug(
-                f"Page number {page_no} is negative, setting to last page {total_pages - 1}"
-            )
-
-        # Get settings for current page
+            merge_config_page = total_pages - 1  # Update global variable# Get settings for current page
         current_page_settings = merge_settings[
             page_no * items_per_page : (page_no * items_per_page) + items_per_page
         ]
@@ -976,53 +961,23 @@ async def get_media_tools_settings(from_user, stype="main", page_no=0):
         buttons.data_button("Close", f"mediatools {user_id} close", "footer")
 
         # Add pagination buttons in a separate row below action buttons
-        if total_pages > 1:
-            LOGGER.debug(
-                f"Creating pagination buttons. Total pages: {total_pages}, Current page: {page_no}, Global merge_config_page: {merge_config_page}"
-            )
-
-            # Log the current state of the buttons
-            LOGGER.debug(
-                f"Button state before adding pagination: Regular: {len(buttons._button)}, Header: {len(buttons._header_button)}, Footer: {len(buttons._footer_button)}, Page: {len(buttons._page_button)}"
-            )
-
+        if total_pages > 1:# Log the current state of the buttons}, Header: {len(buttons._header_button)}, Footer: {len(buttons._footer_button)}, Page: {len(buttons._page_button)}"
             for i in range(total_pages):
                 # Make the current page button different
-                if i == page_no:
-                    LOGGER.debug(
-                        f"Adding current page button [{i + 1}] with callback: mediatools {user_id} merge_config {i}"
-                    )
-                    # Make sure the page number is passed as a separate parameter
+                if i == page_no:# Make sure the page number is passed as a separate parameter
                     buttons.data_button(
                         f"[{i + 1}]",
                         f"mediatools {user_id} merge_config {i}",
                         "page",
                     )
-                else:
-                    LOGGER.debug(
-                        f"Adding page button {i + 1} with callback: mediatools {user_id} merge_config {i}"
-                    )
-                    # Make sure the page number is passed as a separate parameter
+                else:# Make sure the page number is passed as a separate parameter
                     buttons.data_button(
                         str(i + 1), f"mediatools {user_id} merge_config {i}", "page"
                     )
 
-            # Log the state after adding pagination buttons
-            LOGGER.debug(
-                f"Button state after adding pagination: Regular: {len(buttons._button)}, Header: {len(buttons._header_button)}, Footer: {len(buttons._footer_button)}, Page: {len(buttons._page_button)}"
-            )
+            # Log the state after adding pagination buttons}, Header: {len(buttons._header_button)}, Footer: {len(buttons._footer_button)}, Page: {len(buttons._page_button)}"
 
-            # Add a debug log message
-            LOGGER.debug(
-                f"Added pagination buttons for merge_config. Total pages: {total_pages}, Current page: {page_no}"
-            )
-
-        # Build the menu with 2 columns for settings, 4 columns for action buttons, and 8 columns for pagination
-        LOGGER.debug(
-            "Building menu with parameters: b_cols=2, h_cols=8, f_cols=4, p_cols=8"
-        )
-        btns = buttons.build_menu(2, 8, 4, 8)
-        LOGGER.debug(f"Menu built with {len(btns.inline_keyboard)} rows of buttons")
+            # Add a debug log message# Build the menu with 2 columns for settings, 4 columns for action buttons, and 8 columns for paginationbtns = buttons.build_menu(2, 8, 4, 8)} rows of buttons")
 
         # Define category groups
         formats = [
@@ -2078,10 +2033,7 @@ async def get_media_tools_settings(from_user, stype="main", page_no=0):
 ┖ <b>Maintain Quality</b> → {maintain_quality_status}"""
 
     elif stype == "trim_config":
-        # Trim configuration menu
-        LOGGER.debug(f"Generating trim_config menu for user {user_id}")
-
-        # Add start time and end time settings at the top
+        # Trim configuration menu# Add start time and end time settings at the top
         buttons.data_button(
             "Start Time", f"mediatools {user_id} menu TRIM_START_TIME"
         )
@@ -2179,11 +2131,7 @@ async def get_media_tools_settings(from_user, stype="main", page_no=0):
 
         buttons.data_button("Back", f"mediatools {user_id} trim", "footer")
         buttons.data_button("Close", f"mediatools {user_id} close", "footer")
-        btns = buttons.build_menu(2)
-
-        LOGGER.debug("Building trim_config text section")
-
-        # Get start and end time settings
+        btns = buttons.build_menu(2)# Get start and end time settings
         start_time = user_dict.get("TRIM_START_TIME", None)
         if start_time is None and hasattr(Config, "TRIM_START_TIME"):
             start_time = Config.TRIM_START_TIME
@@ -5025,18 +4973,12 @@ async def update_media_tools_settings(query, stype="main"):
     # Extract page number if present in stype
     page_no = 0
     global merge_config_page
-
-    LOGGER.debug(
-        f"update_media_tools_settings called with stype: {stype}, current global merge_config_page: {merge_config_page}"
-    )
-
     # Add more detailed logging for trim and trim_config
     if stype == "trim":
-        LOGGER.debug("Processing trim menu in update_media_tools_settings")
+        pass
     elif stype == "trim_config":
-        LOGGER.debug("Processing trim_config menu in update_media_tools_settings")
-
-    if stype.startswith("merge_config "):
+        pass
+    elif stype.startswith("merge_config "):
         try:
             # Format: merge_config X
             page_no = int(stype.split(" ")[1])
@@ -5044,9 +4986,6 @@ async def update_media_tools_settings(query, stype="main"):
             old_page = merge_config_page
             merge_config_page = page_no
             stype = "merge_config"
-            LOGGER.debug(
-                f"Extracted page number {page_no} from stype, updated global merge_config_page from {old_page} to {merge_config_page}"
-            )
         except (ValueError, IndexError) as e:
             # Use the global variable
             page_no = merge_config_page
@@ -5056,19 +4995,9 @@ async def update_media_tools_settings(query, stype="main"):
     elif stype == "merge_config":
         # Use the global variable for merge_config
         page_no = merge_config_page
-        LOGGER.debug(
-            f"Using global merge_config_page: {page_no} for merge_config menu"
+        msg, button = await get_media_tools_settings(
+            query.from_user, stype, page_no=page_no
         )
-
-    LOGGER.debug(
-        f"Calling get_media_tools_settings with stype: {stype}, page_no: {page_no}"
-    )
-    msg, button = await get_media_tools_settings(
-        query.from_user, stype, page_no=page_no
-    )
-    LOGGER.debug(
-        f"Editing message with button menu containing {len(button.inline_keyboard)} rows"
-    )
     await edit_message(query.message, msg, button)
 
 
@@ -5173,9 +5102,6 @@ async def get_menu(option, message, user_id):
                 page_no = int(page_info) - 1
                 # Update the global variable
                 merge_config_page = page_no
-                LOGGER.debug(
-                    f"Setting back button to merge_config page {page_no}, updated global merge_config_page"
-                )
                 back_target = f"merge_config {page_no}"
             except (ValueError, IndexError) as e:
                 LOGGER.error(
@@ -5184,9 +5110,6 @@ async def get_menu(option, message, user_id):
                 back_target = f"merge_config {merge_config_page}"
         else:
             # Use the global variable
-            LOGGER.debug(
-                f"No page info in message text, using global merge_config_page: {merge_config_page}"
-            )
             back_target = f"merge_config {merge_config_page}"
     else:
         back_target = "back"
@@ -6029,11 +5952,7 @@ async def set_option(_, message, option, rfunc):
             page_no = int(page_info) - 1
             # Update the global merge_config_page variable
             global merge_config_page
-            merge_config_page = page_no
-            LOGGER.debug(
-                f"Extracted page number from message text: {page_no}, updated global merge_config_page"
-            )
-            # Create a new rfunc that will return to the correct page
+            merge_config_page = page_no# Create a new rfunc that will return to the correct page
             await update_media_tools_settings(message, f"merge_config {page_no}")
         except (ValueError, IndexError) as e:
             LOGGER.error(f"Failed to extract page number from message text: {e}")
@@ -6157,7 +6076,6 @@ async def edit_media_tools_settings(client, query):
         "extract_config",
     ]:
         await query.answer()
-        LOGGER.debug(f"Button clicked: {data[2]}")
         await update_media_tools_settings(query, data[2])
     elif data[2] in [
         "convert_video",
@@ -6182,11 +6100,6 @@ async def edit_media_tools_settings(client, query):
         await query.answer()
         # Declare global variable first
         global merge_config_page
-        LOGGER.debug(f"Received merge_config callback with data: {data}")
-        LOGGER.debug(
-            f"Current global merge_config_page before processing: {merge_config_page}"
-        )
-
         if len(data) > 3:
             # Page number is provided
             try:
@@ -6195,32 +6108,17 @@ async def edit_media_tools_settings(client, query):
                 # Update the global variable
                 old_page = merge_config_page
                 merge_config_page = page_no
-                LOGGER.debug(
-                    f"Pagination button clicked. Page: {page_no}, updated global merge_config_page from {old_page} to {merge_config_page}"
-                )
-                LOGGER.debug(
-                    f"Calling update_media_tools_settings with stype='merge_config {page_no}'"
-                )
                 await update_media_tools_settings(query, f"merge_config {page_no}")
             except ValueError as e:
                 LOGGER.error(
                     f"Invalid page number: {data[3]}, using global merge_config_page: {merge_config_page}. Error: {e}"
                 )
                 # If page number is not a valid integer, use the global variable
-                LOGGER.debug(
-                    f"Calling update_media_tools_settings with stype='merge_config {merge_config_page}'"
-                )
                 await update_media_tools_settings(
                     query, f"merge_config {merge_config_page}"
                 )
         else:
             # No page number provided, use the global variable
-            LOGGER.debug(
-                f"No page number provided, using global merge_config_page: {merge_config_page}"
-            )
-            LOGGER.debug(
-                f"Calling update_media_tools_settings with stype='merge_config {merge_config_page}'"
-            )
             await update_media_tools_settings(
                 query, f"merge_config {merge_config_page}"
             )

@@ -8,13 +8,11 @@ class CustomFilters:
     async def owner_filter(self, _, update):
         # Check if update is None
         if not update:
-            LOGGER.warning("Update is None in owner_filter")
             return False
 
         # Safely get user and handle None case
         user = update.from_user or update.sender_chat
         if not user:
-            LOGGER.warning("Both from_user and sender_chat are None in owner_filter")
             return False
 
         return user.id == Config.OWNER_ID
@@ -24,7 +22,6 @@ class CustomFilters:
     async def pm_or_authorized(self, _, update):
         # Check if update is None
         if not update:
-            LOGGER.warning("Update is None in pm_or_authorized filter")
             return False
 
         # Handle different types of updates
@@ -36,9 +33,6 @@ class CustomFilters:
             ):
                 chat = update.callback_query.message.chat
             else:
-                LOGGER.warning(
-                    "Callback query message is None in pm_or_authorized filter"
-                )
                 return False
         elif hasattr(update, "message") and update.message:
             # For message updates
@@ -47,9 +41,6 @@ class CustomFilters:
             # For other updates with chat attribute
             chat = update.chat
         else:
-            LOGGER.warning(
-                "Update missing required attributes in pm_or_authorized filter"
-            )
             return False
 
         # Allow access in private chats (bot PMs) without authorization
@@ -64,7 +55,6 @@ class CustomFilters:
     async def callback_pm_or_authorized(self, _, update):
         # Check if update is None
         if not update:
-            LOGGER.warning("Update is None in callback_pm_or_authorized filter")
             return False
 
         # For callback queries, we need to check the message's chat
@@ -77,7 +67,6 @@ class CustomFilters:
                 else None
             )
         else:
-            LOGGER.warning("Message is None in callback_pm_or_authorized filter")
             return False
 
         # Allow access in private chats (bot PMs) without authorization
@@ -87,7 +76,6 @@ class CustomFilters:
         # For non-private chats, check if user is authorized
         user = update.from_user
         if not user:
-            LOGGER.warning("from_user is None in callback_pm_or_authorized filter")
             return False
 
         uid = user.id
@@ -131,7 +119,6 @@ class CustomFilters:
     async def authorized_user(self, _, update):
         # Check if update is None
         if not update:
-            LOGGER.warning("Update is None in authorized_user filter")
             return False
 
         # Handle different types of updates
@@ -150,9 +137,6 @@ class CustomFilters:
                     else None
                 )
             else:
-                LOGGER.warning(
-                    "Callback query message is None in authorized_user filter"
-                )
                 return False
         elif hasattr(update, "message") and update.message:
             # For message updates
@@ -174,14 +158,10 @@ class CustomFilters:
                 else None
             )
         else:
-            LOGGER.warning(
-                "Update missing required attributes in authorized_user filter"
-            )
             return False
 
         # Safely get user and handle None case
         if not user:
-            LOGGER.warning("User is None in authorized_user filter")
             return False
 
         # Now we can safely access user.id and chat.id
@@ -225,15 +205,11 @@ class CustomFilters:
     async def sudo_user(self, _, update):
         # Check if update is None or doesn't have required attributes
         if not update:
-            LOGGER.warning("Update is None in sudo_user filter")
             return False
 
         # Safely get user and handle None case
         user = update.from_user or update.sender_chat
         if not user:
-            LOGGER.warning(
-                "Both from_user and sender_chat are None in sudo_user filter",
-            )
             return False
 
         uid = user.id

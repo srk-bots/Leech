@@ -330,9 +330,6 @@ def get_user_split_size(user_id, args, file_size, equal_splits=False):
         premium_status = "premium" if TgClient.IS_PREMIUM_USER else "non-premium"
         limit_in_gb = telegram_limit / (1024 * 1024 * 1024)
         safe_limit_in_gb = safe_telegram_limit / (1024 * 1024 * 1024)
-        LOGGER.warning(
-            f"Split size {split_size} exceeds Telegram's {limit_in_gb:.1f} GiB {premium_status} limit. Reducing to {safe_telegram_limit} bytes ({safe_limit_in_gb:.1f} GiB) with safety margin."
-        )
         split_size = safe_telegram_limit
 
     # Ensure split size doesn't exceed maximum allowed
@@ -590,10 +587,4 @@ def is_flag_enabled(flag_name):
 
     # Check if the tool is enabled
     is_enabled = is_media_tool_enabled(tool_name)
-
-    # For debugging
-    from bot import LOGGER
-
-    LOGGER.debug(f"Flag {flag_name} maps to tool {tool_name}, enabled: {is_enabled}")
-
     return is_enabled

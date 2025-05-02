@@ -115,9 +115,7 @@ async def generate_caption(filename, directory, caption_template):
                 "`",
                 "\\",
             ]
-        ) and os.path.exists(file_path):
-            LOGGER.debug(f"File path contains special characters: {file_path}")
-            # Create a temporary file with a safe name
+        ) and os.path.exists(file_path):# Create a temporary file with a safe name
             import tempfile
             from time import time
 
@@ -142,16 +140,9 @@ async def generate_caption(filename, directory, caption_template):
                 try:
                     # If on same filesystem, try a hard link for better performance
                     os.link(file_path, safe_path)
-                    LOGGER.debug(
-                        f"Created temporary link for file with special characters: {safe_path}"
-                    )
                     file_path_to_use = safe_path
                     temp_file_created = True
-                except Exception as e:
-                    LOGGER.debug(
-                        f"Failed to create link for file with special characters: {e}"
-                    )
-                    # Fall back to copying a portion of the file
+                except Exception as e:# Fall back to copying a portion of the file
                     try:
                         # Only copy a small portion of the file for MediaInfo analysis
                         # This is much faster than copying the entire file
@@ -161,9 +152,6 @@ async def generate_caption(filename, directory, caption_template):
                         ):
                             # Copy first 10MB which should be enough for MediaInfo
                             dst.write(src.read(10 * 1024 * 1024))
-                        LOGGER.debug(
-                            f"Created temporary copy for file with special characters: {safe_path}"
-                        )
                         file_path_to_use = safe_path
                         temp_file_created = True
                     except Exception as e:
@@ -178,9 +166,6 @@ async def generate_caption(filename, directory, caption_template):
                     with open(file_path, "rb") as src, open(safe_path, "wb") as dst:
                         # Copy first 10MB which should be enough for MediaInfo
                         dst.write(src.read(10 * 1024 * 1024))
-                    LOGGER.debug(
-                        f"Created temporary copy for file with special characters: {safe_path}"
-                    )
                     file_path_to_use = safe_path
                     temp_file_created = True
                 except Exception as e:
@@ -430,20 +415,16 @@ async def generate_caption(filename, directory, caption_template):
             if temp_file_created and os.path.exists(file_path_to_use):
                 try:
                     os.remove(file_path_to_use)
-                    LOGGER.debug(f"Removed temporary file: {file_path_to_use}")
                 except Exception as e:
-                    LOGGER.debug(f"Failed to remove temporary file: {e}")
-
+                    pass
             # Clean up temporary directory if created
             if temp_dir and os.path.exists(temp_dir):
                 try:
                     import shutil
 
                     shutil.rmtree(temp_dir)
-                    LOGGER.debug(f"Removed temporary directory: {temp_dir}")
                 except Exception as e:
-                    LOGGER.debug(f"Failed to remove temporary directory: {e}")
-
+                    pass
             # Force garbage collection after processing media info
             # This can create large objects in memory
             if smart_garbage_collection:

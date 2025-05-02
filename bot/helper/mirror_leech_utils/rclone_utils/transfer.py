@@ -304,11 +304,7 @@ class RcloneTransferHelper:
 
             # Generate MediaInfo if enabled and it's a file (not a folder)
             if user_mediainfo_enabled:
-                LOGGER.debug(
-                    "Generating MediaInfo for rclone upload before upload..."
-                )
                 from bot.modules.mediainfo import gen_mediainfo
-
                 try:
                     # Generate MediaInfo for the file
                     self._listener.mediainfo_link = await gen_mediainfo(

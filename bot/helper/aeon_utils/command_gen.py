@@ -115,7 +115,6 @@ async def get_watermark_cmd(
     # Determine the media type
     media_type = await get_media_type_for_watermark(file)
     if not media_type:
-        LOGGER.warning(f"Unsupported file type for watermarking: {file}")
         return None, None
 
     # Check if file dimensions are divisible by 2 for video files
@@ -150,21 +149,12 @@ async def get_watermark_cmd(
 
                     # Check if dimensions are divisible by 2
                     if width % 2 != 0 or height % 2 != 0:
-                        LOGGER.debug(
-                            f"Video dimensions not divisible by 2: {width}x{height}, will apply padding"
-                        )
+                        needs_padding = True
                     else:
-                        LOGGER.debug(
-                            f"Video dimensions are divisible by 2: {width}x{height}"
-                        )
                         needs_padding = False
 
         except Exception as e:
-            LOGGER.warning(f"Error checking video dimensions: {e}")
-
-        LOGGER.debug(
-            f"Padding decision for {os.path.basename(file)}: needs_padding={needs_padding}, dimensions={width}x{height}"
-        )
+            pass
 
     # Determine output file extension based on input file
     file_ext = os.path.splitext(file)[1].lower()
@@ -282,9 +272,6 @@ async def get_watermark_cmd(
         # Add fast mode if needed
         if use_fast_mode:
             cmd.extend(["-preset", "ultrafast"])
-            LOGGER.debug(
-                f"Using fast mode for large file: {file_size / (1024 * 1024):.2f} MB"
-            )
 
     elif media_type == "image":
         # For static images, use the drawtext filter with appropriate output format
@@ -521,8 +508,6 @@ async def get_watermark_cmd(
                     temp_file,
                 ]
 
-            LOGGER.debug(f"Creating audio watermark for {os.path.basename(file)}")
-
         except Exception as e:
             LOGGER.error(f"Error creating audio watermark command: {e}")
             return None, None
@@ -530,9 +515,6 @@ async def get_watermark_cmd(
     elif media_type == "video_with_subtitle":
         # For videos with subtitle streams, we should handle them as regular videos
         # but skip the subtitle watermarking
-        LOGGER.debug(
-            f"Detected video with subtitle streams: {os.path.basename(file)}"
-        )
 
         # Use the same code as for regular videos, but make sure we don't modify subtitle streams
         # First, select only the main video stream (usually the first one)
@@ -562,9 +544,6 @@ async def get_watermark_cmd(
         # Add fast mode if needed
         if use_fast_mode:
             cmd.extend(["-preset", "ultrafast"])
-            LOGGER.debug(
-                f"Using fast mode for large file: {file_size / (1024 * 1024):.2f} MB"
-            )
 
         return cmd, temp_file
 
@@ -575,9 +554,6 @@ async def get_watermark_cmd(
         # Skip subtitle watermarking if it's explicitly disabled
         if not subtitle_watermark_enabled:
             # For subtitle files with watermarking disabled, just return the file as is
-            LOGGER.debug(
-                f"Subtitle watermarking is disabled, skipping: {os.path.basename(file)}"
-            )
             return None, None
 
         try:
@@ -704,10 +680,6 @@ async def get_watermark_cmd(
                     )
                     f.write(watermarked_content)
 
-                    LOGGER.debug(
-                        f"Added watermark to subtitle file: {os.path.basename(file)}"
-                    )
-
                     # For subtitle files, we don't use FFmpeg, so return None for the command
                     # but keep the temp_file for the result
                     return None, temp_file
@@ -793,10 +765,6 @@ async def get_watermark_cmd(
                                 events_match.group(1), modified_events
                             )
                             f.write(modified_content)
-
-                            LOGGER.debug(
-                                f"Added watermark to ASS/SSA file: {os.path.basename(file)}"
-                            )
                             return None, temp_file
 
                     # If we couldn't parse the ASS file properly, just add a comment
@@ -805,9 +773,6 @@ async def get_watermark_cmd(
                         subtitle_watermark_text if subtitle_watermark_text else key
                     )
                     f.write(f"; Watermarked with: {watermark_text}\n{content}")
-                    LOGGER.debug(
-                        f"Added watermark comment to ASS/SSA file: {os.path.basename(file)}"
-                    )
                     return None, temp_file
 
                 # For other subtitle formats, try to add watermark based on common patterns
@@ -854,10 +819,6 @@ async def get_watermark_cmd(
                         pattern, add_vtt_watermark, content, flags=re.DOTALL
                     )
                     f.write(watermarked_content)
-
-                    LOGGER.debug(
-                        f"Added watermark to WebVTT file: {os.path.basename(file)}"
-                    )
                     return None, temp_file
 
                 # For other formats, just add a comment if possible
@@ -866,10 +827,6 @@ async def get_watermark_cmd(
                     subtitle_watermark_text if subtitle_watermark_text else key
                 )
                 f.write(f"# Watermarked with: {watermark_text}\n{content}")
-
-                LOGGER.debug(
-                    f"Added watermark comment to subtitle file: {os.path.basename(file)}"
-                )
                 return None, temp_file
 
         except Exception as e:
@@ -885,7 +842,6 @@ async def get_watermark_cmd(
         cmd.extend(["-threads", f"{thread_count}", temp_file])
 
     # Log the generated command for debugging only
-    LOGGER.debug(f"Generated watermark command for {media_type}: {' '.join(cmd)}")
 
     return cmd, temp_file
 
@@ -941,11 +897,9 @@ async def get_metadata_cmd(
     # For subtitle files, use .srt for maximum compatibility
     if file_ext in [".hevc", ".mpeg"]:
         temp_file = f"{file_path}.temp.mp4"
-        LOGGER.debug(f"Using .mp4 container for {file_ext} file: {file_path}")
     elif file_ext in [".jpg", ".jpeg", ".png", ".gif", ".tiff", ".tif", ".webp"]:
         # For image files, keep the same extension for better compatibility
         temp_file = f"{file_path}.temp{file_ext}"
-        LOGGER.debug(f"Using {file_ext} container for image file: {file_path}")
     elif file_ext in [
         ".srt",
         ".ass",
@@ -958,7 +912,6 @@ async def get_metadata_cmd(
     ]:
         # For subtitle files, use .srt for maximum compatibility
         temp_file = f"{file_path}.temp.srt"
-        LOGGER.debug(f"Using .srt container for subtitle file: {file_path}")
     else:
         temp_file = f"{file_path}.temp.mkv"
 
@@ -1007,12 +960,7 @@ async def get_metadata_cmd(
             ".ttml",
             ".dfxp",
             ".sub",
-        ]:
-            LOGGER.debug(
-                f"Converting subtitle format {file_ext} to SRT for better metadata support"
-            )
-
-            # First, try to convert using FFmpeg
+        ]:# First, try to convert using FFmpeg
             cmd = [
                 "xtra",
                 "-hide_banner",
@@ -1310,9 +1258,6 @@ async def get_metadata_cmd(
 
                 return cmd, temp_file
             # exiftool not available, fall back to FFmpeg
-            LOGGER.warning(
-                "exiftool not found, falling back to FFmpeg for image metadata"
-            )
             cmd = [
                 "xtra",
                 "-hide_banner",
@@ -1396,9 +1341,7 @@ async def get_metadata_cmd(
             if "tags" in stream and "language" in stream["tags"]
         }
     except Exception as e:
-        LOGGER.warning(
-            f"Error extracting language tags: {e}. Continuing without language metadata."
-        )
+        pass
 
     # Use default thread count
     thread_count = max(1, cpu_no // 2)
@@ -1581,9 +1524,7 @@ async def get_metadata_cmd(
 
             # Some subtitle formats don't support metadata well
             if codec_name in ["webvtt", "unknown"]:
-                LOGGER.warning(
-                    f"Limited metadata support for subtitle format: {codec_name} in stream {stream_index}"
-                )
+                pass
 
             # Add subtitle metadata
             cmd.extend(
@@ -1673,8 +1614,7 @@ async def get_metadata_cmd(
     # Add output file
     cmd.append(temp_file)
 
-    # Log the command for debugging
-    LOGGER.debug(f"Metadata command: {' '.join(cmd)}")
+    # Log the command for debugging}")
 
     return cmd, temp_file
 
@@ -1813,13 +1753,9 @@ async def get_merge_concat_demuxer_cmd(files, output_format="mkv", media_type=No
 
             # Check if all codecs are the same
             if len(set(codecs)) > 1:
-                LOGGER.warning(
-                    f"Files have different codecs: {codecs}. Concat demuxer may not work properly."
-                )
+                pass
         except Exception as e:
-            LOGGER.warning(
-                f"Error checking codecs: {e}. Proceeding with concat demuxer anyway."
-            )
+            pass
 
     # Create a temporary file list for concat demuxer
     concat_list_path = "concat_list.txt"
@@ -2169,9 +2105,6 @@ async def get_merge_filter_complex_cmd(files, media_type, output_format=None):
             # Log the media information for debugging
             LOGGER.info(f"Media info for {media_type} files: {media_info}")
         except Exception as e:
-            LOGGER.warning(
-                f"Error getting media info: {e}. Proceeding with basic filter_complex."
-            )
             media_info = []
 
     # Determine output path based on first file and media type
@@ -2352,9 +2285,9 @@ async def get_merge_filter_complex_cmd(files, media_type, output_format=None):
                                 f"Created audio concat filter for track position {track_pos} with {len(track_inputs)} inputs"
                             )
                 else:
-                    LOGGER.warning("No valid audio tracks found for filter complex")
+                    pass
             else:
-                LOGGER.warning("No valid audio streams found for filter complex")
+                pass
 
         # Set up mapping based on available streams
         map_args = []
@@ -3010,9 +2943,7 @@ async def get_merge_mixed_cmd(
                                                 data["format"]["duration"]
                                             )
                                 except Exception as e:
-                                    LOGGER.warning(
-                                        f"Error getting video duration: {e}"
-                                    )
+                                    pass
 
                     # If we have video duration, create a temporary subtitle file with correct duration
                     if video_duration:
@@ -3103,9 +3034,7 @@ async def get_merge_mixed_cmd(
                                         f"Created adjusted subtitle file with scale factor {scale_factor}"
                                     )
                         except Exception as e:
-                            LOGGER.warning(
-                                f"Error adjusting subtitle timestamps: {e}"
-                            )
+                            pass
 
                         # Add input with the adjusted subtitle file
                         input_args.extend(["-i", sub_file])
@@ -3270,7 +3199,7 @@ async def get_merge_mixed_cmd(
                             if "format" in data and "duration" in data["format"]:
                                 video_duration = float(data["format"]["duration"])
                     except Exception as e:
-                        LOGGER.warning(f"Error getting video duration: {e}")
+                        pass
 
                 # Create a temporary subtitle file with adjusted timestamps
                 try:
@@ -3338,7 +3267,7 @@ async def get_merge_mixed_cmd(
                             sub_file = temp_sub_path
 
                 except Exception as e:
-                    LOGGER.warning(f"Error adjusting subtitle timestamps: {e}")
+                    pass
 
                 # Add input with the adjusted subtitle file
                 input_args.extend(["-i", sub_file])
@@ -3749,7 +3678,6 @@ async def get_convert_cmd(
     if not media_type:
         media_type = await get_media_type(file)
         if not media_type:
-            LOGGER.warning(f"Unsupported file type for conversion: {file}")
             return None, None
 
     # Determine output file extension based on output format
@@ -3851,7 +3779,6 @@ async def get_convert_cmd(
                 ]
             )
         else:
-            LOGGER.warning(f"Unsupported audio output format: {output_format}")
             return None, None
 
     elif media_type == "subtitle":
@@ -3871,26 +3798,22 @@ async def get_convert_cmd(
                 temp_file,
             ]
         else:
-            LOGGER.warning(f"Unsupported subtitle output format: {output_format}")
             return None, None
 
     elif media_type == "document":
         # For document files (PDF, DOCX, etc.)
         # Document conversion is complex and might require specialized tools
         # For now, we'll just return None for unsupported formats
-        LOGGER.warning(f"Document conversion not supported yet: {file}")
         return None, None
 
     elif media_type == "archive":
         # For archive files (ZIP, RAR, etc.)
         # Archive conversion is complex and might require specialized tools
         # For now, we'll just return None for unsupported formats
-        LOGGER.warning(f"Archive conversion not supported yet: {file}")
         return None, None
 
     else:
         # For other media types
-        LOGGER.warning(f"Unsupported media type for conversion: {media_type}")
         return None, None
 
     return cmd, temp_file
@@ -3995,7 +3918,6 @@ async def get_trim_cmd(
             media_type = "archive"
 
     if not media_type:
-        LOGGER.warning(f"Unsupported file type for trimming: {file}")
         return None, None
 
     # Parse trim parameters
@@ -4325,16 +4247,10 @@ async def get_trim_cmd(
         # For SVG files
         elif file_ext == ".svg":
             # SVG files need special handling - convert to PNG first
-            LOGGER.warning(
-                f"SVG files are not directly supported for trimming: {file}"
-            )
             return None, None
         # For PSD files
         elif file_ext == ".psd":
             # PSD files need special handling
-            LOGGER.warning(
-                f"PSD files are not directly supported for trimming: {file}"
-            )
             return None, None
         # For GIF files
         elif file_ext == ".gif":
@@ -4552,12 +4468,10 @@ async def get_trim_cmd(
             ]
             return cmd, temp_file
         # For other document types, we can't use FFmpeg directly
-        LOGGER.warning(f"Document trimming is not supported for this format: {file}")
         return None, None
 
     elif media_type == "archive":
         # For archive files, we can't use FFmpeg
-        LOGGER.warning(f"Archive trimming is not supported: {file}")
         return None, None
 
     # Add output file
@@ -4660,7 +4574,6 @@ async def get_compression_cmd(
     if not media_type:
         media_type = await get_media_type(file_path)
         if not media_type:
-            LOGGER.warning(f"Unsupported file type for compression: {file_path}")
             return None, None
 
     # Get file extension
@@ -4863,9 +4776,6 @@ async def get_compression_cmd(
             ]
             return cmd, temp_file
         # For other document types, we can't use FFmpeg directly
-        LOGGER.warning(
-            f"Document compression not supported for this format: {file_ext}"
-        )
         return None, None
 
     elif media_type == "subtitle":
@@ -4899,7 +4809,6 @@ async def get_compression_cmd(
 
     else:
         # For other media types
-        LOGGER.warning(f"Unsupported media type for compression: {media_type}")
         return None, None
 
     # Add threads parameter
@@ -4963,7 +4872,6 @@ async def get_extract_cmd(
     if not (
         extract_video or extract_audio or extract_subtitle or extract_attachment
     ):
-        LOGGER.warning("No extraction option is enabled")
         return [], temp_file
 
     # Get track information
@@ -5017,9 +4925,6 @@ async def get_extract_cmd(
                         file_path,
                         f"EXTRACT_ATTACHMENT:{stream_index}:{output_path}",
                     ], temp_file
-                LOGGER.warning(
-                    f"Attachment index {attachment_index} out of range (0-{len(attachment_streams) - 1})"
-                )
             except ValueError:
                 LOGGER.error(f"Invalid attachment index: {attachment_index}")
         else:
@@ -5077,9 +4982,7 @@ async def get_extract_cmd(
                     cmd.append(output_file)
                     commands.append(" ".join(cmd))
                 else:
-                    LOGGER.warning(
-                        f"Video index {video_index} out of range (0-{len(video_streams) - 1})"
-                    )
+                    pass
             except ValueError:
                 LOGGER.error(f"Invalid video index: {video_index}")
         else:
@@ -5164,9 +5067,7 @@ async def get_extract_cmd(
                     cmd.append(output_file)
                     commands.append(" ".join(cmd))
                 else:
-                    LOGGER.warning(
-                        f"Audio index {audio_index} out of range (0-{len(audio_streams) - 1})"
-                    )
+                    pass
             except ValueError:
                 LOGGER.error(f"Invalid audio index: {audio_index}")
         else:
@@ -5240,9 +5141,7 @@ async def get_extract_cmd(
                     cmd.append(output_file)
                     commands.append(" ".join(cmd))
                 else:
-                    LOGGER.warning(
-                        f"Subtitle index {subtitle_index} out of range (0-{len(subtitle_streams) - 1})"
-                    )
+                    pass
             except ValueError:
                 LOGGER.error(f"Invalid subtitle index: {subtitle_index}")
         else:

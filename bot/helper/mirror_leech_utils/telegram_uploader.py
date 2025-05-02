@@ -135,11 +135,7 @@ class TelegramUploader:
                     text=msg,
                     disable_web_page_preview=True,
                     disable_notification=True,
-                )
-                LOGGER.debug(
-                    f"Sent command message to owner's dump: {Config.LEECH_DUMP_CHAT}"
-                )
-                # Store this message for potential deletion later
+                )# Store this message for potential deletion later
                 self.log_msg = owner_dump_msg
             except Exception as e:
                 LOGGER.error(f"Failed to send command message to owner's dump: {e}")
@@ -311,9 +307,6 @@ class TelegramUploader:
             # Handle extremely long filenames (>240 chars) - Telegram has a limit around 255 chars
             # Only truncate if absolutely necessary
             if len(final_filename) > 240:
-                LOGGER.warning(
-                    f"Filename is extremely long ({len(final_filename)} chars): {final_filename}"
-                )
                 if is_archive(final_filename):
                     name = get_base_name(final_filename)
                     ext = final_filename.split(name, 1)[1]
@@ -333,9 +326,6 @@ class TelegramUploader:
                 remain = 240 - extn
                 name = name[:remain]
                 new_path = ospath.join(dirpath, f"{name}{ext}")
-                LOGGER.warning(
-                    f"Truncating extremely long filename: {self._up_path} -> {new_path}"
-                )
                 await rename(self._up_path, new_path)
                 self._up_path = new_path
                 # Update display name for caption
@@ -410,9 +400,6 @@ class TelegramUploader:
                         caption=msg.caption,
                     )
                 else:
-                    LOGGER.warning(
-                        "Skipping message in media group: no valid media found"
-                    )
                     continue
 
                 rlist.append(input_media)
@@ -788,11 +775,8 @@ class TelegramUploader:
                                 # Skip deletion of list items as they'll be handled by the media group
                                 pass
                         except Exception as e:
-                            LOGGER.debug(
-                                f"Error cleaning up message during media group send: {e}"
-                            )
-
-                    # Update message dictionary
+                            LOGGER.error(f"Error handling media group item: {e}")
+                        # Update message dictionary
                     if self._listener.is_super_chat or self._listener.up_dest:
                         # Get the actual filename without part numbers
                         import os
@@ -830,9 +814,9 @@ class TelegramUploader:
                             # We would need to get the message object first, but we'll skip this
                             # to avoid potential errors
                         except Exception as e:
-                            LOGGER.debug(f"Error cleaning up message: {e}")
-        except Exception as e:
-            LOGGER.error(f"Error in _send_media_group: {e}")
+                            LOGGER.error(f"Error deleting message: {e}")
+                except Exception as e:
+                    LOGGER.error(f"Error in _send_media_group: {e}")
         finally:
             # Clean up media dictionary
             try:
@@ -972,12 +956,7 @@ class TelegramUploader:
                                 f"Processing remaining media group with {len(msgs_copy)} messages for {subkey}"
                             )
                             # Log the subkey to help with debugging
-                            if self._lfilename:
-                                LOGGER.debug(
-                                    f"Using leech filename template for media group: {subkey}"
-                                )
-
-                            await self._send_media_group(subkey, key, msgs_copy)
+                            if self._lfilename:await self._send_media_group(subkey, key, msgs_copy)
                         except Exception as e:
                             LOGGER.info(
                                 f"While sending media group at the end of task. Error: {e}",
@@ -1034,9 +1013,7 @@ class TelegramUploader:
 
         # Generate MediaInfo if enabled
         if user_mediainfo_enabled:
-            LOGGER.debug("Generating MediaInfo immediately before upload...")
             from bot.modules.mediainfo import gen_mediainfo
-
             try:
                 # Generate MediaInfo for the file
                 self._listener.mediainfo_link = await gen_mediainfo(
@@ -1214,7 +1191,6 @@ class TelegramUploader:
             ):
                 await remove(thumb)
         except (FloodWait, FloodPremiumWait) as f:
-            LOGGER.warning(str(f))
             await sleep(f.value * 1.3)
             if (
                 self._thumb is None
@@ -1335,50 +1311,43 @@ class TelegramUploader:
 
         # Log the destinations for debugging
         if destinations:
-            LOGGER.debug(
-                f"Copying media group to additional destinations: {destinations}"
-            )
+            # Copy the media group to each destination
+            for dest in destinations:
+                try:
+                    # Get the media IDs from the original messages
+                    media_ids = []
+                    for msg in msgs_list:
+                        if hasattr(msg, "video") and msg.video:
+                            media_ids.append(InputMediaVideo(media=msg.video.file_id))
+                        elif hasattr(msg, "document") and msg.document:
+                            media_ids.append(
+                                InputMediaDocument(media=msg.document.file_id)
+                            )
+                        elif hasattr(msg, "photo") and msg.photo:
+                            media_ids.append(InputMediaPhoto(media=msg.photo.file_id))
 
-        # Copy the media group to each destination
-        for dest in destinations:
-            try:
-                # Get the media IDs from the original messages
-                media_ids = []
-                for msg in msgs_list:
-                    if hasattr(msg, "video") and msg.video:
-                        media_ids.append(InputMediaVideo(media=msg.video.file_id))
-                    elif hasattr(msg, "document") and msg.document:
-                        media_ids.append(
-                            InputMediaDocument(media=msg.document.file_id)
+                    # Add caption to the first media item only
+                    if media_ids and msgs_list[0].caption:
+                        media_ids[0].caption = msgs_list[0].caption
+
+                    # Send the media group to the destination
+                    if self._user_session:
+                        await TgClient.user.send_media_group(
+                            chat_id=dest,
+                            media=media_ids,
+                            disable_notification=True,
                         )
-                    elif hasattr(msg, "photo") and msg.photo:
-                        media_ids.append(InputMediaPhoto(media=msg.photo.file_id))
-
-                # Add caption to the first media item only
-                if media_ids and msgs_list[0].caption:
-                    media_ids[0].caption = msgs_list[0].caption
-
-                # Send the media group to the destination
-                if self._user_session:
-                    await TgClient.user.send_media_group(
-                        chat_id=dest,
-                        media=media_ids,
-                        disable_notification=True,
+                    else:
+                        await self._listener.client.send_media_group(
+                            chat_id=dest,
+                            media=media_ids,
+                            disable_notification=True,
+                        )
+                except Exception as e:
+                    LOGGER.error(
+                        f"Failed to copy media group to destination {dest}: {e}"
                     )
-                else:
-                    await self._listener.client.send_media_group(
-                        chat_id=dest,
-                        media=media_ids,
-                        disable_notification=True,
-                    )
-                LOGGER.debug(
-                    f"Successfully copied media group to destination: {dest}"
-                )
-            except Exception as e:
-                LOGGER.error(
-                    f"Failed to copy media group to destination {dest}: {e}"
-                )
-                # Continue with other destinations even if one fails
+                    # Continue with other destinations even if one fails
 
     async def _copy_message(self):
         await sleep(1)
@@ -1480,14 +1449,10 @@ class TelegramUploader:
 
         # Log the destinations for debugging
         if destinations:
-            LOGGER.debug(
-                f"Copying message to additional destinations: {destinations}"
-            )
-
-        # Copy to each destination
-        for dest in destinations:
-            with contextlib.suppress(Exception):
-                await _copy(dest)
+            # Copy to each destination
+            for dest in destinations:
+                with contextlib.suppress(Exception):
+                    await _copy(dest)
 
     @property
     def speed(self):

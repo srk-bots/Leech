@@ -507,11 +507,7 @@ async def apply_font_style(text, style):
         return text
 
     # Handle the literal string "style" as a special case
-    if style.lower() == "style":
-        LOGGER.debug(
-            "'style' is a reserved word, not a valid font style. Using code formatting instead."
-        )
-        return f"<code>{text}</code>"
+    if style.lower() == "style":return f"<code>{text}</code>"
 
     style_lower = style.lower()
 
@@ -553,9 +549,6 @@ async def apply_font_style(text, style):
         LOGGER.error(f"Error checking Google Font {style}: {e}")
 
     # If all else fails, return the original text with a code tag
-    LOGGER.warning(
-        f"Unknown font style: {style}. Using original text with code formatting."
-    )
     return f"<code>{text}</code>"
 
 
@@ -651,11 +644,7 @@ async def is_google_font(font_name):
         bool: True if the font is a valid Google Font, False otherwise
     """
     # Check if it's just a numeric weight (like "400")
-    if font_name.isdigit():
-        LOGGER.debug(
-            f"Font name '{font_name}' is just a numeric weight, not a valid Google Font"
-        )
-        return False
+    if font_name.isdigit():return False
 
     # Extract just the font name if weight is included
     if ":" in font_name:
@@ -670,9 +659,7 @@ async def is_google_font(font_name):
         return False
 
     # If it's the literal string "style", it's not a valid font
-    if font_name.lower() == "style":
-        LOGGER.debug("Font name 'style' is a reserved word, not a valid Google Font")
-        return False
+    if font_name.lower() == "style":return False
 
     # Try to download the font to check if it exists
     font_path = await download_google_font(font_name)
@@ -700,9 +687,6 @@ async def apply_google_font_style(text, font_name):
     # Check if the font exists
     font_exists = await is_google_font(font_name)
     if not font_exists:
-        LOGGER.warning(
-            f"Google Font '{font_name}' not found. Using default styling."
-        )
         return f"<code>{text}</code>"
 
     # Apply the font using HTML (this is just for visual indication in the caption)

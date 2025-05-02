@@ -384,11 +384,6 @@ class DbManager:
         """Remove a message from scheduled deletions"""
         if self.db is None:
             return
-
-        LOGGER.debug(
-            f"Removing message {message_id} in chat {chat_id} from scheduled deletions",
-        )
-
         await self.db.scheduled_deletions.delete_one(
             {"chat_id": chat_id, "message_id": message_id},
         )

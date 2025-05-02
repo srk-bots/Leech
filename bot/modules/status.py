@@ -94,8 +94,8 @@ async def status_pages(_, query):
     try:
         await query.answer()
     except Exception as e:
-        LOGGER.warning(f"Failed to answer callback query: {e!s}")
         # Continue processing even if answering the query fails
+        pass
 
     if data[2] == "ref":
         await update_status_message(key, force=True)

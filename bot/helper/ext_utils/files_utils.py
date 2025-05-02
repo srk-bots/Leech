@@ -291,7 +291,7 @@ async def join_files(opath):
                 results.append(final_name)
 
     if not exists:
-        LOGGER.warning("No files to join!")
+        pass
     elif results:
         LOGGER.info("Join Completed!")
         for res in results:
@@ -338,10 +338,7 @@ async def split_file(f_path, split_size, listener):
         if split_size > (telegram_limit - safety_margin):
             old_split_size = split_size
             split_size = telegram_limit - safety_margin
-            LOGGER.warning(
-                f"Reducing split size from {old_split_size / (1024 * 1024 * 1024):.2f} GiB to "
-                f"{split_size / (1024 * 1024 * 1024):.2f} GiB for extra safety"
-            )
+            LOGGER.info(f"{split_size / (1024 * 1024 * 1024):.2f} GiB for extra safety")
     except Exception as e:
         LOGGER.error(f"Error calculating file size: {e}")
         # Continue with the split operation anyway

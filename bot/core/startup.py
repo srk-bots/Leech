@@ -103,9 +103,7 @@ async def update_nzb_options():
                 nzb_options.update(no)
                 LOGGER.info("Successfully updated NZB options")
             else:
-                LOGGER.warning(
-                    "Invalid response format from SABnzbd, skipping NZB options update",
-                )
+                pass
         except Exception as e:
             LOGGER.warning(
                 f"Failed to get SABnzbd config: {e}, skipping NZB options update",
@@ -316,9 +314,7 @@ async def save_settings():
                             )
                             LOGGER.info("SABnzbd configuration saved to database")
                         else:
-                            LOGGER.warning(
-                                "SABnzbd configuration file is empty, skipping save",
-                            )
+                            pass
                     except Exception as e:
                         LOGGER.warning(
                             f"Error reading SABnzbd configuration file: {e}",

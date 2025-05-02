@@ -64,9 +64,6 @@ class TgClient:
         elif Config.USER_SESSION_STRING and not isinstance(
             Config.USER_SESSION_STRING, str
         ):
-            LOGGER.warning(
-                f"USER_SESSION_STRING is not a string. Type: {type(Config.USER_SESSION_STRING).__name__}"
-            )
             cls.IS_PREMIUM_USER = False
             cls.user = None
 

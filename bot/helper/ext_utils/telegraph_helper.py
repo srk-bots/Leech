@@ -33,14 +33,10 @@ class TelegraphHelper:
                 html_content=content,
             )
         except RetryAfterError as st:
-            LOGGER.warning(
-                f"Telegraph Flood control exceeded. I will sleep for {st.retry_after} seconds.",
-            )
             await sleep(st.retry_after)
             return await self.create_page(title, content)
         except TelegraphException as e:
             if str(e) == "CONTENT_TOO_BIG":
-                LOGGER.warning("Content too big for Telegraph, splitting content...")
                 # Split the content in half and try again
                 if isinstance(content, str):
                     # If it's a string, split it by paragraphs or lines
@@ -71,9 +67,6 @@ class TelegraphHelper:
                 html_content=content,
             )
         except RetryAfterError as st:
-            LOGGER.warning(
-                f"Telegraph Flood control exceeded. I will sleep for {st.retry_after} seconds.",
-            )
             await sleep(st.retry_after)
             return await self.edit_page(path, title, content)
 

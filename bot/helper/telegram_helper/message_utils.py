@@ -59,9 +59,7 @@ async def send_message(
     client = bot_client or TgClient.bot
 
     # Handle None message object
-    if message is None:
-        LOGGER.debug("Received None message object in send_message")
-        return "Cannot send message: message object is None"
+    if message is None:return "Cannot send message: message object is None"
 
     try:
         # Handle case where message is a chat_id (int or string)
@@ -81,7 +79,6 @@ async def send_message(
 
         # Check if message has required attributes
         if not hasattr(message, "chat") or not hasattr(message.chat, "id"):
-            LOGGER.debug(f"Invalid message object type: {type(message)}")
             # Try to send to chat directly if message has an id attribute
             if hasattr(message, "id"):
                 return await client.send_message(
@@ -115,7 +112,6 @@ async def send_message(
         )
 
     except FloodWait as f:
-        LOGGER.warning(str(f))
         if not block:
             return message
         await sleep(f.value * 1.2)
@@ -157,11 +153,9 @@ async def edit_message(
         # Check message length but don't truncate if it contains expandable blockquotes
         max_length = 4096  # Telegram's message length limit
         if len(text) > max_length and "<blockquote expandable=" not in text:
-            LOGGER.warning(
-                f"Message too long ({len(text)} chars), consider using expandable blockquotes"
-            )
             # Don't truncate automatically - let Telegram API handle the error
             # This will encourage proper use of expandable blockquotes
+            pass
 
         if message.media:
             if photo:
@@ -180,7 +174,6 @@ async def edit_message(
             parse_mode=parse_mode,
         )
     except FloodWait as f:
-        LOGGER.warning(str(f))
         if not block:
             return message
         await sleep(f.value * 1.2)
@@ -206,7 +199,7 @@ async def edit_message(
             "MESSAGE_ID_INVALID" in error_str
             or "message to edit not found" in error_str.lower()
         ):
-            LOGGER.debug(f"Cannot edit message: {error_str}")
+            pass
         else:
             LOGGER.error(error_str)
         return error_str
@@ -223,7 +216,6 @@ async def send_file(message, file, caption="", buttons=None):
         )
 
     except FloodWait as f:
-        LOGGER.warning(str(f))
         await sleep(f.value * 1.2)
         return await send_file(message, file, caption, buttons)
     except Exception as e:
@@ -239,7 +231,6 @@ async def send_rss(text, chat_id, thread_id):
 
     # Ensure text is not too long
     if len(text) > 4096:
-        LOGGER.warning(f"RSS message too long ({len(text)} chars), truncating")
         text = text[:4093] + "..."
 
     # Remove zero-width and control characters that might cause issues
@@ -273,7 +264,6 @@ async def send_rss(text, chat_id, thread_id):
             LOGGER.error(f"Failed to send simplified message too: {e2}")
             return str(e2)
     except (FloodWait, FloodPremiumWait) as f:
-        LOGGER.warning(str(f))
         await sleep(f.value * 1.2)
         return await send_rss(text, chat_id, thread_id)
     except Exception as e:
@@ -460,9 +450,7 @@ async def get_tg_link_message(link, user_id=""):
                 )
             except TypeError as e:
                 # Handle case where get_messages has different parameters in Electrogram
-                if "unexpected keyword argument" in str(e):
-                    LOGGER.debug(f"Adapting to Electrogram API: {e}")
-                    # Try alternative approach for Electrogram
+                if "unexpected keyword argument" in str(e):# Try alternative approach for Electrogram
                     message = await TgClient.bot.get_messages(
                         chat,  # chat_id as positional argument
                         msg_id,  # message_ids as positional argument
@@ -488,9 +476,7 @@ async def get_tg_link_message(link, user_id=""):
                 )
             except TypeError as e:
                 # Handle case where get_messages has different parameters in Electrogram
-                if "unexpected keyword argument" in str(e):
-                    LOGGER.debug(f"Adapting to Electrogram API: {e}")
-                    # Try alternative approach for Electrogram
+                if "unexpected keyword argument" in str(e):# Try alternative approach for Electrogram
                     user_message = await user_session.get_messages(
                         chat,  # chat_id as positional argument
                         msg_id,  # message_ids as positional argument
@@ -548,9 +534,6 @@ async def update_status_message(sid, force=False):
                     or "MESSAGE_ID_INVALID" in message
                     or "message to edit not found" in message.lower()
                 ):
-                    LOGGER.debug(
-                        f"Removing status message that can't be edited. SID: {sid}, Error: {message}"
-                    )
                     del status_dict[sid]
                     if obj := intervals["status"].get(sid):
                         obj.cancel()

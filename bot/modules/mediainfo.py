@@ -943,9 +943,6 @@ async def gen_mediainfo(
                                             f"Downloading sample of {filename} for analysis... ({downloaded_size / (1024 * 1024):.1f} MB)",
                                         )
                                 except Exception as chunk_error:
-                                    LOGGER.warning(
-                                        f"Error reading chunk: {chunk_error}. Got {downloaded_size / (1024 * 1024):.1f} MB which should be enough for analysis."
-                                    )
                                     break
 
                             # If we got at least some data, consider it a success
@@ -1037,9 +1034,6 @@ async def gen_mediainfo(
                                         f"Downloading sample of {media.file_name} for analysis... ({downloaded_size / (1024 * 1024):.1f} MB)",
                                     )
                             except Exception as chunk_error:
-                                LOGGER.warning(
-                                    f"Error processing chunk: {chunk_error}. Got {downloaded_size / (1024 * 1024):.1f} MB which should be enough for analysis."
-                                )
                                 break
 
                     # If we got at least some data, consider it a success
@@ -1211,35 +1205,22 @@ async def gen_mediainfo(
                             ):
                                 is_split_archive = True
                                 is_archive = True
-                                LOGGER.debug(
-                                    f"Verified numeric extension is an archive: {filename}"
-                                )
                             else:
-                                LOGGER.debug(
-                                    f"Numeric extension is not an archive: {filename} - {stdout}"
-                                )
+                                pass
                     except Exception as e:
-                        LOGGER.debug(
-                            f"Error verifying archive with file command: {e}"
-                        )
                         # Assume it's an archive if verification fails
                         is_split_archive = True
                         is_archive = True
                 else:
                     # For non-numeric patterns, we're more confident it's an archive
                     is_split_archive = True
-                    is_archive = True
-                    LOGGER.debug(f"Detected split archive file: {filename}")
-
-        # Always use file command to verify archive type, even for known extensions
+                    is_archive = True# Always use file command to verify archive type, even for known extensions
         # This provides more accurate information and handles cases where extensions don't match content
         try:
             # Verify file exists before running file command
             abs_path = ospath.abspath(des_path)
             if not ospath.exists(abs_path):
-                LOGGER.warning(
-                    f"File does not exist at path: {abs_path}, skipping file command check"
-                )
+                pass
             else:
                 # File exists, proceed with file command
                 cmd = ["file", "-b", abs_path]
@@ -1262,12 +1243,7 @@ async def gen_mediainfo(
                             "archive",
                         ]
                     ):
-                        is_archive = True
-                        LOGGER.debug(
-                            f"Confirmed archive type via file command: {filename} - {stdout}"
-                        )
-
-                        # Try to determine the specific archive format from file output
+                        is_archive = True# Try to determine the specific archive format from file output
                         if "rar archive" in stdout_lower:
                             file_ext = (
                                 ".rar"  # Override extension for correct handling
@@ -1287,12 +1263,10 @@ async def gen_mediainfo(
                         elif "iso 9660" in stdout_lower:
                             file_ext = ".iso"
                 elif return_code != 0:
-                    LOGGER.debug(
-                        f"File command failed with return code {return_code}: {stderr}"
-                    )
+                    pass
         except Exception as e:
-            LOGGER.debug(f"Error checking file type with file command: {e}")
             # Continue with the process, using the extension-based detection as fallback
+            pass
 
         # Handle archive files
         if is_archive:
@@ -1403,8 +1377,8 @@ async def gen_mediainfo(
                         elif "Type = Cab" in stdout:
                             archive_format = "CAB"
             except Exception as e:
-                LOGGER.debug(f"Error verifying archive format: {e}")
                 # Keep the format determined from the extension if verification fails
+                pass
 
             tc += f"{'Format':<28}: {archive_format} Archive\n"
 
@@ -1435,27 +1409,19 @@ async def gen_mediainfo(
             try:
                 # Use absolute path to avoid "No such file or directory" errors
                 abs_path = ospath.abspath(des_path)
-                LOGGER.debug(f"Using absolute path for file command: {abs_path}")
-
                 # Verify file exists before running file command
                 if not ospath.exists(abs_path):
-                    LOGGER.warning(
-                        f"File does not exist at path: {abs_path}, skipping file analysis"
-                    )
+                    pass
                 else:
                     cmd = ["file", "-b", abs_path]
                     stdout, stderr, return_code = await cmd_exec(cmd)
                     if return_code == 0 and stdout:
                         tc += f"{'File analysis':<28}: {stdout.strip()}\n"
                     else:
-                        LOGGER.debug(
-                            f"File command returned non-zero code: {return_code}, stderr: {stderr}"
-                        )
+                        pass
             except Exception as e:
-                LOGGER.debug(
-                    f"Error getting archive file info with file command: {e}"
-                )
                 # Continue without this info, it's not critical
+                pass
 
             # Try to get compression ratio if possible
             try:
@@ -1475,9 +1441,6 @@ async def gen_mediainfo(
                         stdout, stderr, return_code = await cmd_exec(cmd)
                         if return_code != 0:
                             # If 7z fails, try unrar
-                            LOGGER.debug(
-                                f"7z failed for RAR file, trying unrar: {abs_path}"
-                            )
                             cmd = ["unrar", "l", abs_path]
                     elif file_ext == ".7z" or (
                         is_split_archive and archive_format == "7Z"
@@ -1537,10 +1500,6 @@ async def gen_mediainfo(
 
                 # If 7z fails, try format-specific tools
                 if return_code != 0:
-                    LOGGER.debug(
-                        f"7z failed for {file_ext} file, trying format-specific tool: {abs_path}"
-                    )
-
                     if file_ext == ".zip":
                         cmd = ["unzip", "-l", abs_path]
                     elif file_ext == ".rar":
@@ -1861,21 +1820,17 @@ async def gen_mediainfo(
                 abs_path = ospath.abspath(des_path)
                 # Verify file exists before running file command
                 if not ospath.exists(abs_path):
-                    LOGGER.warning(
-                        f"File does not exist at path: {abs_path}, skipping file analysis"
-                    )
+                    pass
                 else:
                     cmd = ["file", "-b", abs_path]
                     stdout, stderr, return_code = await cmd_exec(cmd)
                     if return_code == 0 and stdout:
                         tc += f"{'File analysis':<28}: {stdout.strip()}\n"
                     else:
-                        LOGGER.debug(
-                            f"File command returned non-zero code: {return_code}, stderr: {stderr}"
-                        )
+                        pass
             except Exception as e:
-                LOGGER.debug(f"Error getting image file info with file command: {e}")
                 # Continue without this info, it's not critical
+                pass
 
             tc += "</pre><br>"
             return tc
@@ -1916,23 +1871,17 @@ async def gen_mediainfo(
                 abs_path = ospath.abspath(des_path)
                 # Verify file exists before running file command
                 if not ospath.exists(abs_path):
-                    LOGGER.warning(
-                        f"File does not exist at path: {abs_path}, skipping file analysis"
-                    )
+                    pass
                 else:
                     cmd = ["file", "-b", abs_path]
                     stdout, stderr, return_code = await cmd_exec(cmd)
                     if return_code == 0 and stdout:
                         tc += f"{'File analysis':<28}: {stdout.strip()}\n"
                     else:
-                        LOGGER.debug(
-                            f"File command returned non-zero code: {return_code}, stderr: {stderr}"
-                        )
+                        pass
             except Exception as e:
-                LOGGER.debug(
-                    f"Error getting document file info with file command: {e}"
-                )
                 # Continue without this info, it's not critical
+                pass
 
             # For PDF files, try to get page count
             if file_ext.lower() == ".pdf":
@@ -1988,9 +1937,7 @@ async def gen_mediainfo(
                 abs_path = ospath.abspath(des_path)
                 # Verify file exists before running file command
                 if not ospath.exists(abs_path):
-                    LOGGER.warning(
-                        f"File does not exist at path: {abs_path}, skipping file analysis"
-                    )
+                    pass
                 else:
                     cmd = ["file", "-b", abs_path]
                     stdout, stderr, return_code = await cmd_exec(cmd)
@@ -2010,14 +1957,10 @@ async def gen_mediainfo(
                         ]:
                             format_info = "WebVTT (Web Video Text Tracks)"
                     else:
-                        LOGGER.debug(
-                            f"File command returned non-zero code: {return_code}, stderr: {stderr}"
-                        )
+                        pass
             except Exception as e:
-                LOGGER.debug(
-                    f"Error getting subtitle file info with file command: {e}"
-                )
                 # Continue without this info, it's not critical
+                pass
 
             # Read a small sample of the file to try to determine encoding and format
             encoding = "utf-8"
@@ -2202,13 +2145,9 @@ async def gen_mediainfo(
         if des_path and await aiopath.exists(des_path) and des_path != media_path:
             # Only delete files in the Mediainfo/ directory (temporary downloads)
             if des_path.startswith("Mediainfo/") or "Mediainfo/" in des_path:
-                LOGGER.debug(f"Cleaning up temporary MediaInfo file: {des_path}")
                 await aioremove(des_path)
             else:
-                LOGGER.debug(
-                    f"Not cleaning up file as it's not a temporary MediaInfo file: {des_path}"
-                )
-
+                pass
         # Run garbage collection to free up memory
         # Use aggressive mode for large files
         if file_size > 100 * 1024 * 1024:  # 100MB
@@ -2251,9 +2190,6 @@ async def gen_mediainfo(
                 # Check if the error is related to content size
                 if "CONTENT_TOO_BIG" in str(e):
                     # Try to split the content and create a simpler version
-                    LOGGER.warning(
-                        "Content too big for Telegraph, creating simplified version..."
-                    )
 
                     # Create a simplified version with just the basic info
                     simplified_tc = (
@@ -2406,10 +2342,7 @@ async def mediainfo(_, message):
         create_task(auto_delete_message(error_message, time=300))
     finally:
         # Calculate execution time
-        execution_time = time() - start_time
-        LOGGER.debug(f"MediaInfo command executed in {execution_time:.2f} seconds")
-
-        # Run garbage collection after command execution
+        execution_time = time() - start_time# Run garbage collection after command execution
         # Use aggressive mode for long-running commands
         if execution_time > 10:  # If command took more than 10 seconds
             smart_garbage_collection(aggressive=True)

@@ -162,7 +162,6 @@ async def _qb_listener():
                             msg = f"Force recheck - Name: {tor_info.name} Hash: "
                             msg += f"{tor_info.hash} Downloaded Bytes: {tor_info.downloaded} "
                             msg += f"Size: {tor_info.size} Total Size: {tor_info.total_size}"
-                            LOGGER.warning(msg)
                             await TorrentManager.qbittorrent.torrents.recheck(
                                 [tor_info.hash],
                             )

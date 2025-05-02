@@ -22,9 +22,6 @@ async def error_check(message):
 
     # Handle case where both message.from_user and message.sender_chat could be None
     if message.from_user is None and message.sender_chat is None:
-        LOGGER.warning(
-            f"Both message.from_user and message.sender_chat are None in chat {message.chat.id}"
-        )
 
         # For anonymous messages or system messages, we'll use a default approach
         # We'll create a minimal user object with the chat ID as the user ID

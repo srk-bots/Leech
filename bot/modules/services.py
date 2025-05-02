@@ -97,9 +97,7 @@ async def start(client, message):
     if message.from_user and hasattr(message.from_user, "id"):
         await database.update_pm_users(message.from_user.id)
     else:
-        LOGGER.warning(
-            "Could not update PM users: message.from_user is None or has no id attribute",
-        )
+        pass
     return None
 
 

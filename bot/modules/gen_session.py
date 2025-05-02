@@ -92,7 +92,6 @@ async def handle_session_input(_, message):
     # Delete user's message immediately to keep chat clean and secure
     try:
         await message.delete()
-        LOGGER.debug(f"Deleted user credential message for user {user_id}")
     except Exception as e:
         LOGGER.error(f"Error deleting user credential message: {e!s}")
 
@@ -346,11 +345,6 @@ async def handle_verification_code(_, message, user_id):
     # Auto-delete the status message after 10 minutes for security
     create_task(auto_delete_message(status_msg, time=600))  # 10 minutes
 
-    # Log the code being used (without revealing the full code for security)
-    LOGGER.debug(
-        f"Using verification code for user {user_id}: {code[:2]}...{code[-2:]} (length: {len(code)})"
-    )
-
     try:
         client_instance = session_state[user_id]["client"]
         phone = session_state[user_id]["phone"]
@@ -561,8 +555,6 @@ async def cancel_session_generation(_, message, user_id):
     # Clean up only if user is in session state
     if user_id in session_state:
         await cleanup_session(user_id)
-    else:
-        LOGGER.debug(f"User {user_id} not in session state, nothing to clean up")
 
 
 @new_task
@@ -614,18 +606,8 @@ async def cleanup_session(user_id):
         for field in sensitive_fields:
             if field in session_state[user_id]:
                 # Overwrite with None to help with garbage collection
-                session_state[user_id][field] = None
-                LOGGER.debug(f"Cleared sensitive data: {field} for user {user_id}")
-
-        # Remove user from session state
-        del session_state[user_id]
-        LOGGER.debug(f"Removed user {user_id} from session state")
-
-    # We don't need to remove handlers anymore since we're using a persistent handler
-    LOGGER.debug(f"Cleaned up session for user {user_id}")
-
-
-@new_task
+                session_state[user_id][field] = None# Remove user from session state
+        del session_state[user_id]# We don't need to remove handlers anymore since we're using a persistent handler@new_task
 async def gen_session(_, callback_query=None, message=None):
     """Handle both command and callback for session generation"""
     # If called from callback query
@@ -677,4 +659,3 @@ async def gen_session(_, callback_query=None, message=None):
 
     # We don't need to add a handler for each user anymore
     # The persistent handler will check if the user is in the session_state dictionary
-    LOGGER.debug(f"User {user_id} added to session state")

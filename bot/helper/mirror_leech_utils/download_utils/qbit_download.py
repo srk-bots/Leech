@@ -54,9 +54,6 @@ async def add_qb_torrent(listener, path, ratio, seed_time):
                     )
                     for torrent in existing_torrents:
                         if torrent.hash.lower() == magnet_hash:
-                            LOGGER.warning(
-                                f"Torrent already exists with hash: {magnet_hash}",
-                            )
                             await listener.on_download_error(
                                 f"This torrent is already being processed! Hash: {magnet_hash}",
                             )

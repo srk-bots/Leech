@@ -288,10 +288,7 @@ def get_pagination_buttons(current_page, total_pages=5):
     # Row 2: Close button
     buttons.data_button("Close", "fontstyles_close")
 
-    # Add debug log
-    LOGGER.debug(f"Created pagination buttons for page {current_page}/{total_pages}")
-
-    # Use 2 buttons per row if we have 2 nav buttons, otherwise 1 button per row
+    # Add debug log# Use 2 buttons per row if we have 2 nav buttons, otherwise 1 button per row
     return buttons.build_menu(min(len(nav_buttons), 2))
 
 
@@ -325,9 +322,6 @@ async def font_styles_callback(_, callback_query):
     """
     data = callback_query.data
     message = callback_query.message
-
-    LOGGER.debug(f"Font styles callback received: {data}")
-
     if data == "fontstyles_noop":
         await callback_query.answer("No action")
         return
@@ -346,12 +340,10 @@ async def font_styles_callback(_, callback_query):
     if data.startswith("fontstyles_page_"):
         try:
             page_num = int(data.split("_")[-1])
-            LOGGER.debug(f"Loading page {page_num}")
             content = get_page_content(page_num)
             buttons = get_pagination_buttons(page_num)
 
             # Edit the message with new page content
-            LOGGER.debug(f"Updating message with page {page_num} content")
             await edit_message(message, content, buttons)
             await callback_query.answer(f"Page {page_num}")
         except Exception as e:

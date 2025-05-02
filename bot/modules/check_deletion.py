@@ -152,9 +152,6 @@ async def delete_pending_messages(_, callback_query):
             bot_client = TgClient.helper_bots[bot_id]
 
         if bot_client is None:
-            LOGGER.warning(
-                f"Bot {bot_id} not found, skipping message {msg_id} in chat {chat_id}",
-            )
             fail_count += 1
             continue
 
@@ -167,9 +164,6 @@ async def delete_pending_messages(_, callback_query):
                 )
 
                 if msg is None or getattr(msg, "empty", False):
-                    LOGGER.warning(
-                        f"Message {msg_id} in chat {chat_id} not found, removing from database",
-                    )
                     await database.remove_scheduled_deletion(chat_id, msg_id)
                     removed_from_db_count += 1
                     continue
@@ -208,9 +202,6 @@ async def delete_pending_messages(_, callback_query):
                 or "USER_INVALID" in str(e)
                 or "PEER_ID_INVALID" in str(e)
             ):
-                LOGGER.warning(
-                    f"Chat {chat_id} is invalid or no longer accessible, removing from database",
-                )
                 # Remove from database since the chat is invalid
                 await database.remove_scheduled_deletion(chat_id, msg_id)
                 removed_from_db_count += 1
@@ -266,9 +257,6 @@ async def force_delete_all_messages(_, callback_query):
             bot_client = TgClient.helper_bots[bot_id]
 
         if bot_client is None:
-            LOGGER.warning(
-                f"Bot {bot_id} not found, skipping message {msg_id} in chat {chat_id}",
-            )
             fail_count += 1
             continue
 

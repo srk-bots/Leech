@@ -105,9 +105,7 @@ async def rss_sub(_, message, pre_event):
         if not item.strip():
             continue
 
-        # Log the item being processed
-        LOGGER.debug(f"Processing RSS subscription item {index}: {item}")
-        args = item.split()
+        # Log the item being processedargs = item.split()
 
         title = args[0].strip()
         feed_link = args[1].strip()
@@ -195,8 +193,7 @@ async def rss_sub(_, message, pre_event):
                 site_name = parsed_url.netloc.replace("www.", "")
                 feed_msg += f"\n<b>Site: </b><code>{site_name}</code>"
             except Exception as e:
-                LOGGER.debug(f"Error extracting site name from URL: {e}")
-
+                pass
             # Add a separator between feeds
             if msg:
                 msg += "\n\n" + "-" * 30 + "\n\n"
@@ -207,9 +204,7 @@ async def rss_sub(_, message, pre_event):
 
                 parsed_url = urlparse(feed_link)
                 site_name = parsed_url.netloc.replace("www.", "")
-            except Exception as e:
-                LOGGER.debug(f"Error extracting site name from URL: {e}")
-                site_name = "Unknown"
+            except Exception as e:site_name = "Unknown"
 
             async with rss_dict_lock:
                 if rss_dict.get(user_id, False):
@@ -242,9 +237,6 @@ async def rss_sub(_, message, pre_event):
                     }
             LOGGER.info(
                 f"RSS Feed Added: {title}",
-            )
-            LOGGER.debug(
-                f"Full details - id: {user_id} - title: {title} - link: {feed_link} - c: {cmd} - inf: {inf} - exf: {exf} - stv {stv}"
             )
             success_count += 1
         except (IndexError, AttributeError) as e:
@@ -362,8 +354,7 @@ async def rss_update(_, message, pre_event, state):
             if not rss_dict:
                 await database.trunc_table("rss")
     if updated:
-        LOGGER.info(f"RSS link(s) {state}d: {len(updated)}")
-        LOGGER.debug(f"RSS link with Title(s): {updated} has been {state}d!")
+        LOGGER.info(f"RSS link(s) {state}d: {len(updated)}. {updated} has been {state}d!")
         await send_message(
             message,
             f"RSS links with Title(s): <code>{updated}</code> has been {state}d!",
@@ -814,7 +805,6 @@ async def rss_monitor():
 
     chat = Config.RSS_CHAT
     if not chat:
-        LOGGER.warning("RSS_CHAT not added! Shutting down rss scheduler...")
         scheduler.shutdown(wait=False)
         return
     if len(rss_dict) == 0:
@@ -863,9 +853,6 @@ async def rss_monitor():
 
                 # Check if there are any entries in the feed
                 if not rss_d.entries:
-                    LOGGER.warning(
-                        f"No entries found in feed: {title} - {data['link']}",
-                    )
                     continue
 
                 try:
@@ -878,14 +865,12 @@ async def rss_monitor():
                     else:
                         last_link = rss_d.entries[0]["link"]
                 except (IndexError, KeyError) as e:
-                    LOGGER.warning(f"Error parsing feed link for {title}: {e!s}")
                     continue
 
                 # Safely get the last title
                 if "title" in rss_d.entries[0]:
                     last_title = rss_d.entries[0]["title"]
                 else:
-                    LOGGER.warning(f"No title found in feed: {title}")
                     last_title = "Unknown Title"
                 # Check if we've seen this item before
                 if (
@@ -903,9 +888,6 @@ async def rss_monitor():
                         # Check if feed_count is within the range of available entries
                         if feed_count >= len(rss_d.entries):
                             # Only log at debug level to avoid cluttering logs
-                            LOGGER.debug(
-                                f"Reached Max index no. {feed_count} for this feed: {title}. All available entries processed.",
-                            )
                             break
 
                         # Safely get the item title
@@ -945,9 +927,6 @@ async def rss_monitor():
                             size = 0
                     except IndexError:
                         # Only log at debug level to avoid cluttering logs
-                        LOGGER.debug(
-                            f"Reached Max index no. {feed_count} for this feed: {title}. All available entries processed.",
-                        )
                         break
                     parse = True
                     for flist in data["inf"]:
@@ -1025,9 +1004,7 @@ async def rss_monitor():
 
                             parsed_url = urlparse(data["link"])
                             site_name = parsed_url.netloc.replace("www.", "")
-                        except Exception as e:
-                            LOGGER.debug(f"Error extracting site name from URL: {e}")
-                            site_name = "Unknown"
+                        except Exception as e:site_name = "Unknown"
 
                     site_info = f" | <b>Site:</b> <code>{site_name}</code>"
                     feed_msg += f"\n<b>Tag: </b><code>{data['tag']}</code> <code>{user}</code>{site_info}\n\n<blockquote><b>>> Powered by @aimmirror <<</b></blockquote>"
@@ -1051,9 +1028,6 @@ async def rss_monitor():
 
                         # Ensure the message is not too long
                         if len(feed_msg) > 4096:
-                            LOGGER.warning(
-                                f"Message too long for {title}, truncating to 4096 characters"
-                            )
                             feed_msg = feed_msg[:4093] + "..."
 
                         await send_rss(feed_msg, rss_chat_id, rss_topic_id)
@@ -1080,10 +1054,7 @@ async def rss_monitor():
 
                     rss_dict[user][title].update(update_data)
                 await database.rss_update(user)
-                LOGGER.debug(f"Feed Name: {title}")
-                LOGGER.debug(f"Last item: {last_link}")
             except RssShutdownException as ex:
-                LOGGER.warning(ex)
                 break
             except Exception as e:
                 LOGGER.error(f"{e} - Feed Name: {title} - Feed Link: {data['link']}")

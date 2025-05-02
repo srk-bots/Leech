@@ -62,9 +62,7 @@ class GoogleDriveUpload(GoogleDriveHelper):
 
         # Generate MediaInfo if enabled and it's a file (not a folder)
         if user_mediainfo_enabled and ospath.isfile(self._path):
-            LOGGER.debug("Generating MediaInfo for mirror task before upload...")
             from bot.modules.mediainfo import gen_mediainfo
-
             try:
                 # Generate MediaInfo for the file
                 self.listener.mediainfo_link = async_to_sync(
@@ -260,7 +258,6 @@ class GoogleDriveUpload(GoogleDriveHelper):
                         raise err
 
                     # Handle rate limit errors with better backoff strategy
-                    LOGGER.warning(f"Rate limit exceeded: {reason}")
 
                     if self.use_sa:
                         if self.sa_count >= self.sa_number:
@@ -290,9 +287,6 @@ class GoogleDriveUpload(GoogleDriveHelper):
                             in_dir,
                         )
                     # If not using service accounts, add a longer sleep
-                    LOGGER.warning(
-                        f"Got rate limit error: {reason}. Sleeping for 30 seconds before retrying...",
-                    )
                     sleep(30)
                     # Try again with the same account after sleeping
                     return self._upload_file(

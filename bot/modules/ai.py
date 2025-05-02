@@ -353,7 +353,6 @@ async def get_ai_response(question, api_key, api_url, user_id):
         try:
             return await get_response_with_api_key(question, api_key)
         except Exception as e:
-            LOGGER.warning(f"Failed to get response with API key: {e!s}")
             # If API URL is available, try that as fallback
             if api_url:
                 LOGGER.info("Falling back to external API URL")
@@ -447,7 +446,6 @@ async def get_deepseek_response(question, api_key, api_url, user_id):
         try:
             return await get_deepseek_response_with_api_key(question, api_key)
         except Exception as e:
-            LOGGER.warning(f"Failed to get response with API key: {e!s}")
             # If API URL is available, try that as fallback
             if api_url:
                 LOGGER.info("Falling back to external API URL")
@@ -574,7 +572,6 @@ async def get_chatgpt_response(question, api_key, api_url, user_id):
         try:
             return await get_chatgpt_response_with_api_key(question, api_key)
         except Exception as e:
-            LOGGER.warning(f"Failed to get response with API key: {e!s}")
             # If API URL is available, try that as fallback
             if api_url:
                 LOGGER.info("Falling back to external API URL")
@@ -674,7 +671,6 @@ async def get_gemini_response(question, api_key, api_url, user_id):
         try:
             return await get_gemini_response_with_api_key(question, api_key)
         except Exception as e:
-            LOGGER.warning(f"Failed to get response with API key: {e!s}")
             # If API URL is available, try that as fallback
             if api_url:
                 LOGGER.info("Falling back to external API URL")

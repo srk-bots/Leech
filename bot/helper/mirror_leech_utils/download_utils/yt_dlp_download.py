@@ -53,14 +53,14 @@ class MyLogger:
 
     @staticmethod
     def warning(msg):
-        LOGGER.warning(msg)
+        pass
 
     @staticmethod
     def error(msg):
         if msg != "ERROR: Cancelling...":
             # Don't log postprocessing errors related to output files
             if "Postprocessing: Error opening output files" in msg:
-                LOGGER.debug(f"Suppressed error: {msg}")
+                pass
             # Log preprocessing errors with more details
             elif "Preprocessing: Error splitting the argument list" in msg:
                 LOGGER.error(f"E: {msg}")
@@ -277,7 +277,6 @@ class YoutubeDLHelper:
 
                 # Handle title extraction issues
                 if not result.get("title") and not self._listener.name:
-                    LOGGER.warning("Title extraction failed, using fallback title")
                     # Try to get a title from various metadata fields
                     for field in [
                         "alt_title",
@@ -307,9 +306,6 @@ class YoutubeDLHelper:
                 if result.get("extractor") == "youtube" and not result.get(
                     "formats"
                 ):
-                    LOGGER.warning(
-                        "No formats found, possible SSAP experiment issue. Trying with different client"
-                    )
                     # Try with Android client as fallback
                     self.opts["extractor_args"]["youtube"]["player_client"] = [
                         "android"
@@ -318,7 +314,6 @@ class YoutubeDLHelper:
                     result = ydl.extract_info(self._listener.link, download=False)
                     if not result.get("formats"):
                         # Try with web client as last resort
-                        LOGGER.warning("Still no formats, trying web client")
                         self.opts["extractor_args"]["youtube"]["player_client"] = [
                             "web"
                         ]
@@ -352,7 +347,6 @@ class YoutubeDLHelper:
                                         self._ext = ext
                                     break
                             except Exception as e:
-                                LOGGER.debug(f"Error with template {outtmpl_}: {e}")
                                 continue
 
                         # If all templates failed, use entry ID
@@ -382,7 +376,6 @@ class YoutubeDLHelper:
                         realName = name
                         break
                 except Exception as e:
-                    LOGGER.debug(f"Error with template {outtmpl_}: {e}")
                     continue
 
             # If all templates failed, use video ID and timestamp
@@ -455,9 +448,6 @@ class YoutubeDLHelper:
                                     return
                                 if "ffmpeg not found" in error_msg.lower():
                                     # Ignore ffmpeg path error as requested
-                                    LOGGER.warning(
-                                        "ffmpeg warning detected but continuing as requested"
-                                    )
                                     # Try to continue without ffmpeg
                                     break
                                 if (
@@ -465,9 +455,6 @@ class YoutubeDLHelper:
                                     in error_msg.lower()
                                 ):
                                     # Ignore name sub error as requested
-                                    LOGGER.warning(
-                                        "Template variables warning detected but continuing as requested"
-                                    )
                                     break
                                 # For other errors, try different client if it's a YouTube link
                                 if (
@@ -522,13 +509,9 @@ class YoutubeDLHelper:
                                     if (
                                         sys.getsizeof(obj) > 1024 * 1024
                                     ):  # Objects larger than 1MB
-                                        LOGGER.debug(
-                                            f"Clearing large local variable: {name} ({sys.getsizeof(obj) / 1024 / 1024:.2f} MB)"
-                                        )
                                         locals()[name] = None
                             except Exception as mem_e:
-                                LOGGER.debug(f"Error in memory cleanup: {mem_e}")
-
+                                pass
                     # Break out of retry loop if we got here
                     break
 
@@ -597,13 +580,9 @@ class YoutubeDLHelper:
                 # Find large objects in memory and clear them
                 for name, obj in list(locals().items()):
                     if sys.getsizeof(obj) > 1024 * 1024:  # Objects larger than 1MB
-                        LOGGER.debug(
-                            f"Clearing large local variable: {name} ({sys.getsizeof(obj) / 1024 / 1024:.2f} MB)"
-                        )
                         locals()[name] = None
             except Exception as mem_e:
-                LOGGER.debug(f"Error in memory cleanup: {mem_e}")
-
+                pass
             # Try to provide more helpful error messages
             error_str = str(e)
             if "Memory" in error_str or "memory" in error_str:
@@ -612,7 +591,6 @@ class YoutubeDLHelper:
                 )
             elif "ffmpeg" in error_str.lower():
                 # Ignore ffmpeg errors as requested
-                LOGGER.warning(f"Ignoring ffmpeg error as requested: {e}")
                 # Try to continue without error
                 async_to_sync(self._listener.on_download_complete)
             elif "'NoneType' object has no attribute 'can_download'" in error_str:
