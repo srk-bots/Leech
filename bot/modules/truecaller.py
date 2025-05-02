@@ -132,7 +132,7 @@ async def truecaller_lookup(_, message):
                 msg += "└─────────────────────────┘\n\n"
 
                 # Add the name with special formatting if available
-                if truecaller_name != "Unknown" and truecaller_name != "N/A":
+                if truecaller_name not in {"Unknown", "N/A"}:
                     msg += f"✨ **{truecaller_name}** ✨\n\n"
 
                 # Create a styled info box without fixed borders
@@ -175,7 +175,7 @@ async def truecaller_lookup(_, message):
         await delete_message(status_msg)
         error_msg = await send_message(
             message,
-            f"❌ Error: Could not connect to the Truecaller API. {str(e)}",
+            f"❌ Error: Could not connect to the Truecaller API. {e!s}",
         )
         # Auto-delete error message after 5 minutes
         await auto_delete_message(error_msg, time=300)
@@ -184,7 +184,7 @@ async def truecaller_lookup(_, message):
         await delete_message(status_msg)
         error_msg = await send_message(
             message,
-            f"❌ An unexpected error occurred: {str(e)}",
+            f"❌ An unexpected error occurred: {e!s}",
         )
         # Auto-delete error message after 5 minutes
         await auto_delete_message(error_msg, time=300)

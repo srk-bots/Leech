@@ -16,7 +16,7 @@ import aiofiles
 from aiofiles.os import makedirs, remove
 from aiofiles.os import path as aiopath
 from aioshutil import rmtree
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image
 from PyPDF2 import PdfMerger, PdfReader, PdfWriter
 
 from bot import DOWNLOAD_DIR, LOGGER, cpu_no

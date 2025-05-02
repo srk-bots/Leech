@@ -7322,7 +7322,7 @@ async def show_media_tools_for_task(client, message, task_obj):
             # Send timeout message
             timeout_msg = await send_message(
                 message,
-                f"⏱️ Media tools settings timeout. Task has been cancelled!",
+                "⏱️ Media tools settings timeout. Task has been cancelled!",
             )
 
             # Auto-delete the timeout message after 5 minutes

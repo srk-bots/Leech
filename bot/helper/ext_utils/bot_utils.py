@@ -523,7 +523,7 @@ def is_media_tool_enabled(tool_name):
 
     # If MEDIA_TOOLS_ENABLED is some other truthy value
     elif Config.MEDIA_TOOLS_ENABLED:
-        if isinstance(Config.MEDIA_TOOLS_ENABLED, (list, tuple, set)):
+        if isinstance(Config.MEDIA_TOOLS_ENABLED, list | tuple | set):
             enabled_tools = [
                 str(t).strip().lower() for t in Config.MEDIA_TOOLS_ENABLED if t
             ]

@@ -5735,7 +5735,7 @@ async def edit_bot_settings(client, query):
         elif current_value is True:  # If it's True (boolean), all tools are enabled
             enabled_tools = all_tools.copy()
         elif current_value:  # Any other truthy value
-            if isinstance(current_value, (list, tuple, set)):
+            if isinstance(current_value, list | tuple | set):
                 enabled_tools = [str(t).strip().lower() for t in current_value if t]
             else:
                 # Try to convert to string and use as a single value
@@ -5788,7 +5788,7 @@ async def edit_bot_settings(client, query):
         elif current_value is True:  # If it's True (boolean), all tools are enabled
             enabled_tools = all_tools.copy()
         elif current_value:  # Any other truthy value
-            if isinstance(current_value, (list, tuple, set)):
+            if isinstance(current_value, list | tuple | set):
                 enabled_tools = [str(t).strip().lower() for t in current_value if t]
             else:
                 # Try to convert to string and use as a single value
@@ -6052,18 +6052,10 @@ async def edit_bot_settings(client, query):
         elif key.startswith("EXTRACT_"):
             return_menu = "mediatools_extract"
             LOGGER.debug(f"toggle: Setting return_menu for {key} to {return_menu}")
-        elif key == "ENABLE_EXTRA_MODULES":
+        elif key in {"ENABLE_EXTRA_MODULES", "MEDIA_TOOLS_ENABLED"}:
             return_menu = "var"
             LOGGER.debug(f"toggle: Setting return_menu for {key} to {return_menu}")
-        elif key == "MEDIA_TOOLS_ENABLED":
-            return_menu = "var"
-            LOGGER.debug(f"toggle: Setting return_menu for {key} to {return_menu}")
-        elif (
-            key.startswith("MISTRAL_")
-            or key.startswith("DEEPSEEK_")
-            or key.startswith("CHATGPT_")
-            or key.startswith("GEMINI_")
-        ):
+        elif key.startswith(("MISTRAL_", "DEEPSEEK_", "CHATGPT_", "GEMINI_")):
             return_menu = "ai"
             LOGGER.debug(f"toggle: Setting return_menu for {key} to {return_menu}")
 

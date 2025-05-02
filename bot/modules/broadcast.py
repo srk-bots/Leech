@@ -200,8 +200,7 @@ async def broadcast_media(client, message, options=None):
     try:
         # Reset the broadcast state for this user
         user_id = message.from_user.id
-        if user_id in broadcast_awaiting_message:
-            del broadcast_awaiting_message[user_id]
+        broadcast_awaiting_message.pop(user_id, None)
 
         pm_users = await database.get_pm_uids()
         if not pm_users:
@@ -298,7 +297,7 @@ async def handle_broadcast_media(client, message):
 
     # Check if we're waiting for a broadcast message from this user
     if user_id not in broadcast_awaiting_message:
-        return
+        return None
 
     # Determine message type for logging
     msg_type = "unknown"
@@ -344,4 +343,3 @@ async def handle_cancel_broadcast_command(client, message):
             "<b>❓ No broadcast in progress</b>",
             markdown=False,  # Use HTML mode (not markdown)
         )
-    return
