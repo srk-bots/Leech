@@ -212,8 +212,7 @@ async def edit_message(
         return error_str
 
 
-async def send_file(
-    message, file, caption="", buttons=None):
+async def send_file(message, file, caption="", buttons=None):
     try:
         return await message.reply_document(
             document=file,
@@ -226,9 +225,7 @@ async def send_file(
     except FloodWait as f:
         LOGGER.warning(str(f))
         await sleep(f.value * 1.2)
-        return await send_file(
-            message, file, caption, buttons
-        )
+        return await send_file(message, file, caption, buttons)
     except Exception as e:
         LOGGER.error(str(e))
         return str(e)
