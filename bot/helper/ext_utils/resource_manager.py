@@ -78,7 +78,7 @@ def get_cpu_affinity():
         affinity = [cpu for cpu in affinity if 0 <= cpu < cpu_count]
 
         if not affinity:
-            LOGGER.warning("Invalid CPU affinity configuration, using all cores")
+            pass
             return None
 
         return affinity

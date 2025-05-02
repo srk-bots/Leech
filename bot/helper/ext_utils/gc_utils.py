@@ -91,7 +91,7 @@ def force_garbage_collection(threshold_mb=100, log_stats=False, generation=None)
                 # Log unreachable objects if there are any
                 unreachable = gc.garbage
                 if unreachable:
-                    LOGGER.warning(f"Found {len(unreachable)} unreachable objects")
+                    pass
                     # Clear the list to avoid memory leaks
                     gc.garbage.clear()
             # Just collect without stats
@@ -215,7 +215,7 @@ def log_memory_usage():
 
         # Only log if memory usage is high
         if system_memory_percent > 85:
-            LOGGER.warning(f"High memory usage: System at {system_memory_percent}%")
+            pass
 
         return {
             "rss_mb": rss_mb,
@@ -310,9 +310,7 @@ def optimized_garbage_collection(aggressive=False, log_stats=False):
                 # Only log if significant memory was freed or in debug mode
                 # Always log unreachable objects as they indicate potential memory leaks
                 if unreachable_count > 0:
-                    LOGGER.warning(
-                        f"Cleared {unreachable_count} unreachable objects"
-                    )
+                    pass
             except Exception:
                 pass
 
@@ -405,9 +403,7 @@ def cleanup_large_objects():
 
                 # Only log if significant memory was freed
                 if unreachable_count > 0:
-                    LOGGER.warning(
-                        f"Cleared {unreachable_count} unreachable objects"
-                    )
+                    pass
             except Exception:
                 pass
 

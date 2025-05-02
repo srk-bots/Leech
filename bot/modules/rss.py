@@ -785,9 +785,7 @@ async def rss_monitor():
     # Check memory usage
     memory_info = psutil.virtual_memory()
     if memory_info.percent > 90:  # If memory usage is above 90%
-        LOGGER.warning(
-            f"High memory usage detected: {memory_info.percent}%. Skipping RSS run."
-        )
+        pass
         return
 
     # Add memory management
@@ -801,9 +799,7 @@ async def rss_monitor():
     # Check memory usage
     memory_info = psutil.virtual_memory()
     if memory_info.percent > 90:  # If memory usage is above 90%
-        LOGGER.warning(
-            f"High memory usage detected: {memory_info.percent}%. Skipping RSS run."
-        )
+        pass
         return
 
     chat = Config.RSS_CHAT

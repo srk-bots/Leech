@@ -144,7 +144,7 @@ try:
     if result.stdout:
         LOGGER.info(f"qBittorrent startup output: {result.stdout}")
     if result.stderr:
-        LOGGER.warning(f"qBittorrent startup error: {result.stderr}")
+        pass
 
     # Wait for qBittorrent to initialize
     time.sleep(3)
@@ -178,7 +178,7 @@ try:
     if result.stdout:
         LOGGER.info(f"Sabnzbd startup output: {result.stdout}")
     if result.stderr:
-        LOGGER.warning(f"Sabnzbd startup error: {result.stderr}")
+        pass
 
     # Wait for Sabnzbd to initialize
     time.sleep(3)

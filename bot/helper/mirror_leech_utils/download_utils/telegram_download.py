@@ -186,9 +186,7 @@ class TelegramDownloadHelper:
                             if self._id in GLOBAL_GID:
                                 GLOBAL_GID.remove(self._id)
                             elif self._id:  # Only log if _id is not empty
-                                LOGGER.debug(
-                                    f"ID {self._id} not found in GLOBAL_GID"
-                                )
+                                pass
                             return
 
                 self._start_time = time()

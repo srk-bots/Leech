@@ -67,9 +67,7 @@ async def update_aria2_options():
 async def update_nzb_options():
     try:
         if sabnzbd_client is None:
-            LOGGER.warning(
-                "SABnzbd client is not initialized, skipping NZB options update",
-            )
+            pass
             return
 
         # Try to connect to SABnzbd with a timeout
@@ -80,14 +78,10 @@ async def update_nzb_options():
                 requests_args={"timeout": 5},
             )
             if not status_response:
-                LOGGER.warning(
-                    "SABnzbd is not responding, skipping NZB options update",
-                )
+                pass
                 return
         except Exception as e:
-            LOGGER.warning(
-                f"SABnzbd is not accessible: {e}, skipping NZB options update",
-            )
+            pass
             return
 
         # Now try to get the config
@@ -105,9 +99,7 @@ async def update_nzb_options():
             else:
                 pass
         except Exception as e:
-            LOGGER.warning(
-                f"Failed to get SABnzbd config: {e}, skipping NZB options update",
-            )
+            pass
     except APIError as e:
         LOGGER.error(f"SABnzbd API error: {e}")
         # Continue with the bot startup even if NZB options update fails
@@ -226,9 +218,9 @@ async def load_settings():
                             await f.write(value)
                         LOGGER.info("SABnzbd configuration loaded from database")
                     else:
-                        LOGGER.warning("Empty SABnzbd configuration in database")
+                        pass
                 except Exception as e:
-                    LOGGER.warning(f"Error writing SABnzbd configuration file: {e}")
+                    pass
         except Exception as e:
             LOGGER.error(f"Error loading SABnzbd configuration from database: {e}")
 
@@ -316,15 +308,13 @@ async def save_settings():
                         else:
                             pass
                     except Exception as e:
-                        LOGGER.warning(
-                            f"Error reading SABnzbd configuration file: {e}",
-                        )
+                        pass
                 else:
                     LOGGER.info(
                         "SABnzbd configuration file not found, skipping save",
                     )
             except Exception as e:
-                LOGGER.warning(f"Error checking SABnzbd configuration file: {e}")
+                pass
     except Exception as e:
         LOGGER.error(f"Error saving SABnzbd configuration to database: {e}")
 
@@ -552,9 +542,7 @@ async def start_bot():
         LOGGER.info("Starting scheduled deletion checker")
         create_task(scheduled_deletion_checker())  # noqa: RUF006
     else:
-        LOGGER.warning(
-            "TgClient.bot not initialized, will start scheduled deletion checker when bot is ready",
-        )
+        pass
         # Create a task to wait for TgClient.bot to be initialized and then start the checker
         create_task(wait_for_bot_and_start_checker())  # noqa: RUF006
 
@@ -576,6 +564,4 @@ async def wait_for_bot_and_start_checker():
         await sleep(60)  # Check every minute
 
     # If we get here, the bot still isn't initialized after 5 minutes
-    LOGGER.warning(
-        "TgClient.bot still not initialized after 5 minutes, scheduled deletion checker not started",
-    )
+    pass

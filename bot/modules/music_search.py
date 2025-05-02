@@ -1041,9 +1041,7 @@ async def music_get_callback(_, query):
                         f"Found non-audio message {message_id} in chat {chat_id}"
                     )
                     return None
-                MUSIC_LOGGER.warning(
-                    f"No message found with ID {message_id} in chat {chat_id}"
-                )
+                MUSIC_pass
             except Exception:
                 raise
 
@@ -1101,9 +1099,7 @@ async def music_get_callback(_, query):
                             )
                             return None
                         else:
-                            MUSIC_LOGGER.warning(
-                                "No message found with fallback client"
-                            )
+                            MUSIC_pass
                     except Exception:
                         raise
 
@@ -1234,13 +1230,13 @@ async def music_get_callback(_, query):
                                 "Found non-audio message with fallback client"
                             )
                             return None
-                        MUSIC_LOGGER.warning("No message found with fallback client")
+                        MUSIC_pass
                     except Exception:
                         raise
                 except Exception as e3:
                     MUSIC_LOGGER.error(f"Error in fallback client attempt: {e3}")
             else:
-                MUSIC_LOGGER.warning("No fallback client available")
+                MUSIC_pass
         except Exception as e2:
             MUSIC_LOGGER.error(f"Error in fallback handling: {e2}")
 
