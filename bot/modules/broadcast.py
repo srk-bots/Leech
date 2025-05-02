@@ -26,7 +26,6 @@ async def broadcast(_, message):
     """
     # Check if user is owner
     if not await is_owner(message):
-        pass
         return
 
     if not message.reply_to_message:
@@ -124,7 +123,6 @@ async def broadcast_media(client, message, options=None):
 
     # Only allow owner to use this command
     if not await is_owner(message):
-        pass
         return
 
     # First step: Ask for the message to broadcast

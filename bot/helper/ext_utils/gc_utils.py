@@ -91,7 +91,6 @@ def force_garbage_collection(threshold_mb=100, log_stats=False, generation=None)
                 # Log unreachable objects if there are any
                 unreachable = gc.garbage
                 if unreachable:
-                    pass
                     # Clear the list to avoid memory leaks
                     gc.garbage.clear()
             # Just collect without stats

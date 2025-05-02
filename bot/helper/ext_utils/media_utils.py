@@ -316,7 +316,7 @@ async def get_media_type(file_path):
                 return "document"
             elif mime_type.startswith(("application/zip", "application/x-rar")):
                 return "archive"
-    except Exception as e:
+    except Exception:
         pass
 
     return None
@@ -536,7 +536,6 @@ async def get_track_info(file_path: str) -> dict[str, list[dict]]:
             return tracks
 
         # Log all streams for debugging
-        pass
 
         for i, stream in enumerate(streams):
             codec_type = stream.get("codec_type", "unknown")
@@ -545,7 +544,6 @@ async def get_track_info(file_path: str) -> dict[str, list[dict]]:
             if codec_type == "video":
                 # Skip attached pictures (cover art) for video tracks
                 if stream.get("disposition", {}).get("attached_pic", 0) == 1:
-                    pass
                     continue
 
                 tracks["video"].append(
@@ -562,7 +560,6 @@ async def get_track_info(file_path: str) -> dict[str, list[dict]]:
                         "disposition": stream.get("disposition", {}),
                     }
                 )
-                pass
             elif codec_type == "audio":
                 tracks["audio"].append(
                     {
@@ -576,7 +573,6 @@ async def get_track_info(file_path: str) -> dict[str, list[dict]]:
                         ),
                     }
                 )
-                pass
             elif codec_type == "subtitle":
                 tracks["subtitle"].append(
                     {
@@ -588,7 +584,6 @@ async def get_track_info(file_path: str) -> dict[str, list[dict]]:
                         ),
                     }
                 )
-                pass
             elif codec_type == "attachment":
                 tracks["attachment"].append(
                     {
@@ -601,18 +596,13 @@ async def get_track_info(file_path: str) -> dict[str, list[dict]]:
                         ),
                     }
                 )
-                pass
             else:
                 pass
 
         # Log summary of found tracks
-        pass
     except Exception as e:
         LOGGER.error(f"Error getting track info: {e}")
         # Log the full exception traceback for debugging
-        import traceback
-
-        pass
 
     return tracks
 
@@ -654,7 +644,6 @@ async def extract_track(
         # Skip verbose track logging
 
         if not tracks[track_type]:
-            pass
             return []
 
         # Determine which tracks to extract
@@ -673,7 +662,6 @@ async def extract_track(
                     for idx in track_indices
                 ):
                     extract_all = True
-                    pass
                 else:
                     # Filter valid indices and convert strings to integers
                     for idx in track_indices:
@@ -682,7 +670,6 @@ async def extract_track(
                         elif isinstance(idx, str):
                             if idx.strip().lower() == "all":
                                 extract_all = True
-                                pass
                                 break
                             if idx.strip().isdigit():
                                 indices_list.append(int(idx.strip()))
@@ -692,13 +679,11 @@ async def extract_track(
                 # Check if it's the special "all" value
                 if track_indices.strip().lower() == "all":
                     extract_all = True
-                    pass
                 # Check if it's a comma-separated list
                 elif "," in track_indices:
                     for idx in track_indices.split(","):
                         if idx.strip().lower() == "all":
                             extract_all = True
-                            pass
                             break
                         if idx.strip().isdigit():
                             indices_list.append(int(idx.strip()))
@@ -713,9 +698,7 @@ async def extract_track(
                 indices_list.append(track_indices)
 
         # Log the indices we're looking for
-        if indices_list:
-            pass
-        elif extract_all:
+        if indices_list or extract_all:
             pass
         else:
             pass
@@ -725,18 +708,15 @@ async def extract_track(
             for track in tracks[track_type]:
                 if track["index"] in indices_list:
                     tracks_to_extract.append(track)
-                    pass
 
             # Log if no matching tracks were found
             if not tracks_to_extract:
                 pass
         else:
             # Extract all tracks of the specified type
-            pass
             tracks_to_extract = tracks[track_type]
 
         if not tracks_to_extract:
-            pass
             return []
 
         # Extract each track
@@ -827,7 +807,6 @@ async def extract_track(
             LOGGER.info(
                 f"Extracting {track_type} track {track['index']} from {file_path}"
             )
-            pass
 
             try:
                 stdout, stderr, code = await cmd_exec(cmd)
@@ -1134,8 +1113,6 @@ async def proceed_extract(
     # Check if the file is a split file
     file_name = os.path.basename(file_path)
     if re_search(r"\.part\d+\.(mkv|mp4|avi|mov|ts|webm)$", file_name, IGNORECASE):
-        pass
-        pass
         return []
 
     # Check if file is a valid media file
@@ -1147,23 +1124,17 @@ async def proceed_extract(
             )
             return []
 
-        pass
-
         # Check if the requested extraction is compatible with the media type
         if extract_video and media_type not in ["video"]:
-            pass
             extract_video = False
 
         if extract_audio and media_type not in ["video", "audio"]:
-            pass
             extract_audio = False
 
         if extract_subtitle and media_type not in ["video", "subtitle"]:
-            pass
             extract_subtitle = False
 
         if extract_attachment and media_type not in ["video"]:
-            pass
             extract_attachment = False
 
         # Check if any extraction type is still enabled
@@ -1186,7 +1157,6 @@ async def proceed_extract(
 
     # Check if we have any tracks to extract
     if not any(tracks.values()):
-        pass
         return []
 
     # Prepare extraction commands
@@ -1201,7 +1171,6 @@ async def proceed_extract(
                 for idx in video_index.split(",")
                 if idx.strip().isdigit()
             ]
-            pass
         except Exception as e:
             LOGGER.error(f"Error converting video_index string to indices: {e}")
 
@@ -1213,7 +1182,6 @@ async def proceed_extract(
                 for idx in audio_index.split(",")
                 if idx.strip().isdigit()
             ]
-            pass
         except Exception as e:
             LOGGER.error(f"Error converting audio_index string to indices: {e}")
 
@@ -1225,7 +1193,6 @@ async def proceed_extract(
                 for idx in subtitle_index.split(",")
                 if idx.strip().isdigit()
             ]
-            pass
         except Exception as e:
             LOGGER.error(f"Error converting subtitle_index string to indices: {e}")
 
@@ -1237,7 +1204,6 @@ async def proceed_extract(
                 for idx in attachment_index.split(",")
                 if idx.strip().isdigit()
             ]
-            pass
         except Exception as e:
             LOGGER.error(f"Error converting attachment_index string to indices: {e}")
 
@@ -1253,7 +1219,6 @@ async def proceed_extract(
                         for idx in attachment_index.split(",")
                         if idx.strip().isdigit()
                     ]
-                    pass
                 else:
                     attachment_indices = (
                         [int(attachment_index)]
@@ -1312,7 +1277,6 @@ async def proceed_extract(
                     output_path = os.path.join(output_dir, filename)
 
                     # Try to extract the attachment using multiple methods
-                    pass
 
                     # Get attachment filename from track info
                     attachment_filename = track.get(
@@ -1341,7 +1305,6 @@ async def proceed_extract(
                     await makedirs(temp_dir, exist_ok=True)
 
                     # Method 1: Use -dump_attachment option (works in some FFmpeg versions)
-                    pass
                     cmd = [
                         ffmpeg_path,
                         "-hide_banner",
@@ -1377,13 +1340,11 @@ async def proceed_extract(
                             stderr_text = (
                                 stderr.decode() if stderr else "Unknown error"
                             )
-                            pass
-                    except Exception as e:
+                    except Exception:
                         pass
 
                     # Method 2: Try using -map option with data format
                     if not extraction_success:
-                        pass
                         temp_file = os.path.join(
                             temp_dir, f"attachment_{track['index']}.bin"
                         )
@@ -1429,13 +1390,11 @@ async def proceed_extract(
                                     if alt_stderr
                                     else "Unknown error"
                                 )
-                                pass
-                        except Exception as alt_e:
+                        except Exception:
                             pass
 
                     # Method 3: Try using -c:t copy for attachments
                     if not extraction_success:
-                        pass
                         temp_file = os.path.join(
                             temp_dir, f"attachment_{track['index']}_method3.bin"
                         )
@@ -1479,20 +1438,17 @@ async def proceed_extract(
                                     if alt_stderr
                                     else "Unknown error"
                                 )
-                                pass
-                        except Exception as alt_e:
+                        except Exception:
                             pass
 
                     # If all methods failed, create a placeholder file
                     if not extraction_success:
-                        pass
                         try:
                             # Create an empty file with a note about the failure
                             async with aiofiles.open(output_path, "w") as f:
                                 await f.write(
                                     f"Failed to extract attachment {track['index']} - {track.get('filename', '')}"
                                 )
-                            pass
                         except Exception as write_e:
                             LOGGER.error(
                                 f"Error creating placeholder file: {write_e}"
@@ -1509,7 +1465,6 @@ async def proceed_extract(
                 output_path = os.path.join(output_dir, filename)
 
                 # Try to extract the attachment using multiple methods
-                pass
 
                 # Get attachment filename from track info
                 attachment_filename = track.get(
@@ -1536,7 +1491,6 @@ async def proceed_extract(
                 await makedirs(temp_dir, exist_ok=True)
 
                 # Method 1: Use -dump_attachment option (works in some FFmpeg versions)
-                pass
                 cmd = [
                     ffmpeg_path,
                     "-hide_banner",
@@ -1570,13 +1524,11 @@ async def proceed_extract(
                         extraction_success = True
                     else:
                         stderr_text = stderr.decode() if stderr else "Unknown error"
-                        pass
-                except Exception as e:
+                except Exception:
                     pass
 
                 # Method 2: Try using -map option with data format
                 if not extraction_success:
-                    pass
                     temp_file = os.path.join(
                         temp_dir, f"attachment_{track['index']}.bin"
                     )
@@ -1622,13 +1574,11 @@ async def proceed_extract(
                                 if alt_stderr
                                 else "Unknown error"
                             )
-                            pass
-                    except Exception as alt_e:
+                    except Exception:
                         pass
 
                 # Method 3: Try using -c:t copy for attachments
                 if not extraction_success:
-                    pass
                     temp_file = os.path.join(
                         temp_dir, f"attachment_{track['index']}_method3.bin"
                     )
@@ -1672,20 +1622,17 @@ async def proceed_extract(
                                 if alt_stderr
                                 else "Unknown error"
                             )
-                            pass
-                    except Exception as alt_e:
+                    except Exception:
                         pass
 
                 # If all methods failed, create a placeholder file
                 if not extraction_success:
-                    pass
                     try:
                         # Create an empty file with a note about the failure
                         async with aiofiles.open(output_path, "w") as f:
                             await f.write(
                                 f"Failed to extract attachment {track['index']} - {track.get('filename', '')}"
                             )
-                        pass
                     except Exception as write_e:
                         LOGGER.error(f"Error creating placeholder file: {write_e}")
 
@@ -1701,7 +1648,6 @@ async def proceed_extract(
                         for idx in video_index.split(",")
                         if idx.strip().isdigit()
                     ]
-                    pass
                 else:
                     video_indices = (
                         [int(video_index)]
@@ -1752,7 +1698,6 @@ async def proceed_extract(
                         "disposition" in track
                         and track["disposition"].get("attached_pic", 0) == 1
                     ):
-                        pass
                         continue
 
                     # Determine output extension based on format config if available
@@ -1832,8 +1777,6 @@ async def proceed_extract(
 
                     cmd.append(output_file)
 
-                    pass
-
                     # Run the command
                     try:
                         proc = await asyncio.create_subprocess_exec(
@@ -1846,20 +1789,17 @@ async def proceed_extract(
 
                         if proc.returncode == 0 and os.path.exists(output_file):
                             extracted_files.append(output_file)
-                            pass
                         else:
                             stderr_text = (
                                 stderr.decode() if stderr else "Unknown error"
                             )
                             LOGGER.error(f"Failed to extract video: {stderr_text}")
                             # Log the command that failed
-                            pass
                     except Exception as e:
                         LOGGER.error(
                             f"Error running FFmpeg for video extraction: {e}"
                         )
                         # Log the command that failed
-                        pass
 
             # Check if any tracks were found
             if not found_tracks:
@@ -1948,8 +1888,6 @@ async def proceed_extract(
 
                 cmd.append(output_file)
 
-                pass
-
                 # Run the command
                 try:
                     proc = await asyncio.create_subprocess_exec(
@@ -1967,11 +1905,9 @@ async def proceed_extract(
                         stderr_text = stderr.decode() if stderr else "Unknown error"
                         LOGGER.error(f"Failed to extract video: {stderr_text}")
                         # Log the command that failed
-                        pass
                 except Exception as e:
                     LOGGER.error(f"Error running FFmpeg for video extraction: {e}")
                     # Log the command that failed
-                    pass
 
     # Extract audio tracks
     if extract_audio and tracks["audio"]:
@@ -1985,7 +1921,6 @@ async def proceed_extract(
                         for idx in audio_index.split(",")
                         if idx.strip().isdigit()
                     ]
-                    pass
                 else:
                     audio_indices = (
                         [int(audio_index)]
@@ -2104,8 +2039,6 @@ async def proceed_extract(
 
                     cmd.append(output_file)
 
-                    pass
-
                     # Run the command
                     try:
                         proc = await asyncio.create_subprocess_exec(
@@ -2118,20 +2051,17 @@ async def proceed_extract(
 
                         if proc.returncode == 0 and os.path.exists(output_file):
                             extracted_files.append(output_file)
-                            pass
                         else:
                             stderr_text = (
                                 stderr.decode() if stderr else "Unknown error"
                             )
                             LOGGER.error(f"Failed to extract audio: {stderr_text}")
                             # Log the command that failed
-                            pass
                     except Exception as e:
                         LOGGER.error(
                             f"Error running FFmpeg for audio extraction: {e}"
                         )
                         # Log the command that failed
-                        pass
 
             # Check if any tracks were found
             if not found_tracks:
@@ -2207,8 +2137,6 @@ async def proceed_extract(
 
                 cmd.append(output_file)
 
-                pass
-
                 # Run the command
                 try:
                     proc = await asyncio.create_subprocess_exec(
@@ -2226,11 +2154,9 @@ async def proceed_extract(
                         stderr_text = stderr.decode() if stderr else "Unknown error"
                         LOGGER.error(f"Failed to extract audio: {stderr_text}")
                         # Log the command that failed
-                        pass
                 except Exception as e:
                     LOGGER.error(f"Error running FFmpeg for audio extraction: {e}")
                     # Log the command that failed
-                    pass
 
     # Extract subtitle tracks
     if extract_subtitle and tracks["subtitle"]:
@@ -2271,9 +2197,6 @@ async def proceed_extract(
             except Exception as e:
                 LOGGER.error(f"Error converting subtitle_index to integer: {e}")
                 # Log the full exception traceback for debugging
-                import traceback
-
-                pass
 
         # Check if subtitle_indices contains the special value "all"
         extract_all_subtitles = False
@@ -2616,9 +2539,6 @@ async def proceed_extract(
                             f"Error running FFmpeg for subtitle extraction: {e}"
                         )
                         # Log the full exception traceback for debugging
-                        import traceback
-
-                        pass
 
             # Check if any tracks were found
             if not found_tracks:
@@ -2652,34 +2572,27 @@ async def proceed_extract(
                 output_format = None
                 if subtitle_format and subtitle_format.lower() != "none":
                     output_format = subtitle_format.lower()
-                    pass
                 elif subtitle_codec and subtitle_codec.lower() != "none":
                     if subtitle_codec.lower() == "copy":
                         output_format = input_codec
-                        pass
                     else:
                         output_format = subtitle_codec.lower()
-                        pass
                 # For ASS/SSA subtitles, preserve the format when using copy
                 elif input_codec in ["ass", "ssa"]:
                     output_format = "ass"
-                    pass
                 else:
                     # Default to SRT if no format/codec specified
                     output_format = "srt"
-                    pass
 
                 # For ASS/SSA subtitles, make sure the extension matches the codec
                 if input_codec in ["ass", "ssa"] and output_format == "srt":
                     # Force output format to match the codec
                     output_ext = "srt"
-                    pass
                 elif input_codec in ["ass", "ssa"] and (
                     output_format in {"ass", "copy"}
                 ):
                     # Use ASS extension for ASS/SSA subtitles when copying
                     output_ext = "ass"
-                    pass
 
                 output_file = os.path.join(
                     output_dir,
@@ -2700,36 +2613,28 @@ async def proceed_extract(
 
                 # Handle subtitle codec based on input and output formats
                 input_codec = track.get("codec", "").lower()
-                pass
 
                 # Normalize input codec names
                 if input_codec == "subrip":
                     input_codec = "srt"
-                    pass
                 elif input_codec in ["ass", "ssa"]:
                     input_codec = "ass"
-                    pass
 
                 # Determine output format based on subtitle_format or codec
                 output_format = None
                 if subtitle_format and subtitle_format.lower() != "none":
                     output_format = subtitle_format.lower()
-                    pass
                 elif subtitle_codec and subtitle_codec.lower() != "none":
                     if subtitle_codec.lower() == "copy":
                         output_format = input_codec
-                        pass
                     else:
                         output_format = subtitle_codec.lower()
-                        pass
                 # For ASS/SSA subtitles, preserve the format when using copy
                 elif input_codec in ["ass", "ssa"]:
                     output_format = "ass"
-                    pass
                 else:
                     # Default to SRT if no format/codec specified
                     output_format = "srt"
-                    pass
 
                 # Handle format conversion
                 if output_format and output_format != input_codec:
@@ -2739,11 +2644,9 @@ async def proceed_extract(
                         cmd.extend(["-c:s", "srt"])
                         # Force SRT format for output
                         cmd.extend(["-f", "srt"])
-                        pass
                     elif output_format == "ass" and input_codec == "srt":
                         # Converting from SRT to ASS
                         cmd.extend(["-c:s", "ass"])
-                        pass
                     elif output_format == "vtt" and input_codec in [
                         "srt",
                         "ass",
@@ -2751,25 +2654,18 @@ async def proceed_extract(
                     ]:
                         # Converting to WebVTT
                         cmd.extend(["-c:s", "webvtt"])
-                        pass
-                    else:
-                        # For other conversions, let FFmpeg choose the appropriate codec
-                        pass
-                        if subtitle_codec and subtitle_codec.lower() != "none":
-                            cmd.extend(["-c:s", subtitle_codec])
+                    # For other conversions, let FFmpeg choose the appropriate codec
+                    elif subtitle_codec and subtitle_codec.lower() != "none":
+                        cmd.extend(["-c:s", subtitle_codec])
                 # No conversion needed, use copy if possible
                 elif input_codec in ["ass", "ssa", "srt", "vtt", "webvtt"]:
                     cmd.extend(["-c:s", "copy"])
-                    pass
+                # For other formats, let FFmpeg choose the appropriate codec
+                elif subtitle_codec and subtitle_codec.lower() != "none":
+                    cmd.extend(["-c:s", subtitle_codec])
                 else:
-                    # For other formats, let FFmpeg choose the appropriate codec
-                    pass
-                    if subtitle_codec and subtitle_codec.lower() != "none":
-                        cmd.extend(["-c:s", subtitle_codec])
-                    else:
-                        # Default to SRT for unknown formats
-                        cmd.extend(["-c:s", "srt"])
-                        pass
+                    # Default to SRT for unknown formats
+                    cmd.extend(["-c:s", "srt"])
 
                 # Add subtitle language if specified
                 if subtitle_language:
@@ -2788,8 +2684,6 @@ async def proceed_extract(
                     cmd.extend(["-metadata:s:s:0", f"fontsize={subtitle_font_size}"])
 
                 cmd.append(output_file)
-
-                pass
 
                 # Run the command
                 try:
@@ -2810,13 +2704,11 @@ async def proceed_extract(
                         stderr_text = stderr.decode() if stderr else "Unknown error"
                         LOGGER.error(f"Failed to extract subtitle: {stderr_text}")
                         # Log the command that failed
-                        pass
                 except Exception as e:
                     LOGGER.error(
                         f"Error running FFmpeg for subtitle extraction: {e}"
                     )
                     # Log the command that failed
-                    pass
 
     # Delete original file if requested
     if delete_original and extracted_files:
@@ -2841,11 +2733,9 @@ async def proceed_extract(
 async def create_default_audio_thumbnail(output_dir, user_id=None):
     # Try user thumbnail first if available
     if user_id and await aiopath.exists(f"thumbnails/{user_id}.jpg"):
-        pass
         return f"thumbnails/{user_id}.jpg"
     # Then try owner thumbnail
     if await aiopath.exists(f"thumbnails/{Config.OWNER_ID}.jpg"):
-        pass
         return f"thumbnails/{Config.OWNER_ID}.jpg"
 
     # Create a default audio thumbnail if no user/owner thumbnail
@@ -2877,7 +2767,6 @@ async def create_default_audio_thumbnail(output_dir, user_id=None):
         _, err, code = await cmd_exec(cmd)
 
         if code != 0 or not await aiopath.exists(default_thumb):
-            pass
             # Try with a different approach
             cmd = [
                 "xtra",  # Using xtra instead of ffmpeg
@@ -2896,7 +2785,6 @@ async def create_default_audio_thumbnail(output_dir, user_id=None):
             _, err, code = await cmd_exec(cmd)
 
             if code != 0 or not await aiopath.exists(default_thumb):
-                pass
                 # As a last resort, try to create a simple image file directly
                 try:
                     # Create a simple blue image (320x320 pixel) and save it
@@ -2907,9 +2795,7 @@ async def create_default_audio_thumbnail(output_dir, user_id=None):
 
                     img = Image.new("RGB", (320, 320), color=(0, 0, 255))
                     img.save(default_thumb)
-                    pass
-                except Exception as e:
-                    pass
+                except Exception:
                     # Create an even simpler fallback image
                     try:
                         # Create a tiny blue image and save it
@@ -2918,12 +2804,9 @@ async def create_default_audio_thumbnail(output_dir, user_id=None):
 
                         img = Image.new("RGB", (32, 32), color=(0, 0, 255))
                         img.save(default_thumb)
-                        pass
-                    except Exception as e2:
-                        pass
+                    except Exception:
                         return None
-    except Exception as e:
-        pass
+    except Exception:
         return None
 
     # Final check to make sure the thumbnail exists
@@ -2979,11 +2862,9 @@ async def get_video_thumbnail(video_file, duration):
 async def create_default_text_thumbnail(output_dir, user_id=None):
     # Try user thumbnail first if available
     if user_id and await aiopath.exists(f"thumbnails/{user_id}.jpg"):
-        pass
         return f"thumbnails/{user_id}.jpg"
     # Then try owner thumbnail
     if await aiopath.exists(f"thumbnails/{Config.OWNER_ID}.jpg"):
-        pass
         return f"thumbnails/{Config.OWNER_ID}.jpg"
 
     # Create a default thumbnail for text files if no user/owner thumbnail
@@ -3011,9 +2892,7 @@ async def create_default_text_thumbnail(output_dir, user_id=None):
                 # Create a simple gray image
                 img = Image.new("RGB", (320, 320), color=(128, 128, 128))
                 img.save(default_thumb)
-                pass
-            except Exception as e:
-                pass
+            except Exception:
                 return None
 
     if await aiopath.exists(default_thumb):
@@ -3024,11 +2903,9 @@ async def create_default_text_thumbnail(output_dir, user_id=None):
 async def create_default_video_thumbnail(output_dir, user_id=None):
     # Try user thumbnail first if available
     if user_id and await aiopath.exists(f"thumbnails/{user_id}.jpg"):
-        pass
         return f"thumbnails/{user_id}.jpg"
     # Then try owner thumbnail
     if await aiopath.exists(f"thumbnails/{Config.OWNER_ID}.jpg"):
-        pass
         return f"thumbnails/{Config.OWNER_ID}.jpg"
 
     # Create a default thumbnail for video files if no user/owner thumbnail
@@ -3058,9 +2935,7 @@ async def create_default_video_thumbnail(output_dir, user_id=None):
                 # Create a simple black image
                 img = Image.new("RGB", (640, 360), color=(0, 0, 0))
                 img.save(default_thumb)
-                pass
-            except Exception as e:
-                pass
+            except Exception:
                 return None
 
     if await aiopath.exists(default_thumb):
@@ -3071,11 +2946,9 @@ async def create_default_video_thumbnail(output_dir, user_id=None):
 async def create_default_image_thumbnail(output_dir, user_id=None):
     # Try user thumbnail first if available
     if user_id and await aiopath.exists(f"thumbnails/{user_id}.jpg"):
-        pass
         return f"thumbnails/{user_id}.jpg"
     # Then try owner thumbnail
     if await aiopath.exists(f"thumbnails/{Config.OWNER_ID}.jpg"):
-        pass
         return f"thumbnails/{Config.OWNER_ID}.jpg"
 
     # Create a default thumbnail for image files if no user/owner thumbnail
@@ -3105,9 +2978,7 @@ async def create_default_image_thumbnail(output_dir, user_id=None):
                 # Create a simple purple image
                 img = Image.new("RGB", (640, 360), color=(128, 0, 128))
                 img.save(default_thumb)
-                pass
-            except Exception as e:
-                pass
+            except Exception:
                 return None
 
     if await aiopath.exists(default_thumb):
@@ -3390,7 +3261,7 @@ async def get_media_type_for_watermark(file):
                     return "audio"
                 if has_subtitle:
                     return "subtitle"
-    except Exception as e:
+    except Exception:
         pass
 
     # If all else fails, try to determine by mime type
@@ -3413,11 +3284,10 @@ async def get_media_type_for_watermark(file):
                     content = f.read(1000)  # Read first 1000 chars
                     if "-->" in content and content[0].isdigit():
                         return "subtitle"
-    except Exception as e:
+    except Exception:
         pass
 
     # If all else fails, return None
-    pass
     return None
 
 
@@ -3592,7 +3462,7 @@ class FFMpeg:
                                         )
                                     else:
                                         self._eta_raw = 0
-                            except Exception as e:
+                            except Exception:
                                 pass
 
                     elif key == "speed":
@@ -3629,7 +3499,6 @@ class FFMpeg:
         if "-del" in ffmpeg:
             ffmpeg.remove("-del")
             delete_files = True
-            pass
 
         # Replace 'ffmpeg' with 'xtra' as the command name
         if ffmpeg and ffmpeg[0] == "ffmpeg":
@@ -3637,7 +3506,6 @@ class FFMpeg:
 
         # Normal case: command is a list of arguments
         if "-i" not in ffmpeg:
-            pass
             # Add the input parameter using the provided file path
             ffmpeg.extend(["-i", f_path])
 
@@ -3646,7 +3514,6 @@ class FFMpeg:
         for item in ffmpeg:
             if isinstance(item, str) and ".trim" in item:
                 is_trim_command = True
-                pass
                 break
 
         # Find all output files in the command
@@ -3671,7 +3538,6 @@ class FFMpeg:
                     and not arg.startswith("-")
                 ):
                     output_file = arg
-                    pass
                     break
 
             # If that didn't work, look for the last argument that doesn't start with "-"
@@ -3696,15 +3562,9 @@ class FFMpeg:
             if not output_file and len(ffmpeg) >= 2 and ffmpeg[-1] == "-y":
                 if not ffmpeg[-2].startswith("-") and "." in ffmpeg[-2]:
                     output_file = ffmpeg[-2]
-                    pass
 
             # If we found an output file, add it to the outputs list
-            if output_file:
-                pass
-                outputs = [output_file]
-            else:
-                pass
-                outputs = []
+            outputs = [output_file] if output_file else []
         else:
             # Process mltb placeholders
             outputs = []
@@ -3729,7 +3589,6 @@ class FFMpeg:
                 ffmpeg[index] = output
 
             # Log the identified output files
-            pass
 
         if self._listener.is_cancelled:
             return False
@@ -3739,7 +3598,6 @@ class FFMpeg:
         try:
             if await aiopath.exists(f_path):
                 original_file_size = await aiopath.getsize(f_path)
-                pass
         except Exception as e:
             LOGGER.error(f"Error getting original file size: {e}")
 
@@ -3794,7 +3652,6 @@ class FFMpeg:
                             f"Output file exists but has zero size: {output}"
                         )
                         break
-                    pass
                 except Exception as e:
                     all_outputs_valid = False
                     LOGGER.error(f"Error checking output file size: {e}")
@@ -3916,7 +3773,7 @@ class FFMpeg:
                             LOGGER.info(
                                 f"Removed temporary metadata file: {meta_file}"
                             )
-                        except Exception as e:
+                        except Exception:
                             pass
 
                     return True
@@ -3932,7 +3789,7 @@ class FFMpeg:
                         LOGGER.info(
                             f"Removed temporary metadata file after error: {meta_file}"
                         )
-                    except Exception as e2:
+                    except Exception:
                         pass
 
                 return False
@@ -3947,7 +3804,6 @@ class FFMpeg:
         if "-del" in ffmpeg:
             ffmpeg.remove("-del")
             delete_files = True
-            pass
 
         # Replace 'ffmpeg' with 'xtra' as the command name
         if ffmpeg and ffmpeg[0] == "ffmpeg":
@@ -3969,7 +3825,7 @@ class FFMpeg:
             try:
                 await remove(meta_file)
                 LOGGER.info(f"Removed temporary metadata file: {meta_file}")
-            except Exception as e:
+            except Exception:
                 pass
 
         if self._listener.is_cancelled:
@@ -3980,7 +3836,6 @@ class FFMpeg:
             try:
                 if await aiopath.exists(f_path):
                     original_file_size = await aiopath.getsize(f_path)
-                    pass
             except Exception as e:
                 LOGGER.error(f"Error getting original file size: {e}")
 
@@ -3998,17 +3853,15 @@ class FFMpeg:
                         LOGGER.error(
                             f"Output file exists but has zero size: {f_path}"
                         )
-                    else:
-                        pass
 
-                        # Additional check: make sure the output size is reasonable
-                        # (at least 1% of the original file size for most operations)
-                        if original_file_size > 0 and output_size < (
-                            original_file_size * 0.01
-                        ):
-                            # For some operations, the output can be much smaller than the original
-                            # So we'll only log a warning but still consider it valid
-                            pass
+                    # Additional check: make sure the output size is reasonable
+                    # (at least 1% of the original file size for most operations)
+                    elif original_file_size > 0 and output_size < (
+                        original_file_size * 0.01
+                    ):
+                        # For some operations, the output can be much smaller than the original
+                        # So we'll only log a warning but still consider it valid
+                        pass
                 except Exception as e:
                     output_valid = False
                     LOGGER.error(f"Error checking output file size: {e}")
@@ -4064,9 +3917,6 @@ class FFMpeg:
 
         base_name = ospath.splitext(video_file)[0]
         output = f"{base_name}.{ext}"
-
-        pass
-        pass
 
         # Check if the output file already exists and is the same as input
         if output == video_file:
@@ -4409,7 +4259,6 @@ class FFMpeg:
                 and video_file != output
             ):
                 try:
-                    pass
                     await remove(video_file)
                     LOGGER.info(f"Successfully deleted original file: {video_file}")
                 except Exception as e:
@@ -4420,7 +4269,6 @@ class FFMpeg:
                     try:
                         import os
 
-                        pass
                         os.remove(video_file)
                         LOGGER.info(
                             f"Successfully deleted original file using os.remove: {video_file}"
@@ -4439,7 +4287,6 @@ class FFMpeg:
             LOGGER.info(
                 f"Copy codec failed for {video_file}, trying with transcoding"
             )
-            pass
             return await self.convert_video(
                 video_file, ext, True, False, delete_original
             )
@@ -4449,7 +4296,6 @@ class FFMpeg:
             LOGGER.info(
                 f"Full stream transcoding failed for {video_file}, trying with only video and audio streams"
             )
-            pass
             return await self.convert_video(
                 video_file, ext, True, True, delete_original
             )
@@ -4558,9 +4404,6 @@ class FFMpeg:
 
         base_name = ospath.splitext(audio_file)[0]
         output = f"{base_name}.{ext}"
-
-        pass
-        pass
 
         # Check if the output file already exists and is the same as input
         if output == audio_file:
@@ -4682,7 +4525,6 @@ class FFMpeg:
                 and audio_file != output
             ):
                 try:
-                    pass
                     await remove(audio_file)
                     LOGGER.info(f"Successfully deleted original file: {audio_file}")
                 except Exception as e:
@@ -4693,7 +4535,6 @@ class FFMpeg:
                     try:
                         import os
 
-                        pass
                         os.remove(audio_file)
                         LOGGER.info(
                             f"Successfully deleted original file using os.remove: {audio_file}"
@@ -4712,7 +4553,6 @@ class FFMpeg:
             LOGGER.info(
                 f"Copy codec failed for {audio_file}, trying with transcoding"
             )
-            pass
             return await self.convert_audio(audio_file, ext, True, delete_original)
 
         # If all attempts failed, log the error and return False
@@ -4751,9 +4591,6 @@ class FFMpeg:
         file_ext = ospath.splitext(subtitle_file)[1].lower()
         output = f"{ospath.splitext(subtitle_file)[0]}.{ext}"
 
-        pass
-        pass
-
         # Get custom subtitle settings from listener if available
         subtitle_encoding = getattr(
             self._listener, "convert_subtitle_encoding", None
@@ -4772,30 +4609,25 @@ class FFMpeg:
 
         # Determine input subtitle format based on file extension
         # This information is used for logging purposes
-        input_format = ""
-        if file_ext == ".srt":
-            input_format = "srt"
-        elif file_ext in [".ass", ".ssa"]:
-            input_format = "ass"
-        elif file_ext in [".vtt", ".webvtt"]:
-            input_format = "webvtt"
+        if (
+            file_ext == ".srt"
+            or file_ext in [".ass", ".ssa"]
+            or file_ext in [".vtt", ".webvtt"]
+        ):
+            pass
         elif file_ext == ".sub":
             # For .sub files, we need to check if it's SubRip or MicroDVD format
             try:
                 with open(subtitle_file, encoding="utf-8", errors="ignore") as f:
                     first_line = f.readline().strip()
                 if first_line.startswith("{") and "}" in first_line:
-                    input_format = "microdvd"
+                    pass
                 else:
-                    input_format = "subviewer"
+                    pass
             except Exception:
-                input_format = (
-                    "subviewer"  # Default to subviewer if we can't determine
-                )
+                pass
         else:
-            input_format = "unknown"
-
-        pass
+            pass
 
         # Build FFmpeg command
         cmd = [
@@ -4859,7 +4691,6 @@ class FFMpeg:
                     )
                     # Try again with a different approach
                     try:
-                        pass
                         os.remove(subtitle_file)
                         LOGGER.info(
                             f"Successfully deleted original file using os.remove: {subtitle_file}"
@@ -4905,9 +4736,6 @@ class FFMpeg:
 
         # Get base name and output path
         output = f"{ospath.splitext(document_file)[0]}.{ext}"
-
-        pass
-        pass
 
         # Check if the output file already exists and is the same as input
         if output == document_file:
@@ -4964,7 +4792,6 @@ class FFMpeg:
                                 )
                                 # Try again with a different approach
                                 try:
-                                    pass
                                     os.remove(document_file)
                                     LOGGER.info(
                                         f"Successfully deleted original file using os.remove: {document_file}"
@@ -5012,7 +4839,6 @@ class FFMpeg:
                                 )
                                 # Try again with a different approach
                                 try:
-                                    pass
                                     os.remove(document_file)
                                     LOGGER.info(
                                         f"Successfully deleted original file using os.remove: {document_file}"
@@ -5057,9 +4883,6 @@ class FFMpeg:
 
         # Get output path
         output = f"{ospath.splitext(archive_file)[0]}.{ext}"
-
-        pass
-        pass
 
         # Check if the output file already exists and is the same as input
         if output == archive_file:
@@ -5155,7 +4978,6 @@ class FFMpeg:
                     )
                     # Try again with a different approach
                     try:
-                        pass
                         import os
 
                         os.remove(archive_file)
@@ -5280,12 +5102,10 @@ class FFMpeg:
 
         # For equal splits, calculate the exact duration for each part
         if is_equal_splits and duration > 0:
-            pass
             # Calculate duration per part (in seconds)
             duration_per_part = duration / parts
             # Reserve some buffer for each part (3 seconds)
             duration_per_part -= 3
-            pass
 
             # Process each part with exact duration
             for i in range(1, parts + 1):
@@ -5353,7 +5173,6 @@ class FFMpeg:
                         stderr = "Unable to decode the error!"
                     with contextlib.suppress(Exception):
                         await remove(out_path)
-                    pass
                     continue
 
                 # Update progress
@@ -5376,16 +5195,13 @@ class FFMpeg:
         safe_telegram_limit = telegram_limit - safety_margin
 
         if split_size > safe_telegram_limit:
-            premium_status = "premium" if TgClient.IS_PREMIUM_USER else "non-premium"
-            limit_in_gb = telegram_limit / (1024 * 1024 * 1024)
-            safe_limit_in_gb = safe_telegram_limit / (1024 * 1024 * 1024)
-            pass
+            telegram_limit / (1024 * 1024 * 1024)
+            safe_telegram_limit / (1024 * 1024 * 1024)
             split_size = safe_telegram_limit
 
         # Apply an additional safety buffer for multi-part files
         if parts > 2:
             buffer_size = 5000000  # 5MB additional buffer for multi-part files
-            pass
             split_size -= buffer_size
         start_time = 0
         i = 1
@@ -5449,10 +5265,8 @@ class FFMpeg:
                 with contextlib.suppress(Exception):
                     await remove(out_path)
                 if multi_streams:
-                    pass
                     multi_streams = False
                     continue
-                pass
                 return False
             out_size = await aiopath.getsize(out_path)
             # Check against both max_split_size and Telegram's limit (based on premium status)
@@ -5471,19 +5285,12 @@ class FFMpeg:
                 if out_size > telegram_limit:
                     # If we're over Telegram's limit, use a much larger buffer
                     reduction = overage + 20000000  # 20MB extra buffer
-                    premium_status = (
-                        "premium" if TgClient.IS_PREMIUM_USER else "non-premium"
-                    )
-                    limit_in_gb = telegram_limit / (1024 * 1024 * 1024)
-                    pass
+                    telegram_limit / (1024 * 1024 * 1024)
+                # Adjust reduction based on overage percentage
+                elif overage_percent > 0.2:  # If more than 20% over
+                    reduction = overage + 10000000  # 10MB extra buffer
                 else:
-                    # Adjust reduction based on overage percentage
-                    if overage_percent > 0.2:  # If more than 20% over
-                        reduction = overage + 10000000  # 10MB extra buffer
-                    else:
-                        reduction = overage + 5000000  # 5MB extra buffer
-
-                    pass
+                    reduction = overage + 5000000  # 5MB extra buffer
 
                 split_size -= reduction
                 await remove(out_path)
@@ -5495,7 +5302,6 @@ class FFMpeg:
                 )
                 break
             if duration == lpd:
-                pass
                 break
             if lpd <= 3:
                 await remove(out_path)
@@ -5526,7 +5332,6 @@ async def apply_document_metadata(file_path, title=None, author=None, comment=No
 
     # Skip if no metadata to apply
     if not title and not author and not comment:
-        pass
         return True
 
     # Get file extension
@@ -5796,7 +5601,6 @@ async def apply_exiftool_metadata(
                 await remove(temp_file)
             LOGGER.error(f"exiftool failed: {result[1]}")
             return False
-        pass
         return False
 
     except Exception as e:
@@ -5834,7 +5638,6 @@ async def merge_pdfs(files, output_filename="merged.pdf"):
                 with open(pdf, "rb") as pdf_file:
                     reader = PdfReader(pdf_file)
                     if reader.is_encrypted:
-                        pass
                         continue
 
                 # Add the PDF to the merger
@@ -5999,7 +5802,6 @@ async def merge_images(
         # Normalize output format
         output_format = output_format.lower().strip(".")
         if output_format not in ["jpg", "jpeg", "png", "webp", "tiff", "bmp", "gif"]:
-            pass
             output_format = "jpg"
 
         # Determine base directory for output
@@ -6018,14 +5820,12 @@ async def merge_images(
                 # Skip any extremely large images (potential memory issues)
                 file_size = os.path.getsize(f)
                 if file_size > 50 * 1024 * 1024:  # 50 MB limit
-                    pass
                     continue
 
                 img = Image.open(f)
 
                 # Skip images with extreme dimensions
                 if img.width > 5000 or img.height > 5000:
-                    pass
                     continue
 
                 # Convert to RGB if needed (handle more color modes)
@@ -6051,7 +5851,6 @@ async def merge_images(
 
         # Determine merge mode
         if mode not in ["collage", "vertical", "horizontal"]:
-            pass
             mode = "collage"
 
         # For collage mode, determine number of columns
@@ -6380,7 +6179,6 @@ async def merge_documents(files, output_format="pdf"):
                 with open(pdf_path, "rb") as pdf_file:
                     reader = PdfReader(pdf_file)
                     if reader.is_encrypted:
-                        pass
                         continue
 
                     # Add all pages from this PDF

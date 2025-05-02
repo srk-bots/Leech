@@ -67,7 +67,6 @@ async def update_aria2_options():
 async def update_nzb_options():
     try:
         if sabnzbd_client is None:
-            pass
             return
 
         # Try to connect to SABnzbd with a timeout
@@ -78,10 +77,8 @@ async def update_nzb_options():
                 requests_args={"timeout": 5},
             )
             if not status_response:
-                pass
                 return
-        except Exception as e:
-            pass
+        except Exception:
             return
 
         # Now try to get the config
@@ -98,7 +95,7 @@ async def update_nzb_options():
                 LOGGER.info("Successfully updated NZB options")
             else:
                 pass
-        except Exception as e:
+        except Exception:
             pass
     except APIError as e:
         LOGGER.error(f"SABnzbd API error: {e}")
@@ -219,7 +216,7 @@ async def load_settings():
                         LOGGER.info("SABnzbd configuration loaded from database")
                     else:
                         pass
-                except Exception as e:
+                except Exception:
                     pass
         except Exception as e:
             LOGGER.error(f"Error loading SABnzbd configuration from database: {e}")
@@ -307,13 +304,13 @@ async def save_settings():
                             LOGGER.info("SABnzbd configuration saved to database")
                         else:
                             pass
-                    except Exception as e:
+                    except Exception:
                         pass
                 else:
                     LOGGER.info(
                         "SABnzbd configuration file not found, skipping save",
                     )
-            except Exception as e:
+            except Exception:
                 pass
     except Exception as e:
         LOGGER.error(f"Error saving SABnzbd configuration to database: {e}")
@@ -542,7 +539,6 @@ async def start_bot():
         LOGGER.info("Starting scheduled deletion checker")
         create_task(scheduled_deletion_checker())  # noqa: RUF006
     else:
-        pass
         # Create a task to wait for TgClient.bot to be initialized and then start the checker
         create_task(wait_for_bot_and_start_checker())  # noqa: RUF006
 
@@ -564,4 +560,3 @@ async def wait_for_bot_and_start_checker():
         await sleep(60)  # Check every minute
 
     # If we get here, the bot still isn't initialized after 5 minutes
-    pass

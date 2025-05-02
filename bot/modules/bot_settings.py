@@ -1369,7 +1369,6 @@ Configure global watermark settings that will be used when user settings are not
         elif current_page < 0:
             current_page = total_pages - 1
             globals()["merge_page"] = total_pages - 1
-            pass
 
         # Get settings for current page
         start_idx = current_page * items_per_page
@@ -3247,7 +3246,6 @@ Configure advanced merge settings that will be used when user settings are not a
 
 async def update_buttons(message, key=None, edit_type=None, page=0):
     user_id = message.chat.id
-    pass
 
     msg, button = await get_buttons(key, edit_type, page, user_id)
     await edit_message(message, msg, button)
@@ -4736,7 +4734,6 @@ async def edit_bot_settings(client, query):
         # For merge settings, maintain the current page
         if data[2] == "mediatools_merge":
             # Just update the state, the page is maintained by the global merge_page variable
-            pass
             await update_buttons(
                 message, "mediatools_merge", page=globals()["merge_page"]
             )
@@ -4770,7 +4767,6 @@ async def edit_bot_settings(client, query):
         globals()["state"] = "view"
         # For merge settings, maintain the current page
         if data[2] == "mediatools_merge":
-            pass
             await update_buttons(
                 message, "mediatools_merge", page=globals()["merge_page"]
             )
@@ -5845,7 +5841,6 @@ async def edit_bot_settings(client, query):
             if len(data) > 2:
                 # Update the global merge_page variable
                 globals()["merge_page"] = int(data[2])
-                pass
                 await update_buttons(
                     message, "mediatools_merge", page=globals()["merge_page"]
                 )

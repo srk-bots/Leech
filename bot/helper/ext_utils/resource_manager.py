@@ -78,7 +78,6 @@ def get_cpu_affinity():
         affinity = [cpu for cpu in affinity if 0 <= cpu < cpu_count]
 
         if not affinity:
-            pass
             return None
 
         return affinity

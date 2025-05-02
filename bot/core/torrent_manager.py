@@ -58,7 +58,6 @@ class TorrentManager:
                 break
             except Exception as e:
                 retry_count += 1
-                pass
                 if retry_count >= max_retries:
                     LOGGER.error(f"All attempts to connect to Aria2 failed: {e}")
                     cls.aria2 = None
@@ -85,7 +84,6 @@ class TorrentManager:
                 break
             except Exception as e:
                 retry_count += 1
-                pass
                 if retry_count >= max_retries:
                     LOGGER.error(
                         f"All attempts to connect to qBittorrent failed: {e}",
