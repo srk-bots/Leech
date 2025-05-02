@@ -146,14 +146,14 @@ async def cache_cleanup_task():
 
             # Get current timestamp for logging
             time.strftime("%Y-%m-%d %H:%M:%S")
-            MUSIC_  # Clean up all caches
+            # Clean up all caches
             for client_type in VALID_CHAT_IDS:
                 cache = VALID_CHAT_IDS[client_type]
                 before_size = len(cache.cache)
                 cache._cleanup_expired()
                 after_size = len(cache.cache)
                 if before_size > after_size:
-                    MUSIC_  # Force garbage collection after cache cleanup
+                    pass  # Force garbage collection after cache cleanup
             if smart_garbage_collection:
                 smart_garbage_collection(aggressive=False)
             else:
@@ -297,7 +297,7 @@ async def search_music_in_chat(
     """
     # Check if this is a bot client - bots cannot search messages
     if client_type == "bot":
-        MUSIC_return(
+        return(
             [],
             False,
             Exception("BOT_METHOD_INVALID: Bots cannot search messages"),
@@ -346,7 +346,7 @@ async def search_music_in_chat(
                 SEARCH_RESULTS_CACHE.put(cache_key, result)
                 return result
             except Exception:
-                MUSIC_  # Try without offset
+                # Try without offset
                 messages = []
                 async for msg in client.search_messages(
                     chat_id=chat_id,
@@ -366,7 +366,7 @@ async def search_music_in_chat(
 
         except (ImportError, AttributeError):
             # If search_messages or MessagesFilter is not available, fall back to get_messages
-            MUSIC_  # Get recent messages without any filter
+            # Get recent messages without any filter
             messages = []
             try:
                 # Try with get_chat_history which is more likely to be available
@@ -715,7 +715,7 @@ async def music_search(_, message: Message):
             )
     elif TgClient.bot:
         # Only use bot client if user client is not available (will likely fail for searching)
-        MUSIC_  # Add warning to status message
+        # Add warning to status message
         await edit_message(
             status_msg,
             f"<b>Searching for:</b> <code>{query}</code>\n\n"
@@ -967,7 +967,7 @@ async def music_get_callback(_, query):
         return None
 
     # Only log at debug level to avoid cluttering logs
-    MUSIC_  # Try to validate the chat with both clients to find one that works
+    # Try to validate the chat with both clients to find one that works
     user_client_valid = False
     bot_client_valid = False
 
@@ -1041,7 +1041,7 @@ async def music_get_callback(_, query):
                         f"Found non-audio message {message_id} in chat {chat_id}"
                     )
                     return None
-                MUSIC_pass
+                pass
             except Exception:
                 raise
 
@@ -1099,7 +1099,7 @@ async def music_get_callback(_, query):
                             )
                             return None
                         else:
-                            MUSIC_pass
+                            pass
                     except Exception:
                         raise
 
@@ -1230,13 +1230,13 @@ async def music_get_callback(_, query):
                                 "Found non-audio message with fallback client"
                             )
                             return None
-                        MUSIC_pass
+                        pass
                     except Exception:
                         raise
                 except Exception as e3:
                     MUSIC_LOGGER.error(f"Error in fallback client attempt: {e3}")
             else:
-                MUSIC_pass
+                pass
         except Exception as e2:
             MUSIC_LOGGER.error(f"Error in fallback handling: {e2}")
 
