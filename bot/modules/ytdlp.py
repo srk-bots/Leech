@@ -63,10 +63,8 @@ async def select_format(_, query, obj):
             LOGGER.error(f"Error in section selection: {e}")
             await query.answer(f"Error: {e!s}", show_alert=True)
     elif data[1] == "aq":
-        if data[2] == "back":
-            await obj.audio_format()
-        else:
-            await obj.audio_quality(data[2])
+        # Handle audio quality format selection
+        await obj.audio_quality(data[2])
     elif data[1] == "back":
         await obj.back_to_main()
     elif data[1] == "cancel":
@@ -510,11 +508,41 @@ class YtSelection:
         return self.qual
 
     async def back_to_main(self):
-        if self._is_playlist:
-            msg = f"Choose Playlist Videos Quality Category:\nTimeout: {get_readable_time(self._timeout - (time() - self._time))}"
+        # Get the current message text to determine which menu we're in
+        current_msg = self._reply_to.text if hasattr(self._reply_to, 'text') else ""
+
+        # Log the current menu for debugging
+        LOGGER.debug(f"Back button pressed. Current menu: {current_msg[:50]}...")
+
+        # Check if we're in an audio-related menu
+        if "Audio" in current_msg and "Quality" in current_msg:
+            # We're in the audio quality menu, go back to audio format selection
+            LOGGER.info("Navigating back from audio quality menu to audio format selection")
+            await self.audio_format()
+        elif "Audio Format" in current_msg:
+            # We're in the audio format menu, go back to audio section
+            LOGGER.info("Navigating back from audio format menu to audio section")
+            await self.show_section("audio")
+        elif "MP3 Audio" in current_msg:
+            # We're in the MP3 quality menu, go back to audio section
+            LOGGER.info("Navigating back from MP3 quality menu to audio section")
+            await self.show_section("audio")
+        elif "Choose AUDIO Format" in current_msg:
+            # We're in the audio section, go back to main menu
+            LOGGER.info("Navigating back from audio section to main menu")
+            if self._is_playlist:
+                msg = f"Choose Playlist Videos Quality:\nTimeout: {get_readable_time(self._timeout - (time() - self._time))}"
+            else:
+                msg = f"Choose Video Quality:\nTimeout: {get_readable_time(self._timeout - (time() - self._time))}"
+            await edit_message(self._reply_to, msg, self._main_buttons)
         else:
-            msg = f"Choose Video Quality Category:\nTimeout: {get_readable_time(self._timeout - (time() - self._time))}"
-        await edit_message(self._reply_to, msg, self._main_buttons)
+            # Default: go back to main menu
+            LOGGER.info("Navigating back to main menu (default case)")
+            if self._is_playlist:
+                msg = f"Choose Playlist Videos Quality:\nTimeout: {get_readable_time(self._timeout - (time() - self._time))}"
+            else:
+                msg = f"Choose Video Quality:\nTimeout: {get_readable_time(self._timeout - (time() - self._time))}"
+            await edit_message(self._reply_to, msg, self._main_buttons)
 
     async def qual_subbuttons(self, b_name):
         buttons = ButtonMaker()
@@ -617,8 +645,8 @@ class YtSelection:
 
             buttons.data_button(button_text, f"ytq {audio_format}")
 
-        buttons.data_button("Back", "ytq aq back", "footer")
-        buttons.data_button("Cancel", "ytq aq cancel", "footer")
+        buttons.data_button("Back", "ytq back", "footer")
+        buttons.data_button("Cancel", "ytq cancel", "footer")
 
         subbuttons = buttons.build_menu(2)
         msg = f"Choose Audio{i} Quality (Lowest to Highest):\nNote: 10 is lowest quality, 0 is highest quality\nTimeout: {get_readable_time(self._timeout - (time() - self._time))}"

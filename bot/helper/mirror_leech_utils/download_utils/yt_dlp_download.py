@@ -729,6 +729,7 @@ class YoutubeDLHelper:
             },
         ]
 
+        # Handle specific audio format with quality
         if qual.startswith("ba/b-"):
             audio_info = qual.split("-")
             qual = audio_info[0]
@@ -747,6 +748,30 @@ class YoutubeDLHelper:
                 self._ext = ".m4a"
             else:
                 self._ext = f".{audio_format}"
+        # Handle bestaudio format - ensure it's audio only
+        elif qual == "bestaudio":
+            # Modify format to ensure audio-only download
+            qual = "bestaudio[vcodec=none]"
+            # Default to mp3 format for consistency
+            self.opts["postprocessors"].append(
+                {
+                    "key": "FFmpegExtractAudio",
+                    "preferredcodec": "mp3",
+                    "preferredquality": "192",
+                },
+            )
+            self._ext = ".mp3"
+
+            # Log that we're downloading audio only
+            LOGGER.info("Downloading audio-only format (MP3)")
+
+            # Add audio format to the filename for clarity
+            if self._listener.name and not self._listener.name.endswith(self._ext):
+                if "." in self._listener.name:
+                    base_name = self._listener.name.rsplit(".", 1)[0]
+                    self._listener.name = f"{base_name} (Audio){self._ext}"
+                else:
+                    self._listener.name = f"{self._listener.name} (Audio){self._ext}"
 
         if options:
             self._set_options(options)
@@ -800,7 +825,8 @@ class YoutubeDLHelper:
                 "thumbnail": f"{path}/yt-dlp-thumb/{base_name}.%(ext)s",
             }
 
-        if qual.startswith("ba/b"):
+        # Set proper filename for audio formats
+        if qual.startswith("ba/b") or qual == "bestaudio" or qual == "bestaudio[vcodec=none]":
             self._listener.name = f"{base_name}{self._ext}"
 
         if self._listener.is_leech and not self._listener.thumbnail_layout:
