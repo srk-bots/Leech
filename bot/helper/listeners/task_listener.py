@@ -420,7 +420,8 @@ class TaskListener(TaskConfig):
                         )
                 buttons = ButtonMaker()
                 bot = TgClient.bot
-                buttons.url_button("Go to inbox", f"https://t.me/{bot.me.username}")
+                buttons.url_button("Go to inbox", f"https://t.me/{bot.me.username.lstrip('@')}")
+
                 await send_message(self.message, done_msg, buttons)
         else:
             msg += f"\n\n<b>Type: </b>{mime_type}"
@@ -464,7 +465,7 @@ class TaskListener(TaskConfig):
                 await send_message(int(Config.LOG_CHAT_ID), msg, button)
                 bot = TgClient.bot
                 buttons = ButtonMaker()
-                buttons.url_button("Go to inbox", f"https://t.me/{bot.me.username}")
+                buttons.url_button("Go to inbox", f"https://t.me/{bot.me.username.lstrip('@')}")
                 await send_message(self.message, done_msg, buttons)
             await send_message(self.message, done_msg, button)
         if self.seed:
