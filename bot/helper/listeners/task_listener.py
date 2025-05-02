@@ -386,7 +386,6 @@ class TaskListener(TaskConfig):
         done_msg = f"{self.tag}\nYour task is complete\nPlease check your inbox." if Config.BOT_USERNAME != '' else f"{self.tag}\nYour task is complete.\nPlease check your inbox."
         LOGGER.info(f"Task Done: {self.name}")
         if self.is_leech:
-            buttons = ButtonMaker()
             msg += f"\n<b>Total Files: </b>{folders}"
             if mime_type != 0:
                 msg += f"\n<b>Corrupted Files: </b>{mime_type}"
@@ -419,9 +418,9 @@ class TaskListener(TaskConfig):
                             int(Config.LOG_CHAT_ID),
                             f"{msg}<blockquote expandable>{fmsg}</blockquote>",
                         )
-                button = buttons.url_button("Go to inbox", f"https://t.me/{Config.BOT_USERNAME.lstrip("@").strip()}")
+                buttons = ButtonMaker().url_button("Go to inbox", f"https://t.me/{Config.BOT_USERNAME.lstrip("@").strip()}")
 
-                await send_message(self.message, done_msg, buttons=button) if Config.BOT_USERNAME else await send_message(self.message, done_msg)
+                await send_message(self.message, done_msg, buttons=buttons.build_menu(1))
         else:
             msg += f"\n\n<b>Type: </b>{mime_type}"
             if mime_type == "Folder":
