@@ -5961,7 +5961,7 @@ async def send_bot_settings(_, message):
     msg, button = await get_buttons(user_id=user_id)
     globals()["start"] = 0
     # Don't auto-delete the bot settings message
-    await send_message(message, msg, button, auto_delete=False)
+    await send_message(message, msg, button)
 
 
 async def load_config():
