@@ -20,6 +20,7 @@ from bot import (
     task_dict,
     task_dict_lock,
 )
+from bot.core.aeon_client import TgClient
 from bot.core.config_manager import Config
 from bot.core.torrent_manager import TorrentManager
 from bot.helper.common import TaskConfig
@@ -417,7 +418,9 @@ class TaskListener(TaskConfig):
                             int(Config.LOG_CHAT_ID),
                             f"{msg}<blockquote expandable>{fmsg}</blockquote>",
                         )
-                await send_message(self.message, done_msg)
+                buttons = ButtonMaker()
+                buttons.url_button("Go to inbox", f"https://t.me/{TgClient.NAME}")
+                await send_message(self.message, done_msg, buttons)
         else:
             msg += f"\n\n<b>Type: </b>{mime_type}"
             if mime_type == "Folder":
@@ -458,7 +461,10 @@ class TaskListener(TaskConfig):
             await send_message(self.user_id, msg, button)
             if Config.LOG_CHAT_ID:
                 await send_message(int(Config.LOG_CHAT_ID), msg, button)
-            await send_message(self.message, done_msg)
+                buttons = ButtonMaker()
+                buttons.url_button("Go to inbox", f"https://t.me/{TgClient.NAME}")
+                await send_message(self.message, done_msg, buttons)
+            await send_message(self.message, done_msg, button)
         if self.seed:
             await clean_target(self.up_dir)
             async with queue_dict_lock:
