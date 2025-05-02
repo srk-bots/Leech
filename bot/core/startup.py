@@ -119,6 +119,16 @@ async def load_settings():
         # Process any pending message deletions
         await process_pending_deletions()
 
+        # Clean up old file tracker entries on startup
+        if Config.STOP_DUPLICATE:
+            try:
+                # Clean up entries older than 24 hours
+                deleted_count = await database.clean_old_file_tracker_entries(hours=24)
+                if deleted_count > 0:
+                    LOGGER.info(f"Startup cleanup: Removed {deleted_count} old file tracker entries")
+            except Exception as e:
+                LOGGER.error(f"Error cleaning up file tracker entries on startup: {e}")
+
         BOT_ID = Config.BOT_TOKEN.split(":", 1)[0]
         current_deploy_config = Config.get_all()
         old_deploy_config = await database.db.settings.deployConfig.find_one(
@@ -525,9 +535,23 @@ async def process_pending_deletions():
 
 async def scheduled_deletion_checker():
     LOGGER.info("Scheduled deletion checker started")
+    last_file_tracker_cleanup = 0
     while True:
         try:
+            # Process pending message deletions
             await process_pending_deletions()
+
+            # Clean up old file tracker entries every 6 hours
+            current_time = int(time())
+            if Config.STOP_DUPLICATE and current_time - last_file_tracker_cleanup > 21600:  # 6 hours
+                try:
+                    # Clean up entries older than 24 hours
+                    deleted_count = await database.clean_old_file_tracker_entries(hours=24)
+                    if deleted_count > 0:
+                        LOGGER.info(f"Periodic cleanup: Removed {deleted_count} old file tracker entries")
+                    last_file_tracker_cleanup = current_time
+                except Exception as e:
+                    LOGGER.error(f"Error in periodic file tracker cleanup: {e}")
         except Exception as e:
             LOGGER.error(f"Error in scheduled deletion checker: {e}")
         await sleep(600)  # Check every 10 minutes

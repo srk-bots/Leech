@@ -43,6 +43,22 @@ class DbManager:
             self.db = self._conn.luna
             self._return = False
             LOGGER.info("Successfully connected to database")
+
+            # Initialize file_tracker collection with indexes for better performance
+            if Config.STOP_DUPLICATE:
+                try:
+                    # Create indexes for file tracking
+                    await self.db.file_tracker.create_index([("hash", 1)])
+                    await self.db.file_tracker.create_index([("name", 1)])
+                    await self.db.file_tracker.create_index([("size", 1)])
+                    await self.db.file_tracker.create_index([("drive_id", 1)])
+                    await self.db.file_tracker.create_index([("telegram_id", 1)])
+                    await self.db.file_tracker.create_index([("torrent_hash", 1)])
+                    await self.db.file_tracker.create_index([("user_id", 1)])
+                    await self.db.file_tracker.create_index([("timestamp", -1)])
+                    LOGGER.info("File tracker indexes created successfully")
+                except Exception as e:
+                    LOGGER.error(f"Error creating file tracker indexes: {e}")
         except PyMongoError as e:
             LOGGER.error(f"Error in DB connection: {e}")
             self.db = None
@@ -503,7 +519,41 @@ class DbManager:
                             f"Sample entry: {entry} - Due for deletion: {entry['is_due']}",
                         )
 
+
+
         return result
+
+    async def clean_old_file_tracker_entries(self, hours=24):
+        """Clean up file tracker entries older than specified hours
+
+        Args:
+            hours: Number of hours to keep entries for (default: 24)
+
+        Returns:
+            Number of entries deleted
+        """
+        if self._return or not self.db:
+            return 0
+
+        try:
+            from datetime import datetime, timedelta
+
+            # Calculate cutoff date
+            cutoff_date = datetime.now() - timedelta(hours=hours)
+
+            # Delete old entries
+            result = await self.db.file_tracker.delete_many({
+                "timestamp": {"$lt": cutoff_date}
+            })
+
+            deleted_count = result.deleted_count
+            if deleted_count > 0:
+                LOGGER.info(f"Cleaned up {deleted_count} old file tracker entries (older than {hours} hours)")
+
+            return deleted_count
+        except Exception as e:
+            LOGGER.error(f"Error cleaning up old file tracker entries: {e}")
+            return 0
 
 
 database = DbManager()

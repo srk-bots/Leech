@@ -188,6 +188,36 @@ class TaskListener(TaskConfig):
         dl_path = f"{self.dir}/{self.name}"
         self.size = await get_path_size(dl_path)
         self.is_file = await aiopath.isfile(dl_path)
+
+        # Track the file in our database for duplicate prevention
+        if Config.STOP_DUPLICATE and Config.DATABASE_URL:
+            try:
+                from bot.helper.ext_utils.file_tracker import track_file
+
+                # Prepare metadata
+                metadata = {}
+                if hasattr(self, "metadata_title") and self.metadata_title:
+                    metadata["title"] = self.metadata_title
+                if hasattr(self, "metadata_author") and self.metadata_author:
+                    metadata["author"] = self.metadata_author
+
+                # Get torrent hash if available
+                torrent_hash = ""
+                if hasattr(self, "is_torrent") and self.is_torrent:
+                    torrent_hash = getattr(self, "hash", "")
+
+                # Track the file
+                await track_file(
+                    file_path=dl_path,
+                    file_name=self.name,
+                    file_size=self.size,
+                    user_id=self.user_id,
+                    torrent_hash=torrent_hash,
+                    metadata=metadata
+                )
+            except Exception as e:
+                LOGGER.error(f"Error tracking file after download: {e}")
+
         if self.seed:
             up_dir = self.up_dir = f"{self.dir}10000"
             up_path = f"{self.up_dir}/{self.name}"
@@ -453,6 +483,57 @@ class TaskListener(TaskConfig):
 
         # Use the most up-to-date name (which may have been modified by leech filename template)
         current_name = self.name
+
+        # Track the file in our database for duplicate prevention
+        if Config.STOP_DUPLICATE and Config.DATABASE_URL:
+            try:
+                from bot.helper.ext_utils.file_tracker import track_file
+
+                # Prepare metadata
+                metadata = {}
+                if hasattr(self, "metadata_title") and self.metadata_title:
+                    metadata["title"] = self.metadata_title
+                if hasattr(self, "metadata_author") and self.metadata_author:
+                    metadata["author"] = self.metadata_author
+
+                # For leech tasks, track the Telegram file ID
+                if self.is_leech and isinstance(files, dict) and files:
+                    # Get the first file's URL from the dictionary keys
+                    first_file_url = next(iter(files.keys()), "")
+                    telegram_id = first_file_url.split("/")[-1] if first_file_url else ""
+
+                    # Track the file
+                    await track_file(
+                        file_path="",  # No local path after upload
+                        file_name=current_name,
+                        file_size=self.size,
+                        user_id=self.user_id,
+                        telegram_id=telegram_id,
+                        metadata=metadata
+                    )
+                # For Google Drive uploads
+                elif dir_id:
+                    # Track the file
+                    await track_file(
+                        file_path="",  # No local path after upload
+                        file_name=current_name,
+                        file_size=self.size,
+                        user_id=self.user_id,
+                        drive_id=dir_id,
+                        metadata=metadata
+                    )
+                # For Rclone uploads
+                elif rclone_path:
+                    # Track the file
+                    await track_file(
+                        file_path="",  # No local path after upload
+                        file_name=current_name,
+                        file_size=self.size,
+                        user_id=self.user_id,
+                        metadata=metadata
+                    )
+            except Exception as e:
+                LOGGER.error(f"Error tracking file: {e}")
 
         # Check if MediaInfo is enabled
         mediainfo_enabled = self.user_dict.get("MEDIAINFO_ENABLED", None)
@@ -874,6 +955,31 @@ class TaskListener(TaskConfig):
         # Add a delay before cleaning up to ensure all processes are complete
         await sleep(3)
 
+        # Remove old file tracking entry before adding the new one
+        if Config.STOP_DUPLICATE and Config.DATABASE_URL:
+            try:
+                from bot.helper.ext_utils.file_tracker import remove_file_tracking
+
+                # Get torrent hash if available
+                torrent_hash = ""
+                if hasattr(self, "is_torrent") and self.is_torrent:
+                    torrent_hash = getattr(self, "hash", "")
+
+                # Get telegram file ID if available
+                telegram_id = ""
+                if hasattr(self, "message") and hasattr(self.message, "document"):
+                    telegram_id = getattr(self.message.document, "file_id", "")
+
+                # Remove file tracking entry for the original file
+                await remove_file_tracking(
+                    file_name=self.name,
+                    torrent_hash=torrent_hash,
+                    telegram_id=telegram_id,
+                    user_id=self.user_id
+                )
+            except Exception as e:
+                LOGGER.error(f"Error removing file tracking entry: {e}")
+
         # Now clean up the download directory
         await clean_download(self.dir)
         async with task_dict_lock:
@@ -897,6 +1003,31 @@ class TaskListener(TaskConfig):
                 del task_dict[self.mid]
             count = len(task_dict)
         await self.remove_from_same_dir()
+
+        # Remove file tracking entry if it exists
+        if Config.STOP_DUPLICATE and Config.DATABASE_URL:
+            try:
+                from bot.helper.ext_utils.file_tracker import remove_file_tracking
+
+                # Get torrent hash if available
+                torrent_hash = ""
+                if hasattr(self, "is_torrent") and self.is_torrent:
+                    torrent_hash = getattr(self, "hash", "")
+
+                # Get telegram file ID if available
+                telegram_id = ""
+                if hasattr(self, "message") and hasattr(self.message, "document"):
+                    telegram_id = getattr(self.message.document, "file_id", "")
+
+                # Remove file tracking entry
+                await remove_file_tracking(
+                    file_name=self.name,
+                    torrent_hash=torrent_hash,
+                    telegram_id=telegram_id,
+                    user_id=self.user_id
+                )
+            except Exception as e:
+                LOGGER.error(f"Error removing file tracking entry: {e}")
 
         # Delete command message and any replied message for all tasks
         await delete_links(self.message)

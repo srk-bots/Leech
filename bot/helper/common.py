@@ -2804,25 +2804,25 @@ class TaskConfig:
                 ]
             else:
                 self.ffmpeg_cmds = None
+        # Only use global STOP_DUPLICATE setting
+        self.stop_duplicate = Config.STOP_DUPLICATE
+        default_upload = (
+            self.user_dict.get("DEFAULT_UPLOAD", "") or Config.DEFAULT_UPLOAD
+        )
+        if (not self.up_dest and default_upload == "rc") or self.up_dest == "rc":
+            # User's RCLONE_PATH has higher priority than owner's
+            if "RCLONE_PATH" in self.user_dict:
+                self.up_dest = self.user_dict["RCLONE_PATH"]
+            elif Config.RCLONE_PATH:
+                self.up_dest = Config.RCLONE_PATH
+            else:
+                self.up_dest = ""
+        elif (
+            not self.up_dest and default_upload == "gd"
+        ) or self.up_dest == "gd":
+            self.up_dest = self.user_dict.get("GDRIVE_ID") or Config.GDRIVE_ID
+
         if not self.is_leech:
-            self.stop_duplicate = self.user_dict.get("STOP_DUPLICATE") or (
-                "STOP_DUPLICATE" not in self.user_dict and Config.STOP_DUPLICATE
-            )
-            default_upload = (
-                self.user_dict.get("DEFAULT_UPLOAD", "") or Config.DEFAULT_UPLOAD
-            )
-            if (not self.up_dest and default_upload == "rc") or self.up_dest == "rc":
-                # User's RCLONE_PATH has higher priority than owner's
-                if "RCLONE_PATH" in self.user_dict:
-                    self.up_dest = self.user_dict["RCLONE_PATH"]
-                elif Config.RCLONE_PATH:
-                    self.up_dest = Config.RCLONE_PATH
-                else:
-                    self.up_dest = ""
-            elif (
-                not self.up_dest and default_upload == "gd"
-            ) or self.up_dest == "gd":
-                self.up_dest = self.user_dict.get("GDRIVE_ID") or Config.GDRIVE_ID
             if not self.up_dest:
                 raise ValueError("No Upload Destination!")
             if is_gdrive_id(self.up_dest):
