@@ -418,9 +418,11 @@ class TaskListener(TaskConfig):
                             int(Config.LOG_CHAT_ID),
                             f"{msg}<blockquote expandable>{fmsg}</blockquote>",
                         )
-                buttons = ButtonMaker().url_button("Go to inbox", f"https://t.me/{Config.BOT_USERNAME.lstrip("@").strip()}")
+                buttons = ButtonMaker()
+                buttons.url_button("Go to inbox", f"https://t.me/{Config.BOT_USERNAME.lstrip("@").strip()}")
+                button = buttons.build_menu(1)
 
-                await send_message(self.message, done_msg, buttons=buttons.build_menu(1))
+                await send_message(self.message, done_msg, button)
         else:
             msg += f"\n\n<b>Type: </b>{mime_type}"
             if mime_type == "Folder":
