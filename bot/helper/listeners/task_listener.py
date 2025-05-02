@@ -383,9 +383,10 @@ class TaskListener(TaskConfig):
         ):
             await database.rm_complete_task(self.message.link)
         msg = f"<b>Name: </b><code>{escape(self.name)}</code>\n\n<b>Size: </b>{get_readable_file_size(self.size)}"
-        done_msg = f"{self.tag}\nYour task is complete\nPlease check your inbox.\n\n👉 <b>{Config.BOT_USERNAME}</b>"
+        done_msg = f"{self.tag}\nYour task is complete\nPlease check your inbox." if Config.BOT_USERNAME else f"{self.tag}\nYour task is complete.\nPlease check your inbox."
         LOGGER.info(f"Task Done: {self.name}")
         if self.is_leech:
+            buttons = ButtonMaker()
             msg += f"\n<b>Total Files: </b>{folders}"
             if mime_type != 0:
                 msg += f"\n<b>Corrupted Files: </b>{mime_type}"
@@ -418,10 +419,9 @@ class TaskListener(TaskConfig):
                             int(Config.LOG_CHAT_ID),
                             f"{msg}<blockquote expandable>{fmsg}</blockquote>",
                         )
-                buttons = ButtonMaker()
                 button = buttons.url_button("Go to inbox", f"https://t.me/{Config.BOT_USERNAME.lstrip("@").strip()}")
 
-                await send_message(self.message, done_msg, buttons=button)
+                await send_message(self.message, done_msg, buttons=button) if Config.BOT_USERNAME else await send_message(self.message, done_msg)
         else:
             msg += f"\n\n<b>Type: </b>{mime_type}"
             if mime_type == "Folder":
@@ -462,12 +462,8 @@ class TaskListener(TaskConfig):
             await send_message(self.user_id, msg, button)
             if Config.LOG_CHAT_ID:
                 await send_message(int(Config.LOG_CHAT_ID), msg, button)
-                buttons = ButtonMaker()
-                button = buttons.url_button("Go to inbox", f"https://t.me/{Config.BOT_USERNAME.lstrip('@')}")
-                await send_message(self.message, done_msg, buttons=button)
-            buttons = ButtonMaker()
-            button = buttons.url_button("Go to inbox", f"https://t.me/{Config.BOT_USERNAME.lstrip('@')}")
-            await send_message(self.message, done_msg, buttons=button)
+                await send_message(self.message, done_msg)
+            await send_message(self.message, done_msg)
         if self.seed:
             await clean_target(self.up_dir)
             async with queue_dict_lock:
