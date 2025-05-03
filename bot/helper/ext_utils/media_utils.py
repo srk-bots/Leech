@@ -4354,69 +4354,100 @@ class FFMpeg:
                         # Skip the rest of the processing for this output
                         continue
 
-                    # For subtitle extraction, we need to handle each subtitle stream separately
+                    # Check if this is a stream extraction operation (video, audio, subtitle, attachment)
+                    is_stream_extraction = False
+                    stream_type = None
+
+                    # Check for subtitle extraction
                     if is_subtitle_extraction:
+                        is_stream_extraction = True
+                        stream_type = "subtitle"
                         LOGGER.info(f"Detected subtitle extraction: {output_file}")
 
-                        # For subtitle extraction, we need to modify the command to extract each subtitle stream separately
-                        # SRT muxer doesn't support multiple subtitle streams in a single file
+                    # Check for video extraction
+                    for i, arg in enumerate(ffmpeg):
+                        if arg == "-map" and i + 1 < len(ffmpeg):
+                            if ffmpeg[i + 1] == "0:v":
+                                is_stream_extraction = True
+                                stream_type = "video"
+                                LOGGER.info(
+                                    f"Detected video extraction: {output_file}"
+                                )
+                                break
+                            elif ffmpeg[i + 1] == "0:a":
+                                is_stream_extraction = True
+                                stream_type = "audio"
+                                LOGGER.info(
+                                    f"Detected audio extraction: {output_file}"
+                                )
+                                break
+                            elif ffmpeg[i + 1] == "0:t":
+                                is_stream_extraction = True
+                                stream_type = "attachment"
+                                LOGGER.info(
+                                    f"Detected attachment extraction: {output_file}"
+                                )
+                                break
 
-                        # Check if we have multiple subtitle streams
-                        subtitle_map_count = 0
-                        subtitle_map_indices = []
+                    if is_stream_extraction:
+                        # Import the stream extraction module
+                        from bot.helper.aeon_utils.ffmpeg_stream_extractor import (
+                            process_stream_extraction_command,
+                            execute_stream_extraction_commands,
+                        )
+
+                        # Check if we're trying to extract all streams of a type with a single output file
+                        map_all = False
                         for i, arg in enumerate(ffmpeg):
-                            if (
-                                arg == "-map"
-                                and i + 1 < len(ffmpeg)
-                                and "s" in ffmpeg[i + 1]
-                            ):
-                                subtitle_map_count += 1
-                                subtitle_map_indices.append(i)
+                            if arg == "-map" and i + 1 < len(ffmpeg):
+                                map_arg = ffmpeg[i + 1]
+                                if (
+                                    map_arg in ["0:v", "0:a", "0:s", "0:t"]
+                                    and ":" not in map_arg[2:]
+                                ):
+                                    map_all = True
+                                    break
 
-                        if subtitle_map_count > 1:
+                        if map_all:
                             LOGGER.info(
-                                f"Multiple subtitle streams detected: {subtitle_map_count}"
+                                f"Detected command to extract all {stream_type} streams to a single output file"
                             )
-                            # We need to modify the command to extract each subtitle stream to a separate file
-                            # FFmpeg can't output multiple subtitle streams to a single SRT file
-                            # So we need to split the command into multiple commands, one for each subtitle stream
+                            LOGGER.info(
+                                f"Using enhanced stream extraction for {stream_type} streams..."
+                            )
 
-                            # We'll handle this by creating separate output files for each subtitle stream
-                            # The dynamic output placeholders will be replaced with the appropriate filenames
+                            # Process the command to extract all streams
+                            modified_commands = (
+                                await process_stream_extraction_command(
+                                    ffmpeg, f_path, stream_type
+                                )
+                            )
 
-                            # Check if the output file already has a numeric suffix (like subtitle1, subtitle2)
-                            # If not, we need to modify the command to use separate output files for each subtitle stream
-                            if not compile(r"\d+\.[^.]+$").search(output_file):
-                                # Get the base name and extension
-                                output_base, output_ext = ospath.splitext(
-                                    output_file
+                            if len(modified_commands) > 1:
+                                LOGGER.info(
+                                    f"Generated {len(modified_commands)} separate commands for {stream_type} extraction"
                                 )
 
-                                # Check if the base name already ends with a number
-                                if not compile(r"\d+$").search(output_base):
-                                    # Add a numeric suffix to the output file for each subtitle stream
-                                    for i in range(len(subtitle_map_indices)):
-                                        # Create a new output file with a numeric suffix
-                                        new_output = (
-                                            f"{output_base}{i + 1}{output_ext}"
-                                        )
+                                # Execute each command separately
+                                all_outputs = []
+                                for cmd in modified_commands:
+                                    # Skip the first command as it will be executed by the main loop
+                                    if cmd == modified_commands[0]:
+                                        # Update the original command with the first modified command
+                                        ffmpeg = cmd
+                                        continue
 
-                                        # If this is not the first subtitle stream, we need to add a new output file
-                                        if i > 0:
-                                            # Add the new output file to the command
-                                            ffmpeg.append("-map")
-                                            ffmpeg.append(f"0:s:{i}")
-                                            ffmpeg.append("-c:s")
-                                            ffmpeg.append("srt")
-                                            ffmpeg.append(new_output)
-                                        else:
-                                            # Replace the existing output file with the new one
-                                            ffmpeg[index] = new_output
+                                    # Execute the additional commands
+                                    await execute_stream_extraction_commands(
+                                        [cmd], all_outputs
+                                    )
 
-                            # Log a warning about this limitation
-                            LOGGER.warning(
-                                "FFmpeg can't output multiple subtitle streams to a single SRT file. "
-                                "Each subtitle stream will be extracted to a separate file."
+                                # Add all outputs to the outputs list
+                                outputs.extend(all_outputs)
+
+                            # Continue with the first command in the normal processing flow
+                            LOGGER.info(
+                                f"Continuing with the first {stream_type} extraction command"
                             )
 
                         # Continue with normal processing
