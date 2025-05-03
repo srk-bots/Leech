@@ -4,11 +4,11 @@ import json
 import os
 import resource
 import shutil
-from asyncio import create_subprocess_exec, gather, sleep, wait_for
+from asyncio import create_subprocess_exec, gather, sleep, wait_for, subprocess
 from asyncio.subprocess import PIPE
 from os import path as ospath
 from pathlib import Path
-from re import escape
+from re import escape, compile
 from re import search as re_search
 from time import time
 
@@ -165,13 +165,71 @@ async def get_document_type(path):
     # Check file extension for known types that might cause issues with Telegram
     file_ext = ospath.splitext(path)[1].lower()
 
+    # Lists of extensions for different file types
+    video_extensions = [
+        ".mp4",
+        ".mkv",
+        ".avi",
+        ".mov",
+        ".webm",
+        ".flv",
+        ".wmv",
+        ".m4v",
+        ".ts",
+        ".3gp",
+        ".mpg",
+        ".mpeg",
+        ".vob",
+        ".divx",
+        ".m2ts",
+        ".hevc",
+    ]
+
+    audio_extensions = [
+        ".mp3",
+        ".m4a",
+        ".wav",
+        ".flac",
+        ".ogg",
+        ".opus",
+        ".aac",
+        ".ac3",
+        ".wma",
+    ]
+
     # List of extensions that Telegram supports as photos
-    valid_photo_extensions = ['.jpg', '.jpeg', '.png', '.webp']
+    valid_photo_extensions = [".jpg", ".jpeg", ".png", ".webp"]
 
     # List of extensions that should always be treated as documents
     document_extensions = [
-        '.psd', '.ai', '.eps', '.pdf', '.xd', '.ico', '.icns', '.svg',
-        '.tiff', '.tif', '.raw', '.cr2', '.nef', '.arw', '.dng', '.heic'
+        ".psd",
+        ".ai",
+        ".eps",
+        ".pdf",
+        ".xd",
+        ".ico",
+        ".icns",
+        ".svg",
+        ".tiff",
+        ".tif",
+        ".raw",
+        ".cr2",
+        ".nef",
+        ".arw",
+        ".dng",
+        ".heic",
+        ".doc",
+        ".docx",
+        ".xls",
+        ".xlsx",
+        ".ppt",
+        ".pptx",
+        ".txt",
+        ".rtf",
+        ".epub",
+        ".mobi",
+        ".cbz",
+        ".cbr",
     ]
 
     # If the file has a document extension, don't treat it as an image
@@ -185,10 +243,21 @@ async def get_document_type(path):
     # don't mark it as an image to avoid PHOTO_EXT_INVALID errors
     if mime_type.startswith("image"):
         if file_ext in valid_photo_extensions:
-            return False, False, True
-        else:
-            # It's an image type but not a supported extension for Telegram photos
-            return False, False, False
+            is_image = True
+        return is_video, is_audio, is_image
+
+    # Handle audio files
+    if mime_type.startswith("audio"):
+        is_audio = True
+        return is_video, is_audio, is_image
+
+    # For text files, subtitles, and other document types
+    if mime_type.startswith(
+        ("text/", "application/pdf", "application/msword", "application/vnd.ms")
+    ):
+        return is_video, is_audio, is_image
+
+    # For video and more complex media files, use ffprobe for detailed analysis
     try:
         result = await cmd_exec(
             [
@@ -399,6 +468,74 @@ async def take_ss(video_file, ss_nb) -> bool:
     return False
 
 
+async def extract_album_art_with_pil(audio_file, output_path):
+    """Extract album art from audio file using PIL/Pillow.
+
+    This function attempts to extract embedded album art from audio files using the
+    mutagen library and PIL. It works with MP3, FLAC, M4A, and other audio formats.
+
+    Args:
+        audio_file: Path to the audio file
+        output_path: Path where the extracted album art should be saved
+
+    Returns:
+        bool: True if extraction was successful, False otherwise
+    """
+    try:
+        # Import necessary libraries
+        import mutagen
+        from PIL import Image
+        import io
+
+        # Apply memory limits for PIL operations
+        limit_memory_for_pil()
+
+        # Load the audio file with mutagen
+        audio = mutagen.File(audio_file)
+        if audio is None:
+            return False
+
+        # Extract album art based on file format
+        picture_data = None
+
+        # FLAC
+        if hasattr(audio, "pictures") and audio.pictures:
+            picture_data = audio.pictures[0].data
+        # MP3 (ID3)
+        elif hasattr(audio, "tags"):
+            # ID3 APIC tag
+            if hasattr(audio.tags, "getall") and callable(audio.tags.getall):
+                apic_frames = audio.tags.getall("APIC")
+                if apic_frames:
+                    picture_data = apic_frames[0].data
+            # MP4/M4A cover art
+            elif hasattr(audio, "tags") and "covr" in audio.tags:
+                picture_data = audio.tags["covr"][0]
+
+        # If we found picture data, save it
+        if picture_data:
+            # Open the image data with PIL
+            img = Image.open(io.BytesIO(picture_data))
+
+            # Convert to RGB if needed (for PNG with transparency)
+            if img.mode != "RGB":
+                img = img.convert("RGB")
+
+            # Resize if too large
+            if img.width > 800 or img.height > 800:
+                img.thumbnail((800, 800))
+
+            # Save as JPEG
+            img.save(output_path, "JPEG", quality=90)
+            return True
+
+        return False
+
+    except Exception as e:
+        LOGGER.error(f"Error extracting album art with PIL: {e}")
+        return False
+
+
 async def get_audio_thumbnail(audio_file):
     output_dir = f"{DOWNLOAD_DIR}thumbnails"
     await makedirs(output_dir, exist_ok=True)
@@ -419,9 +556,50 @@ async def get_audio_thumbnail(audio_file):
     ]
     try:
         _, err, code = await wait_for(cmd_exec(cmd), timeout=60)
-        if code != 0 or not await aiopath.exists(output):
-            LOGGER.error(
-                f"Error while extracting thumbnail from audio. Name: {audio_file} stderr: {err}",
+        if code == 0 and await aiopath.exists(output):
+            # Check if the extracted image is valid and not empty
+            if await aiopath.getsize(output) > 0:
+                return output
+            else:
+                await remove(output)
+                LOGGER.warning(f"Extracted empty thumbnail from audio: {audio_file}")
+        else:
+            LOGGER.warning(
+                f"Failed to extract thumbnail with first method: {audio_file} stderr: {err}",
+            )
+
+        # Try alternative method - extract album art using ffmpeg with different options
+        alt_output = ospath.join(output_dir, f"thumb_alt_{int(time())}.jpg")
+        alt_cmd = [
+            "xtra",
+            "-hide_banner",
+            "-loglevel",
+            "error",
+            "-i",
+            audio_file,
+            "-map",
+            "0:v",
+            "-map",
+            "-0:V",
+            "-c",
+            "copy",
+            "-threads",
+            f"{max(1, cpu_no // 2)}",
+            alt_output,
+        ]
+
+        _, err, code = await wait_for(cmd_exec(alt_cmd), timeout=60)
+        if code == 0 and await aiopath.exists(alt_output):
+            if await aiopath.getsize(alt_output) > 0:
+                return alt_output
+            else:
+                await remove(alt_output)
+                LOGGER.warning(
+                    f"Extracted empty thumbnail from audio (alt method): {audio_file}"
+                )
+        else:
+            LOGGER.warning(
+                f"Failed to extract thumbnail with alternative method: {audio_file} stderr: {err}",
             )
             return None
     except Exception:
@@ -2873,9 +3051,50 @@ async def get_video_thumbnail(video_file, duration):
     ]
     try:
         _, err, code = await wait_for(cmd_exec(cmd), timeout=60)
-        if code != 0 or not await aiopath.exists(output):
-            LOGGER.error(
-                f"Error while extracting thumbnail from video. Name: {video_file} stderr: {err}",
+        if code == 0 and await aiopath.exists(output):
+            # Check if the extracted image is valid and not empty
+            if await aiopath.getsize(output) > 0:
+                return output
+            else:
+                await remove(output)
+                LOGGER.warning(f"Extracted empty thumbnail from video: {video_file}")
+        else:
+            LOGGER.warning(
+                f"Failed to extract thumbnail with first method: {video_file} stderr: {err}",
+            )
+
+        # Try alternative method - extract frame from the beginning
+        alt_output = ospath.join(output_dir, f"thumb_alt_{int(time())}.jpg")
+        alt_cmd = [
+            "xtra",
+            "-hide_banner",
+            "-loglevel",
+            "error",
+            "-i",
+            video_file,
+            "-vf",
+            "scale=640:-1",
+            "-q:v",
+            "5",
+            "-vframes",
+            "1",
+            "-threads",
+            f"{max(1, cpu_no // 2)}",
+            alt_output,
+        ]
+
+        _, err, code = await wait_for(cmd_exec(alt_cmd), timeout=60)
+        if code == 0 and await aiopath.exists(alt_output):
+            if await aiopath.getsize(alt_output) > 0:
+                return alt_output
+            else:
+                await remove(alt_output)
+                LOGGER.warning(
+                    f"Extracted empty thumbnail from video (alt method): {video_file}"
+                )
+        else:
+            LOGGER.warning(
+                f"Failed to extract thumbnail with alternative method: {video_file} stderr: {err}",
             )
             return None
     except Exception:
@@ -3045,15 +3264,78 @@ async def get_multiple_frames_thumbnail(video_file, layout, keep_screenshots):
     ]
     try:
         _, err, code = await wait_for(cmd_exec(cmd), timeout=60)
-        if code != 0 or not await aiopath.exists(output):
-            LOGGER.error(
-                f"Error while combining thumbnails for video. Name: {video_file} stderr: {err}",
+        if code == 0 and await aiopath.exists(output):
+            # Check if the created thumbnail is valid and not empty
+            if await aiopath.getsize(output) > 0:
+                # Clean up screenshots if not keeping them
+                if not keep_screenshots:
+                    await rmtree(dirpath, ignore_errors=True)
+                return output
+            else:
+                await remove(output)
+                LOGGER.warning(
+                    f"Created empty grid thumbnail from video: {video_file}"
+                )
+        else:
+            LOGGER.warning(
+                f"Failed to create grid thumbnail: {video_file} stderr: {err}",
             )
-            return None
-    except Exception:
+
+        # Try alternative method - use PIL if available
+        try:
+            alt_output = ospath.join(output_dir, f"grid_thumb_alt_{int(time())}.jpg")
+            # Check if we have screenshots
+            screenshots = list(Path(dirpath).glob("*.png"))
+            if screenshots:
+                # Use PIL to create a grid
+                from PIL import Image
+
+                # Apply memory limits for PIL operations
+                limit_memory_for_pil()
+
+                # Determine grid dimensions
+                cols, rows = map(int, layout.split("x"))
+                # Get the first image to determine dimensions
+                with Image.open(screenshots[0]) as img:
+                    img_width, img_height = img.size
+
+                # Create a new image with the grid dimensions
+                grid_width = cols * img_width
+                grid_height = rows * img_height
+                grid_img = Image.new("RGB", (grid_width, grid_height))
+
+                # Place images in the grid
+                for i, screenshot in enumerate(screenshots[:ss_nb]):
+                    if i >= ss_nb:
+                        break
+                    with Image.open(screenshot) as img:
+                        x = (i % cols) * img_width
+                        y = (i // cols) * img_height
+                        grid_img.paste(img, (x, y))
+
+                # Save the grid
+                grid_img.save(alt_output, quality=90)
+
+                # Clean up screenshots if not keeping them
+                if not keep_screenshots:
+                    await rmtree(dirpath, ignore_errors=True)
+
+                return alt_output
+        except Exception as e:
+            LOGGER.error(f"Failed to create grid with PIL: {e}")
+
+        # If both methods fail, clean up and return None
+        if not keep_screenshots:
+            await rmtree(dirpath, ignore_errors=True)
+        return None
+
+    except Exception as e:
         LOGGER.error(
             f"Error while combining thumbnails from video. Name: {video_file}. Error: Timeout some issues with ffmpeg with specific arch!",
         )
+        # Clean up screenshots if not keeping them
+        if "dirpath" in locals() and dirpath and not keep_screenshots:
+            await rmtree(dirpath, ignore_errors=True)
         return None
     finally:
         if not keep_screenshots:
@@ -3515,7 +3797,7 @@ class FFMpeg:
                             self._eta_raw = 0
             await sleep(0.05)
 
-    async def ffmpeg_cmds(self, ffmpeg, f_path):
+    async def ffmpeg_cmds(self, ffmpeg, f_path, user_provided_files=None):
         self.clear()
         self._total_time = (await get_media_info(f_path))[0]
         base_name, ext = ospath.splitext(f_path)
@@ -3531,10 +3813,295 @@ class FFMpeg:
         if ffmpeg and ffmpeg[0] == "ffmpeg":
             ffmpeg[0] = "xtra"
 
-        # Normal case: command is a list of arguments
-        if "-i" not in ffmpeg:
-            # Add the input parameter using the provided file path
+        # Determine the media type of the input file
+        media_type = await get_media_type_for_watermark(f_path)
+        LOGGER.info(f"Detected media type for {f_path}: {media_type}")
+
+        # Find all input file indices in the command
+        input_indices = []
+        for i, item in enumerate(ffmpeg):
+            if item == "-i" and i + 1 < len(ffmpeg):
+                input_indices.append(i + 1)
+
+        # If no input parameters are found, add the provided file path as input
+        if not input_indices:
             ffmpeg.extend(["-i", f_path])
+            input_indices.append(len(ffmpeg) - 1)  # Index of the newly added input
+        else:
+            # Check if we need to replace any input placeholders with the actual file path
+            # This is for backward compatibility with existing commands
+
+            # Keep track of which input files have been used for each media type
+            # This helps when we have multiple inputs of the same type
+            used_inputs = {
+                "video": [],
+                "audio": [],
+                "image": [],
+                "subtitle": [],
+                "document": [],
+                "archive": [],
+                "generic": [],
+            }
+
+            # Initialize additional_files dictionary
+            additional_files = {
+                "video": [],
+                "audio": [],
+                "image": [],
+                "subtitle": [],
+                "document": [],
+                "archive": [],
+            }
+
+            # First, prioritize user-provided files if available
+            if user_provided_files:
+                LOGGER.info(f"Using user-provided files: {user_provided_files}")
+
+                # Categorize user-provided files by media type
+                for file in user_provided_files:
+                    if file == f_path:  # Skip the main input file
+                        continue
+
+                    try:
+                        file_media_type = await get_media_type_for_watermark(file)
+                        if file_media_type:
+                            if file_media_type in ["image", "animated_image"]:
+                                file_media_type = (
+                                    "image"  # Treat both as "image" for simplicity
+                                )
+
+                            if file_media_type in additional_files:
+                                additional_files[file_media_type].append(file)
+                                LOGGER.info(
+                                    f"Using user-provided {file_media_type} file: {file}"
+                                )
+                    except Exception as e:
+                        LOGGER.warning(
+                            f"Error determining media type for user-provided file {file}: {e}"
+                        )
+
+            # Then, try to find additional input files in the same directory
+            input_dir = os.path.dirname(f_path)
+
+            # Only scan directory if it exists and is accessible
+            if os.path.exists(input_dir) and os.path.isdir(input_dir):
+                try:
+                    # Get all files in the same directory
+                    dir_files = [
+                        os.path.join(input_dir, f)
+                        for f in os.listdir(input_dir)
+                        if os.path.isfile(os.path.join(input_dir, f))
+                    ]
+
+                    # Categorize files by media type
+                    for file in dir_files:
+                        if file == f_path:  # Skip the main input file
+                            continue
+
+                        # Skip files that are already in the user-provided files
+                        if user_provided_files and file in user_provided_files:
+                            continue
+
+                        try:
+                            file_media_type = await get_media_type_for_watermark(
+                                file
+                            )
+                            if file_media_type:
+                                if file_media_type in ["image", "animated_image"]:
+                                    file_media_type = "image"  # Treat both as "image" for simplicity
+
+                                if file_media_type in additional_files:
+                                    additional_files[file_media_type].append(file)
+                                    LOGGER.info(
+                                        f"Found additional {file_media_type} file: {file}"
+                                    )
+                        except Exception as e:
+                            LOGGER.warning(
+                                f"Error determining media type for {file}: {e}"
+                            )
+                except Exception as e:
+                    LOGGER.warning(
+                        f"Error scanning directory for additional files: {e}"
+                    )
+
+            # Process each input placeholder
+            for idx in input_indices:
+                # If the input is a placeholder, replace it with the appropriate file
+                if (
+                    ffmpeg[idx] == "input.mp4"
+                    or ffmpeg[idx] == "mltb"
+                    or ffmpeg[idx].startswith("mltb.")
+                ):
+                    # Determine the media type requested by the placeholder
+                    requested_type = None
+                    if ffmpeg[idx] == "mltb.video":
+                        requested_type = "video"
+                    elif ffmpeg[idx] == "mltb.audio":
+                        requested_type = "audio"
+                    elif ffmpeg[idx] == "mltb.image":
+                        requested_type = "image"
+                    elif ffmpeg[idx] == "mltb.subtitle":
+                        requested_type = "subtitle"
+                    elif ffmpeg[idx] == "mltb.document":
+                        requested_type = "document"
+                    elif ffmpeg[idx] == "mltb.archive":
+                        requested_type = "archive"
+                    else:
+                        requested_type = "generic"
+
+                    # If this is a specific media type placeholder
+                    if requested_type != "generic":
+                        # First, check if we have additional files of the requested type
+                        if (
+                            requested_type in additional_files
+                            and additional_files[requested_type]
+                        ):
+                            # Get the next unused file of this type
+                            for file in additional_files[requested_type]:
+                                if file not in used_inputs[requested_type]:
+                                    ffmpeg[idx] = file
+                                    used_inputs[requested_type].append(file)
+                                    LOGGER.info(
+                                        f"Using additional file {file} for placeholder mltb.{requested_type}"
+                                    )
+                                    break
+
+                            # If we found a file, continue to the next placeholder
+                            if ffmpeg[idx] != "mltb." + requested_type:
+                                continue
+
+                        # Special case for audio extraction from video files
+                        if requested_type == "audio" and media_type == "video":
+                            # Check if the video file has an audio stream
+                            has_audio = False
+                            try:
+                                # Use ffprobe to check for audio streams
+                                process = await create_subprocess_exec(
+                                    "xtra",
+                                    "-v",
+                                    "error",
+                                    "-select_streams",
+                                    "a",
+                                    "-show_entries",
+                                    "stream=codec_type",
+                                    "-of",
+                                    "csv=p=0",
+                                    f_path,
+                                    stdout=PIPE,
+                                    stderr=PIPE,
+                                )
+                                stdout, stderr = await process.communicate()
+
+                                if stdout and b"audio" in stdout:
+                                    has_audio = True
+                                    LOGGER.info(
+                                        f"Video file {f_path} has audio stream, can be used for audio extraction"
+                                    )
+                            except Exception as e:
+                                LOGGER.warning(
+                                    f"Error checking for audio stream: {e}"
+                                )
+
+                            if has_audio:
+                                # If we haven't used the main file for this type yet, use it
+                                if f_path not in used_inputs[requested_type]:
+                                    ffmpeg[idx] = f_path
+                                    used_inputs[requested_type].append(f_path)
+                                    LOGGER.info(
+                                        f"Using main video file with audio stream {f_path} for placeholder mltb.{requested_type}"
+                                    )
+                                    continue
+
+                        # If no additional file was found, check if the main input file matches the requested type
+                        if (
+                            requested_type == "image"
+                            and media_type in ["image", "animated_image"]
+                        ) or requested_type == media_type:
+                            # If we haven't used the main file for this type yet, use it
+                            if f_path not in used_inputs[requested_type]:
+                                ffmpeg[idx] = f_path
+                                used_inputs[requested_type].append(f_path)
+                                LOGGER.info(
+                                    f"Using main file {f_path} for placeholder mltb.{requested_type}"
+                                )
+                                continue
+
+                        # If we still haven't found a file, log a warning and use the main file
+                        if requested_type != media_type:
+                            LOGGER.warning(
+                                f"Placeholder mltb.{requested_type} used but no matching file found. Using main input file."
+                            )
+
+                        ffmpeg[idx] = f_path
+                        used_inputs["generic"].append(f_path)
+                    else:
+                        # For generic placeholders (mltb or input.mp4), just use the main file
+                        ffmpeg[idx] = f_path
+                        used_inputs["generic"].append(f_path)
+
+                # Handle generic media type placeholders (like something.video)
+                elif any(
+                    ffmpeg[idx].endswith(f".{ext}")
+                    for ext in [
+                        "video",
+                        "audio",
+                        "image",
+                        "subtitle",
+                        "document",
+                        "archive",
+                    ]
+                ):
+                    # Extract the requested type from the placeholder
+                    for ext in [
+                        "video",
+                        "audio",
+                        "image",
+                        "subtitle",
+                        "document",
+                        "archive",
+                    ]:
+                        if ffmpeg[idx].endswith(f".{ext}"):
+                            requested_type = ext
+                            break
+
+                    # First, check if we have additional files of the requested type
+                    if (
+                        requested_type in additional_files
+                        and additional_files[requested_type]
+                    ):
+                        for file in additional_files[requested_type]:
+                            if file not in used_inputs[requested_type]:
+                                ffmpeg[idx] = file
+                                used_inputs[requested_type].append(file)
+                                LOGGER.info(
+                                    f"Using additional file {file} for placeholder ending with .{requested_type}"
+                                )
+                                break
+
+                        if not ffmpeg[idx].endswith(f".{requested_type}"):
+                            continue
+
+                    # If no additional file was found, check if the main input file matches the requested type
+                    if (
+                        requested_type == "image"
+                        and media_type in ["image", "animated_image"]
+                    ) or requested_type == media_type:
+                        if f_path not in used_inputs[requested_type]:
+                            ffmpeg[idx] = f_path
+                            used_inputs[requested_type].append(f_path)
+                            LOGGER.info(
+                                f"Using main file {f_path} for placeholder ending with .{requested_type}"
+                            )
+                            continue
+
+                    # If we still haven't found a file, log a warning and use the main file
+                    if requested_type != media_type:
+                        LOGGER.warning(
+                            f"Placeholder ending with .{requested_type} used but no matching file found. Using main input file."
+                        )
+
+                    ffmpeg[idx] = f_path
+                    used_inputs["generic"].append(f_path)
 
         # Check if this is a trim command (which typically has a .trim extension in the output)
         is_trim_command = False
@@ -3597,7 +4164,413 @@ class FFMpeg:
             outputs = []
             for index in indices:
                 output_file = ffmpeg[index]
-                if output_file != "mltb" and output_file.startswith("mltb"):
+
+                # Check for dynamic output placeholders like mltb-%d, mltb-%3d, etc.
+                dynamic_pattern = compile(r"mltb-%(0?\d*)d")
+                dynamic_match = dynamic_pattern.search(output_file)
+
+                # Pass the user_provided_files to the dynamic output processing
+                # This allows us to use the correct base name for each input file
+
+                if dynamic_match:
+                    # This is a dynamic output placeholder
+                    LOGGER.info(f"Found dynamic output placeholder: {output_file}")
+
+                    # Extract the format specifier (e.g., %d, %3d, %03d)
+                    format_width = dynamic_match.group(1)
+                    if format_width and "0" in format_width:
+                        # Zero-padded format like %03d
+                        format_spec = f"%{format_width}d"
+                    elif format_width:
+                        # Non-zero-padded format like %3d
+                        format_spec = f"%{format_width}d"
+                    else:
+                        # Simple %d format
+                        format_spec = "%d"
+
+                    # Get the base name and extension
+                    bo, oext = ospath.splitext(output_file)
+
+                    # Find all map statements to determine how many outputs we need
+                    map_count = 0
+                    map_indices = []
+                    for i, arg in enumerate(ffmpeg):
+                        if arg == "-map" and i + 1 < len(ffmpeg):
+                            map_count += 1
+                            map_indices.append(i)
+
+                    # Check if this is an image sequence output (for frame extraction)
+                    is_image_sequence = False
+                    for i, arg in enumerate(ffmpeg):
+                        if (
+                            arg == "-vf"
+                            and i + 1 < len(ffmpeg)
+                            and "fps=" in ffmpeg[i + 1]
+                        ):
+                            is_image_sequence = True
+                            break
+
+                    # Check if this is a subtitle extraction
+                    is_subtitle_extraction = False
+                    for i, arg in enumerate(ffmpeg):
+                        if arg == "-c:s" or (
+                            arg.startswith("-map")
+                            and i + 1 < len(ffmpeg)
+                            and "s" in ffmpeg[i + 1]
+                        ):
+                            is_subtitle_extraction = True
+                            break
+
+                    # For image sequences, we need to use a different approach
+                    if is_image_sequence:
+                        LOGGER.info(f"Detected image sequence output: {output_file}")
+                        # For image sequences, we need to keep the %d format in the output
+                        # FFmpeg requires a pattern like %03d for image sequences
+
+                        # Get the directory and filename parts
+                        output_dir = ospath.dirname(output_file)
+                        output_filename = ospath.basename(output_file)
+
+                        # Find the closest map statement before this output to determine which input file to use
+                        input_index = 0
+                        closest_map_index = -1
+                        for i in range(index - 1, -1, -1):
+                            if ffmpeg[i] == "-map" and i + 1 < len(ffmpeg):
+                                closest_map_index = i
+                                break
+
+                        # If we found a map statement, check which input file it refers to
+                        if closest_map_index >= 0 and closest_map_index + 1 < len(
+                            ffmpeg
+                        ):
+                            map_arg = ffmpeg[closest_map_index + 1]
+                            if map_arg.startswith("0:"):
+                                input_index = 0
+                            elif map_arg.startswith("1:"):
+                                input_index = 1
+                            elif map_arg.startswith("2:"):
+                                input_index = 2
+                            elif map_arg.startswith("3:"):
+                                input_index = 3
+                            elif map_arg.startswith("4:"):
+                                input_index = 4
+                            # Add more cases if needed
+                            LOGGER.info(
+                                f"Found map statement {map_arg} for image sequence output at index {index}, using input file {input_index}"
+                            )
+
+                        # Use the base name from the appropriate input file if available
+                        if user_provided_files:
+                            # For bulk processing, user_provided_files might be a list of files
+                            if isinstance(
+                                user_provided_files, list
+                            ) and input_index < len(user_provided_files):
+                                # Use the base name from the specified input file
+                                input_file = user_provided_files[input_index]
+                                input_base_name = ospath.splitext(
+                                    ospath.basename(input_file)
+                                )[0]
+                                LOGGER.info(
+                                    f"Using base name from input file {input_index} for image sequence: {input_base_name}"
+                                )
+                            # For multi-link feature, user_provided_files might be a dictionary with indices as keys
+                            elif (
+                                isinstance(user_provided_files, dict)
+                                and str(input_index) in user_provided_files
+                            ):
+                                # Use the base name from the specified input file
+                                input_file = user_provided_files[str(input_index)]
+                                input_base_name = ospath.splitext(
+                                    ospath.basename(input_file)
+                                )[0]
+                                LOGGER.info(
+                                    f"Using base name from input file {input_index} for image sequence: {input_base_name}"
+                                )
+                            # For single file processing with multiple inputs (e.g., adding subtitles)
+                            elif (
+                                input_index > 0
+                                and input_index * 2 + 1 < len(ffmpeg)
+                                and ffmpeg[input_index * 2] == "-i"
+                            ):
+                                # Try to extract the filename from the command
+                                input_file = ffmpeg[input_index * 2 + 1]
+                                if isinstance(input_file, str) and ospath.exists(
+                                    input_file
+                                ):
+                                    input_base_name = ospath.splitext(
+                                        ospath.basename(input_file)
+                                    )[0]
+                                    LOGGER.info(
+                                        f"Using base name from command input file {input_index} for image sequence: {input_base_name}"
+                                    )
+                                else:
+                                    # Use the base name from the primary input file
+                                    input_base_name = base_name
+                                    LOGGER.info(
+                                        f"Using base name from primary input file for image sequence: {input_base_name}"
+                                    )
+                            else:
+                                # Use the base name from the primary input file
+                                input_base_name = base_name
+                                LOGGER.info(
+                                    f"Using base name from primary input file for image sequence: {input_base_name}"
+                                )
+                        else:
+                            # Use the base name from the primary input file
+                            input_base_name = base_name
+                            LOGGER.info(
+                                f"Using base name from primary input file for image sequence: {input_base_name}"
+                            )
+
+                        # Replace mltb- with the actual base name but keep the %d format
+                        if format_width:
+                            # For zero-padded formats like %03d
+                            image_output = output_filename.replace(
+                                f"mltb-{format_spec}",
+                                f"{input_base_name}-%{format_width}d",
+                            )
+                        else:
+                            # For simple %d format
+                            image_output = output_filename.replace(
+                                f"mltb-{format_spec}", f"{input_base_name}-%d"
+                            )
+
+                        # Combine the directory and modified filename
+                        if output_dir:
+                            image_output = f"{output_dir}/{image_output}"
+
+                        ffmpeg[index] = image_output
+                        LOGGER.info(
+                            f"Modified image sequence output: {image_output}"
+                        )
+
+                        # For testing purposes, add the first expected output file
+                        first_frame = image_output.replace(
+                            "%d" if not format_width else f"%{format_width}d",
+                            "1" if not format_width else "001",
+                        )
+                        outputs.append(first_frame)
+
+                        # Skip the rest of the processing for this output
+                        continue
+
+                    # For subtitle extraction, we need to handle each subtitle stream separately
+                    if is_subtitle_extraction:
+                        LOGGER.info(f"Detected subtitle extraction: {output_file}")
+
+                        # For subtitle extraction, we need to modify the command to extract each subtitle stream separately
+                        # SRT muxer doesn't support multiple subtitle streams in a single file
+
+                        # Check if we have multiple subtitle streams
+                        subtitle_map_count = 0
+                        subtitle_map_indices = []
+                        for i, arg in enumerate(ffmpeg):
+                            if (
+                                arg == "-map"
+                                and i + 1 < len(ffmpeg)
+                                and "s" in ffmpeg[i + 1]
+                            ):
+                                subtitle_map_count += 1
+                                subtitle_map_indices.append(i)
+
+                        if subtitle_map_count > 1:
+                            LOGGER.info(
+                                f"Multiple subtitle streams detected: {subtitle_map_count}"
+                            )
+                            # We need to modify the command to extract each subtitle stream to a separate file
+                            # FFmpeg can't output multiple subtitle streams to a single SRT file
+                            # So we need to split the command into multiple commands, one for each subtitle stream
+
+                            # We'll handle this by creating separate output files for each subtitle stream
+                            # The dynamic output placeholders will be replaced with the appropriate filenames
+
+                            # Check if the output file already has a numeric suffix (like subtitle1, subtitle2)
+                            # If not, we need to modify the command to use separate output files for each subtitle stream
+                            if not compile(r"\d+\.[^.]+$").search(output_file):
+                                # Get the base name and extension
+                                output_base, output_ext = ospath.splitext(
+                                    output_file
+                                )
+
+                                # Check if the base name already ends with a number
+                                if not compile(r"\d+$").search(output_base):
+                                    # Add a numeric suffix to the output file for each subtitle stream
+                                    for i in range(len(subtitle_map_indices)):
+                                        # Create a new output file with a numeric suffix
+                                        new_output = (
+                                            f"{output_base}{i + 1}{output_ext}"
+                                        )
+
+                                        # If this is not the first subtitle stream, we need to add a new output file
+                                        if i > 0:
+                                            # Add the new output file to the command
+                                            ffmpeg.append("-map")
+                                            ffmpeg.append(f"0:s:{i}")
+                                            ffmpeg.append("-c:s")
+                                            ffmpeg.append("srt")
+                                            ffmpeg.append(new_output)
+                                        else:
+                                            # Replace the existing output file with the new one
+                                            ffmpeg[index] = new_output
+
+                            # Log a warning about this limitation
+                            LOGGER.warning(
+                                "FFmpeg can't output multiple subtitle streams to a single SRT file. "
+                                "Each subtitle stream will be extracted to a separate file."
+                            )
+
+                        # Continue with normal processing
+
+                    # If no map statements found, default to 1 output
+                    if map_count == 0:
+                        map_count = 1
+
+                    # In reality, FFmpeg only creates one output file per format specifier
+                    # So we only generate one output file per format specifier
+                    actual_map_count = 1
+
+                    LOGGER.info(
+                        f"Generating {actual_map_count} dynamic output(s) with format: {format_spec}"
+                    )
+
+                    # Generate output files
+                    dynamic_outputs = []
+
+                    # For multiple inputs, we need to handle each input separately
+                    # The primary input file is used for the base name
+                    # But we need to keep track of which input file is being processed
+
+                    # Get the input file index from the map statement if available
+                    # We need to check which map statement corresponds to this output
+                    input_index = 0
+
+                    # Find the closest map statement before this output
+                    closest_map_index = -1
+                    for i in range(index - 1, -1, -1):
+                        if ffmpeg[i] == "-map" and i + 1 < len(ffmpeg):
+                            closest_map_index = i
+                            break
+
+                    # If we found a map statement, check which input file it refers to
+                    if closest_map_index >= 0 and closest_map_index + 1 < len(
+                        ffmpeg
+                    ):
+                        map_arg = ffmpeg[closest_map_index + 1]
+                        if map_arg.startswith("0:"):
+                            input_index = 0
+                        elif map_arg.startswith("1:"):
+                            input_index = 1
+                        elif map_arg.startswith("2:"):
+                            input_index = 2
+                        elif map_arg.startswith("3:"):
+                            input_index = 3
+                        elif map_arg.startswith("4:"):
+                            input_index = 4
+                        # Add more cases if needed
+                        LOGGER.info(
+                            f"Found map statement {map_arg} for output at index {index}, using input file {input_index}"
+                        )
+
+                        # For subtitle files, we always want to use the video file (input 0) as the base name
+                        # This is because subtitle files are typically named differently from the video
+                        if (
+                            "s:" in map_arg
+                            or map_arg.endswith(":s")
+                            or (
+                                closest_map_index + 3 < len(ffmpeg)
+                                and ffmpeg[closest_map_index + 2] == "-c:s"
+                            )
+                        ):
+                            LOGGER.info(
+                                "Detected subtitle stream, using video file (input 0) as base name"
+                            )
+                            input_index = 0
+
+                    # Use the base name from the appropriate input file if available
+                    # Check if user_provided_files is available and has multiple files
+                    if user_provided_files:
+                        # For bulk processing, user_provided_files might be a list of files
+                        if isinstance(
+                            user_provided_files, list
+                        ) and input_index < len(user_provided_files):
+                            # Use the base name from the specified input file
+                            input_file = user_provided_files[input_index]
+                            input_base_name = ospath.splitext(
+                                ospath.basename(input_file)
+                            )[0]
+                            LOGGER.info(
+                                f"Using base name from input file {input_index}: {input_base_name}"
+                            )
+                        # For multi-link feature, user_provided_files might be a dictionary with indices as keys
+                        elif (
+                            isinstance(user_provided_files, dict)
+                            and str(input_index) in user_provided_files
+                        ):
+                            # Use the base name from the specified input file
+                            input_file = user_provided_files[str(input_index)]
+                            input_base_name = ospath.splitext(
+                                ospath.basename(input_file)
+                            )[0]
+                            LOGGER.info(
+                                f"Using base name from input file {input_index}: {input_base_name}"
+                            )
+                        # For single file processing with multiple inputs (e.g., adding subtitles)
+                        elif (
+                            input_index > 0
+                            and input_index < len(ffmpeg)
+                            and ffmpeg[input_index * 2] == "-i"
+                        ):
+                            # Try to extract the filename from the command
+                            input_file = ffmpeg[input_index * 2 + 1]
+                            if isinstance(input_file, str) and ospath.exists(
+                                input_file
+                            ):
+                                input_base_name = ospath.splitext(
+                                    ospath.basename(input_file)
+                                )[0]
+                                LOGGER.info(
+                                    f"Using base name from command input file {input_index}: {input_base_name}"
+                                )
+                            else:
+                                # Use the base name from the primary input file
+                                input_base_name = base_name
+                        else:
+                            # Use the base name from the primary input file
+                            input_base_name = base_name
+                    else:
+                        # Use the base name from the primary input file
+                        input_base_name = base_name
+
+                    for i in range(actual_map_count):
+                        # Format the number according to the format specifier
+                        formatted_num = format_spec % (i + 1)
+
+                        # Replace the placeholder with the formatted number
+                        dynamic_output = output_file.replace(
+                            f"mltb-{format_spec}",
+                            f"{input_base_name}-{formatted_num}",
+                        )
+
+                        # Add to outputs list - ensure we don't duplicate the directory path
+                        if dynamic_output.startswith(dir):
+                            dynamic_outputs.append(dynamic_output)
+                        else:
+                            dynamic_outputs.append(f"{dir}/{dynamic_output}")
+
+                    # Replace the placeholder in the command with the first output
+                    # FFmpeg will automatically create the other outputs based on the -map statements
+                    ffmpeg[index] = dynamic_outputs[0]
+
+                    # Log the final command for debugging
+                    LOGGER.info(
+                        f"Final FFmpeg command with dynamic output: {' '.join(str(x) for x in ffmpeg)}"
+                    )
+
+                    # Add all dynamic outputs to the outputs list
+                    outputs.extend(dynamic_outputs)
+
+                    LOGGER.info(f"Dynamic outputs: {dynamic_outputs}")
+                elif output_file != "mltb" and output_file.startswith("mltb"):
                     bo, oext = ospath.splitext(output_file)
                     if oext:
                         if ext == oext:
@@ -3607,15 +4580,90 @@ class FFMpeg:
                         ext = ""
                     else:
                         prefix = ""
+
+                    # Create the output path, ensuring we don't duplicate the directory
+                    processed_output = (
+                        f"{prefix}{output_file.replace('mltb', base_name)}{ext}"
+                    )
+                    if processed_output.startswith(dir):
+                        output = processed_output
+                    else:
+                        output = f"{dir}/{processed_output}"
+
+                    outputs.append(output)
+                    ffmpeg[index] = output
+                    LOGGER.info(f"Regular output path: {output}")
                 else:
                     prefix = f"ffmpeg{index}."
-                output = (
-                    f"{dir}/{prefix}{output_file.replace('mltb', base_name)}{ext}"
-                )
-                outputs.append(output)
-                ffmpeg[index] = output
 
-            # Log the identified output files
+                    # Create the output path, ensuring we don't duplicate the directory
+                    processed_output = (
+                        f"{prefix}{output_file.replace('mltb', base_name)}{ext}"
+                    )
+                    if processed_output.startswith(dir):
+                        output = processed_output
+                    else:
+                        output = f"{dir}/{processed_output}"
+
+                    outputs.append(output)
+                    ffmpeg[index] = output
+                    LOGGER.info(f"Default output path: {output}")
+
+            # If no outputs were found, try to find output files based on common patterns
+            if not outputs:
+                # First, look for arguments after -map that don't start with "[" (not filter references)
+                # and don't start with "-" (not options)
+                map_indices = [i for i, arg in enumerate(ffmpeg) if arg == "-map"]
+                for idx in map_indices:
+                    if (
+                        idx + 1 < len(ffmpeg)
+                        and not ffmpeg[idx + 1].startswith("[")
+                        and not ffmpeg[idx + 1].startswith("-")
+                    ):
+                        # This might be an output file specification
+                        continue
+
+                # Next, try to find the last non-option argument as the output
+                for i in range(len(ffmpeg) - 1, -1, -1):
+                    if (
+                        not ffmpeg[i].startswith("-")
+                        and i not in input_indices
+                        and "." in ffmpeg[i]
+                    ):
+                        # Check if this is likely an output file (not a filter or other parameter)
+                        # Output files typically come after all input files and have an extension
+                        is_after_inputs = True
+                        for input_idx in input_indices:
+                            if i < input_idx:
+                                is_after_inputs = False
+                                break
+
+                        if is_after_inputs:
+                            outputs.append(ffmpeg[i])
+                            break
+
+                # If still no outputs found, look for common output file extensions
+                if not outputs:
+                    common_extensions = [
+                        ".mp4",
+                        ".mkv",
+                        ".avi",
+                        ".mov",
+                        ".mp3",
+                        ".m4a",
+                        ".wav",
+                        ".jpg",
+                        ".png",
+                        ".webp",
+                    ]
+                    for i in range(len(ffmpeg) - 1, -1, -1):
+                        if i not in input_indices and isinstance(ffmpeg[i], str):
+                            for ext in common_extensions:
+                                if ffmpeg[i].lower().endswith(ext):
+                                    outputs.append(ffmpeg[i])
+                                    break
+                            if outputs:
+                                break
 
         if self._listener.is_cancelled:
             return False
@@ -3679,6 +4727,33 @@ class FFMpeg:
                             f"Output file exists but has zero size: {output}"
                         )
                         break
+
+                    # Verify the output file is a valid media file if it has a media extension
+                    output_ext = ospath.splitext(output)[1].lower()
+                    if output_ext in [
+                        ".mp4",
+                        ".mkv",
+                        ".avi",
+                        ".mov",
+                        ".webm",
+                        ".mp3",
+                        ".m4a",
+                        ".wav",
+                        ".ogg",
+                        ".flac",
+                    ]:
+                        try:
+                            # Try to get media info to verify it's a valid media file
+                            media_info = await get_media_info(output)
+                            if media_info[0] <= 0 and media_info[1] <= 0:
+                                LOGGER.warning(
+                                    f"Output file {output} appears to be a valid file but may not be a valid media file. Continuing anyway."
+                                )
+                        except Exception as e:
+                            LOGGER.warning(
+                                f"Could not verify if {output} is a valid media file: {e}. Continuing anyway."
+                            )
+
                 except Exception as e:
                     all_outputs_valid = False
                     LOGGER.error(f"Error checking output file size: {e}")
@@ -3691,9 +4766,33 @@ class FFMpeg:
                 and original_file_size > 0
                 and total_output_size < (original_file_size * 0.01)
             ):
-                # For trim operations, the output can be much smaller than the original
-                # So we'll only log a warning but still consider it valid
-                pass
+                # For certain operations, the output can be much smaller than the original
+                # Check if this is a known operation that produces small outputs
+                small_output_operation = False
+
+                # Check for common operations that produce small outputs
+                for cmd in ffmpeg:
+                    if any(
+                        x in str(cmd)
+                        for x in [
+                            "extract",
+                            "trim",
+                            "thumbnail",
+                            "screenshot",
+                            "sample",
+                        ]
+                    ):
+                        small_output_operation = True
+                        break
+
+                if small_output_operation:
+                    LOGGER.info(
+                        f"Output size is small ({total_output_size} bytes) compared to input ({original_file_size} bytes), but this appears to be a valid operation that produces small outputs."
+                    )
+                else:
+                    LOGGER.warning(
+                        f"Output size is suspiciously small: {total_output_size} bytes (input: {original_file_size} bytes). This might indicate a problem with the FFmpeg command."
+                    )
 
             # If -del flag was used and all outputs are valid, delete original files
             if delete_files and all_outputs_valid and await aiopath.exists(f_path):
