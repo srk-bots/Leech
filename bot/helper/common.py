@@ -3544,37 +3544,8 @@ class TaskConfig:
                         # Normal case: command is a list of arguments
                         cmd[index + 1] = file_path
                     self.subsize = self.size
-
-                    # Get user-provided files from bulk or multi feature
-                    user_provided_files = None
-                    if hasattr(self, "bulk") and self.bulk:
-                        # For bulk feature, use the remaining files in the bulk list
-                        user_provided_files = self.bulk.copy()
-                        # Add the current file at the beginning
-                        user_provided_files.insert(0, file_path)
-                    elif hasattr(self, "multi") and self.multi > 1:
-                        # For multi feature, try to find other files in the same directory
-                        user_provided_files = []
-                        # Add the current file first
-                        user_provided_files.append(file_path)
-                        # Get the directory of the current file
-                        dir_path = os.path.dirname(file_path)
-                        if os.path.exists(dir_path) and os.path.isdir(dir_path):
-                            # Get all files in the directory
-                            dir_files = [
-                                os.path.join(dir_path, f)
-                                for f in os.listdir(dir_path)
-                                if os.path.isfile(os.path.join(dir_path, f))
-                            ]
-                            # Add other files to the list
-                            for f in dir_files:
-                                if f != file_path and f not in user_provided_files:
-                                    user_provided_files.append(f)
-
-                    # Execute the command with user-provided files
-                    res = await ffmpeg.ffmpeg_cmds(
-                        cmd, file_path, user_provided_files
-                    )
+                    # Execute the command
+                    res = await ffmpeg.ffmpeg_cmds(cmd, file_path)
 
                     # Resource manager removed
 
@@ -3725,42 +3696,8 @@ class TaskConfig:
                             LOGGER.info(f"Running ffmpeg cmd for: {f_path}")
                             self.subsize = await get_path_size(f_path)
                             self.subname = file_
-
-                            # Get user-provided files from bulk or multi feature
-                            user_provided_files = None
-                            if hasattr(self, "bulk") and self.bulk:
-                                # For bulk feature, use the remaining files in the bulk list
-                                user_provided_files = self.bulk.copy()
-                                # Add the current file at the beginning
-                                user_provided_files.insert(0, f_path)
-                            elif hasattr(self, "multi") and self.multi > 1:
-                                # For multi feature, try to find other files in the same directory
-                                user_provided_files = []
-                                # Add the current file first
-                                user_provided_files.append(f_path)
-                                # Get the directory of the current file
-                                dir_path = os.path.dirname(f_path)
-                                if os.path.exists(dir_path) and os.path.isdir(
-                                    dir_path
-                                ):
-                                    # Get all files in the directory
-                                    dir_files = [
-                                        os.path.join(dir_path, f)
-                                        for f in os.listdir(dir_path)
-                                        if os.path.isfile(os.path.join(dir_path, f))
-                                    ]
-                                    # Add other files to the list
-                                    for f in dir_files:
-                                        if (
-                                            f != f_path
-                                            and f not in user_provided_files
-                                        ):
-                                            user_provided_files.append(f)
-
-                            # Execute the command with user-provided files
-                            res = await ffmpeg.ffmpeg_cmds(
-                                var_cmd, f_path, user_provided_files
-                            )
+                            # Execute the command
+                            res = await ffmpeg.ffmpeg_cmds(var_cmd, f_path)
 
                             if res and delete_files:
                                 await remove(f_path)
@@ -7673,27 +7610,18 @@ class TaskConfig:
                                 else:
                                     LOGGER.error(f"Temp file not found: {temp_file}")
                             except FileNotFoundError as e:
-                                LOGGER.error(
-                                    f"File not found error during metadata replacement: {e}"
-                                )
+                                LOGGER.error(f"File not found error during metadata replacement: {e}")
                                 # Try to copy the file instead of replacing it
                                 try:
                                     if await aiopath.exists(temp_file):
                                         import shutil
-
                                         shutil.copy2(temp_file, dl_path)
                                         os.remove(temp_file)
-                                        LOGGER.info(
-                                            f"Successfully copied metadata to {dl_path} (fallback method)"
-                                        )
+                                        LOGGER.info(f"Successfully copied metadata to {dl_path} (fallback method)")
                                 except Exception as copy_error:
-                                    LOGGER.error(
-                                        f"Failed to copy metadata file as fallback: {copy_error}"
-                                    )
+                                    LOGGER.error(f"Failed to copy metadata file as fallback: {copy_error}")
                             except Exception as e:
-                                LOGGER.error(
-                                    f"Error replacing file during metadata application: {e}"
-                                )
+                                LOGGER.error(f"Error replacing file during metadata application: {e}")
                                 # Don't delete the temp file in case we need it for debugging
                         elif await aiopath.exists(temp_file):
                             try:
@@ -7805,27 +7733,18 @@ class TaskConfig:
                                 else:
                                     LOGGER.error(f"Temp file not found: {temp_file}")
                             except FileNotFoundError as e:
-                                LOGGER.error(
-                                    f"File not found error during metadata replacement: {e}"
-                                )
+                                LOGGER.error(f"File not found error during metadata replacement: {e}")
                                 # Try to copy the file instead of replacing it
                                 try:
                                     if await aiopath.exists(temp_file):
                                         import shutil
-
                                         shutil.copy2(temp_file, file_path)
                                         os.remove(temp_file)
-                                        LOGGER.info(
-                                            f"Successfully copied metadata to {file_path} (fallback method)"
-                                        )
+                                        LOGGER.info(f"Successfully copied metadata to {file_path} (fallback method)")
                                 except Exception as copy_error:
-                                    LOGGER.error(
-                                        f"Failed to copy metadata file as fallback: {copy_error}"
-                                    )
+                                    LOGGER.error(f"Failed to copy metadata file as fallback: {copy_error}")
                             except Exception as e:
-                                LOGGER.error(
-                                    f"Error replacing file during metadata application: {e}"
-                                )
+                                LOGGER.error(f"Error replacing file during metadata application: {e}")
                                 # Don't delete the temp file in case we need it for debugging
                         elif await aiopath.exists(temp_file):
                             try:
@@ -9331,34 +9250,8 @@ class TaskConfig:
                     # Handle PDF trimming manually
                     res = await self.trim_pdf_file(cmd[1], cmd[2], cmd[3], cmd[4])
                 else:
-                    # Get user-provided files from bulk or multi feature
-                    user_provided_files = None
-                    if hasattr(self, "bulk") and self.bulk:
-                        # For bulk feature, use the remaining files in the bulk list
-                        user_provided_files = self.bulk.copy()
-                        # Add the current file at the beginning
-                        user_provided_files.insert(0, dl_path)
-                    elif hasattr(self, "multi") and self.multi > 1:
-                        # For multi feature, try to find other files in the same directory
-                        user_provided_files = []
-                        # Add the current file first
-                        user_provided_files.append(dl_path)
-                        # Get the directory of the current file
-                        dir_path = os.path.dirname(dl_path)
-                        if os.path.exists(dir_path) and os.path.isdir(dir_path):
-                            # Get all files in the directory
-                            dir_files = [
-                                os.path.join(dir_path, f)
-                                for f in os.listdir(dir_path)
-                                if os.path.isfile(os.path.join(dir_path, f))
-                            ]
-                            # Add other files to the list
-                            for f in dir_files:
-                                if f != dl_path and f not in user_provided_files:
-                                    user_provided_files.append(f)
-
-                    # Use FFmpeg for other files with user-provided files
-                    res = await ffmpeg.ffmpeg_cmds(cmd, dl_path, user_provided_files)
+                    # Use FFmpeg for other files
+                    res = await ffmpeg.ffmpeg_cmds(cmd, dl_path)
 
                 # Check if the temp file exists after the command completes
                 temp_file_exists = await aiopath.exists(temp_file)
@@ -9504,41 +9397,8 @@ class TaskConfig:
                                 cmd[1], cmd[2], cmd[3], cmd[4]
                             )
                         else:
-                            # Get user-provided files from bulk or multi feature
-                            user_provided_files = None
-                            if hasattr(self, "bulk") and self.bulk:
-                                # For bulk feature, use the remaining files in the bulk list
-                                user_provided_files = self.bulk.copy()
-                                # Add the current file at the beginning
-                                user_provided_files.insert(0, file_path)
-                            elif hasattr(self, "multi") and self.multi > 1:
-                                # For multi feature, try to find other files in the same directory
-                                user_provided_files = []
-                                # Add the current file first
-                                user_provided_files.append(file_path)
-                                # Get the directory of the current file
-                                dir_path = os.path.dirname(file_path)
-                                if os.path.exists(dir_path) and os.path.isdir(
-                                    dir_path
-                                ):
-                                    # Get all files in the directory
-                                    dir_files = [
-                                        os.path.join(dir_path, f)
-                                        for f in os.listdir(dir_path)
-                                        if os.path.isfile(os.path.join(dir_path, f))
-                                    ]
-                                    # Add other files to the list
-                                    for f in dir_files:
-                                        if (
-                                            f != file_path
-                                            and f not in user_provided_files
-                                        ):
-                                            user_provided_files.append(f)
-
-                            # Use FFmpeg for other files with user-provided files
-                            res = await ffmpeg.ffmpeg_cmds(
-                                cmd, file_path, user_provided_files
-                            )
+                            # Use FFmpeg for other files
+                            res = await ffmpeg.ffmpeg_cmds(cmd, file_path)
 
                         # Check if the temp file exists after the command completes
                         temp_file_exists = await aiopath.exists(temp_file)
