@@ -543,7 +543,10 @@ def is_media_tool_enabled(tool_name):
                 if t.strip()
             ]
         elif Config.MEDIA_TOOLS_ENABLED.strip():  # Single non-empty value
-            enabled_tools = [Config.MEDIA_TOOLS_ENABLED.strip().lower()]
+            # Make sure to properly handle a single tool name
+            single_tool = Config.MEDIA_TOOLS_ENABLED.strip().lower()
+            if single_tool in all_tools:
+                enabled_tools = [single_tool]
 
     # If MEDIA_TOOLS_ENABLED is True (boolean), all tools are enabled
     elif Config.MEDIA_TOOLS_ENABLED is True:

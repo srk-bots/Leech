@@ -1,4 +1,5 @@
 import contextlib
+import re
 from asyncio import sleep
 from logging import getLogger
 from os import path as ospath
@@ -60,6 +61,8 @@ async def extract_metadata_from_filename(name):
     Returns:
         dict: A dictionary containing the extracted metadata
     """
+    import re
+
     # Extract potential season/episode info from filename
     season_match = re.search(r"S(\d{1,2})", name, re.IGNORECASE)
     episode_match = re.search(r"E(\d{1,2})", name, re.IGNORECASE)
@@ -226,8 +229,8 @@ class TelegramUploader:
 
     async def _prepare_file(self, file_, dirpath):
         import gc
-        import re
-        from re import sub as re_sub, match as re_match
+        # re module is already imported at the top of the file
+        # re_match and re_sub are already imported at the top of the file
 
         from bot.helper.ext_utils.font_utils import apply_font_style
         from bot.helper.ext_utils.template_processor import process_template
@@ -484,7 +487,7 @@ class TelegramUploader:
                 # If leech filename, prefix, or suffix is set but no caption, use the modified filename as caption
                 # Extract the base filename without part numbers
                 import os
-                import re
+                # re module is already imported at the top of the file
 
                 # Get the actual filename that was used (after all modifications)
                 # First, try to find a message in the group that has already been sent
@@ -642,8 +645,6 @@ class TelegramUploader:
                                             ext = ext[1:]  # Remove the dot
 
                                         # Extract metadata from filename using our helper function
-                                        import re
-
                                         extracted_metadata = await extract_metadata_from_filename(name)
 
                                         # Populate metadata dictionary
@@ -785,7 +786,6 @@ class TelegramUploader:
                     if self._listener.is_super_chat or self._listener.up_dest:
                         # Get the actual filename without part numbers
                         import os
-                        import re
 
                         # Extract the base filename without part numbers
                         base_name = re.sub(r"\.part\d+(\..*)?$", "", subkey)

@@ -64,7 +64,9 @@ async def get_media_tools_settings(from_user, stype="main", page_no=0):
 
         # Check if watermark is enabled for the user
         user_watermark_enabled = user_dict.get("WATERMARK_ENABLED", False)
-        owner_watermark_enabled = Config.WATERMARK_ENABLED
+        # Check if watermark is enabled globally using is_media_tool_enabled
+        from bot.helper.ext_utils.bot_utils import is_media_tool_enabled
+        owner_watermark_enabled = is_media_tool_enabled("watermark")
 
         if user_watermark_enabled:
             watermark_status = "✅ Enabled (User)"
@@ -88,7 +90,7 @@ async def get_media_tools_settings(from_user, stype="main", page_no=0):
 
         # Check if merge is enabled for the user
         user_merge_enabled = user_dict.get("MERGE_ENABLED", False)
-        owner_merge_enabled = Config.MERGE_ENABLED
+        owner_merge_enabled = is_media_tool_enabled("merge")
 
         if user_merge_enabled:
             merge_status = "✅ Enabled (User)"
@@ -99,9 +101,7 @@ async def get_media_tools_settings(from_user, stype="main", page_no=0):
 
         # Check if convert is enabled for the user
         user_convert_enabled = user_dict.get("CONVERT_ENABLED", False)
-        owner_convert_enabled = (
-            Config.CONVERT_ENABLED if hasattr(Config, "CONVERT_ENABLED") else False
-        )
+        owner_convert_enabled = is_media_tool_enabled("convert")
 
         if user_convert_enabled:
             convert_status = "✅ Enabled (User)"
@@ -144,11 +144,7 @@ async def get_media_tools_settings(from_user, stype="main", page_no=0):
 
         # Check if compression is enabled for the user
         user_compression_enabled = user_dict.get("COMPRESSION_ENABLED", False)
-        owner_compression_enabled = (
-            Config.COMPRESSION_ENABLED
-            if hasattr(Config, "COMPRESSION_ENABLED")
-            else False
-        )
+        owner_compression_enabled = is_media_tool_enabled("compression")
 
         if user_compression_enabled:
             compression_status = "✅ Enabled (User)"
@@ -193,9 +189,7 @@ async def get_media_tools_settings(from_user, stype="main", page_no=0):
 
         # Check if trim is enabled for the user
         user_trim_enabled = user_dict.get("TRIM_ENABLED", False)
-        owner_trim_enabled = (
-            Config.TRIM_ENABLED if hasattr(Config, "TRIM_ENABLED") else False
-        )
+        owner_trim_enabled = is_media_tool_enabled("trim")
 
         if user_trim_enabled:
             trim_status = "✅ Enabled (User)"
@@ -238,9 +232,7 @@ async def get_media_tools_settings(from_user, stype="main", page_no=0):
 
         # Get extract status
         extract_enabled = user_dict.get("EXTRACT_ENABLED", False)
-        owner_extract_enabled = (
-            hasattr(Config, "EXTRACT_ENABLED") and Config.EXTRACT_ENABLED
-        )
+        owner_extract_enabled = is_media_tool_enabled("extract")
 
         if extract_enabled:
             extract_status = "✅ Enabled (User)"
