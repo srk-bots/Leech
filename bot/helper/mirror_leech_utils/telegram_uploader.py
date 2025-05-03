@@ -49,6 +49,47 @@ from bot.helper.ext_utils.media_utils import (
 )
 from bot.helper.telegram_helper.message_utils import delete_message
 
+# Helper function to extract metadata from filenames
+async def extract_metadata_from_filename(name):
+    """
+    Extract metadata like season, episode, and quality from a filename.
+
+    Args:
+        name (str): The filename to extract metadata from
+
+    Returns:
+        dict: A dictionary containing the extracted metadata
+    """
+    # Extract potential season/episode info from filename
+    season_match = re.search(r"S(\d{1,2})", name, re.IGNORECASE)
+    episode_match = re.search(r"E(\d{1,2})", name, re.IGNORECASE)
+
+    # Enhanced quality detection with more formats
+    # Try to find the most specific quality indicator first
+    quality_patterns = [
+        # Resolution patterns (most specific)
+        r"(\d{3,4}x\d{3,4})",
+        r"(\d{3,4}p)",
+        # Source patterns
+        r"(WEB-?DL|HDTV|BluRay|BRRip|DVDRip)",
+        # Other quality indicators
+        r"(\d+k|4K|8K|HD|FHD|UHD|HDR|HEVC|H\.?264|H\.?265|x264|x265|XviD|AVC|REMUX)"
+    ]
+
+    quality = ""
+    for pattern in quality_patterns:
+        match = re.search(pattern, name, re.IGNORECASE)
+        if match:
+            quality = match.group(1)
+            break
+
+    # Return the extracted metadata
+    return {
+        "season": season_match.group(1) if season_match else "",
+        "episode": episode_match.group(1) if episode_match else "",
+        "quality": quality,  # Already extracted the quality string
+    }
+
 LOGGER = getLogger(__name__)
 
 
@@ -205,20 +246,14 @@ class TelegramUploader:
             if ext:
                 ext = ext[1:]  # Remove the dot
 
-            # Extract potential season/episode info from filename
-            season_match = re.search(r"S([0-9]{1,2})", name, re.IGNORECASE)
-            episode_match = re.search(r"E([0-9]{1,2})", name, re.IGNORECASE)
-            quality_match = re.search(
-                r"(\d{3,4}p|\d+k|4K|8K|HD|FHD|UHD|HDR)", name, re.IGNORECASE
-            )
+            # Extract metadata from filename using our helper function
+            metadata = await extract_metadata_from_filename(name)
 
             # Populate metadata dictionary
             file_metadata = {
                 "filename": name,
                 "ext": ext,
-                "season": season_match.group(1) if season_match else "",
-                "episode": episode_match.group(1) if episode_match else "",
-                "quality": quality_match.group(1) if quality_match else "",
+                **metadata  # Include all extracted metadata
             }
 
             # Generate caption if needed (most memory-intensive operation)
@@ -484,30 +519,14 @@ class TelegramUploader:
                         if ext:
                             ext = ext[1:]  # Remove the dot
 
-                        # Extract potential season/episode info from filename
-                        season_match = re.search(
-                            r"S([0-9]{1,2})", name, re.IGNORECASE
-                        )
-                        episode_match = re.search(
-                            r"E([0-9]{1,2})", name, re.IGNORECASE
-                        )
-                        quality_match = re.search(
-                            r"(\d{3,4}p|\d+k|4K|8K|HD|FHD|UHD|HDR)",
-                            name,
-                            re.IGNORECASE,
-                        )
+                        # Extract metadata from filename using our helper function
+                        metadata = await extract_metadata_from_filename(name)
 
                         # Populate metadata dictionary
                         file_metadata = {
                             "filename": name,
                             "ext": ext,
-                            "season": season_match.group(1) if season_match else "",
-                            "episode": episode_match.group(1)
-                            if episode_match
-                            else "",
-                            "quality": quality_match.group(1)
-                            if quality_match
-                            else "",
+                            **metadata  # Include all extracted metadata
                         }
 
                         # Process the template with file metadata
@@ -522,6 +541,9 @@ class TelegramUploader:
                                 display_name = processed_filename
                             LOGGER.info(
                                 f"Applied leech filename template to media group caption: {display_name}"
+                            )
+                            LOGGER.debug(
+                                f"Media group template variables extracted: season='{file_metadata.get('season', '')}', episode='{file_metadata.get('episode', '')}', quality='{file_metadata.get('quality', '')}'"
                             )
                             actual_filename = display_name
 
@@ -618,34 +640,16 @@ class TelegramUploader:
                                         if ext:
                                             ext = ext[1:]  # Remove the dot
 
-                                        # Extract potential season/episode info from filename
+                                        # Extract metadata from filename using our helper function
                                         import re
 
-                                        season_match = re.search(
-                                            r"S([0-9]{1,2})", name, re.IGNORECASE
-                                        )
-                                        episode_match = re.search(
-                                            r"E([0-9]{1,2})", name, re.IGNORECASE
-                                        )
-                                        quality_match = re.search(
-                                            r"(\d{3,4}p|\d+k|4K|8K|HD|FHD|UHD|HDR)",
-                                            name,
-                                            re.IGNORECASE,
-                                        )
+                                        extracted_metadata = await extract_metadata_from_filename(name)
 
                                         # Populate metadata dictionary
                                         metadata = {
                                             "filename": name,
                                             "ext": ext,
-                                            "season": season_match.group(1)
-                                            if season_match
-                                            else "",
-                                            "episode": episode_match.group(1)
-                                            if episode_match
-                                            else "",
-                                            "quality": quality_match.group(1)
-                                            if quality_match
-                                            else "",
+                                            **extracted_metadata  # Include all extracted metadata
                                         }
 
                                     processed_caption = await process_template(
