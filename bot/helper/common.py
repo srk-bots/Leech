@@ -7,7 +7,6 @@ from os import path as ospath
 from os import walk
 from re import IGNORECASE, sub
 from secrets import token_hex
-from shlex import split
 from time import time
 
 from aiofiles.os import listdir, makedirs, remove
@@ -3339,62 +3338,89 @@ class TaskConfig:
         if not self.ffmpeg_cmds:
             return dl_path
 
-        # Process each FFmpeg command with error handling for unclosed quotations
+        # Process each FFmpeg command with error handling
         for item in self.ffmpeg_cmds:
             try:
                 # Check if the item is already a string or needs to be converted
                 if isinstance(item, str):
                     # Try to split the command using shlex.split
-                    parts = [part.strip() for part in split(item) if part.strip()]
-                    cmds.append(parts)
-                else:
-                    # If it's already a list or other iterable, use it directly
+                    try:
+                        parts = [
+                            part.strip()
+                            for part in shlex.split(item)
+                            if part.strip()
+                        ]
+                        cmds.append(parts)
+                        LOGGER.info(f"Parsed FFmpeg command: {parts}")
+                    except ValueError as e:
+                        # Handle the "No closing quotation" error
+                        if "No closing quotation" in str(e):
+                            # Fix the command by adding the missing quotation mark
+                            fixed_item = item
+                            if (
+                                item.count('"') % 2 != 0
+                            ):  # Odd number of double quotes
+                                fixed_item = item + '"'
+                            elif (
+                                item.count("'") % 2 != 0
+                            ):  # Odd number of single quotes
+                                fixed_item = item + "'"
+                            try:
+                                # Try again with the fixed item
+                                parts = [
+                                    part.strip()
+                                    for part in shlex.split(fixed_item)
+                                    if part.strip()
+                                ]
+                                cmds.append(parts)
+                                LOGGER.info(f"Parsed fixed FFmpeg command: {parts}")
+                            except Exception as e2:
+                                LOGGER.error(
+                                    f"Error parsing fixed FFmpeg command: {e2}"
+                                )
+                                # As a last resort, just use the command as a single string
+                                cmds.append([fixed_item])
+                        else:
+                            # For other errors, try a simpler split
+                            LOGGER.warning(
+                                f"Using simple split for FFmpeg command due to error: {e}"
+                            )
+                            parts = [
+                                part.strip() for part in item.split() if part.strip()
+                            ]
+                            cmds.append(parts)
+                            LOGGER.info(
+                                f"Parsed FFmpeg command with simple split: {parts}"
+                            )
+                elif isinstance(item, list):
+                    # If it's already a list, use it directly
                     cmds.append(item)
-            except ValueError as e:
-                # Handle the "No closing quotation" error
-                if "No closing quotation" in str(e):
-                    # Fix the command by adding the missing quotation mark
-                    fixed_item = item
-                    if item.count('"') % 2 != 0:  # Odd number of double quotes
-                        fixed_item = item + '"'
-                    elif item.count("'") % 2 != 0:  # Odd number of single quotes
-                        fixed_item = item + "'"
-                    try:
-                        # Try again with the fixed item
-                        parts = [
-                            part.strip()
-                            for part in split(fixed_item)
-                            if part.strip()
-                        ]
-                        cmds.append(parts)
-                    except Exception as e2:
-                        LOGGER.error(f"Error parsing fixed FFmpeg command: {e2}")
-                        # As a last resort, just use the command as a single string
-                        cmds.append([fixed_item])
-
-                    try:
-                        # Try again with the fixed command
-                        parts = [
-                            part.strip()
-                            for part in split(fixed_item)
-                            if part.strip()
-                        ]
-                        cmds.append(parts)
-                    except ValueError:
-                        # If still failing, use a simple space-based split as fallback
-                        parts = [part for part in item.split() if part]
-                        cmds.append(parts)
+                    LOGGER.info(f"Using pre-parsed FFmpeg command: {item}")
                 else:
-                    # For other ValueError exceptions, use simple split
-                    parts = [part for part in item.split() if part]
+                    # For other types, convert to string and try to parse
+                    LOGGER.warning(
+                        f"Converting non-string FFmpeg command to string: {item}"
+                    )
+                    str_item = str(item)
+                    parts = [
+                        part.strip()
+                        for part in shlex.split(str_item)
+                        if part.strip()
+                    ]
                     cmds.append(parts)
+            except Exception as e:
+                LOGGER.error(f"Error processing FFmpeg command: {e}")
+                # Try to use the item as is
+                if item:
+                    cmds.append([str(item)])
 
         # Log the processed commands
+        LOGGER.info(f"Processed FFmpeg commands: {cmds}")
 
         # Check if any command is empty or missing input parameter
-        for i, cmd in enumerate(cmds):
+        for cmd in cmds:
             if not cmd or "-i" not in cmd:
-                pass
+                LOGGER.warning(f"Skipping invalid FFmpeg command: {cmd}")
 
         # Skip processing if all commands are empty
         if not cmds:

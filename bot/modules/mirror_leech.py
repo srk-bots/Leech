@@ -367,22 +367,14 @@ class Mirror(TaskListener):
         try:
             if args["-ff"]:
                 if isinstance(args["-ff"], set):
+                    # If it's a set, it's a key to look up in the config
                     self.ffmpeg_cmds = args["-ff"]
                 elif isinstance(args["-ff"], str):
-                    # If it's a string, try to parse it as a command
-                    try:
-                        # First try to evaluate it as a Python expression (for backward compatibility)
-                        self.ffmpeg_cmds = eval(args["-ff"])
-                    except (SyntaxError, NameError, ValueError):
-                        # If that fails, treat it as a direct command string
-                        # Split the command string using shlex to handle quoted arguments correctly
-                        try:
-                            self.ffmpeg_cmds = [args["-ff"]]
-                            LOGGER.info(f"Using FFmpeg command: {self.ffmpeg_cmds}")
-                        except Exception as cmd_e:
-                            LOGGER.error(f"Error parsing FFmpeg command: {cmd_e}")
-                            self.ffmpeg_cmds = None
+                    # If it's a string, treat it directly as a command
+                    self.ffmpeg_cmds = [args["-ff"]]
+                    LOGGER.info(f"Using direct FFmpeg command: {self.ffmpeg_cmds}")
                 else:
+                    # For any other type, try to evaluate it
                     self.ffmpeg_cmds = eval(args["-ff"])
         except Exception as e:
             self.ffmpeg_cmds = None
