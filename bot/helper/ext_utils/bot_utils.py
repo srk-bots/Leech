@@ -338,7 +338,10 @@ def get_user_split_size(user_id, args, file_size, equal_splits=False):
     if split_size > safe_telegram_limit:
         # Log the adjustment for debugging
         from bot import LOGGER
-        LOGGER.info(f"Adjusting split size from {split_size/(1024*1024*1024):.2f} GiB to {safe_telegram_limit/(1024*1024*1024):.2f} GiB")
+
+        LOGGER.info(
+            f"Adjusting split size from {split_size / (1024 * 1024 * 1024):.2f} GiB to {safe_telegram_limit / (1024 * 1024 * 1024):.2f} GiB"
+        )
         split_size = safe_telegram_limit
 
     # Ensure split size doesn't exceed maximum allowed
@@ -366,13 +369,18 @@ def get_user_split_size(user_id, args, file_size, equal_splits=False):
         equal_split_size = math.ceil(file_size / parts)
 
         # Add extra safety check - if we're close to the limit, add one more part
-        if equal_split_size > (safe_limit - 10 * 1024 * 1024):  # Within 10 MiB of the limit
+        if equal_split_size > (
+            safe_limit - 10 * 1024 * 1024
+        ):  # Within 10 MiB of the limit
             parts += 1
             equal_split_size = math.ceil(file_size / parts)
 
         # Log the equal split calculation
         from bot import LOGGER
-        LOGGER.info(f"Equal splits: File size: {file_size/(1024*1024*1024):.2f} GiB, Parts: {parts}, Split size: {equal_split_size/(1024*1024*1024):.2f} GiB")
+
+        LOGGER.info(
+            f"Equal splits: File size: {file_size / (1024 * 1024 * 1024):.2f} GiB, Parts: {parts}, Split size: {equal_split_size / (1024 * 1024 * 1024):.2f} GiB"
+        )
 
         # Ensure the calculated equal split size is never greater than safe limit
         equal_split_size = min(equal_split_size, safe_limit)
@@ -508,6 +516,9 @@ def is_media_tool_enabled(tool_name):
         bool: True if the tool is enabled, False otherwise
     """
     from bot.core.config_manager import Config
+    from bot import LOGGER, database
+    from bot.core.aeon_client import TgClient
+    import asyncio
 
     # If ENABLE_EXTRA_MODULES is False, all extra modules are disabled
     if not Config.ENABLE_EXTRA_MODULES:
@@ -547,6 +558,11 @@ def is_media_tool_enabled(tool_name):
             single_tool = Config.MEDIA_TOOLS_ENABLED.strip().lower()
             if single_tool in all_tools:
                 enabled_tools = [single_tool]
+            # If the single tool is not in all_tools, it might be a comma-separated string without spaces
+            elif any(t in single_tool for t in all_tools):
+                # Try to split by comma without spaces
+                potential_tools = single_tool.split(",")
+                enabled_tools = [t for t in potential_tools if t in all_tools]
 
     # If MEDIA_TOOLS_ENABLED is True (boolean), all tools are enabled
     elif Config.MEDIA_TOOLS_ENABLED is True:

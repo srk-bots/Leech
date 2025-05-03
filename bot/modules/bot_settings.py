@@ -929,6 +929,20 @@ Timeout: 60 sec"""
     elif key == "mediatools":
         from bot.helper.ext_utils.bot_utils import is_media_tool_enabled
 
+        # Force refresh Config.MEDIA_TOOLS_ENABLED from database to ensure accurate status
+        if hasattr(Config, "MEDIA_TOOLS_ENABLED"):
+            try:
+                db_config = await database.db.settings.config.find_one(
+                    {"_id": TgClient.ID},
+                    {"MEDIA_TOOLS_ENABLED": 1, "_id": 0},
+                )
+                if db_config and "MEDIA_TOOLS_ENABLED" in db_config:
+                    Config.MEDIA_TOOLS_ENABLED = db_config["MEDIA_TOOLS_ENABLED"]
+            except Exception as e:
+                LOGGER.error(
+                    f"Error refreshing MEDIA_TOOLS_ENABLED from database: {e}"
+                )
+
         # Only show enabled tools
         if is_media_tool_enabled("watermark"):
             buttons.data_button("Watermark Settings", "botset mediatools_watermark")
@@ -5279,6 +5293,14 @@ async def edit_bot_settings(client, query):
         if data[1] == "nzbserver":
             globals()["start"] = 0
         await query.answer()
+        # Force refresh of Config.MEDIA_TOOLS_ENABLED from database before updating UI
+        if data[1] == "mediatools" and hasattr(Config, "MEDIA_TOOLS_ENABLED"):
+            db_config = await database.db.settings.config.find_one(
+                {"_id": TgClient.ID},
+                {"MEDIA_TOOLS_ENABLED": 1, "_id": 0},
+            )
+            if db_config and "MEDIA_TOOLS_ENABLED" in db_config:
+                Config.MEDIA_TOOLS_ENABLED = db_config["MEDIA_TOOLS_ENABLED"]
         await update_buttons(message, data[1])
     elif data[1] == "resetvar":
         await query.answer()
