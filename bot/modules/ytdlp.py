@@ -785,7 +785,12 @@ class YtDlp(TaskListener):
             if args["-ff"]:
                 if isinstance(args["-ff"], str):
                     # Check if it's a key in the FFmpeg commands dictionary
-                    if args["-ff"] in (Config.FFMPEG_CMDS or {}):
+                    if (
+                        Config.FFMPEG_CMDS and args["-ff"] in Config.FFMPEG_CMDS
+                    ) or (
+                        self.user_dict.get("FFMPEG_CMDS")
+                        and args["-ff"] in self.user_dict["FFMPEG_CMDS"]
+                    ):
                         # If it's a key in the config, use it as a set
                         self.ffmpeg_cmds = {args["-ff"]}
                         LOGGER.info(

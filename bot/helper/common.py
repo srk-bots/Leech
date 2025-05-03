@@ -3364,6 +3364,14 @@ class TaskConfig:
                 )
                 self.ffmpeg_cmds = None
                 return dl_path
+        # If ffmpeg_cmds is a list with a single string, make sure it's treated as a direct command
+        elif (
+            isinstance(self.ffmpeg_cmds, list)
+            and len(self.ffmpeg_cmds) == 1
+            and isinstance(self.ffmpeg_cmds[0], str)
+        ):
+            # This is a direct command, keep it as is
+            LOGGER.info(f"Using direct FFmpeg command: {self.ffmpeg_cmds}")
 
         LOGGER.info(f"FFmpeg commands after lookup: {self.ffmpeg_cmds}")
 

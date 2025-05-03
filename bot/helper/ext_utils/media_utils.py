@@ -4297,6 +4297,10 @@ class FFMpeg:
                 if dynamic_match:
                     # This is a dynamic output placeholder
                     LOGGER.info(f"Found dynamic output placeholder: {output_file}")
+                    LOGGER.info(f"Dynamic match: {dynamic_match.group(0)}")
+                    LOGGER.info(
+                        f"Format width: {dynamic_match.group(1) if dynamic_match.group(1) else 'default'}"
+                    )
 
                     # Extract the format specifier (e.g., %d, %3d, %03d)
                     format_width = dynamic_match.group(1)
@@ -4496,14 +4500,14 @@ class FFMpeg:
                                     f"Detected video extraction: {output_file}"
                                 )
                                 break
-                            elif ffmpeg[i + 1] == "0:a":
+                            if ffmpeg[i + 1] == "0:a":
                                 is_stream_extraction = True
                                 stream_type = "audio"
                                 LOGGER.info(
                                     f"Detected audio extraction: {output_file}"
                                 )
                                 break
-                            elif ffmpeg[i + 1] == "0:t":
+                            if ffmpeg[i + 1] == "0:t":
                                 is_stream_extraction = True
                                 stream_type = "attachment"
                                 LOGGER.info(
@@ -4629,9 +4633,10 @@ class FFMpeg:
                                             # Find the codec specification in the command
                                             codec_index = -1
                                             for j, arg in enumerate(cmd):
-                                                if (
-                                                    arg == "-c" or arg == "-c:s"
-                                                ) and j + 1 < len(cmd):
+                                                if arg in {
+                                                    "-c",
+                                                    "-c:s",
+                                                } and j + 1 < len(cmd):
                                                     codec_index = j + 1
                                                     break
 
