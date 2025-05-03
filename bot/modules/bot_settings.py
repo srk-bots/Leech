@@ -5295,12 +5295,17 @@ async def edit_bot_settings(client, query):
         await query.answer()
         # Force refresh of Config.MEDIA_TOOLS_ENABLED from database before updating UI
         if data[1] == "mediatools" and hasattr(Config, "MEDIA_TOOLS_ENABLED"):
-            db_config = await database.db.settings.config.find_one(
-                {"_id": TgClient.ID},
-                {"MEDIA_TOOLS_ENABLED": 1, "_id": 0},
-            )
-            if db_config and "MEDIA_TOOLS_ENABLED" in db_config:
-                Config.MEDIA_TOOLS_ENABLED = db_config["MEDIA_TOOLS_ENABLED"]
+            try:
+                db_config = await database.db.settings.config.find_one(
+                    {"_id": TgClient.ID},
+                    {"MEDIA_TOOLS_ENABLED": 1, "_id": 0},
+                )
+                if db_config and "MEDIA_TOOLS_ENABLED" in db_config:
+                    Config.MEDIA_TOOLS_ENABLED = db_config["MEDIA_TOOLS_ENABLED"]
+            except Exception as e:
+                LOGGER.error(
+                    f"Error refreshing MEDIA_TOOLS_ENABLED from database: {e}"
+                )
         await update_buttons(message, data[1])
     elif data[1] == "resetvar":
         await query.answer()

@@ -516,9 +516,6 @@ def is_media_tool_enabled(tool_name):
         bool: True if the tool is enabled, False otherwise
     """
     from bot.core.config_manager import Config
-    from bot import LOGGER, database
-    from bot.core.aeon_client import TgClient
-    import asyncio
 
     # If ENABLE_EXTRA_MODULES is False, all extra modules are disabled
     if not Config.ENABLE_EXTRA_MODULES:
@@ -580,7 +577,7 @@ def is_media_tool_enabled(tool_name):
                 val = str(Config.MEDIA_TOOLS_ENABLED).strip().lower()
                 if val:
                     enabled_tools = [val]
-            except:
+            except Exception:
                 pass
 
     # If checking for 'mediatools' (general media tools status), return True if any tool is enabled
