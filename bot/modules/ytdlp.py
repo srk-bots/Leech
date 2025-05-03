@@ -785,11 +785,25 @@ class YtDlp(TaskListener):
             if args["-ff"]:
                 if isinstance(args["-ff"], set):
                     self.ffmpeg_cmds = args["-ff"]
+                elif isinstance(args["-ff"], str):
+                    # If it's a string, try to parse it as a command
+                    try:
+                        # First try to evaluate it as a Python expression (for backward compatibility)
+                        self.ffmpeg_cmds = eval(args["-ff"])
+                    except (SyntaxError, NameError, ValueError):
+                        # If that fails, treat it as a direct command string
+                        # Split the command string using shlex to handle quoted arguments correctly
+                        try:
+                            self.ffmpeg_cmds = [args["-ff"]]
+                            LOGGER.info(f"Using FFmpeg command: {self.ffmpeg_cmds}")
+                        except Exception as cmd_e:
+                            LOGGER.error(f"Error parsing FFmpeg command: {cmd_e}")
+                            self.ffmpeg_cmds = None
                 else:
                     self.ffmpeg_cmds = eval(args["-ff"])
         except Exception as e:
             self.ffmpeg_cmds = None
-            LOGGER.error(e)
+            LOGGER.error(f"Error processing FFmpeg command: {e}")
 
         try:
             opt = eval(args["-opt"]) if args["-opt"] else {}

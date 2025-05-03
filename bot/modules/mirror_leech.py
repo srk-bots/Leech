@@ -1,4 +1,5 @@
 # ruff: noqa: RUF006
+import shlex
 from asyncio import create_task
 from base64 import b64encode
 from re import match as re_match
@@ -85,8 +86,14 @@ class Mirror(TaskListener):
 
     async def new_event(self):
         # Check if message text exists before trying to split it
-        if not self.message or not hasattr(self.message, 'text') or self.message.text is None:
-            LOGGER.error("Message text is None or message doesn't have text attribute")
+        if (
+            not self.message
+            or not hasattr(self.message, "text")
+            or self.message.text is None
+        ):
+            LOGGER.error(
+                "Message text is None or message doesn't have text attribute"
+            )
             error_msg = "Invalid message format. Please make sure your message contains text."
             error = await send_message(self.message, error_msg)
             return await auto_delete_message(error, time=300)
@@ -361,11 +368,25 @@ class Mirror(TaskListener):
             if args["-ff"]:
                 if isinstance(args["-ff"], set):
                     self.ffmpeg_cmds = args["-ff"]
+                elif isinstance(args["-ff"], str):
+                    # If it's a string, try to parse it as a command
+                    try:
+                        # First try to evaluate it as a Python expression (for backward compatibility)
+                        self.ffmpeg_cmds = eval(args["-ff"])
+                    except (SyntaxError, NameError, ValueError):
+                        # If that fails, treat it as a direct command string
+                        # Split the command string using shlex to handle quoted arguments correctly
+                        try:
+                            self.ffmpeg_cmds = [args["-ff"]]
+                            LOGGER.info(f"Using FFmpeg command: {self.ffmpeg_cmds}")
+                        except Exception as cmd_e:
+                            LOGGER.error(f"Error parsing FFmpeg command: {cmd_e}")
+                            self.ffmpeg_cmds = None
                 else:
                     self.ffmpeg_cmds = eval(args["-ff"])
         except Exception as e:
             self.ffmpeg_cmds = None
-            LOGGER.error(e)
+            LOGGER.error(f"Error processing FFmpeg command: {e}")
 
         if not isinstance(self.seed, bool):
             dargs = self.seed.split(":")

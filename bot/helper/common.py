@@ -1,6 +1,7 @@
 import contextlib
 import math
 import os
+import shlex
 from asyncio import gather, sleep
 from os import path as ospath
 from os import walk
@@ -3341,9 +3342,14 @@ class TaskConfig:
         # Process each FFmpeg command with error handling for unclosed quotations
         for item in self.ffmpeg_cmds:
             try:
-                # Try to split the command using shlex.split
-                parts = [part.strip() for part in split(item) if part.strip()]
-                cmds.append(parts)
+                # Check if the item is already a string or needs to be converted
+                if isinstance(item, str):
+                    # Try to split the command using shlex.split
+                    parts = [part.strip() for part in split(item) if part.strip()]
+                    cmds.append(parts)
+                else:
+                    # If it's already a list or other iterable, use it directly
+                    cmds.append(item)
             except ValueError as e:
                 # Handle the "No closing quotation" error
                 if "No closing quotation" in str(e):
@@ -3353,6 +3359,18 @@ class TaskConfig:
                         fixed_item = item + '"'
                     elif item.count("'") % 2 != 0:  # Odd number of single quotes
                         fixed_item = item + "'"
+                    try:
+                        # Try again with the fixed item
+                        parts = [
+                            part.strip()
+                            for part in split(fixed_item)
+                            if part.strip()
+                        ]
+                        cmds.append(parts)
+                    except Exception as e2:
+                        LOGGER.error(f"Error parsing fixed FFmpeg command: {e2}")
+                        # As a last resort, just use the command as a single string
+                        cmds.append([fixed_item])
 
                     try:
                         # Try again with the fixed command
