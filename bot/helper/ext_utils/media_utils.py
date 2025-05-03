@@ -3797,6 +3797,128 @@ class FFMpeg:
                             self._eta_raw = 0
             await sleep(0.05)
 
+    async def _get_stream_info(self, file_path, stream_type):
+        """
+        Get information about streams of a specific type in a media file.
+
+        Args:
+            file_path: Path to the media file
+            stream_type: Type of stream to get info for ('video', 'audio', 'subtitle', 'attachment')
+
+        Returns:
+            list: A list of stream indices
+        """
+        from bot.helper.ext_utils.bot_utils import cmd_exec
+
+        # Map stream type to ffprobe stream specifier
+        stream_specifier = {
+            "video": "v",
+            "audio": "a",
+            "subtitle": "s",
+            "attachment": "t",
+        }.get(stream_type, "v")
+
+        try:
+            # Use ffprobe to get stream information
+            result = await cmd_exec(
+                [
+                    "ffprobe",
+                    "-hide_banner",
+                    "-loglevel",
+                    "error",
+                    "-select_streams",
+                    stream_specifier,
+                    "-show_entries",
+                    "stream=index",
+                    "-of",
+                    "csv=p=0",
+                    file_path,
+                ]
+            )
+
+            if result[0] and result[2] == 0:
+                # Parse the output to get stream indices
+                streams = [
+                    int(idx) for idx in result[0].strip().split("\n") if idx.strip()
+                ]
+                return streams
+            else:
+                LOGGER.error(f"Error getting {stream_type} stream info: {result[1]}")
+                return []
+        except Exception as e:
+            LOGGER.error(f"Exception getting {stream_type} stream info: {e}")
+            return []
+
+    async def _get_detailed_stream_info(self, file_path, stream_type):
+        """
+        Get detailed information about streams of a specific type in a media file.
+
+        Args:
+            file_path: Path to the media file
+            stream_type: Type of stream to get info for ('video', 'audio', 'subtitle', 'attachment')
+
+        Returns:
+            list: A list of dictionaries with stream information
+        """
+        from bot.helper.ext_utils.bot_utils import cmd_exec
+
+        # Map stream type to ffprobe stream specifier
+        stream_specifier = {
+            "video": "v",
+            "audio": "a",
+            "subtitle": "s",
+            "attachment": "t",
+        }.get(stream_type, "v")
+
+        try:
+            # Use ffprobe to get detailed stream information
+            result = await cmd_exec(
+                [
+                    "ffprobe",
+                    "-hide_banner",
+                    "-loglevel",
+                    "error",
+                    "-select_streams",
+                    stream_specifier,
+                    "-show_entries",
+                    "stream=index,codec_name,codec_type:stream_tags=language,title",
+                    "-of",
+                    "json",
+                    file_path,
+                ]
+            )
+
+            if result[0] and result[2] == 0:
+                import json
+
+                # Parse the output to get stream information
+                data = json.loads(result[0])
+                streams = []
+                if "streams" in data:
+                    for stream in data["streams"]:
+                        stream_info = {
+                            "index": stream.get("index", 0),
+                            "codec_name": stream.get("codec_name", "unknown"),
+                            "codec_type": stream.get("codec_type", stream_type),
+                        }
+                        if "tags" in stream:
+                            if "language" in stream["tags"]:
+                                stream_info["language"] = stream["tags"]["language"]
+                            if "title" in stream["tags"]:
+                                stream_info["title"] = stream["tags"]["title"]
+                        streams.append(stream_info)
+                return streams
+            else:
+                LOGGER.error(
+                    f"Error getting detailed {stream_type} stream info: {result[1]}"
+                )
+                return []
+        except Exception as e:
+            LOGGER.error(
+                f"Exception getting detailed {stream_type} stream info: {e}"
+            )
+            return []
+
     async def ffmpeg_cmds(self, ffmpeg, f_path, user_provided_files=None):
         self.clear()
         self._total_time = (await get_media_info(f_path))[0]
@@ -4390,12 +4512,6 @@ class FFMpeg:
                                 break
 
                     if is_stream_extraction:
-                        # Import the stream extraction module
-                        from bot.helper.aeon_utils.ffmpeg_stream_extractor import (
-                            process_stream_extraction_command,
-                            execute_stream_extraction_commands,
-                        )
-
                         # Check if we're trying to extract all streams of a type with a single output file
                         map_all = False
                         for i, arg in enumerate(ffmpeg):
@@ -4416,34 +4532,276 @@ class FFMpeg:
                                 f"Using enhanced stream extraction for {stream_type} streams..."
                             )
 
-                            # Process the command to extract all streams
-                            modified_commands = (
-                                await process_stream_extraction_command(
-                                    ffmpeg, f_path, stream_type
-                                )
+                            # Get stream information from the input file
+                            streams = await self._get_stream_info(
+                                f_path, stream_type
                             )
 
-                            if len(modified_commands) > 1:
+                            if not streams:
+                                LOGGER.warning(
+                                    f"No {stream_type} streams found in {f_path}"
+                                )
+                            else:
                                 LOGGER.info(
-                                    f"Generated {len(modified_commands)} separate commands for {stream_type} extraction"
+                                    f"Found {len(streams)} {stream_type} streams in {f_path}"
                                 )
 
-                                # Execute each command separately
-                                all_outputs = []
-                                for cmd in modified_commands:
-                                    # Skip the first command as it will be executed by the main loop
-                                    if cmd == modified_commands[0]:
-                                        # Update the original command with the first modified command
-                                        ffmpeg = cmd
-                                        continue
+                                # Create a separate command for each stream
+                                modified_commands = []
 
-                                    # Execute the additional commands
-                                    await execute_stream_extraction_commands(
-                                        [cmd], all_outputs
+                                # Get detailed stream info to determine codec types
+                                detailed_streams = (
+                                    await self._get_detailed_stream_info(
+                                        f_path, stream_type
+                                    )
+                                )
+
+                                if not detailed_streams and streams:
+                                    # If detailed info failed but we have basic stream indices, use those
+                                    detailed_streams = [
+                                        {"index": idx} for idx in streams
+                                    ]
+
+                                LOGGER.info(
+                                    f"Found {len(detailed_streams)} {stream_type} streams with details: {detailed_streams}"
+                                )
+
+                                for i, stream in enumerate(detailed_streams):
+                                    # Create a copy of the original command
+                                    cmd = ffmpeg.copy()
+
+                                    # Find the map statement in the command
+                                    map_index = -1
+                                    for j, arg in enumerate(cmd):
+                                        if arg == "-map" and j + 1 < len(cmd):
+                                            map_index = j
+                                            break
+
+                                    if map_index != -1:
+                                        # Replace the map statement to target a specific stream
+                                        stream_specifier = {
+                                            "video": "v",
+                                            "audio": "a",
+                                            "subtitle": "s",
+                                            "attachment": "t",
+                                        }.get(stream_type, "v")
+
+                                        # Use the loop index for mapping, not the stream index
+                                        # This ensures we extract streams in the correct order
+                                        stream_idx = i
+                                        cmd[map_index + 1] = (
+                                            f"0:{stream_specifier}:{stream_idx}"
+                                        )
+
+                                        # For subtitles, check if we need to modify the codec and extension
+                                        if stream_type == "subtitle":
+                                            codec = stream.get(
+                                                "codec_name", ""
+                                            ).lower()
+                                            LOGGER.info(f"Stream {i} codec: {codec}")
+
+                                        # Get the base name and extension
+                                        base_name_no_dir, ext = ospath.splitext(
+                                            ospath.basename(f_path)
+                                        )
+
+                                        # Format the number according to the format specifier
+                                        formatted_num = format_spec % (i + 1)
+
+                                        # Get language tag if available
+                                        lang_tag = ""
+                                        if "language" in stream:
+                                            lang_tag = f"-{stream['language']}"
+
+                                        # Replace the output placeholder with a specific output file
+                                        output_idx = index
+                                        output_base = output_file.replace(
+                                            f"mltb-{format_spec}",
+                                            f"{base_name}-{formatted_num}{lang_tag}",
+                                        )
+
+                                        # For subtitles, check the codec and use appropriate extension
+                                        if stream_type == "subtitle":
+                                            codec = stream.get(
+                                                "codec_name", ""
+                                            ).lower()
+
+                                            # Find the codec specification in the command
+                                            codec_index = -1
+                                            for j, arg in enumerate(cmd):
+                                                if (
+                                                    arg == "-c" or arg == "-c:s"
+                                                ) and j + 1 < len(cmd):
+                                                    codec_index = j + 1
+                                                    break
+
+                                            # Determine appropriate extension and codec based on the input codec
+                                            LOGGER.info(
+                                                f"Processing subtitle stream with codec: {codec}"
+                                            )
+
+                                            # Default to copy codec for all subtitle formats
+                                            if codec_index != -1:
+                                                cmd[codec_index] = "copy"
+                                            else:
+                                                # Add codec specification if not present
+                                                cmd.insert(map_index + 2, "-c:s")
+                                                cmd.insert(map_index + 3, "copy")
+
+                                            # Set appropriate file extension based on codec
+                                            if codec in ["ass", "ssa"]:
+                                                # For ASS/SSA subtitles, use .ass extension
+                                                if ".srt" in output_base:
+                                                    output_base = (
+                                                        output_base.replace(
+                                                            ".srt", ".ass"
+                                                        )
+                                                    )
+                                                elif not output_base.endswith(
+                                                    ".ass"
+                                                ):
+                                                    output_base = (
+                                                        f"{output_base}.ass"
+                                                    )
+
+                                            elif codec in [
+                                                "hdmv_pgs_subtitle",
+                                                "dvd_subtitle",
+                                            ]:
+                                                # For PGS/VOB subtitles, use .sup extension
+                                                if ".srt" in output_base:
+                                                    output_base = (
+                                                        output_base.replace(
+                                                            ".srt", ".sup"
+                                                        )
+                                                    )
+                                                elif not output_base.endswith(
+                                                    ".sup"
+                                                ):
+                                                    output_base = (
+                                                        f"{output_base}.sup"
+                                                    )
+
+                                            elif codec in ["subrip", "srt"]:
+                                                # For SRT subtitles, ensure .srt extension
+                                                if not output_base.endswith(".srt"):
+                                                    output_base = (
+                                                        f"{output_base}.srt"
+                                                    )
+
+                                            elif codec in ["webvtt", "vtt"]:
+                                                # For WebVTT subtitles, use .vtt extension
+                                                if ".srt" in output_base:
+                                                    output_base = (
+                                                        output_base.replace(
+                                                            ".srt", ".vtt"
+                                                        )
+                                                    )
+                                                elif not output_base.endswith(
+                                                    ".vtt"
+                                                ):
+                                                    output_base = (
+                                                        f"{output_base}.vtt"
+                                                    )
+
+                                            else:
+                                                # For other subtitle formats, keep the original extension or use .srt as fallback
+                                                if not any(
+                                                    output_base.endswith(ext)
+                                                    for ext in [
+                                                        ".srt",
+                                                        ".ass",
+                                                        ".sup",
+                                                        ".vtt",
+                                                    ]
+                                                ):
+                                                    output_base = (
+                                                        f"{output_base}.srt"
+                                                    )
+
+                                            LOGGER.info(
+                                                f"Using output file: {output_base} for subtitle codec: {codec}"
+                                            )
+
+                                        # Ensure we don't duplicate the directory path
+                                        if not output_base.startswith(dir):
+                                            dynamic_output = f"{dir}/{output_base}"
+                                        else:
+                                            dynamic_output = output_base
+
+                                        cmd[output_idx] = dynamic_output
+
+                                        # Add the command to the list
+                                        modified_commands.append(cmd)
+
+                                if modified_commands:
+                                    LOGGER.info(
+                                        f"Generated {len(modified_commands)} separate commands for {stream_type} extraction"
                                     )
 
-                                # Add all outputs to the outputs list
-                                outputs.extend(all_outputs)
+                                    # Execute each command separately
+                                    all_outputs = []
+
+                                    # Update the original command with the first modified command
+                                    if modified_commands:
+                                        ffmpeg = modified_commands[0]
+
+                                        # Add the first output to the outputs list
+                                        first_output = modified_commands[0][index]
+                                        if first_output not in outputs:
+                                            outputs.append(first_output)
+
+                                    # Execute additional commands for the remaining streams
+                                    for i, cmd in enumerate(
+                                        modified_commands[1:], 1
+                                    ):
+                                        LOGGER.info(
+                                            f"Executing command for {stream_type} stream {i}"
+                                        )
+
+                                        # Execute the command
+                                        try:
+                                            process = await create_subprocess_exec(
+                                                *cmd, stdout=PIPE, stderr=PIPE
+                                            )
+
+                                            _, stderr = await process.communicate()
+                                            code = process.returncode
+
+                                            if code == 0:
+                                                # Check if the output file exists and has content
+                                                output_file = cmd[index]
+                                                if (
+                                                    await aiopath.exists(output_file)
+                                                    and await aiopath.getsize(
+                                                        output_file
+                                                    )
+                                                    > 0
+                                                ):
+                                                    all_outputs.append(output_file)
+                                                    LOGGER.info(
+                                                        f"Successfully extracted {stream_type} stream to {output_file}"
+                                                    )
+                                                else:
+                                                    LOGGER.error(
+                                                        f"Output file {output_file} does not exist or is empty"
+                                                    )
+                                            else:
+                                                stderr_text = (
+                                                    stderr.decode()
+                                                    if stderr
+                                                    else "Unknown error"
+                                                )
+                                                LOGGER.error(
+                                                    f"Failed to extract {stream_type} stream: {stderr_text}"
+                                                )
+                                        except Exception as e:
+                                            LOGGER.error(
+                                                f"Error executing FFmpeg command: {e}"
+                                            )
+
+                                    # Add all outputs to the outputs list
+                                    outputs.extend(all_outputs)
 
                             # Continue with the first command in the normal processing flow
                             LOGGER.info(
