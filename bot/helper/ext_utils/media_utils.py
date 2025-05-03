@@ -152,52 +152,18 @@ async def get_media_info(path):
 
 
 async def get_document_type(path):
-    """Determine if a file is a video, audio, or image.
-
-    This function analyzes a file to determine its type for Telegram upload purposes.
-
-    Args:
-        path: Path to the file
-
-    Returns:
-        tuple: (is_video, is_audio, is_image) boolean flags
-    """
     is_video, is_audio, is_image = False, False, False
-
-    # Check if file exists
-    if not await aiopath.exists(path):
-        LOGGER.error(f"File not found: {path}")
-        return is_video, is_audio, is_image
-
-    # Check if it's an empty file
-    try:
-        if await aiopath.getsize(path) == 0:
-            LOGGER.warning(f"Empty file: {path}")
-            return is_video, is_audio, is_image
-    except Exception as e:
-        LOGGER.error(f"Error checking file size: {e}")
-        return is_video, is_audio, is_image
 
     # Check if it's an archive first
     if (
         is_archive(path)
         or is_archive_split(path)
-        or re_search(r".+(\.|_)(rar|7z|zip|bin|tar|gz|bz2)(\.0*\d+)?$", path)
+        or re_search(r".+(\.|_)(rar|7z|zip|bin)(\.0*\d+)?$", path)
     ):
         return is_video, is_audio, is_image
 
-    # Get file extension
+    # Check file extension for known types that might cause issues with Telegram
     file_ext = ospath.splitext(path)[1].lower()
-
-    # Lists of extensions for different file types
-    video_extensions = [
-        '.mp4', '.mkv', '.avi', '.mov', '.webm', '.flv', '.wmv', '.m4v',
-        '.ts', '.3gp', '.mpg', '.mpeg', '.vob', '.divx', '.m2ts', '.hevc'
-    ]
-
-    audio_extensions = [
-        '.mp3', '.m4a', '.wav', '.flac', '.ogg', '.opus', '.aac', '.ac3', '.wma'
-    ]
 
     # List of extensions that Telegram supports as photos
     valid_photo_extensions = ['.jpg', '.jpeg', '.png', '.webp']
@@ -205,45 +171,24 @@ async def get_document_type(path):
     # List of extensions that should always be treated as documents
     document_extensions = [
         '.psd', '.ai', '.eps', '.pdf', '.xd', '.ico', '.icns', '.svg',
-        '.tiff', '.tif', '.raw', '.cr2', '.nef', '.arw', '.dng', '.heic',
-        '.doc', '.docx', '.xls', '.xlsx', '.ppt', '.pptx', '.txt', '.rtf',
-        '.epub', '.mobi', '.cbz', '.cbr'
+        '.tiff', '.tif', '.raw', '.cr2', '.nef', '.arw', '.dng', '.heic'
     ]
 
-    # Quick check based on extension
-    if file_ext in video_extensions:
-        is_video = True
-    elif file_ext in audio_extensions:
-        is_audio = True
-    elif file_ext in valid_photo_extensions:
-        is_image = True
-    elif file_ext in document_extensions:
-        return is_video, is_audio, is_image
+    # If the file has a document extension, don't treat it as an image
+    if file_ext in document_extensions:
+        return False, False, False
 
-    # Get mime type for more accurate detection
-    try:
-        mime_type = await get_mime_type(path)
-    except Exception as e:
-        LOGGER.warning(f"Error getting mime type: {e}, using fallback detection")
-        mime_type = "application/octet-stream"
+    # Get the mime type for further analysis
+    mime_type = await get_mime_type(path)
 
-    # Handle image files
+    # If it's an image mime type but not a valid Telegram photo extension,
+    # don't mark it as an image to avoid PHOTO_EXT_INVALID errors
     if mime_type.startswith("image"):
-        # Only mark as image if it's a supported Telegram photo extension
         if file_ext in valid_photo_extensions:
-            is_image = True
-        return is_video, is_audio, is_image
-
-    # Handle audio files
-    if mime_type.startswith("audio"):
-        is_audio = True
-        return is_video, is_audio, is_image
-
-    # For text files, subtitles, and other document types
-    if mime_type.startswith(("text/", "application/pdf", "application/msword", "application/vnd.ms")):
-        return is_video, is_audio, is_image
-
-    # For video and more complex media files, use ffprobe for detailed analysis
+            return False, False, True
+        else:
+            # It's an image type but not a supported extension for Telegram photos
+            return False, False, False
     try:
         result = await cmd_exec(
             [
@@ -257,41 +202,32 @@ async def get_document_type(path):
                 path,
             ],
         )
-
-        # Check if ffprobe command was successful
-        if result[2] != 0:
-            # Command failed, check if mime type suggests video
-            if mime_type.startswith("video"):
-                is_video = True
-            return is_video, is_audio, is_image
-
-        # Parse ffprobe output
-        if result[0]:
-            try:
-                data = json.loads(result[0])
-                streams = data.get("streams", [])
-
-                # Analyze streams
-                for stream in streams:
-                    codec_type = stream.get("codec_type")
-                    if codec_type == "video":
-                        # Check if it's not just album art
-                        disposition = stream.get("disposition", {})
-                        if disposition.get("attached_pic", 0) == 0:
-                            is_video = True
-                    elif codec_type == "audio":
-                        is_audio = True
-            except (json.JSONDecodeError, KeyError) as e:
-                LOGGER.error(f"Error parsing ffprobe output: {e}")
-
+        if result[1] and mime_type.startswith("video"):
+            is_video = True
     except Exception as e:
-        LOGGER.error(f"Error in ffprobe analysis: {e} - File: {path}")
-        # Fallback to mime type for basic detection
+        LOGGER.error(
+            f"Get Document Type: {e}. Mostly File not found! - File: {path}",
+        )
+        if mime_type.startswith("audio"):
+            return False, True, False
+        if not mime_type.startswith("video") and not mime_type.endswith(
+            "octet-stream",
+        ):
+            return is_video, is_audio, is_image
         if mime_type.startswith("video"):
             is_video = True
-        elif mime_type.startswith("audio"):
-            is_audio = True
-
+        return is_video, is_audio, is_image
+    if result[0] and result[2] == 0:
+        fields = eval(result[0]).get("streams")
+        if fields is None:
+            LOGGER.error(f"get_document_type: {result}")
+            return is_video, is_audio, is_image
+        is_video = False
+        for stream in fields:
+            if stream.get("codec_type") == "video":
+                is_video = True
+            elif stream.get("codec_type") == "audio":
+                is_audio = True
     return is_video, is_audio, is_image
 
 
@@ -463,104 +399,10 @@ async def take_ss(video_file, ss_nb) -> bool:
     return False
 
 
-async def extract_album_art_with_pil(audio_file, output_path):
-    """Extract album art from audio file using PIL/Pillow.
-
-    This function attempts to extract embedded album art from audio files using the
-    mutagen library and PIL. It works with MP3, FLAC, M4A, and other audio formats.
-
-    Args:
-        audio_file: Path to the audio file
-        output_path: Path where the extracted album art should be saved
-
-    Returns:
-        bool: True if extraction was successful, False otherwise
-    """
-    try:
-        # Import necessary libraries
-        import mutagen
-        from PIL import Image
-        import io
-
-        # Apply memory limits for PIL operations
-        limit_memory_for_pil()
-
-        # Load the audio file with mutagen
-        audio = mutagen.File(audio_file)
-        if audio is None:
-            return False
-
-        # Extract album art based on file format
-        picture_data = None
-
-        # FLAC
-        if hasattr(audio, 'pictures') and audio.pictures:
-            picture_data = audio.pictures[0].data
-        # MP3 (ID3)
-        elif hasattr(audio, 'tags'):
-            # ID3 APIC tag
-            if hasattr(audio.tags, 'getall') and callable(audio.tags.getall):
-                apic_frames = audio.tags.getall('APIC')
-                if apic_frames:
-                    picture_data = apic_frames[0].data
-            # MP4/M4A cover art
-            elif hasattr(audio, 'tags') and 'covr' in audio.tags:
-                picture_data = audio.tags['covr'][0]
-
-        # If we found picture data, save it
-        if picture_data:
-            # Open the image data with PIL
-            img = Image.open(io.BytesIO(picture_data))
-
-            # Convert to RGB if needed (for PNG with transparency)
-            if img.mode != 'RGB':
-                img = img.convert('RGB')
-
-            # Resize if too large
-            if img.width > 800 or img.height > 800:
-                img.thumbnail((800, 800))
-
-            # Save as JPEG
-            img.save(output_path, 'JPEG', quality=90)
-            return True
-
-        return False
-
-    except Exception as e:
-        LOGGER.error(f"Error extracting album art with PIL: {e}")
-        return False
-
 async def get_audio_thumbnail(audio_file):
-    """Extract thumbnail from audio file.
-
-    This function attempts to extract embedded album art from audio files.
-    If extraction fails, it returns None and the caller should use a default thumbnail.
-
-    Args:
-        audio_file: Path to the audio file
-
-    Returns:
-        Path to the extracted thumbnail or None if extraction failed
-    """
-    # Create thumbnails directory in the same directory as the audio file
-    # This avoids permission issues when trying to write to system directories
-    parent_dir = ospath.dirname(audio_file)
-    output_dir = ospath.join(parent_dir, "thumbnails")
+    output_dir = f"{DOWNLOAD_DIR}thumbnails"
     await makedirs(output_dir, exist_ok=True)
-
-    # Generate a unique filename for the thumbnail
-    output = ospath.join(output_dir, f"thumb_{int(time())}.jpg")
-
-    # First try to extract album art using PIL/mutagen
-    try:
-        if await extract_album_art_with_pil(audio_file, output):
-            if await aiopath.exists(output) and await aiopath.getsize(output) > 0:
-                return output
-    except Exception as e:
-        LOGGER.warning(f"Failed to extract album art with PIL: {e}")
-
-    # If PIL method fails, try ffmpeg methods
-    # First try to extract album art using ffmpeg
+    output = ospath.join(output_dir, f"{time()}.jpg")
     cmd = [
         "xtra",  # Using xtra instead of ffmpeg
         "-hide_banner",
@@ -575,61 +417,19 @@ async def get_audio_thumbnail(audio_file):
         f"{max(1, cpu_no // 2)}",
         output,
     ]
-
     try:
         _, err, code = await wait_for(cmd_exec(cmd), timeout=60)
-        if code == 0 and await aiopath.exists(output):
-            # Check if the extracted image is valid and not empty
-            if await aiopath.getsize(output) > 0:
-                return output
-            else:
-                await remove(output)
-                LOGGER.warning(f"Extracted empty thumbnail from audio: {audio_file}")
-        else:
-            LOGGER.warning(
-                f"Failed to extract thumbnail with first method: {audio_file} stderr: {err}",
+        if code != 0 or not await aiopath.exists(output):
+            LOGGER.error(
+                f"Error while extracting thumbnail from audio. Name: {audio_file} stderr: {err}",
             )
-
-        # Try alternative method - extract album art using ffmpeg with different options
-        alt_output = ospath.join(output_dir, f"thumb_alt_{int(time())}.jpg")
-        alt_cmd = [
-            "xtra",
-            "-hide_banner",
-            "-loglevel",
-            "error",
-            "-i",
-            audio_file,
-            "-map",
-            "0:v",
-            "-map",
-            "-0:V",
-            "-c",
-            "copy",
-            "-threads",
-            f"{max(1, cpu_no // 2)}",
-            alt_output,
-        ]
-
-        _, err, code = await wait_for(cmd_exec(alt_cmd), timeout=60)
-        if code == 0 and await aiopath.exists(alt_output):
-            if await aiopath.getsize(alt_output) > 0:
-                return alt_output
-            else:
-                await remove(alt_output)
-                LOGGER.warning(f"Extracted empty thumbnail from audio (alt method): {audio_file}")
-        else:
-            LOGGER.warning(
-                f"Failed to extract thumbnail with alternative method: {audio_file} stderr: {err}",
-            )
-
-        # If all methods fail, return None
-        return None
-
-    except Exception as e:
+            return None
+    except Exception:
         LOGGER.error(
-            f"Error while extracting thumbnail from audio. Name: {audio_file}. Error: {str(e)}",
+            f"Error while extracting thumbnail from audio. Name: {audio_file}. Error: Timeout some issues with xtra (ffmpeg) with specific arch!",
         )
         return None
+    return output
 
 
 # Output extension mappings for different track types and codecs
@@ -3043,45 +2843,15 @@ async def create_default_audio_thumbnail(output_dir, user_id=None):
 
 
 async def get_video_thumbnail(video_file, duration):
-    """Extract thumbnail from video file.
-
-    This function extracts a frame from the video to use as a thumbnail.
-    If extraction fails, it returns None and the caller should use a default thumbnail.
-
-    Args:
-        video_file: Path to the video file
-        duration: Duration of the video in seconds, or None to determine automatically
-
-    Returns:
-        Path to the extracted thumbnail or None if extraction failed
-    """
-    # Create thumbnails directory in the same directory as the video file
-    # This avoids permission issues when trying to write to system directories
-    parent_dir = ospath.dirname(video_file)
-    output_dir = ospath.join(parent_dir, "thumbnails")
+    output_dir = f"{DOWNLOAD_DIR}thumbnails"
     await makedirs(output_dir, exist_ok=True)
+    output = ospath.join(output_dir, f"{time()}.jpg")
 
-    # Generate a unique filename for the thumbnail
-    output = ospath.join(output_dir, f"thumb_{int(time())}.jpg")
-
-    # Get video duration if not provided
     if duration is None:
-        try:
-            duration = (await get_media_info(video_file))[0]
-        except Exception as e:
-            LOGGER.warning(f"Failed to get video duration: {e}, using default")
-            duration = 5
-
-    # Use a reasonable timestamp for the thumbnail
+        duration = (await get_media_info(video_file))[0]
     if duration == 0:
         duration = 3
-    elif duration > 60:
-        # For longer videos, don't go exactly to the middle to avoid black screens or credits
-        duration = int(duration * 0.3)  # Take frame at 30% of the video
-    else:
-        duration = duration // 2  # Middle of the video for short clips
-
-    # Try to extract thumbnail
+    duration = duration // 2
     cmd = [
         "xtra",  # Using xtra instead of ffmpeg
         "-hide_banner",
@@ -3098,64 +2868,22 @@ async def get_video_thumbnail(video_file, duration):
         "-vframes",
         "1",
         "-threads",
-        f"{max(1, cpu_no // 2)}",
+        "1",
         output,
     ]
-
     try:
         _, err, code = await wait_for(cmd_exec(cmd), timeout=60)
-        if code == 0 and await aiopath.exists(output):
-            # Check if the extracted image is valid and not empty
-            if await aiopath.getsize(output) > 0:
-                return output
-            else:
-                await remove(output)
-                LOGGER.warning(f"Extracted empty thumbnail from video: {video_file}")
-        else:
-            LOGGER.warning(
-                f"Failed to extract thumbnail with first method: {video_file} stderr: {err}",
+        if code != 0 or not await aiopath.exists(output):
+            LOGGER.error(
+                f"Error while extracting thumbnail from video. Name: {video_file} stderr: {err}",
             )
-
-        # Try alternative method - extract frame from the beginning
-        alt_output = ospath.join(output_dir, f"thumb_alt_{int(time())}.jpg")
-        alt_cmd = [
-            "xtra",
-            "-hide_banner",
-            "-loglevel",
-            "error",
-            "-i",
-            video_file,
-            "-vf",
-            "scale=640:-1",
-            "-q:v",
-            "5",
-            "-vframes",
-            "1",
-            "-threads",
-            f"{max(1, cpu_no // 2)}",
-            alt_output,
-        ]
-
-        _, err, code = await wait_for(cmd_exec(alt_cmd), timeout=60)
-        if code == 0 and await aiopath.exists(alt_output):
-            if await aiopath.getsize(alt_output) > 0:
-                return alt_output
-            else:
-                await remove(alt_output)
-                LOGGER.warning(f"Extracted empty thumbnail from video (alt method): {video_file}")
-        else:
-            LOGGER.warning(
-                f"Failed to extract thumbnail with alternative method: {video_file} stderr: {err}",
-            )
-
-        # If both methods fail, return None
-        return None
-
-    except Exception as e:
+            return None
+    except Exception:
         LOGGER.error(
-            f"Error while extracting thumbnail from video. Name: {video_file}. Error: {str(e)}",
+            f"Error while extracting thumbnail from video. Name: {video_file}. Error: Timeout some issues with ffmpeg with specific arch!",
         )
         return None
+    return output
 
 
 async def create_default_text_thumbnail(output_dir, user_id=None):
@@ -3286,133 +3014,51 @@ async def create_default_image_thumbnail(output_dir, user_id=None):
 
 
 async def get_multiple_frames_thumbnail(video_file, layout, keep_screenshots):
-    """Create a thumbnail with multiple frames from a video.
-
-    This function takes multiple screenshots from a video and combines them into a grid layout.
-
-    Args:
-        video_file: Path to the video file
-        layout: Grid layout in format "NxM" (e.g., "2x2" for a 2x2 grid)
-        keep_screenshots: Whether to keep the individual screenshots after creating the grid
-
-    Returns:
-        Path to the created thumbnail or None if creation failed
-    """
+    ss_nb = layout.split("x")
+    ss_nb = int(ss_nb[0]) * int(ss_nb[1])
+    dirpath = await take_ss(video_file, ss_nb)
+    if not dirpath:
+        return None
+    output_dir = f"{DOWNLOAD_DIR}thumbnails"
+    await makedirs(output_dir, exist_ok=True)
+    output = ospath.join(output_dir, f"{time()}.jpg")
+    cmd = [
+        "xtra",  # Using xtra instead of ffmpeg
+        "-hide_banner",
+        "-loglevel",
+        "error",
+        "-pattern_type",
+        "glob",
+        "-i",
+        f"{escape(dirpath)}/*.png",
+        "-vf",
+        f"tile={layout}, thumbnail",
+        "-q:v",
+        "1",
+        "-frames:v",
+        "1",
+        "-f",
+        "mjpeg",
+        "-threads",
+        f"{max(1, cpu_no // 2)}",
+        output,
+    ]
     try:
-        # Parse layout and calculate number of screenshots
-        ss_nb = layout.split("x")
-        ss_nb = int(ss_nb[0]) * int(ss_nb[1])
-
-        # Take screenshots
-        dirpath = await take_ss(video_file, ss_nb)
-        if not dirpath:
-            LOGGER.error(f"Failed to take screenshots from video: {video_file}")
-            return None
-
-        # Create thumbnails directory in the same directory as the video file
-        # This avoids permission issues when trying to write to system directories
-        parent_dir = ospath.dirname(video_file)
-        output_dir = ospath.join(parent_dir, "thumbnails")
-        await makedirs(output_dir, exist_ok=True)
-
-        # Generate a unique filename for the thumbnail
-        output = ospath.join(output_dir, f"grid_thumb_{int(time())}.jpg")
-
-        # Create grid of screenshots
-        cmd = [
-            "xtra",  # Using xtra instead of ffmpeg
-            "-hide_banner",
-            "-loglevel",
-            "error",
-            "-pattern_type",
-            "glob",
-            "-i",
-            f"{escape(dirpath)}/*.png",
-            "-vf",
-            f"tile={layout}, thumbnail",
-            "-q:v",
-            "1",
-            "-frames:v",
-            "1",
-            "-f",
-            "mjpeg",
-            "-threads",
-            f"{max(1, cpu_no // 2)}",
-            output,
-        ]
-
         _, err, code = await wait_for(cmd_exec(cmd), timeout=60)
-        if code == 0 and await aiopath.exists(output):
-            # Check if the created thumbnail is valid and not empty
-            if await aiopath.getsize(output) > 0:
-                # Clean up screenshots if not keeping them
-                if not keep_screenshots:
-                    await rmtree(dirpath, ignore_errors=True)
-                return output
-            else:
-                await remove(output)
-                LOGGER.warning(f"Created empty grid thumbnail from video: {video_file}")
-        else:
-            LOGGER.warning(
-                f"Failed to create grid thumbnail: {video_file} stderr: {err}",
+        if code != 0 or not await aiopath.exists(output):
+            LOGGER.error(
+                f"Error while combining thumbnails for video. Name: {video_file} stderr: {err}",
             )
-
-        # Try alternative method - use PIL if available
-        try:
-            alt_output = ospath.join(output_dir, f"grid_thumb_alt_{int(time())}.jpg")
-            # Check if we have screenshots
-            screenshots = list(Path(dirpath).glob("*.png"))
-            if screenshots:
-                # Use PIL to create a grid
-                from PIL import Image
-
-                # Apply memory limits for PIL operations
-                limit_memory_for_pil()
-
-                # Determine grid dimensions
-                cols, rows = map(int, layout.split("x"))
-                # Get the first image to determine dimensions
-                with Image.open(screenshots[0]) as img:
-                    img_width, img_height = img.size
-
-                # Create a new image with the grid dimensions
-                grid_width = cols * img_width
-                grid_height = rows * img_height
-                grid_img = Image.new('RGB', (grid_width, grid_height))
-
-                # Place images in the grid
-                for i, screenshot in enumerate(screenshots[:ss_nb]):
-                    if i >= ss_nb:
-                        break
-                    with Image.open(screenshot) as img:
-                        x = (i % cols) * img_width
-                        y = (i // cols) * img_height
-                        grid_img.paste(img, (x, y))
-
-                # Save the grid
-                grid_img.save(alt_output, quality=90)
-
-                # Clean up screenshots if not keeping them
-                if not keep_screenshots:
-                    await rmtree(dirpath, ignore_errors=True)
-
-                return alt_output
-        except Exception as e:
-            LOGGER.error(f"Failed to create grid with PIL: {e}")
-
-        # If both methods fail, clean up and return None
+            return None
+    except Exception:
+        LOGGER.error(
+            f"Error while combining thumbnails from video. Name: {video_file}. Error: Timeout some issues with ffmpeg with specific arch!",
+        )
+        return None
+    finally:
         if not keep_screenshots:
             await rmtree(dirpath, ignore_errors=True)
-        return None
-
-    except Exception as e:
-        LOGGER.error(
-            f"Error while creating multiple frames thumbnail. Name: {video_file}. Error: {str(e)}",
-        )
-        # Clean up screenshots if not keeping them
-        if 'dirpath' in locals() and dirpath and not keep_screenshots:
-            await rmtree(dirpath, ignore_errors=True)
-        return None
+    return output
 
 
 def is_mkv(file):
