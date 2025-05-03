@@ -63,10 +63,8 @@ async def select_format(_, query, obj):
             LOGGER.error(f"Error in section selection: {e}")
             await query.answer(f"Error: {e!s}", show_alert=True)
     elif data[1] == "aq":
-        if data[2] == "back":
-            await obj.audio_format()
-        else:
-            await obj.audio_quality(data[2])
+        # Handle audio quality format selection
+        await obj.audio_quality(data[2])
     elif data[1] == "back":
         await obj.back_to_main()
     elif data[1] == "cancel":
@@ -267,13 +265,13 @@ class YtSelection:
             # Audio options
             buttons.data_button("MP3 Audio", "ytq mp3")
             buttons.data_button("Other Audio Formats", "ytq audio")
-            buttons.data_button("Best Audio", "ytq ba/b")
+            buttons.data_button("Best Audio", "ytq bestaudio")
 
         # Quick options section is the same for both playlist and single videos
         elif section == "quick":
             # Quick options
-            buttons.data_button("Best Video", "ytq bv*+ba/b")
-            buttons.data_button("Best Audio", "ytq ba/b")
+            buttons.data_button("Best Video", "ytq bestvideo+bestaudio")
+            buttons.data_button("Best Audio", "ytq bestaudio")
 
         # Add back button
         buttons.data_button("Back", "ytq back", "footer")
@@ -341,17 +339,55 @@ class YtSelection:
                 b_data = f"{i}|av1"
                 self.formats[b_data] = video_format
 
-            # Create main menu with sections
-            # Resolution sections in ascending order
-            buttons.data_button("🔹 SD FORMATS (144p-480p) 🔹", "ytq section sd")
-            buttons.data_button("🔹 HD FORMATS (720p-1080p) 🔹", "ytq section hd")
-            buttons.data_button("🔹 4K FORMATS (1440p-2160p) 🔹", "ytq section 4k")
-            buttons.data_button("🔹 AUDIO OPTIONS 🔹", "ytq section audio")
-            buttons.data_button("🔹 QUICK OPTIONS 🔹", "ytq section quick")
+            # Add all video formats directly to the main menu in ascending order
+            # SD formats (144p, 240p, 360p, 480p)
+            for i in ["144", "240", "360", "480"]:
+                # MP4 format with audio
+                b_data = f"{i}|mp4"
+                buttons.data_button(f"{i}p MP4", f"ytq {b_data}")
+
+                # WebM format with audio
+                b_data = f"{i}|webm"
+                buttons.data_button(f"{i}p WebM", f"ytq {b_data}")
+
+            # HD formats (720p, 1080p)
+            for i in ["720", "1080"]:
+                # MP4 format with audio
+                b_data = f"{i}|mp4"
+                buttons.data_button(f"{i}p MP4", f"ytq {b_data}")
+
+                # WebM format with audio
+                b_data = f"{i}|webm"
+                buttons.data_button(f"{i}p WebM", f"ytq {b_data}")
+
+                # AV1 format with audio
+                b_data = f"{i}|av1"
+                buttons.data_button(f"{i}p AV1", f"ytq {b_data}")
+
+            # 4K formats (1440p, 2160p)
+            for i in ["1440", "2160"]:
+                # MP4 format with audio
+                b_data = f"{i}|mp4"
+                buttons.data_button(f"{i}p MP4", f"ytq {b_data}")
+
+                # WebM format with audio
+                b_data = f"{i}|webm"
+                buttons.data_button(f"{i}p WebM", f"ytq {b_data}")
+
+                # AV1 format with audio
+                b_data = f"{i}|av1"
+                buttons.data_button(f"{i}p AV1", f"ytq {b_data}")
+
+            # Add Best Video option after all video formats
+            buttons.data_button("🔹 BEST VIDEO 🔹", "ytq bestvideo+bestaudio")
+
+            # Best Audio and Audios buttons
+            buttons.data_button("🔹 BEST AUDIO 🔹", "ytq bestaudio")
+            buttons.data_button("🔹 AUDIOS 🔹", "ytq section audio")
             buttons.data_button("Cancel", "ytq cancel", "footer")
 
-            self._main_buttons = buttons.build_menu(1)
-            msg = f"Choose Playlist Videos Quality Category:\nTimeout: {get_readable_time(self._timeout - (time() - self._time))}"
+            self._main_buttons = buttons.build_menu(2)
+            msg = f"Choose Playlist Videos Quality:\nTimeout: {get_readable_time(self._timeout - (time() - self._time))}"
         else:
             format_dict = result.get("formats")
             if format_dict is not None:
@@ -418,33 +454,49 @@ class YtSelection:
                         # Group by codec for better UI organization
                         codec_groups.setdefault(codec_group, []).append(b_name)
 
-                # Group formats by resolution for better organization
-                resolutions = {}
+                # Sort formats by resolution (height)
+                sorted_formats = []
+                for b_name in self.formats:
+                    try:
+                        # Extract resolution from format name (e.g., "720p-h264" -> 720)
+                        if "p" in b_name:
+                            resolution = int(b_name.split("p")[0])
+                            sorted_formats.append((resolution, b_name))
+                    except (ValueError, IndexError):
+                        # If we can't extract resolution, add it with resolution 0
+                        sorted_formats.append((0, b_name))
 
-                # Collect all formats by resolution
-                for codec_group, b_names in codec_groups.items():
-                    if codec_group != "audio":
-                        for b_name in b_names:
-                            if "p" in b_name:
-                                resolution = int(b_name.split("p")[0])
-                                resolutions.setdefault(resolution, []).append(
-                                    (b_name, codec_group)
-                                )
+                # Sort by resolution (lowest to highest)
+                sorted_formats.sort()
 
-                # Store formats for section-based display
-                # We'll use the show_section method to display them when needed
+                # Add all formats to the main menu
+                for _, b_name in sorted_formats:
+                    tbr_dict = self.formats[b_name]
+                    if len(tbr_dict) == 1:
+                        tbr, v_list = next(iter(tbr_dict.items()))
+                        size_str = get_readable_file_size(v_list[0])
+                        # Highlight AV1 formats
+                        if "av1" in b_name.lower():
+                            buttonName = f"🔸 {b_name} ({size_str})"
+                        else:
+                            buttonName = f"{b_name} ({size_str})"
+                        buttons.data_button(
+                            buttonName, f"ytq sub {b_name} {tbr}"
+                        )
+                    else:
+                        buttons.data_button(b_name, f"ytq dict {b_name}")
 
-            # Create main menu with sections for non-playlist videos
-            # Resolution sections in ascending order
-            buttons.data_button("🔹 SD FORMATS (144p-480p) 🔹", "ytq section sd")
-            buttons.data_button("🔹 HD FORMATS (720p-1080p) 🔹", "ytq section hd")
-            buttons.data_button("🔹 4K FORMATS (1440p-2160p) 🔹", "ytq section 4k")
-            buttons.data_button("🔹 AUDIO OPTIONS 🔹", "ytq section audio")
-            buttons.data_button("🔹 QUICK OPTIONS 🔹", "ytq section quick")
+                # Add Best Video option after all video formats
+                buttons.data_button("🔹 BEST VIDEO 🔹", "ytq bestvideo+bestaudio")
+
+            # Best Audio and Audios buttons
+            buttons.data_button("🔹 BEST AUDIO 🔹", "ytq bestaudio")
+            buttons.data_button("🔹 AUDIOS 🔹", "ytq section audio")
             buttons.data_button("Cancel", "ytq cancel", "footer")
 
-            self._main_buttons = buttons.build_menu(1)
-            msg = f"Choose Video Quality Category:\nTimeout: {get_readable_time(self._timeout - (time() - self._time))}"
+            self._main_buttons = buttons.build_menu(2)
+            msg = f"Choose Video Quality:\nTimeout: {get_readable_time(self._timeout - (time() - self._time))}"
+
         self._reply_to = await send_message(
             self.listener.message,
             msg,
@@ -456,11 +508,33 @@ class YtSelection:
         return self.qual
 
     async def back_to_main(self):
-        if self._is_playlist:
-            msg = f"Choose Playlist Videos Quality Category:\nTimeout: {get_readable_time(self._timeout - (time() - self._time))}"
+        # Get the current message text to determine which menu we're in
+        current_msg = self._reply_to.text if hasattr(self._reply_to, 'text') else ""
+
+        # Check if we're in an audio-related menu
+        if "Audio" in current_msg and "Quality" in current_msg:
+            # We're in the audio quality menu, go back to audio format selection
+            await self.audio_format()
+        elif "Audio Format" in current_msg:
+            # We're in the audio format menu, go back to audio section
+            await self.show_section("audio")
+        elif "MP3 Audio" in current_msg:
+            # We're in the MP3 quality menu, go back to audio section
+            await self.show_section("audio")
+        elif "Choose AUDIO Format" in current_msg:
+            # We're in the audio section, go back to main menu
+            if self._is_playlist:
+                msg = f"Choose Playlist Videos Quality:\nTimeout: {get_readable_time(self._timeout - (time() - self._time))}"
+            else:
+                msg = f"Choose Video Quality:\nTimeout: {get_readable_time(self._timeout - (time() - self._time))}"
+            await edit_message(self._reply_to, msg, self._main_buttons)
         else:
-            msg = f"Choose Video Quality Category:\nTimeout: {get_readable_time(self._timeout - (time() - self._time))}"
-        await edit_message(self._reply_to, msg, self._main_buttons)
+            # Default: go back to main menu
+            if self._is_playlist:
+                msg = f"Choose Playlist Videos Quality:\nTimeout: {get_readable_time(self._timeout - (time() - self._time))}"
+            else:
+                msg = f"Choose Video Quality:\nTimeout: {get_readable_time(self._timeout - (time() - self._time))}"
+            await edit_message(self._reply_to, msg, self._main_buttons)
 
     async def qual_subbuttons(self, b_name):
         buttons = ButtonMaker()
@@ -477,58 +551,97 @@ class YtSelection:
     async def mp3_subbuttons(self):
         i = "s" if self._is_playlist else ""
         buttons = ButtonMaker()
+
+        # Audio qualities from lowest to highest
         audio_qualities = [64, 128, 192, 256, 320]
+
+        # Add quality description for better understanding
+        quality_desc = {
+            64: "Low Quality (Smallest Size)",
+            128: "Standard Quality",
+            192: "Good Quality",
+            256: "High Quality",
+            320: "Best Quality (Largest Size)"
+        }
+
         for q in audio_qualities:
             audio_format = f"ba/b-mp3-{q}"
-            buttons.data_button(f"{q}K-mp3", f"ytq {audio_format}")
-        buttons.data_button("Back", "ytq back")
-        buttons.data_button("Cancel", "ytq cancel")
-        subbuttons = buttons.build_menu(3)
-        msg = f"Choose mp3 Audio{i} Bitrate:\nTimeout: {get_readable_time(self._timeout - (time() - self._time))}"
+            buttons.data_button(f"{q}K - {quality_desc[q]}", f"ytq {audio_format}")
+
+        buttons.data_button("Back", "ytq back", "footer")
+        buttons.data_button("Cancel", "ytq cancel", "footer")
+
+        subbuttons = buttons.build_menu(1)  # One button per row for better readability
+        msg = f"Choose MP3 Audio{i} Bitrate (Lowest to Highest Quality):\nTimeout: {get_readable_time(self._timeout - (time() - self._time))}"
         await edit_message(self._reply_to, msg, subbuttons)
 
     async def audio_format(self):
         i = "s" if self._is_playlist else ""
         buttons = ButtonMaker()
-        # Add more audio formats and organize them
-        for frmt in ["aac", "alac", "flac", "m4a", "mp3", "opus", "vorbis", "wav"]:
+
+        # Define audio formats with quality information (ordered from lowest to highest quality)
+        audio_formats = [
+            # Format, Description, Quality Level (1-10, higher is better)
+            ("aac", "AAC (Basic Quality)", 3),
+            ("mp3", "MP3 (Common Format)", 4),
+            ("m4a", "M4A (AAC in M4A)", 5),
+            ("vorbis", "OGG (Good Compression)", 6),
+            ("opus", "OPUS (Best Compression)", 7),
+            ("alac", "ALAC (Apple Lossless)", 9),
+            ("flac", "FLAC (Lossless)", 9),
+            ("wav", "WAV (Uncompressed)", 10),
+        ]
+
+        # Sort by quality level (lowest to highest)
+        audio_formats.sort(key=lambda x: x[2])
+
+        # Add audio formats to the menu
+        for frmt, desc, _ in audio_formats:
             audio_format = f"ba/b-{frmt}-"
-            # Add format description
-            if frmt == "flac":
-                desc = "(Lossless)"
-            elif frmt == "alac":
-                desc = "(Apple Lossless)"
-            elif frmt == "opus":
-                desc = "(Best Compressed)"
-            elif frmt == "mp3":
-                desc = "(Common)"
-            elif frmt == "aac":
-                desc = "(AAC)"
-            elif frmt == "m4a":
-                desc = "(AAC in M4A)"
-            elif frmt == "vorbis":
-                desc = "(OGG)"
-            elif frmt == "wav":
-                desc = "(Uncompressed)"
-            else:
-                desc = ""
-            buttons.data_button(f"{frmt.upper()} {desc}", f"ytq aq {audio_format}")
+            buttons.data_button(f"{frmt.upper()} - {desc}", f"ytq aq {audio_format}")
+
+        # Add back and cancel buttons
         buttons.data_button("Back", "ytq back", "footer")
         buttons.data_button("Cancel", "ytq cancel", "footer")
-        subbuttons = buttons.build_menu(2)
-        msg = f"Choose Audio{i} Format:\nTimeout: {get_readable_time(self._timeout - (time() - self._time))}"
+
+        subbuttons = buttons.build_menu(1)  # Use 1 button per row for better readability
+        msg = f"Choose Audio{i} Format (Lowest to Highest Quality):\nTimeout: {get_readable_time(self._timeout - (time() - self._time))}"
         await edit_message(self._reply_to, msg, subbuttons)
 
     async def audio_quality(self, format):
         i = "s" if self._is_playlist else ""
         buttons = ButtonMaker()
-        for qual in range(11):
+
+        # In yt-dlp, 0 is best and 10 is worst, but we want to display from lowest to highest quality
+        # So we'll reverse the order for display (10 to 0)
+        quality_levels = list(range(11))
+        quality_levels.reverse()  # Now 10 is first (lowest quality) and 0 is last (highest quality)
+
+        # Add quality descriptions
+        quality_desc = {
+            10: "Lowest Quality (Smallest Size)",
+            8: "Very Low Quality",
+            6: "Low Quality",
+            4: "Medium Quality",
+            2: "High Quality",
+            0: "Best Quality (Largest Size)"
+        }
+
+        for qual in quality_levels:
             audio_format = f"{format}{qual}"
-            buttons.data_button(str(qual), f"ytq {audio_format}")
-        buttons.data_button("Back", "ytq aq back")
-        buttons.data_button("Cancel", "ytq aq cancel")
-        subbuttons = buttons.build_menu(5)
-        msg = f"Choose Audio{i} Quality:\n0 is best and 10 is worst\nTimeout: {get_readable_time(self._timeout - (time() - self._time))}"
+            # Add description for certain quality levels
+            if qual in quality_desc:
+                button_text = f"{qual} - {quality_desc[qual]}"
+            else:
+                button_text = str(qual)
+
+            buttons.data_button(button_text, f"ytq {audio_format}")
+
+        buttons.data_button("Back", "ytq back", "footer")
+        buttons.data_button("Cancel", "ytq cancel", "footer")
+
+        subbuttons = buttons.build_menu(2)
+        msg = f"Choose Audio{i} Quality (Lowest to Highest):\nNote: 10 is lowest quality, 0 is highest quality\nTimeout: {get_readable_time(self._timeout - (time() - self._time))}"
         await edit_message(self._reply_to, msg, subbuttons)
 
 
