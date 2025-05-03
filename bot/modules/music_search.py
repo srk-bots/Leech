@@ -297,7 +297,7 @@ async def search_music_in_chat(
     """
     # Check if this is a bot client - bots cannot search messages
     if client_type == "bot":
-        return(
+        return (
             [],
             False,
             Exception("BOT_METHOD_INVALID: Bots cannot search messages"),
@@ -1041,7 +1041,6 @@ async def music_get_callback(_, query):
                         f"Found non-audio message {message_id} in chat {chat_id}"
                     )
                     return None
-                pass
             except Exception:
                 raise
 
@@ -1230,7 +1229,6 @@ async def music_get_callback(_, query):
                                 "Found non-audio message with fallback client"
                             )
                             return None
-                        pass
                     except Exception:
                         raise
                 except Exception as e3:

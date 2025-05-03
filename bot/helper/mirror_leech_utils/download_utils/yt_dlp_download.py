@@ -61,9 +61,7 @@ class MyLogger:
             LOGGER.warning(f"YT-DLP Warning: {msg}")
             # Set the class variable to indicate title extraction failed
             MyLogger.title_extraction_warning = True
-        elif "ffmpeg not found" in msg:
-            LOGGER.warning(f"YT-DLP Warning: {msg}")
-        elif "Requested format is not available" in msg:
+        elif "ffmpeg not found" in msg or "Requested format is not available" in msg:
             LOGGER.warning(f"YT-DLP Warning: {msg}")
         else:
             # Log other warnings at debug level to reduce noise
@@ -291,7 +289,9 @@ class YoutubeDLHelper:
 
                 # Check if title extraction warning was triggered
                 if MyLogger.title_extraction_warning or not result.get("title"):
-                    LOGGER.warning("Title extraction failed or warning detected, attempting to use fallback methods")
+                    LOGGER.warning(
+                        "Title extraction failed or warning detected, attempting to use fallback methods"
+                    )
 
                     # Reset the warning flag for future downloads
                     MyLogger.title_extraction_warning = False
@@ -300,12 +300,18 @@ class YoutubeDLHelper:
 
                     # 1. Try direct extraction with format template first
                     try:
-                        with YoutubeDL({**self.opts, "quiet": True, "skip_download": True}) as temp_ydl:
+                        with YoutubeDL(
+                            {**self.opts, "quiet": True, "skip_download": True}
+                        ) as temp_ydl:
                             # Try to get title using format template
-                            temp_name = temp_ydl.prepare_filename(result, outtmpl="%(title)s")
+                            temp_name = temp_ydl.prepare_filename(
+                                result, outtmpl="%(title)s"
+                            )
                             if temp_name and temp_name != "NA":
                                 result["title"] = temp_name
-                                LOGGER.info(f"Successfully extracted title using format template: {temp_name}")
+                                LOGGER.info(
+                                    f"Successfully extracted title using format template: {temp_name}"
+                                )
                     except Exception:
                         pass
 
@@ -317,21 +323,33 @@ class YoutubeDLHelper:
                             url = result.get("webpage_url")
 
                             if "youtu.be/" in url:
-                                video_id = url.split("youtu.be/")[1].split("?")[0].split("&")[0]
+                                video_id = (
+                                    url.split("youtu.be/")[1]
+                                    .split("?")[0]
+                                    .split("&")[0]
+                                )
                             elif "watch?v=" in url:
                                 video_id = url.split("watch?v=")[1].split("&")[0]
                             elif "/shorts/" in url:
-                                video_id = url.split("/shorts/")[1].split("?")[0].split("&")[0]
+                                video_id = (
+                                    url.split("/shorts/")[1]
+                                    .split("?")[0]
+                                    .split("&")[0]
+                                )
 
                             if video_id:
                                 # Try to get title from YouTube API (simulated)
                                 result["title"] = f"youtube_video_{video_id}"
-                                LOGGER.info(f"Using video ID as title: {result['title']}")
+                                LOGGER.info(
+                                    f"Using video ID as title: {result['title']}"
+                                )
                         except Exception:
                             pass
 
                 # If title is still missing and no name is set, try fallbacks
-                if (not result.get("title") or result.get("title") == "NA") and not self._listener.name:
+                if (
+                    not result.get("title") or result.get("title") == "NA"
+                ) and not self._listener.name:
                     # Try to get a title from various metadata fields in priority order
                     for field in [
                         "alt_title",
@@ -361,10 +379,14 @@ class YoutubeDLHelper:
                         import time
 
                         if result.get("id"):
-                            self._listener.name = f"{result.get('extractor', 'video')}_{result['id']}"
+                            self._listener.name = (
+                                f"{result.get('extractor', 'video')}_{result['id']}"
+                            )
                             # Using ID as fallback title
                         else:
-                            self._listener.name = f"untitled_video_{int(time.time())}"
+                            self._listener.name = (
+                                f"untitled_video_{int(time.time())}"
+                            )
                             # Using timestamp as fallback title
 
                 # If we have a title but no listener name, use the title
@@ -433,16 +455,12 @@ class YoutubeDLHelper:
             templates = [
                 # Primary template with comprehensive fallbacks
                 "%(title,fulltitle,alt_title,description,webpage_url_basename)s%(season_number& |)s%(season_number&S|)s%(season_number|)02d%(episode_number&E|)s%(episode_number|)02d%(height& |)s%(height|)s%(height&p|)s%(fps|)s%(fps&fps|)s%(tbr& |)s%(tbr|)d.%(ext)s",
-
                 # Simpler templates with fewer fields
                 "%(title,fulltitle,alt_title)s.%(ext)s",
-
                 # Metadata-based templates
                 "%(id)s_%(uploader,channel)s.%(ext)s",
-
                 # Format-based templates that include quality info
                 "%(id)s_%(height)sp%(fps)s.%(ext)s",
-
                 # Last resort templates that should always work
                 "youtube_video_%(id)s.%(ext)s",
                 "%(id)s.%(ext)s",
@@ -456,8 +474,7 @@ class YoutubeDLHelper:
                         realName = name
                         # Successfully extracted filename using template
                         break
-                except Exception as e:
-                    pass
+                except Exception:
                     continue
 
             # If all templates failed, use video ID and timestamp with more info
@@ -817,7 +834,10 @@ class YoutubeDLHelper:
             }
 
         # Set proper filename for audio formats
-        if qual.startswith("ba/b") or qual == "bestaudio" or qual == "bestaudio[vcodec=none]":
+        if qual.startswith("ba/b") or qual in {
+            "bestaudio",
+            "bestaudio[vcodec=none]",
+        }:
             self._listener.name = f"{base_name}{self._ext}"
 
         if self._listener.is_leech and not self._listener.thumbnail_layout:

@@ -480,9 +480,7 @@ class YtSelection:
                             buttonName = f"🔸 {b_name} ({size_str})"
                         else:
                             buttonName = f"{b_name} ({size_str})"
-                        buttons.data_button(
-                            buttonName, f"ytq sub {b_name} {tbr}"
-                        )
+                        buttons.data_button(buttonName, f"ytq sub {b_name} {tbr}")
                     else:
                         buttons.data_button(b_name, f"ytq dict {b_name}")
 
@@ -509,7 +507,7 @@ class YtSelection:
 
     async def back_to_main(self):
         # Get the current message text to determine which menu we're in
-        current_msg = self._reply_to.text if hasattr(self._reply_to, 'text') else ""
+        current_msg = self._reply_to.text if hasattr(self._reply_to, "text") else ""
 
         # Check if we're in an audio-related menu
         if "Audio" in current_msg and "Quality" in current_msg:
@@ -561,7 +559,7 @@ class YtSelection:
             128: "Standard Quality",
             192: "Good Quality",
             256: "High Quality",
-            320: "Best Quality (Largest Size)"
+            320: "Best Quality (Largest Size)",
         }
 
         for q in audio_qualities:
@@ -571,7 +569,9 @@ class YtSelection:
         buttons.data_button("Back", "ytq back", "footer")
         buttons.data_button("Cancel", "ytq cancel", "footer")
 
-        subbuttons = buttons.build_menu(1)  # One button per row for better readability
+        subbuttons = buttons.build_menu(
+            1
+        )  # One button per row for better readability
         msg = f"Choose MP3 Audio{i} Bitrate (Lowest to Highest Quality):\nTimeout: {get_readable_time(self._timeout - (time() - self._time))}"
         await edit_message(self._reply_to, msg, subbuttons)
 
@@ -604,7 +604,9 @@ class YtSelection:
         buttons.data_button("Back", "ytq back", "footer")
         buttons.data_button("Cancel", "ytq cancel", "footer")
 
-        subbuttons = buttons.build_menu(1)  # Use 1 button per row for better readability
+        subbuttons = buttons.build_menu(
+            1
+        )  # Use 1 button per row for better readability
         msg = f"Choose Audio{i} Format (Lowest to Highest Quality):\nTimeout: {get_readable_time(self._timeout - (time() - self._time))}"
         await edit_message(self._reply_to, msg, subbuttons)
 
@@ -624,7 +626,7 @@ class YtSelection:
             6: "Low Quality",
             4: "Medium Quality",
             2: "High Quality",
-            0: "Best Quality (Largest Size)"
+            0: "Best Quality (Largest Size)",
         }
 
         for qual in quality_levels:
