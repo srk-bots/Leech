@@ -1,4 +1,6 @@
 from pyrogram.types import InlineKeyboardButton, InlineKeyboardMarkup
+from bot import LOGGER
+from bot.helper.ext_utils.links_utils import is_url
 
 
 class ButtonMaker:
@@ -9,6 +11,25 @@ class ButtonMaker:
         self._page_button = []
 
     def url_button(self, key, link, position=None):
+        # Validate URL before creating button
+        if not link or not isinstance(link, str):
+            LOGGER.error(f"Invalid URL button: '{link}' is empty or not a string")
+            return
+
+        # Ensure URL has a protocol (http:// or https://)
+        if not link.startswith(('http://', 'https://', 'tg://')):
+            if link.startswith('t.me/'):
+                link = 'https://' + link
+            else:
+                LOGGER.error(f"Invalid URL button: '{link}' missing protocol (http:// or https://)")
+                return
+
+        # Validate URL format
+        if not is_url(link) and not link.startswith('tg://'):
+            LOGGER.error(f"Invalid URL button: '{link}' has invalid format")
+            return
+
+        # Create button with validated URL
         if not position:
             self._button.append(InlineKeyboardButton(text=key, url=link))
         elif position == "header":

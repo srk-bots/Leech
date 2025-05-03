@@ -135,6 +135,64 @@ class RcloneTransferHelper:
                 )
             LOGGER.error(error)
 
+            # Handle specific FTP stream errors
+            if "ftpstream:" in error and "504 File not found" in error:
+                # Extract the file name from the error message for better error reporting
+                file_name = "unknown file"
+                if "ftpstream:" in error:
+                    try:
+                        # Try to extract the filename from the error message
+                        file_name = error.split("ftpstream:")[1].split("'")[0].strip()
+                    except Exception:
+                        pass
+
+                # Provide a more user-friendly error message
+                user_error = f"FTP Stream Error: The file '{file_name}' could not be found on the FTP server. Please check if the file exists and is accessible."
+                LOGGER.error(user_error)
+                await self._listener.on_download_error(user_error)
+                return None
+
+            # Handle Mega-related errors
+            if "megavideo:" in error and "Failed to link: PublicLink failed to create link: Access violation" in error:
+                # Extract the file name from the error message for better error reporting
+                file_name = "unknown file"
+                if "megavideo:" in error:
+                    try:
+                        # Try to extract the filename from the error message
+                        file_name = error.split("megavideo:")[1].split("'")[0].strip()
+                    except Exception:
+                        pass
+
+                # Provide a more user-friendly error message
+                user_error = f"Mega Access Error: Cannot access '{file_name}'. This could be due to insufficient permissions, account restrictions, or Mega's anti-abuse measures. Try using a different Mega account with proper permissions."
+                LOGGER.error(user_error)
+                await self._listener.on_download_error(user_error)
+                return None
+
+            # Handle other access violation errors
+            if "Access violation" in error or "permission denied" in error.lower():
+                # Try to extract the remote type and file name
+                remote_type = "remote"
+                file_name = "unknown file"
+
+                # Look for common remote patterns in the error message
+                remote_patterns = ["megavideo:", "ftpstream:", "gdrive:", "onedrive:", "dropbox:"]
+                for pattern in remote_patterns:
+                    if pattern in error:
+                        remote_type = pattern.rstrip(":")
+                        try:
+                            file_name = error.split(pattern)[1].split("'")[0].strip()
+                        except Exception:
+                            pass
+                        break
+
+                # Provide a more user-friendly error message
+                user_error = f"{remote_type.capitalize()} Access Error: Cannot access '{file_name}'. This could be due to insufficient permissions or account restrictions. Check your account settings and permissions."
+                LOGGER.error(user_error)
+                await self._listener.on_download_error(user_error)
+                return None
+
+            # Handle Google Drive rate limit errors with service account switching
             if (
                 self._sa_number != 0
                 and remote_type == "drive"
@@ -151,6 +209,7 @@ class RcloneTransferHelper:
                     f"Reached maximum number of service accounts switching, which is {self._sa_count}",
                 )
 
+            # For all other errors
             await self._listener.on_download_error(error[:4000])
             return None
         return None
@@ -254,6 +313,65 @@ class RcloneTransferHelper:
             return True
         error = stderr.decode().strip()
         LOGGER.error(error)
+
+        # Handle specific FTP stream errors
+        if "ftpstream:" in error and "504 File not found" in error:
+            # Extract the file name from the error message for better error reporting
+            file_name = "unknown file"
+            if "ftpstream:" in error:
+                try:
+                    # Try to extract the filename from the error message
+                    file_name = error.split("ftpstream:")[1].split("'")[0].strip()
+                except Exception:
+                    pass
+
+            # Provide a more user-friendly error message
+            user_error = f"FTP Stream Error: The file '{file_name}' could not be found on the FTP server. Please check if the file exists and is accessible."
+            LOGGER.error(user_error)
+            await self._listener.on_upload_error(user_error)
+            return False
+
+        # Handle Mega-related errors
+        if "megavideo:" in error and "Failed to link: PublicLink failed to create link: Access violation" in error:
+            # Extract the file name from the error message for better error reporting
+            file_name = "unknown file"
+            if "megavideo:" in error:
+                try:
+                    # Try to extract the filename from the error message
+                    file_name = error.split("megavideo:")[1].split("'")[0].strip()
+                except Exception:
+                    pass
+
+            # Provide a more user-friendly error message
+            user_error = f"Mega Access Error: Cannot create public link for '{file_name}'. This could be due to insufficient permissions, account restrictions, or Mega's anti-abuse measures. Try using a different Mega account with proper permissions."
+            LOGGER.error(user_error)
+            await self._listener.on_upload_error(user_error)
+            return False
+
+        # Handle other access violation errors
+        if "Access violation" in error or "permission denied" in error.lower():
+            # Try to extract the remote type and file name
+            remote_type = "remote"
+            file_name = "unknown file"
+
+            # Look for common remote patterns in the error message
+            remote_patterns = ["megavideo:", "ftpstream:", "gdrive:", "onedrive:", "dropbox:"]
+            for pattern in remote_patterns:
+                if pattern in error:
+                    remote_type = pattern.rstrip(":")
+                    try:
+                        file_name = error.split(pattern)[1].split("'")[0].strip()
+                    except Exception:
+                        pass
+                    break
+
+            # Provide a more user-friendly error message
+            user_error = f"{remote_type.capitalize()} Access Error: Cannot access or create link for '{file_name}'. This could be due to insufficient permissions or account restrictions. Check your account settings and permissions."
+            LOGGER.error(user_error)
+            await self._listener.on_upload_error(user_error)
+            return False
+
+        # Handle Google Drive rate limit errors with service account switching
         if (
             self._sa_number != 0
             and remote_type == "drive"
@@ -271,6 +389,8 @@ class RcloneTransferHelper:
             LOGGER.info(
                 f"Reached maximum number of service accounts switching, which is {self._sa_count}",
             )
+
+        # For all other errors
         await self._listener.on_upload_error(error[:4000])
         return False
 
@@ -411,6 +531,31 @@ class RcloneTransferHelper:
                 LOGGER.error(
                     f"while getting link. Path: {destination} | Stderr: {err}",
                 )
+
+                # Handle Mega-related errors
+                if "megavideo:" in destination and "Failed to link: PublicLink failed to create link: Access violation" in err:
+                    # Extract the file name from the destination for better error reporting
+                    file_name = destination.split(":", 1)[1] if ":" in destination else destination
+
+                    # Show a user-friendly error message
+                    await self._listener.on_upload_error(
+                        f"Mega Access Error: Cannot create public link for '{file_name}'. "
+                        f"This could be due to insufficient permissions, account restrictions, or Mega's anti-abuse measures. "
+                        f"Try using a different Mega account with proper permissions."
+                    )
+                # Handle other cloud storage access violations
+                elif "Access violation" in err or "permission denied" in err.lower():
+                    # Extract the remote type and file name
+                    remote_type = destination.split(":", 1)[0] if ":" in destination else "remote"
+                    file_name = destination.split(":", 1)[1] if ":" in destination else destination
+
+                    # Show a user-friendly error message
+                    await self._listener.on_upload_error(
+                        f"{remote_type.capitalize()} Access Error: Cannot create public link for '{file_name}'. "
+                        f"This could be due to insufficient permissions or account restrictions. "
+                        f"Check your account settings and permissions."
+                    )
+
                 link = ""
         if self._listener.is_cancelled:
             return
@@ -507,12 +652,95 @@ class RcloneTransferHelper:
                 LOGGER.error(
                     f"while getting link. Path: {destination} | Stderr: {err}",
                 )
+
+                # Handle Mega-related errors
+                if "megavideo:" in destination and "Failed to link: PublicLink failed to create link: Access violation" in err:
+                    # Extract the file name from the destination for better error reporting
+                    file_name = destination.split(":", 1)[1] if ":" in destination else destination
+
+                    # Show a user-friendly error message
+                    await self._listener.on_upload_error(
+                        f"Mega Access Error: Cannot create public link for '{file_name}'. "
+                        f"This could be due to insufficient permissions, account restrictions, or Mega's anti-abuse measures. "
+                        f"Try using a different Mega account with proper permissions."
+                    )
+                # Handle other cloud storage access violations
+                elif "Access violation" in err or "permission denied" in err.lower():
+                    # Extract the remote type and file name
+                    remote_type = destination.split(":", 1)[0] if ":" in destination else "remote"
+                    file_name = destination.split(":", 1)[1] if ":" in destination else destination
+
+                    # Show a user-friendly error message
+                    await self._listener.on_upload_error(
+                        f"{remote_type.capitalize()} Access Error: Cannot create public link for '{file_name}'. "
+                        f"This could be due to insufficient permissions or account restrictions. "
+                        f"Check your account settings and permissions."
+                    )
+
                 return None, destination
             return None
 
         error = stderr.decode().strip()
         LOGGER.error(error)
-        await self._listener.on_upload_error(error[:4000])
+
+        # Handle specific FTP stream errors
+        if "ftpstream:" in error and "504 File not found" in error:
+            # Extract the file name from the error message for better error reporting
+            file_name = "unknown file"
+            if "ftpstream:" in error:
+                try:
+                    # Try to extract the filename from the error message
+                    file_name = error.split("ftpstream:")[1].split("'")[0].strip()
+                except Exception:
+                    pass
+
+            # Provide a more user-friendly error message
+            user_error = f"FTP Stream Error: The file '{file_name}' could not be found on the FTP server. Please check if the file exists and is accessible."
+            LOGGER.error(user_error)
+            await self._listener.on_upload_error(user_error)
+
+        # Handle Mega-related errors
+        elif "megavideo:" in error and "Failed to link: PublicLink failed to create link: Access violation" in error:
+            # Extract the file name from the error message for better error reporting
+            file_name = "unknown file"
+            if "megavideo:" in error:
+                try:
+                    # Try to extract the filename from the error message
+                    file_name = error.split("megavideo:")[1].split("'")[0].strip()
+                except Exception:
+                    pass
+
+            # Provide a more user-friendly error message
+            user_error = f"Mega Access Error: Cannot access or create link for '{file_name}'. This could be due to insufficient permissions, account restrictions, or Mega's anti-abuse measures. Try using a different Mega account with proper permissions."
+            LOGGER.error(user_error)
+            await self._listener.on_upload_error(user_error)
+
+        # Handle other access violation errors
+        elif "Access violation" in error or "permission denied" in error.lower():
+            # Try to extract the remote type and file name
+            remote_type = "remote"
+            file_name = "unknown file"
+
+            # Look for common remote patterns in the error message
+            remote_patterns = ["megavideo:", "ftpstream:", "gdrive:", "onedrive:", "dropbox:"]
+            for pattern in remote_patterns:
+                if pattern in error:
+                    remote_type = pattern.rstrip(":")
+                    try:
+                        file_name = error.split(pattern)[1].split("'")[0].strip()
+                    except Exception:
+                        pass
+                    break
+
+            # Provide a more user-friendly error message
+            user_error = f"{remote_type.capitalize()} Access Error: Cannot access or create link for '{file_name}'. This could be due to insufficient permissions or account restrictions. Check your account settings and permissions."
+            LOGGER.error(user_error)
+            await self._listener.on_upload_error(user_error)
+
+        else:
+            # For all other errors
+            await self._listener.on_upload_error(error[:4000])
+
         return None, None
 
     def _get_updated_command(

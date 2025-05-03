@@ -29,20 +29,38 @@ class DefaultDict(dict):
         return "Unknown"
 
 
-def calculate_md5(file_path, block_size=8192):
+async def calculate_md5(file_path, block_size=8192):
     """Calculate MD5 hash of a file."""
     # Check if file exists before attempting to calculate MD5
-    if not os.path.exists(file_path):
-        LOGGER.error(f"File does not exist for MD5 calculation: {file_path}")
-        return "Unknown"
-
     try:
-        md5_hash = md5()
-        with open(file_path, "rb") as f:
-            # Only read the first block for speed
-            data = f.read(block_size)
-            md5_hash.update(data)
-        return md5_hash.hexdigest()[:10]  # Return first 10 chars for brevity
+        if not await aiopath.exists(file_path):
+            LOGGER.error(f"File does not exist for MD5 calculation: {file_path}")
+            return "Unknown"
+
+        # Check if file has content
+        file_size = await aiopath.getsize(file_path)
+        if file_size == 0:
+            LOGGER.error(f"File exists but has zero size for MD5 calculation: {file_path}")
+            return "Unknown"
+
+        # Use async file operations when possible
+        try:
+            import aiofiles
+
+            md5_hash = md5()
+            async with aiofiles.open(file_path, "rb") as f:
+                # Only read the first block for speed
+                data = await f.read(block_size)
+                md5_hash.update(data)
+            return md5_hash.hexdigest()[:10]  # Return first 10 chars for brevity
+        except ImportError:
+            # Fall back to synchronous operation if aiofiles is not available
+            md5_hash = md5()
+            with open(file_path, "rb") as f:
+                # Only read the first block for speed
+                data = f.read(block_size)
+                md5_hash.update(data)
+            return md5_hash.hexdigest()[:10]  # Return first 10 chars for brevity
     except FileNotFoundError:
         # File might have been deleted between the existence check and now
         LOGGER.error(f"File disappeared during MD5 calculation: {file_path}")
@@ -78,8 +96,18 @@ async def generate_caption(filename, directory, caption_template):
     file_path = os.path.join(directory, filename)
 
     # Check if the file exists before proceeding
-    if not os.path.exists(file_path):
-        LOGGER.error(f"File does not exist for caption generation: {file_path}")
+    try:
+        if not await aiopath.exists(file_path):
+            LOGGER.error(f"File does not exist for caption generation: {file_path}")
+            return f"<code>{filename}</code>"  # Return a simple caption with just the filename
+
+        # Also check if file has content
+        file_size = await aiopath.getsize(file_path)
+        if file_size == 0:
+            LOGGER.error(f"File exists but has zero size for caption generation: {file_path}")
+            return f"<code>{filename}</code>"  # Return a simple caption with just the filename
+    except Exception as e:
+        LOGGER.error(f"Error checking file existence: {e}")
         return f"<code>{filename}</code>"  # Return a simple caption with just the filename
 
     # Initialize variables to track temporary resources
@@ -90,11 +118,26 @@ async def generate_caption(filename, directory, caption_template):
     try:
         # Check if file still exists before proceeding further
         try:
-            # Just check if we can access the file's modification time
-            os.path.getmtime(file_path)
+            # Use async file operations for better performance
+            if not await aiopath.exists(file_path):
+                LOGGER.error(f"File disappeared during caption generation: {file_path}")
+                return f"<code>{filename}</code>"  # Return a simple caption with just the filename
+
+            # Also check if we can access the file's modification time
+            mod_time = await aiopath.getmtime(file_path)
+            LOGGER.debug(f"File last modified at: {mod_time}")
+
+            # Check file size again
+            file_size = await aiopath.getsize(file_path)
+            if file_size == 0:
+                LOGGER.error(f"File exists but has zero size during processing: {file_path}")
+                return f"<code>{filename}</code>"  # Return a simple caption with just the filename
         except FileNotFoundError:
             # File might have been deleted between the existence check and now
             LOGGER.error(f"File disappeared during caption generation: {file_path}")
+            return f"<code>{filename}</code>"  # Return a simple caption with just the filename
+        except Exception as e:
+            LOGGER.error(f"Error accessing file during caption generation: {e}")
             return f"<code>{filename}</code>"  # Return a simple caption with just the filename
 
         # Check if filename contains special characters that might cause issues with shell commands
@@ -178,15 +221,48 @@ async def generate_caption(filename, directory, caption_template):
 
         # Get media info using mediainfo command
         try:
-            result = await cmd_exec(["mediainfo", "--Output=JSON", file_path_to_use])
+            # Double-check file existence right before running mediainfo
+            if not await aiopath.exists(file_path_to_use):
+                LOGGER.error(f"File does not exist before running mediainfo: {file_path_to_use}")
+                return filename
+
+            # Check if file is accessible and has size > 0
+            try:
+                file_size = await aiopath.getsize(file_path_to_use)
+                if file_size == 0:
+                    LOGGER.error(f"File exists but has zero size: {file_path_to_use}")
+                    return filename
+            except Exception as e:
+                LOGGER.error(f"Error checking file size before mediainfo: {e}")
+                return filename
+
+            # Run mediainfo command with absolute path
+            abs_path = os.path.abspath(file_path_to_use)
+            LOGGER.info(f"Running mediainfo on: {abs_path}")
+            result = await cmd_exec(["mediainfo", "--Output=JSON", abs_path])
+
             if result[1]:
                 LOGGER.info(f"MediaInfo command output: {result[1]}")
 
-            mediainfo_data = json.loads(result[0])  # Parse JSON output
+            if not result[0]:
+                LOGGER.error(f"MediaInfo returned empty output for: {abs_path}")
+                return filename
+
+            # Parse JSON output
+            try:
+                mediainfo_data = json.loads(result[0])
+            except json.JSONDecodeError as e:
+                LOGGER.error(f"Failed to parse MediaInfo JSON output: {e}")
+                return filename
+
+        except FileNotFoundError as error:
+            LOGGER.error(f"File not found when running mediainfo: {error}")
+            return filename
+        except PermissionError as error:
+            LOGGER.error(f"Permission denied when running mediainfo: {error}")
+            return filename
         except Exception as error:
-            LOGGER.error(
-                f"Failed to retrieve media info: {error}. File may not exist!"
-            )
+            LOGGER.error(f"Failed to retrieve media info: {error}")
             return filename
 
         # Extract media information
@@ -362,7 +438,7 @@ async def generate_caption(filename, directory, caption_template):
 
         # Calculate MD5 hash for the file (first 10MB only for speed)
         try:
-            file_md5_hash = calculate_md5(file_path)
+            file_md5_hash = await calculate_md5(file_path)
         except Exception as e:
             LOGGER.error(f"Error calculating MD5 hash: {e}")
             file_md5_hash = "Unknown"

@@ -1174,7 +1174,14 @@ async def get_metadata_cmd(
         cmd = ["echo", "Using document_utils module for metadata"]
 
         # The temp_file will be created by the document_utils module
+        # Ensure the temp file path is valid by creating the directory if needed
         temp_file = f"{file_path}.temp{file_ext}"
+
+        # Make sure the directory exists
+        try:
+            os.makedirs(os.path.dirname(temp_file), exist_ok=True)
+        except Exception as e:
+            LOGGER.warning(f"Error creating directory for temp file: {e}")
 
         # Return the dummy command and temp_file
         # The actual metadata application will be handled by the document_utils module
@@ -1192,6 +1199,12 @@ async def get_metadata_cmd(
             temp_file = f"{file_path}.temp{file_ext}"
         else:
             temp_file = file_path
+
+        # Make sure the directory exists
+        try:
+            os.makedirs(os.path.dirname(temp_file), exist_ok=True)
+        except Exception as e:
+            LOGGER.warning(f"Error creating directory for temp file: {e}")
 
         # Create the command based on the image type
         if file_ext in [
@@ -1622,6 +1635,13 @@ async def get_embed_thumb_cmd(file, attachment_path):
     # Resource manager removed
 
     temp_file = f"{file}.temp.mkv"
+
+    # Make sure the directory exists
+    try:
+        os.makedirs(os.path.dirname(temp_file), exist_ok=True)
+    except Exception as e:
+        LOGGER.warning(f"Error creating directory for temp file: {e}")
+
     attachment_ext = attachment_path.split(".")[-1].lower()
     mime_type = "application/octet-stream"
     if attachment_ext in ["jpg", "jpeg"]:

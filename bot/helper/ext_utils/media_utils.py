@@ -153,15 +153,42 @@ async def get_media_info(path):
 
 async def get_document_type(path):
     is_video, is_audio, is_image = False, False, False
+
+    # Check if it's an archive first
     if (
         is_archive(path)
         or is_archive_split(path)
         or re_search(r".+(\.|_)(rar|7z|zip|bin)(\.0*\d+)?$", path)
     ):
         return is_video, is_audio, is_image
+
+    # Check file extension for known types that might cause issues with Telegram
+    file_ext = ospath.splitext(path)[1].lower()
+
+    # List of extensions that Telegram supports as photos
+    valid_photo_extensions = ['.jpg', '.jpeg', '.png', '.webp']
+
+    # List of extensions that should always be treated as documents
+    document_extensions = [
+        '.psd', '.ai', '.eps', '.pdf', '.xd', '.ico', '.icns', '.svg',
+        '.tiff', '.tif', '.raw', '.cr2', '.nef', '.arw', '.dng', '.heic'
+    ]
+
+    # If the file has a document extension, don't treat it as an image
+    if file_ext in document_extensions:
+        return False, False, False
+
+    # Get the mime type for further analysis
     mime_type = await get_mime_type(path)
+
+    # If it's an image mime type but not a valid Telegram photo extension,
+    # don't mark it as an image to avoid PHOTO_EXT_INVALID errors
     if mime_type.startswith("image"):
-        return False, False, True
+        if file_ext in valid_photo_extensions:
+            return False, False, True
+        else:
+            # It's an image type but not a supported extension for Telegram photos
+            return False, False, False
     try:
         result = await cmd_exec(
             [

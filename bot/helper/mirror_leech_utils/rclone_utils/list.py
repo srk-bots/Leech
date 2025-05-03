@@ -8,6 +8,7 @@ from aiofiles import open as aiopen
 from aiofiles.os import path as aiopath
 from pyrogram.filters import regex, user
 from pyrogram.handlers import CallbackQueryHandler
+from pyrogram.errors.exceptions.bad_request_400 import QueryIdInvalid
 
 from bot import LOGGER
 from bot.core.config_manager import Config
@@ -30,7 +31,14 @@ LIST_LIMIT = 6
 
 @new_task
 async def path_updates(_, query, obj):
-    await query.answer()
+    try:
+        await query.answer()
+    except QueryIdInvalid:
+        # Callback query expired, continue with processing
+        LOGGER.warning("Callback query expired, continuing with processing")
+    except Exception as e:
+        LOGGER.error(f"Error answering callback query: {e}")
+
     message = query.message
     data = query.data.split()
     if data[1] == "cancel":

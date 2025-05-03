@@ -332,24 +332,53 @@ async def split_file(f_path, split_size, listener):
         # This is an additional safety measure beyond what's in get_user_split_size
         from bot.core.aeon_client import TgClient
 
-        telegram_limit = TgClient.MAX_SPLIT_SIZE
-        safety_margin = 20 * 1024 * 1024  # 20 MiB safety margin
+        # For non-premium accounts, Telegram's limit is 2GB
+        telegram_limit = 2000 * 1024 * 1024  # 2000 MiB (slightly less than 2 GiB for safety)
 
+        # If user is premium, use premium limit (4GB) but still with safety margin
+        if TgClient.IS_PREMIUM_USER:
+            telegram_limit = 4000 * 1024 * 1024  # 4000 MiB (slightly less than 4 GiB for safety)
+
+        # Add a larger safety margin to ensure we're well under the limit
+        safety_margin = 50 * 1024 * 1024  # 50 MiB safety margin
+
+        # Ensure split size is always below Telegram's limit with safety margin
         if split_size > (telegram_limit - safety_margin):
             split_size = telegram_limit - safety_margin
             LOGGER.info(
-                f"{split_size / (1024 * 1024 * 1024):.2f} GiB for extra safety"
+                f"Adjusted split size to {split_size / (1024 * 1024 * 1024):.2f} GiB for extra safety"
             )
     except Exception as e:
         LOGGER.error(f"Error calculating file size: {e}")
         # Continue with the split operation anyway
 
     # Create the command
+    # Ensure split size is in bytes and is an integer
+    split_size_bytes = int(split_size)
+
+    # For extra safety, ensure split size is always below Telegram's limit
+    # For non-premium accounts, Telegram's limit is 2GB
+    telegram_limit = 2000 * 1024 * 1024  # 2000 MiB (slightly less than 2 GiB for safety)
+
+    # If user is premium, use premium limit (4GB) but still with safety margin
+    if TgClient.IS_PREMIUM_USER:
+        telegram_limit = 4000 * 1024 * 1024  # 4000 MiB (slightly less than 4 GiB for safety)
+
+    # Add a larger safety margin to ensure we're well under the limit
+    safety_margin = 50 * 1024 * 1024  # 50 MiB safety margin
+
+    # Final check to ensure split size is safe
+    if split_size_bytes > (telegram_limit - safety_margin):
+        split_size_bytes = telegram_limit - safety_margin
+        LOGGER.info(
+            f"Final adjustment: split size set to {split_size_bytes / (1024 * 1024 * 1024):.2f} GiB"
+        )
+
     cmd = [
         "split",
         "--numeric-suffixes=1",
         "--suffix-length=3",
-        f"--bytes={split_size}",
+        f"--bytes={split_size_bytes}",
         f_path,
         out_path,
     ]
@@ -390,20 +419,41 @@ async def split_file(f_path, split_size, listener):
             return False
 
         # Check the size of each split file to ensure none exceed Telegram's limit
+        oversized_files = []
         for split_file in split_files:
             try:
-                split_size = await aiopath.getsize(split_file)
-                split_size_gb = split_size / (1024 * 1024 * 1024)
+                split_file_size = await aiopath.getsize(split_file)
+                split_size_gb = split_file_size / (1024 * 1024 * 1024)
 
-                if split_size > telegram_limit:
+                # For non-premium accounts, Telegram's limit is 2GB
+                telegram_limit = 2000 * 1024 * 1024  # 2000 MiB (slightly less than 2 GiB for safety)
+
+                # If user is premium, use premium limit (4GB) but still with safety margin
+                if TgClient.IS_PREMIUM_USER:
+                    telegram_limit = 4000 * 1024 * 1024  # 4000 MiB (slightly less than 4 GiB for safety)
+
+                if split_file_size > telegram_limit:
                     LOGGER.error(
                         f"Split file {split_file} is {split_size_gb:.2f} GiB, which exceeds "
                         f"Telegram's {telegram_limit / (1024 * 1024 * 1024):.2f} GiB limit!"
                     )
-                    # We don't return False here because we want to continue with the upload
-                    # The upload will fail for this file, but other files might still work
+                    oversized_files.append(split_file)
             except Exception as e:
                 LOGGER.error(f"Error checking split file size: {e}")
+
+        # If we found oversized files, we need to re-split them with a smaller split size
+        if oversized_files:
+            LOGGER.warning(f"Found {len(oversized_files)} oversized files that need to be re-split")
+
+            # Try to re-split with a smaller size if there are oversized files
+            # We don't return False here because we want to continue with the upload
+            # The upload will fail for these files, but other files might still work
+
+            # Log a clear warning for the user
+            LOGGER.warning(
+                "Some split files are still too large for Telegram. "
+                "Consider using a smaller split size in your command with the -s parameter."
+            )
 
         LOGGER.info(f"Successfully split {f_path} into {len(split_files)} parts")
         return True

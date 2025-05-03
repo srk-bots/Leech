@@ -227,6 +227,7 @@ class TelegramUploader:
     async def _prepare_file(self, file_, dirpath):
         import gc
         import re
+        from re import sub as re_sub, match as re_match
 
         from bot.helper.ext_utils.font_utils import apply_font_style
         from bot.helper.ext_utils.template_processor import process_template
@@ -1151,13 +1152,49 @@ class TelegramUploader:
                 key = "photos"
                 if self._listener.is_cancelled:
                     return None
-                self._sent_msg = await self._sent_msg.reply_photo(
-                    photo=self._up_path,
-                    quote=True,
-                    caption=cap_mono,
-                    disable_notification=True,
-                    progress=self._upload_progress,
-                )
+
+                # Check if the file has a valid photo extension that Telegram supports
+                valid_photo_extensions = ['.jpg', '.jpeg', '.png', '.webp']
+                file_ext = ospath.splitext(self._up_path)[1].lower()
+
+                # If the file extension is not supported by Telegram for photos, send as document
+                if file_ext not in valid_photo_extensions:
+                    LOGGER.info(f"File has image type but unsupported extension for Telegram photos: {file_ext}. Sending as document.")
+                    key = "documents"
+                    self._sent_msg = await self._sent_msg.reply_document(
+                        document=self._up_path,
+                        quote=True,
+                        thumb=thumb,
+                        caption=cap_mono,
+                        force_document=True,
+                        disable_notification=True,
+                        progress=self._upload_progress,
+                    )
+                else:
+                    # Try to send as photo, but be prepared to fall back to document
+                    try:
+                        self._sent_msg = await self._sent_msg.reply_photo(
+                            photo=self._up_path,
+                            quote=True,
+                            caption=cap_mono,
+                            disable_notification=True,
+                            progress=self._upload_progress,
+                        )
+                    except BadRequest as e:
+                        if "PHOTO_EXT_INVALID" in str(e):
+                            LOGGER.info(f"Failed to send as photo due to invalid extension. Sending as document: {self._up_path}")
+                            key = "documents"
+                            self._sent_msg = await self._sent_msg.reply_document(
+                                document=self._up_path,
+                                quote=True,
+                                thumb=thumb,
+                                caption=cap_mono,
+                                force_document=True,
+                                disable_notification=True,
+                                progress=self._upload_progress,
+                            )
+                        else:
+                            raise
 
             await self._copy_message()
 
@@ -1215,11 +1252,15 @@ class TelegramUploader:
             err_type = "RPCError: " if isinstance(err, RPCError) else ""
             LOGGER.error(f"{err_type}{err}. Path: {self._up_path}")
             # Check if key is defined before using it
-            if isinstance(err, BadRequest) and (
-                "key" in locals() and key != "documents"
-            ):
-                LOGGER.error(f"Retrying As Document. Path: {self._up_path}")
-                return await self._upload_file(cap_mono, file, o_path, True)
+            if isinstance(err, BadRequest):
+                # Handle PHOTO_EXT_INVALID error specifically
+                if "PHOTO_EXT_INVALID" in str(err):
+                    LOGGER.error(f"Invalid photo extension. Retrying as document. Path: {self._up_path}")
+                    return await self._upload_file(cap_mono, file, o_path, True)
+                # Handle other BadRequest errors for non-document uploads
+                elif "key" in locals() and key != "documents":
+                    LOGGER.error(f"Retrying As Document. Path: {self._up_path}")
+                    return await self._upload_file(cap_mono, file, o_path, True)
             raise err
 
     async def _copy_media_group(self, msgs_list):

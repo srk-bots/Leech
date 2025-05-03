@@ -32,6 +32,7 @@ async def get_media_tools_settings(from_user, stype="main", page_no=0):
     buttons = ButtonMaker()
     user_dict = user_data.get(user_id, {})
     text = ""  # Initialize text variable to avoid UnboundLocalError
+    btns = None  # Initialize btns variable to avoid UnboundLocalError
 
     if stype == "main":
         # Main Media Tools menu - only show enabled tools
@@ -980,9 +981,8 @@ async def get_media_tools_settings(from_user, stype="main", page_no=0):
                         str(i + 1), f"mediatools {user_id} merge_config {i}", "page"
                     )
 
-            # Log the state after adding pagination buttons}, Header: {len(buttons._header_button)}, Footer: {len(buttons._footer_button)}, Page: {len(buttons._page_button)}"
-
-            # Add a debug log message# Build the menu with 2 columns for settings, 4 columns for action buttons, and 8 columns for paginationbtns = buttons.build_menu(2, 8, 4, 8)} rows of buttons")
+            # Build the menu with 2 columns for settings, 4 columns for action buttons, and 8 columns for pagination
+            btns = buttons.build_menu(2, 8, 4, 8)
 
         # Define category groups
         formats = [
@@ -4968,12 +4968,16 @@ Use 'copy' codec to preserve original format or 'srt' to convert ASS/SSA to SRT.
 ┃
 ┖ <b>Note:</b> Use the Media Tools settings to configure all options."""
 
+    # Make sure btns is defined before returning
+    if btns is None:
+        btns = buttons.build_menu(2)
     return text, btns
 
 
 async def update_media_tools_settings(query, stype="main"):
     """Update media tools settings UI."""
-    handler_dict[query.from_user.id] = False
+    user_id = query.from_user.id
+    handler_dict[user_id] = False
 
     # Extract page number if present in stype
     page_no = 0
@@ -4998,9 +5002,46 @@ async def update_media_tools_settings(query, stype="main"):
         page_no = merge_config_page
 
     # Get the settings for the current stype
-    msg, button = await get_media_tools_settings(
+    msg, btns = await get_media_tools_settings(
         query.from_user, stype, page_no=page_no
     )
+
+    # Check if we're in a task context (using -mt flag)
+    # We can determine this by checking if there's a task_done button in the original message
+    is_task_context = False
+    if hasattr(query, 'message') and hasattr(query.message, 'reply_markup') and query.message.reply_markup:
+        for row in query.message.reply_markup.inline_keyboard:
+            for btn in row:
+                if btn.text == "Done" and "task_done" in btn.callback_data:
+                    is_task_context = True
+                    break
+            if is_task_context:
+                break
+
+    # If we're in a task context, we need to preserve the Done and Cancel buttons
+    if is_task_context:
+        # Create new buttons with the original menu buttons
+        buttons = ButtonMaker()
+
+        # Copy all buttons from the new menu except Close
+        for row in btns.inline_keyboard:
+            for btn in row:
+                if btn.text == "Close":
+                    continue  # Skip the Close button
+                if "footer" in btn.callback_data:
+                    buttons.data_button(btn.text, btn.callback_data, "footer")
+                else:
+                    buttons.data_button(btn.text, btn.callback_data)
+
+        # Add the Done and Cancel buttons to the footer
+        buttons.data_button("Done", f"mediatools {user_id} task_done", "footer")
+        buttons.data_button("Cancel", f"mediatools {user_id} task_cancel", "footer")
+
+        # Use the modified buttons
+        button = buttons.build_menu(2)
+    else:
+        # Use the original buttons
+        button = btns
 
     # Update the message with the new settings
     await edit_message(query.message, msg, button)
@@ -5120,7 +5161,27 @@ async def get_menu(option, message, user_id):
         back_target = "back"
 
     buttons.data_button("Back", f"mediatools {user_id} {back_target}", "footer")
-    buttons.data_button("Close", f"mediatools {user_id} close", "footer")
+
+    # Check if we're in a task context (using -mt flag)
+    # We can determine this by checking if there's a task_done button in the message's reply markup
+    is_task_context = False
+    if hasattr(message, 'reply_markup') and message.reply_markup:
+        for row in message.reply_markup.inline_keyboard:
+            for btn in row:
+                if btn.text == "Done" and "task_done" in btn.callback_data:
+                    is_task_context = True
+                    break
+            if is_task_context:
+                break
+
+    # Add appropriate buttons based on context
+    if is_task_context:
+        # In task context, add Done and Cancel buttons
+        buttons.data_button("Done", f"mediatools {user_id} task_done", "footer")
+        buttons.data_button("Cancel", f"mediatools {user_id} task_cancel", "footer")
+    else:
+        # In normal context, add Close button
+        buttons.data_button("Close", f"mediatools {user_id} close", "footer")
 
     # Get current value
     if option in user_dict:
@@ -6211,7 +6272,27 @@ async def edit_media_tools_settings(client, query):
             data[3], f"Send a value for {data[3]}. Timeout: 60 sec"
         )
         buttons.data_button("Back", f"mediatools {user_id} menu {data[3]}", "footer")
-        buttons.data_button("Close", f"mediatools {user_id} close", "footer")
+
+        # Check if we're in a task context (using -mt flag)
+        is_task_context = False
+        if hasattr(message, 'reply_markup') and message.reply_markup:
+            for row in message.reply_markup.inline_keyboard:
+                for btn in row:
+                    if btn.text == "Done" and "task_done" in btn.callback_data:
+                        is_task_context = True
+                        break
+                if is_task_context:
+                    break
+
+        # Add appropriate buttons based on context
+        if is_task_context:
+            # In task context, add Done and Cancel buttons
+            buttons.data_button("Done", f"mediatools {user_id} task_done", "footer")
+            buttons.data_button("Cancel", f"mediatools {user_id} task_cancel", "footer")
+        else:
+            # In normal context, add Close button
+            buttons.data_button("Close", f"mediatools {user_id} close", "footer")
+
         await edit_message(message, text, buttons.build_menu(1))
 
         # Set up function to handle user input

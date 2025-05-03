@@ -988,19 +988,36 @@ async def gen_mediainfo(
                     smart_garbage_collection(aggressive=False)
 
         elif media:
-            des_path = ospath.join(path, media.file_name)
-            file_size = media.file_size
+            # Ensure media.file_name is not None
+            if not hasattr(media, 'file_name') or media.file_name is None:
+                # Generate a default filename if none exists
+                file_name = f"mediainfo_{int(time())}"
+                LOGGER.warning(f"Media has no filename, using generated name: {file_name}")
+            else:
+                file_name = media.file_name
+
+            des_path = ospath.join(path, file_name)
+            file_size = getattr(media, 'file_size', 0)
 
             # Update status message if not in silent mode
             if not silent and temp_send:
                 await edit_message(
                     temp_send,
-                    f"Downloading a sample of {media.file_name} for analysis...",
+                    f"Downloading a sample of {file_name} for analysis...",
                 )
 
             if file_size <= 30 * 1024 * 1024:  # 30MB
                 # For small files, download the entire file
-                await reply.download(ospath.join(getcwd(), des_path))
+                if reply and des_path:
+                    try:
+                        # Ensure we have a valid path
+                        download_path = ospath.join(getcwd(), des_path) if isinstance(des_path, str) else des_path
+                        await reply.download(download_path)
+                    except Exception as e:
+                        LOGGER.error(f"Error downloading file: {e}")
+                        raise Exception(f"Failed to download file: {e}")
+                else:
+                    raise Exception("Invalid reply message or destination path")
 
                 # Run garbage collection after download to free memory
                 smart_garbage_collection(aggressive=False)
@@ -1008,6 +1025,7 @@ async def gen_mediainfo(
                 # For large files, download only a portion
                 downloaded_size = 0
                 max_sample_size = 10 * 1024 * 1024  # 10MB
+                min_sample_size = 1 * 1024 * 1024   # 1MB (minimum required for analysis)
 
                 try:
                     async with aiopen(des_path, "wb") as f:
@@ -1027,19 +1045,25 @@ async def gen_mediainfo(
                                 if (
                                     not silent
                                     and temp_send
-                                    and downloaded_size % (5 * 1024 * 1024) == 0
-                                ):  # Every 5MB
+                                    and downloaded_size % (2 * 1024 * 1024) == 0
+                                ):  # Every 2MB
                                     await edit_message(
                                         temp_send,
                                         f"Downloading sample of {media.file_name} for analysis... ({downloaded_size / (1024 * 1024):.1f} MB)",
                                     )
-                            except Exception:
-                                break
+                            except Exception as e:
+                                LOGGER.error(f"Error during chunk download: {e}")
+                                # Continue trying to download more chunks
+                                continue
 
                     # If we got at least some data, consider it a success
-                    if downloaded_size > 0:
+                    if downloaded_size >= min_sample_size:
                         LOGGER.info(
                             f"Successfully downloaded {downloaded_size / (1024 * 1024):.1f} MB sample of {media.file_name}"
+                        )
+                    elif downloaded_size > 0:
+                        LOGGER.warning(
+                            f"Downloaded only {downloaded_size / (1024 * 1024):.1f} MB sample of {media.file_name}, which may not be enough for proper analysis"
                         )
                     else:
                         LOGGER.error(
@@ -1066,10 +1090,11 @@ async def gen_mediainfo(
                     smart_garbage_collection(aggressive=False)
 
         # Check if file exists and is accessible
-        if not await aiopath.exists(des_path):
-            LOGGER.error(f"MediaInfo: File not found: {des_path}")
+        if not des_path or not isinstance(des_path, (str, bytes)) or not await aiopath.exists(des_path):
+            error_msg = f"MediaInfo: File not found or invalid path: {des_path}"
+            LOGGER.error(error_msg)
             if not silent:
-                await send_message(message, f"File not found: {des_path}")
+                await send_message(message, error_msg)
             return None
 
         # Double check file exists and is accessible
@@ -1077,16 +1102,16 @@ async def gen_mediainfo(
             # Try to get file size to verify it's accessible
             file_size_check = await aiopath.getsize(des_path)
             if file_size_check == 0:
-                LOGGER.error(f"MediaInfo: File exists but has zero size: {des_path}")
+                error_msg = f"MediaInfo: File exists but has zero size: {des_path}"
+                LOGGER.error(error_msg)
                 if not silent:
-                    await send_message(
-                        message, f"File exists but has zero size: {des_path}"
-                    )
+                    await send_message(message, error_msg)
                 return None
         except Exception as e:
-            LOGGER.error(f"MediaInfo: Error accessing file: {des_path}, Error: {e}")
+            error_msg = f"MediaInfo: Error accessing file: {des_path}, Error: {e}"
+            LOGGER.error(error_msg)
             if not silent:
-                await send_message(message, f"Error accessing file: {des_path}")
+                await send_message(message, error_msg)
             return None
 
         # Update status message if not in silent mode
@@ -1094,8 +1119,19 @@ async def gen_mediainfo(
             await edit_message(temp_send, "Analyzing media file with ffprobe...")
 
         # Check if it's a subtitle file or archive file based on extension
-        file_ext = ospath.splitext(des_path)[1].lower()
-        filename = ospath.basename(des_path).lower()
+        try:
+            if isinstance(des_path, str):
+                file_ext = ospath.splitext(des_path)[1].lower()
+                filename = ospath.basename(des_path).lower()
+            else:
+                # Default values if des_path is not a string
+                file_ext = ""
+                filename = f"mediainfo_{int(time())}"
+                LOGGER.warning(f"Invalid des_path type: {type(des_path)}, using default filename")
+        except Exception as e:
+            LOGGER.error(f"Error extracting file extension: {e}")
+            file_ext = ""
+            filename = f"mediainfo_{int(time())}"
 
         # Define file type extensions
         subtitle_exts = [
@@ -1218,52 +1254,53 @@ async def gen_mediainfo(
         # This provides more accurate information and handles cases where extensions don't match content
         try:
             # Verify file exists before running file command
-            abs_path = ospath.abspath(des_path)
-            if not ospath.exists(abs_path):
-                pass
+            if not isinstance(des_path, str):
+                LOGGER.warning(f"Cannot run file command on non-string path: {des_path}")
             else:
-                # File exists, proceed with file command
-                cmd = ["file", "-b", abs_path]
-                stdout, stderr, return_code = await cmd_exec(cmd)
-                if return_code == 0 and stdout:
-                    stdout_lower = stdout.lower()
-                    # If it's already identified as an archive, this will provide additional info
-                    # If not, this might identify it as an archive despite the extension
-                    if any(
-                        archive_type in stdout_lower
-                        for archive_type in [
-                            "zip",
-                            "rar",
-                            "7-zip",
-                            "tar",
-                            "gzip",
-                            "bzip2",
-                            "xz",
-                            "iso",
-                            "archive",
-                        ]
-                    ):
-                        is_archive = True  # Try to determine the specific archive format from file output
-                        if "rar archive" in stdout_lower:
-                            file_ext = (
-                                ".rar"  # Override extension for correct handling
-                            )
-                        elif "zip archive" in stdout_lower:
-                            file_ext = ".zip"
-                        elif "7-zip archive" in stdout_lower:
-                            file_ext = ".7z"
-                        elif "tar archive" in stdout_lower:
-                            file_ext = ".tar"
-                        elif "gzip compressed" in stdout_lower:
-                            file_ext = ".gz"
-                        elif "bzip2 compressed" in stdout_lower:
-                            file_ext = ".bz2"
-                        elif "xz compressed" in stdout_lower:
-                            file_ext = ".xz"
-                        elif "iso 9660" in stdout_lower:
-                            file_ext = ".iso"
-                elif return_code != 0:
-                    pass
+                abs_path = ospath.abspath(des_path)
+                if not ospath.exists(abs_path):
+                    LOGGER.warning(f"File does not exist at path: {abs_path}")
+                else:
+                    # File exists, proceed with file command
+                    cmd = ["file", "-b", abs_path]
+                    stdout, stderr, return_code = await cmd_exec(cmd)
+                    if return_code == 0 and stdout:
+                        stdout_lower = stdout.lower()
+                        # If it's already identified as an archive, this will provide additional info
+                        # If not, this might identify it as an archive despite the extension
+                        if any(
+                            archive_type in stdout_lower
+                            for archive_type in [
+                                "zip",
+                                "rar",
+                                "7-zip",
+                                "tar",
+                                "gzip",
+                                "bzip2",
+                                "xz",
+                                "iso",
+                                "archive",
+                            ]
+                        ):
+                            is_archive = True  # Try to determine the specific archive format from file output
+                            if "rar archive" in stdout_lower:
+                                file_ext = ".rar"  # Override extension for correct handling
+                            elif "zip archive" in stdout_lower:
+                                file_ext = ".zip"
+                            elif "7-zip archive" in stdout_lower:
+                                file_ext = ".7z"
+                            elif "tar archive" in stdout_lower:
+                                file_ext = ".tar"
+                            elif "gzip compressed" in stdout_lower:
+                                file_ext = ".gz"
+                            elif "bzip2 compressed" in stdout_lower:
+                                file_ext = ".bz2"
+                            elif "xz compressed" in stdout_lower:
+                                file_ext = ".xz"
+                            elif "iso 9660" in stdout_lower:
+                                file_ext = ".iso"
+                    elif return_code != 0:
+                        pass
         except Exception:
             # Continue with the process, using the extension-based detection as fallback
             pass
@@ -2122,7 +2159,49 @@ async def gen_mediainfo(
                 tc += f"{'Subtitle format':<28}: {subtitle_format.lower()}\n"
                 tc += "</pre><br>"
                 return tc
-            raise Exception(f"ffprobe failed with return code {return_code}")
+
+            # For media files, try a fallback approach using file command
+            try:
+                # Use file command to get basic info about the file
+                abs_path = ospath.abspath(des_path)
+                cmd = ["file", "-b", abs_path]
+                stdout, stderr, return_code = await cmd_exec(cmd)
+
+                if return_code == 0 and stdout:
+                    # Create basic info for the file based on file command output
+                    tc = f"<h4>{ospath.basename(des_path)}</h4><br><br><blockquote>General</blockquote><pre>"
+                    tc += f"{'Complete name':<28}: {ospath.basename(des_path)}\n"
+
+                    # Try to determine file type from file command output
+                    file_type = "Unknown"
+                    if "video" in stdout.lower():
+                        file_type = "Video"
+                    elif "audio" in stdout.lower():
+                        file_type = "Audio"
+                    elif "image" in stdout.lower():
+                        file_type = "Image"
+                    elif "text" in stdout.lower():
+                        file_type = "Text"
+
+                    tc += f"{'Format':<28}: {file_type} file\n"
+                    tc += f"{'File analysis':<28}: {stdout.strip()}\n"
+                    tc += f"{'File size':<28}: {file_size / (1024 * 1024):.2f} MiB\n"
+
+                    # Add note about ffprobe failure
+                    tc += f"{'Note':<28}: ffprobe analysis failed. Limited information available.\n"
+                    tc += "</pre><br>"
+
+                    # Add a section with the error for debugging
+                    tc += "<blockquote>Debug Info</blockquote><pre>"
+                    tc += f"{'ffprobe error':<28}: {stderr if stderr else 'No error message provided'}\n"
+                    tc += "</pre><br>"
+
+                    return tc
+            except Exception as e:
+                LOGGER.error(f"Fallback file analysis failed: {e}")
+
+            # If all fallbacks fail, raise the original exception
+            raise Exception(f"ffprobe failed with return code {return_code}: {stderr}")
 
         if stdout:
             try:
@@ -2142,9 +2221,9 @@ async def gen_mediainfo(
     finally:
         # Clean up temporary file ONLY if it's not the original file path
         # This ensures we don't delete files that are still needed for upload
-        if des_path and await aiopath.exists(des_path) and des_path != media_path:
+        if des_path and isinstance(des_path, (str, bytes)) and await aiopath.exists(des_path) and des_path != media_path:
             # Only delete files in the Mediainfo/ directory (temporary downloads)
-            if des_path.startswith("Mediainfo/") or "Mediainfo/" in des_path:
+            if isinstance(des_path, str) and (des_path.startswith("Mediainfo/") or "Mediainfo/" in des_path):
                 await aioremove(des_path)
             else:
                 pass

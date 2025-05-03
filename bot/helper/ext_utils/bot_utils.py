@@ -321,14 +321,24 @@ def get_user_split_size(user_id, args, file_size, equal_splits=False):
     # This will be 4000 MiB for premium users and 2000 MiB for regular users
     telegram_limit = TgClient.MAX_SPLIT_SIZE
 
-    # Add a safety margin to ensure we never exceed Telegram's limit
-    # Use a 10 MiB safety margin to account for any overhead or rounding issues
-    safety_margin = 10 * 1024 * 1024  # 10 MiB
+    # Add a larger safety margin to ensure we never exceed Telegram's limit
+    # Use a 50 MiB safety margin to account for any overhead or rounding issues
+    safety_margin = 50 * 1024 * 1024  # 50 MiB
+
+    # For non-premium accounts, use a more conservative limit
+    if not TgClient.IS_PREMIUM_USER:
+        # Use 2000 MiB (slightly less than 2 GiB) for non-premium accounts
+        telegram_limit = 2000 * 1024 * 1024
+    else:
+        # Use 4000 MiB (slightly less than 4 GiB) for premium accounts
+        telegram_limit = 4000 * 1024 * 1024
+
     safe_telegram_limit = telegram_limit - safety_margin
 
     if split_size > safe_telegram_limit:
-        telegram_limit / (1024 * 1024 * 1024)
-        safe_telegram_limit / (1024 * 1024 * 1024)
+        # Log the adjustment for debugging
+        from bot import LOGGER
+        LOGGER.info(f"Adjusting split size from {split_size/(1024*1024*1024):.2f} GiB to {safe_telegram_limit/(1024*1024*1024):.2f} GiB")
         split_size = safe_telegram_limit
 
     # Ensure split size doesn't exceed maximum allowed
@@ -336,16 +346,38 @@ def get_user_split_size(user_id, args, file_size, equal_splits=False):
 
     # If equal splits is enabled, always split the file into equal parts based on max split size
     if equal_splits:
-        if file_size <= max_split_size:
-            # If file size is less than max split size, no need to split
+        # For non-premium accounts, use a more conservative limit for equal splits
+        if not TgClient.IS_PREMIUM_USER:
+            # Use 1950 MiB (well below 2 GiB) for non-premium accounts with equal splits
+            safe_limit = 1950 * 1024 * 1024
+        else:
+            # Use 3950 MiB (well below 4 GiB) for premium accounts with equal splits
+            safe_limit = 3950 * 1024 * 1024
+
+        if file_size <= safe_limit:
+            # If file size is less than safe limit, no need to split
             return file_size, True
-        # Calculate number of parts needed based on max split size
-        parts = math.ceil(file_size / max_split_size)
+
+        # Calculate number of parts needed based on file size and safe limit
+        # Use a slightly smaller limit for equal splits to ensure all parts are under Telegram's limit
+        parts = math.ceil(file_size / safe_limit)
+
         # Calculate equal split size
         equal_split_size = math.ceil(file_size / parts)
-        # Ensure the calculated equal split size is never greater than max split size
-        equal_split_size = min(equal_split_size, max_split_size)
-        # Never skip splitting if equal splits is on and file size is greater than max split size
+
+        # Add extra safety check - if we're close to the limit, add one more part
+        if equal_split_size > (safe_limit - 10 * 1024 * 1024):  # Within 10 MiB of the limit
+            parts += 1
+            equal_split_size = math.ceil(file_size / parts)
+
+        # Log the equal split calculation
+        from bot import LOGGER
+        LOGGER.info(f"Equal splits: File size: {file_size/(1024*1024*1024):.2f} GiB, Parts: {parts}, Split size: {equal_split_size/(1024*1024*1024):.2f} GiB")
+
+        # Ensure the calculated equal split size is never greater than safe limit
+        equal_split_size = min(equal_split_size, safe_limit)
+
+        # Never skip splitting if equal splits is on and file size is greater than safe limit
         return equal_split_size, False
     # For regular splitting (not equal splits):
     # Skip splitting if file size is less than the split size

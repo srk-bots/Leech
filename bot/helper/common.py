@@ -3041,26 +3041,65 @@ class TaskConfig:
                     await create_thumb(msg) if msg.photo or msg.document else ""
                 )
 
-    async def get_tag(self, text: list):
+    async def get_tag(self, text):
+        # Check if text is None or not a list
+        if text is None:
+            LOGGER.warning("get_tag called with None text")
+            if self.user:
+                if username := self.user.username:
+                    self.tag = f"@{username}"
+                elif hasattr(self.user, "mention"):
+                    self.tag = self.user.mention
+                else:
+                    self.tag = getattr(self.user, "title", "Unknown User")
+            return
+
+        # Check if text is a list
+        if not isinstance(text, list):
+            LOGGER.warning(f"get_tag called with non-list text: {type(text)}")
+            try:
+                # Try to convert to list if it's a string
+                if isinstance(text, str):
+                    text = text.split("\n")
+                else:
+                    # If conversion not possible, set default tag and return
+                    if self.user:
+                        if username := self.user.username:
+                            self.tag = f"@{username}"
+                        elif hasattr(self.user, "mention"):
+                            self.tag = self.user.mention
+                        else:
+                            self.tag = getattr(self.user, "title", "Unknown User")
+                    return
+            except Exception as e:
+                LOGGER.error(f"Error converting text to list in get_tag: {e}")
+                return
+
+        # Process tag if text is valid
         if len(text) > 1 and text[1].startswith("Tag: "):
-            user_info = text[1].split("Tag: ")
-            if len(user_info) >= 3:
-                id_ = user_info[-1]
-                self.tag = " ".join(user_info[:-1])
-            else:
-                self.tag, id_ = text[1].split("Tag: ")[1].split()
-            self.user = self.message.from_user = await self.client.get_users(id_)
-            self.user_id = self.user.id
-            self.user_dict = user_data.get(self.user_id, {})
-            with contextlib.suppress(Exception):
-                await self.message.unpin()
+            try:
+                user_info = text[1].split("Tag: ")
+                if len(user_info) >= 3:
+                    id_ = user_info[-1]
+                    self.tag = " ".join(user_info[:-1])
+                else:
+                    self.tag, id_ = text[1].split("Tag: ")[1].split()
+                self.user = self.message.from_user = await self.client.get_users(id_)
+                self.user_id = self.user.id
+                self.user_dict = user_data.get(self.user_id, {})
+                with contextlib.suppress(Exception):
+                    await self.message.unpin()
+            except Exception as e:
+                LOGGER.error(f"Error processing tag information: {e}")
+
+        # Set tag based on user information
         if self.user:
             if username := self.user.username:
                 self.tag = f"@{username}"
             elif hasattr(self.user, "mention"):
                 self.tag = self.user.mention
             else:
-                self.tag = self.user.title
+                self.tag = getattr(self.user, "title", "Unknown User")
 
     @new_task
     async def run_multi(self, input_list, obj):
@@ -7555,12 +7594,40 @@ class TaskConfig:
                         self.subsize = self.size
                         res = await ffmpeg.metadata_watermark_cmds(cmd, dl_path)
                         if res:
-                            os.replace(temp_file, dl_path)
-                            LOGGER.info(
-                                f"Successfully applied metadata to {dl_path}"
-                            )
+                            try:
+                                # Check if both source and destination files exist
+                                if await aiopath.exists(temp_file):
+                                    # Make sure the destination directory exists
+                                    dest_dir = os.path.dirname(dl_path)
+                                    if not await aiopath.exists(dest_dir):
+                                        await makedirs(dest_dir, exist_ok=True)
+
+                                    # Replace the file
+                                    os.replace(temp_file, dl_path)
+                                    LOGGER.info(
+                                        f"Successfully applied metadata to {dl_path}"
+                                    )
+                                else:
+                                    LOGGER.error(f"Temp file not found: {temp_file}")
+                            except FileNotFoundError as e:
+                                LOGGER.error(f"File not found error during metadata replacement: {e}")
+                                # Try to copy the file instead of replacing it
+                                try:
+                                    if await aiopath.exists(temp_file):
+                                        import shutil
+                                        shutil.copy2(temp_file, dl_path)
+                                        os.remove(temp_file)
+                                        LOGGER.info(f"Successfully copied metadata to {dl_path} (fallback method)")
+                                except Exception as copy_error:
+                                    LOGGER.error(f"Failed to copy metadata file as fallback: {copy_error}")
+                            except Exception as e:
+                                LOGGER.error(f"Error replacing file during metadata application: {e}")
+                                # Don't delete the temp file in case we need it for debugging
                         elif await aiopath.exists(temp_file):
-                            os.remove(temp_file)
+                            try:
+                                os.remove(temp_file)
+                            except Exception as e:
+                                LOGGER.error(f"Error removing temp file: {e}")
                     else:
                         pass
             else:
@@ -7650,12 +7717,40 @@ class TaskConfig:
                         )
 
                         if res:
-                            os.replace(temp_file, file_path)
-                            LOGGER.info(
-                                f"Successfully applied metadata to {file_path}"
-                            )
+                            try:
+                                # Check if both source and destination files exist
+                                if await aiopath.exists(temp_file):
+                                    # Make sure the destination directory exists
+                                    dest_dir = os.path.dirname(file_path)
+                                    if not await aiopath.exists(dest_dir):
+                                        await makedirs(dest_dir, exist_ok=True)
+
+                                    # Replace the file
+                                    os.replace(temp_file, file_path)
+                                    LOGGER.info(
+                                        f"Successfully applied metadata to {file_path}"
+                                    )
+                                else:
+                                    LOGGER.error(f"Temp file not found: {temp_file}")
+                            except FileNotFoundError as e:
+                                LOGGER.error(f"File not found error during metadata replacement: {e}")
+                                # Try to copy the file instead of replacing it
+                                try:
+                                    if await aiopath.exists(temp_file):
+                                        import shutil
+                                        shutil.copy2(temp_file, file_path)
+                                        os.remove(temp_file)
+                                        LOGGER.info(f"Successfully copied metadata to {file_path} (fallback method)")
+                                except Exception as copy_error:
+                                    LOGGER.error(f"Failed to copy metadata file as fallback: {copy_error}")
+                            except Exception as e:
+                                LOGGER.error(f"Error replacing file during metadata application: {e}")
+                                # Don't delete the temp file in case we need it for debugging
                         elif await aiopath.exists(temp_file):
-                            os.remove(temp_file)
+                            try:
+                                os.remove(temp_file)
+                            except Exception as e:
+                                LOGGER.error(f"Error removing temp file: {e}")
                     else:
                         pass
 
