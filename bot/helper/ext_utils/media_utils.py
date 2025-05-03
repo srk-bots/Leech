@@ -4742,21 +4742,10 @@ class FFMpeg:
                                     # Execute each command separately
                                     all_outputs = []
 
-                                    # Update the original command with the first modified command
-                                    if modified_commands:
-                                        ffmpeg = modified_commands[0]
-
-                                        # Add the first output to the outputs list
-                                        first_output = modified_commands[0][index]
-                                        if first_output not in outputs:
-                                            outputs.append(first_output)
-
-                                    # Execute additional commands for the remaining streams
-                                    for i, cmd in enumerate(
-                                        modified_commands[1:], 1
-                                    ):
+                                    # Execute all commands individually for consistent handling
+                                    for i, cmd in enumerate(modified_commands):
                                         LOGGER.info(
-                                            f"Executing command for {stream_type} stream {i}"
+                                            f"Executing command for {stream_type} stream {i + 1}"
                                         )
 
                                         # Execute the command
@@ -4779,6 +4768,9 @@ class FFMpeg:
                                                     > 0
                                                 ):
                                                     all_outputs.append(output_file)
+                                                    # Also add to the main outputs list
+                                                    if output_file not in outputs:
+                                                        outputs.append(output_file)
                                                     LOGGER.info(
                                                         f"Successfully extracted {stream_type} stream to {output_file}"
                                                     )
@@ -4802,6 +4794,12 @@ class FFMpeg:
 
                                     # Add all outputs to the outputs list
                                     outputs.extend(all_outputs)
+
+                                    # Skip the normal processing since we've already handled all streams
+                                    LOGGER.info(
+                                        f"All {stream_type} streams have been processed individually, skipping the main command"
+                                    )
+                                    return outputs
 
                             # Continue with the first command in the normal processing flow
                             LOGGER.info(
