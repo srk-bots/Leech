@@ -383,7 +383,7 @@ class TaskListener(TaskConfig):
         ):
             await database.rm_complete_task(self.message.link)
         msg = f"<blockquote expandable>Name: {escape(self.name)}</blockquote>\n\n<blockquote expandable>Size: {get_readable_file_size(self.size)}"
-        done_msg = f"<blockquote>{self.tag}</blockquote>\n<blockquote expandable>Your task is complete\nPlease check your inbox.</blockquote>" if Config.BOT_USERNAME != '' else f"{self.tag}\nYour task is complete.\nPlease check your inbox."
+        done_msg = f"<blockquote><b>Hey, {self.tag}</blockquote>\n<blockquote expandable>Your task is complete\nPlease check your inbox.</b></blockquote>"
         LOGGER.info(f"Task Done: {self.name}")
         if self.is_leech:
             msg += f"\n<b>Total Files: </b>{folders}"
