@@ -1,6 +1,63 @@
 from bot.core.aeon_client import TgClient
 from bot.helper.telegram_helper.bot_commands import BotCommands
 
+# FFmpeg help message with concise and visual format
+ffmpeg_help = """<b>FFmpeg Commands</b>: -ff
+
+<blockquote>Need help? Follow this <a href='https://t.me/aimupdate/218'>guide</a></blockquote>
+
+<blockquote>
+<b>Basic Usage:</b>
+• Start directly with FFmpeg arguments (don't write "ffmpeg")
+• Add <code>-del</code> to delete original files after processing
+• Use <code>-ff subtitle</code> to execute pre-added command lists
+</blockquote>
+
+<blockquote expandable="expandable">
+<b>Dynamic Output Naming:</b>
+
+<code>mltb-%d</code> → filename-1.mp4, filename-2.mp4
+<code>mltb-%3d</code> → filename-  1.mp4, filename-  2.mp4
+<code>mltb-%03d</code> → filename-001.mp4, filename-002.mp4
+
+Perfect for extracting multiple streams with <code>-map</code> commands!
+</blockquote>
+
+<blockquote expandable="expandable">
+<b>Examples:</b>
+
+<code>-i mltb.video -map 0:v -c:v copy mltb-%d.mp4</code>
+↳ Creates video-1.mp4, video-2.mp4 for each video stream
+
+<code>-i mltb.mkv -map 0:a:0 -c:a copy mltb-%03d.mka -map 0:a:1 -c:a copy mltb-%03d.mka</code>
+↳ Creates video-001.mka, video-002.mka with different audio tracks
+
+<code>-i mltb.mkv -map 0:v -c:v copy -map 0:a -c:a copy -map 0:s -c:s copy mltb-%d.mkv</code>
+↳ Creates video-1.mkv, video-2.mkv, video-3.mkv with different streams
+</blockquote>
+
+<blockquote expandable="expandable">
+<b>Special Cases:</b>
+
+• <b>🖼️ Image Sequences:</b> With <code>-vf fps=1</code>, format specifier is preserved
+  <code>mltb-%03d.jpg</code> → <code>video-%03d.jpg</code>
+
+• <b>📝 Subtitle Extraction:</b> Each subtitle stream goes to a separate file
+  <code>-map 0:s -c:s srt mltb-%d_sub.srt</code> → video-1_sub.srt, video-2_sub.srt
+
+• <b>🔄 Multiple Inputs:</b> Use the closest <code>-map</code> statement to determine which input file to use for naming
+  <code>-i video1.mp4 -i video2.mp4 -map 0:v mltb-%d_v1.mp4 -map 1:v mltb-%d_v2.mp4</code>
+</blockquote>
+
+<blockquote expandable="expandable">
+<b>Bulk & Multi-link Processing:</b>
+
+• Each file processed with the same command
+• Input automatically replaced with each downloaded file
+• Use placeholders like mltb.video, mltb.audio for multiple inputs
+• Dynamic output maintains the same order as provided in bulk/multi commands
+</blockquote>"""
+
 # Media tools text dictionary
 media_tools_text = {
     "WATERMARK_KEY": "Set the watermark text to be applied to media files.\n\nExample: @username\nExample: Telegram Channel",
@@ -719,73 +776,8 @@ You can nest styles to any depth with any combination of styles!
 • Unlimited nesting of styles is supported - combine any number of styles in any order
 • For complex nested styles, apply them in order from innermost to outermost"""
 
-ffmpeg_cmds = """<b>FFmpeg Commands</b>: -ff
+ffmpeg_cmds = ffmpeg_help
 
-<blockquote>Dont understand? Then follow this <a href='https://t.me/aimupdate/218'>quide</a></blockquote>
-
-list of lists of ffmpeg commands. You can set multiple ffmpeg commands for all files before upload. Don't write ffmpeg at beginning, start directly with the arguments.
-Notes:
-1. Add <code>-del</code> to the list(s) which you want from the bot to delete the original files after command run complete!
-2. To execute one of pre-added lists in bot like: ({"subtitle": ["-i mltb.mkv -c copy -c:s srt mltb.mkv"]}), you must use -ff subtitle (list key)
-3. You can use multiple inputs with the -i flag. There's no limit to how many inputs you can use.
-4. For dynamic output naming with multiple outputs, use format specifiers in output names:
-   • <code>mltb-%d</code>: Will be replaced with filename-1, filename-2, etc.
-   • <code>mltb-%3d</code>: Will be replaced with filename-  1, filename-  2, etc. (space-padded)
-   • <code>mltb-%03d</code>: Will be replaced with filename-001, filename-002, etc. (zero-padded)
-   • This is especially useful with multiple -map commands to extract different streams
-
-Examples: ["-i mltb.mkv -c copy -c:s srt mltb.mkv", "-i mltb.video -c copy -c:s srt mltb", "-i mltb.m4a -c:a libmp3lame -q:a 2 mltb.mp3", "-i mltb.audio -c:a libmp3lame -q:a 2 mltb.mp3", "-i mltb -map 0:a -c copy mltb.mka -map 0:s -c copy mltb.srt", "-i mltb.video -map 0:v -c:v copy -map 0:a -c:a copy mltb-%d.mp4"]
-
-<b>Dynamic Output Examples:</b>
-<code>-i mltb.video -map 0:v -c:v copy mltb-%d.mp4</code>
-This will create files like video-1.mp4, video-2.mp4, etc. for each video stream
-
-<code>-i mltb.mkv -map 0:a:0 -c:a copy mltb-%03d.mka -map 0:a:1 -c:a copy mltb-%03d.mka</code>
-This will create files like video-001.mka, video-002.mka with different audio tracks (zero-padded)
-
-<code>-i mltb.mkv -map 0:v -c:v copy -map 0:a -c:a copy -map 0:s -c:s copy mltb-%d.mkv</code>
-This will create files like video-1.mkv, video-2.mkv, video-3.mkv with video, audio, and subtitle streams
-
-<b>Special Cases for Dynamic Output:</b>
-• <b>Image Sequences</b>: For frame extraction with <code>-vf fps=1</code>, the format specifier is preserved in the output (e.g., <code>mltb-%03d.jpg</code> becomes <code>video-%03d.jpg</code>)
-• <b>Subtitle Extraction</b>: For subtitle extraction, each subtitle stream is extracted to a separate file
-• <b>Multiple Outputs</b>: When using multiple -map statements with the same format specifier, each output will have a unique number
-
-Here I will explain how to use mltb.* which is reference to files you want to work on.
-1. First cmd: the input is mltb.mkv so this cmd will work only on mkv videos and the output is mltb.mkv also so all outputs is mkv. -del will delete the original media after complete run of the cmd.
-2. Second cmd: the input is mltb.video so this cmd will work on all videos and the output is only mltb so the extenstion is same as input files.
-3. Third cmd: the input in mltb.m4a so this cmd will work only on m4a audios and the output is mltb.mp3 so the output extension is mp3.
-4. Fourth cmd: the input is mltb.audio so this cmd will work on all audios and the output is mltb.mp3 so the output extension is mp3.
-
-<b>Multiple Input Examples:</b>
-1. <b>Concatenate videos</b>: ["-i mltb.video -i sample_video2.mp4 -filter_complex \"[0:v][1:v]concat=n=2:v=1:a=0\" output_concat.mp4"]
-2. <b>Replace audio track</b>: ["-i mltb.video -i mltb.audio -c:v copy -map 0:v -map 1:a output_video_with_audio.mp4"]
-3. <b>Mix audio files</b>: ["-i mltb.audio -i sample_audio2.mp3 -filter_complex \"amix=inputs=2:duration=longest\" output_mixed_audio.mp3"]
-4. <b>Add subtitle</b>: ["-i mltb.video -i sample_subtitle.srt -c:v copy -c:a copy -c:s mov_text output_video_with_subtitle.mp4"]
-5. <b>Create slideshow</b>: ["-i sample_image1.jpg -i sample_image2.jpg -i sample_image3.jpg -filter_complex \"concat=n=3:v=1:a=0\" -pix_fmt yuv420p output_slideshow.mp4"]
-6. <b>Add image overlay</b>: ["-i mltb.video -i sample_image1.jpg -filter_complex \"[0:v][1:v]overlay=10:10\" output_video_with_overlay.mp4"]
-7. <b>Side-by-side videos</b>: ["-i mltb.video -i sample_video2.mp4 -filter_complex \"[0:v]setpts=PTS-STARTPTS[left];[1:v]setpts=PTS-STARTPTS[right];[left][right]hstack=inputs=2[v]\" -map \"[v]\" output_side_by_side.mp4"]
-8. <b>Multiple audio tracks</b>: ["-i mltb.video -i mltb.audio -i sample_audio2.mp3 -map 0:v -map 1:a -map 2:a -metadata:s:a:0 title=\"Audio Track 1\" -metadata:s:a:1 title=\"Audio Track 2\" output_multi_audio.mkv"]
-9. <b>Multiple subtitle tracks</b>: ["-i mltb.video -f lavfi -t 5 -i anullsrc -i sample_subtitle.srt -i sample_subtitle2.srt -map 0:v -map 1:a -map 2 -map 3 -c:v copy -c:a aac -c:s copy -metadata:s:s:0 language=eng -metadata:s:s:1 language=spa output_multi_subtitle.mkv"]
-10. <b>Complex processing</b>: ["-i mltb.video -i mltb.audio -i sample_image1.jpg -filter_complex \"[0:v][2:v]overlay=10:10[v]\" -map \"[v]\" -map 1:a output_complex.mp4"]
-
-<b>Using with Bulk and Multi-link Features:</b>
-When using with bulk or multi-link downloads, each file will be processed with the same ffmpeg command, with the input automatically replaced with each downloaded file. For multiple input commands, you can use placeholders like mltb.video, mltb.audio, etc. which will be replaced with the actual file paths during processing.
-
-<b>Dynamic Output with Bulk/Multi:</b>
-When using dynamic output placeholders like <code>mltb-%d</code> or <code>mltb-%3d</code> with bulk or multi-link downloads, each file will be processed separately, maintaining the same order as provided in the bulk or multi-link command. This is especially useful for extracting multiple streams from multiple input files while keeping organized naming.
-
-<b>Media Type Placeholders:</b>
-- <b>mltb.video</b>: Replaced with the path of the current video file
-- <b>mltb.audio</b>: Replaced with the path of the current audio file
-- <b>mltb.image</b>: Replaced with the path of the current image file
-- <b>mltb.subtitle</b>: Replaced with the path of the current subtitle file
-- <b>mltb</b>: Replaced with the path of the current file (any type)
-
-<b>Common Issues and Solutions:</b>
-- If you get "Stream specifier ':a' matches no streams" error, your input video might not have audio tracks. Use video-only filters or add a silent audio track.
-- For MKV output with multiple tracks, make sure to use proper -map commands for each track.
-- When working with subtitles, use -c:s copy for most subtitle formats or -c:s mov_text for MP4 compatibility."""
 
 ai_help = """<b>AI Chatbot</b>:
 
