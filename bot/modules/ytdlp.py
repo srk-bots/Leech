@@ -783,16 +783,30 @@ class YtDlp(TaskListener):
 
         try:
             if args["-ff"]:
-                if isinstance(args["-ff"], set):
-                    # If it's a set, it's a key to look up in the config
+                if isinstance(args["-ff"], str):
+                    # Check if it's a key in the FFmpeg commands dictionary
+                    if args["-ff"] in (Config.FFMPEG_CMDS or {}):
+                        # If it's a key in the config, use it as a set
+                        self.ffmpeg_cmds = {args["-ff"]}
+                        LOGGER.info(
+                            f"Using FFmpeg command key from config: {self.ffmpeg_cmds}"
+                        )
+                    else:
+                        # If it's not a key, treat it as a direct command
+                        self.ffmpeg_cmds = [args["-ff"]]
+                        LOGGER.info(
+                            f"Using direct FFmpeg command: {self.ffmpeg_cmds}"
+                        )
+                elif isinstance(args["-ff"], set):
+                    # If it's already a set, use it as is
                     self.ffmpeg_cmds = args["-ff"]
-                elif isinstance(args["-ff"], str):
-                    # If it's a string, treat it directly as a command
-                    self.ffmpeg_cmds = [args["-ff"]]
-                    LOGGER.info(f"Using direct FFmpeg command: {self.ffmpeg_cmds}")
+                    LOGGER.info(f"Using FFmpeg command keys: {self.ffmpeg_cmds}")
                 else:
                     # For any other type, try to evaluate it
                     self.ffmpeg_cmds = eval(args["-ff"])
+                    LOGGER.info(
+                        f"Using evaluated FFmpeg commands: {self.ffmpeg_cmds}"
+                    )
         except Exception as e:
             self.ffmpeg_cmds = None
             LOGGER.error(f"Error processing FFmpeg command: {e}")

@@ -3333,10 +3333,39 @@ class TaskConfig:
         cmds = []
 
         # Log the FFmpeg commands for debugging
+        LOGGER.info(f"FFmpeg commands before processing: {self.ffmpeg_cmds}")
 
         # Check if ffmpeg_cmds is empty or None
         if not self.ffmpeg_cmds:
             return dl_path
+
+        # If ffmpeg_cmds is a set, look up the commands in the config
+        if isinstance(self.ffmpeg_cmds, set):
+            LOGGER.info(f"Looking up FFmpeg commands for keys: {self.ffmpeg_cmds}")
+            if self.user_dict.get("FFMPEG_CMDS", None):
+                ffmpeg_dict = self.user_dict["FFMPEG_CMDS"]
+                self.ffmpeg_cmds = [
+                    value
+                    for key in list(self.ffmpeg_cmds)
+                    if key in ffmpeg_dict
+                    for value in ffmpeg_dict[key]
+                ]
+            elif "FFMPEG_CMDS" not in self.user_dict and Config.FFMPEG_CMDS:
+                ffmpeg_dict = Config.FFMPEG_CMDS
+                self.ffmpeg_cmds = [
+                    value
+                    for key in list(self.ffmpeg_cmds)
+                    if key in ffmpeg_dict
+                    for value in ffmpeg_dict[key]
+                ]
+            else:
+                LOGGER.error(
+                    f"No FFmpeg commands found for keys: {self.ffmpeg_cmds}"
+                )
+                self.ffmpeg_cmds = None
+                return dl_path
+
+        LOGGER.info(f"FFmpeg commands after lookup: {self.ffmpeg_cmds}")
 
         # Process each FFmpeg command with error handling
         for item in self.ffmpeg_cmds:
