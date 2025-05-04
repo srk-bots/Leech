@@ -83,6 +83,7 @@ if not BOT_TOKEN:
     log_error("BOT_TOKEN variable is missing! Exiting now.")
     exit(1)
 
+# We use BOT_ID here instead of TgClient.ID because TgClient is not initialized yet
 BOT_ID = BOT_TOKEN.split(":", 1)[0]
 
 # Fallback to environment variables for DATABASE_URL
@@ -91,9 +92,16 @@ DATABASE_URL = config_file.get("DATABASE_URL", "") or os.getenv("DATABASE_URL", 
 if DATABASE_URL:
     try:
         conn = MongoClient(DATABASE_URL, server_api=ServerApi("1"))
-        db = conn.luna
+        db = conn.aeon
+
+        # Get current runtime config
         config_dict = db.settings.config.find_one({"_id": BOT_ID})
+
+        # Get current deploy config
+        deploy_config = db.settings.deployConfig.find_one({"_id": BOT_ID})
+
         if config_dict is not None:
+            # Preserve critical update settings from runtime config
             config_file["UPSTREAM_REPO"] = config_dict.get(
                 "UPSTREAM_REPO",
                 config_file.get("UPSTREAM_REPO"),
@@ -102,6 +110,33 @@ if DATABASE_URL:
                 "UPSTREAM_BRANCH",
                 config_file.get("UPSTREAM_BRANCH"),
             )
+
+            # If deploy config exists and differs from current config file
+            if deploy_config is not None and deploy_config != config_file:
+                # Update deploy config with new values
+                db.settings.deployConfig.replace_one(
+                    {"_id": BOT_ID},
+                    config_file,
+                    upsert=True
+                )
+
+                # Find all variables that are new or have changed values
+                changed_vars = {}
+                for k, v in config_file.items():
+                    # Add new variables or update variables with changed values
+                    if k not in config_dict or config_dict.get(k) != v:
+                        changed_vars[k] = v
+
+                if changed_vars:
+                    # Update runtime configuration with all changed variables
+                    config_dict.update(changed_vars)
+                    db.settings.config.replace_one(
+                        {"_id": BOT_ID},
+                        config_dict,
+                        upsert=True
+                    )
+                    log_info(f"Updated runtime config variables: {list(changed_vars.keys())}")
+
         conn.close()
     except Exception as e:
         log_error(f"Database ERROR: {e}")

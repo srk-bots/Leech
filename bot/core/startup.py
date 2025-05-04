@@ -119,57 +119,61 @@ async def load_settings():
         # Process any pending message deletions
         await process_pending_deletions()
 
-        BOT_ID = Config.BOT_TOKEN.split(":", 1)[0]
+        # Use TgClient.ID for consistency across the codebase
         current_deploy_config = Config.get_all()
         old_deploy_config = await database.db.settings.deployConfig.find_one(
-            {"_id": BOT_ID},
+            {"_id": TgClient.ID},
             {"_id": 0},
         )
 
         if old_deploy_config is None:
             await database.db.settings.deployConfig.replace_one(
-                {"_id": BOT_ID},
+                {"_id": TgClient.ID},
                 current_deploy_config,
                 upsert=True,
             )
         elif old_deploy_config != current_deploy_config:
             runtime_config = (
                 await database.db.settings.config.find_one(
-                    {"_id": BOT_ID},
+                    {"_id": TgClient.ID},
                     {"_id": 0},
                 )
                 or {}
             )
 
-            new_vars = {
-                k: v
-                for k, v in current_deploy_config.items()
-                if k not in runtime_config
-            }
-            if new_vars:
-                runtime_config.update(new_vars)
+            # Find all variables that are new or have changed values
+            changed_vars = {}
+            for k, v in current_deploy_config.items():
+                # Add new variables or update variables with changed values
+                if k not in runtime_config or runtime_config.get(k) != v:
+                    changed_vars[k] = v
+
+            if changed_vars:
+                # Update runtime configuration with all changed variables
+                runtime_config.update(changed_vars)
                 await database.db.settings.config.replace_one(
-                    {"_id": BOT_ID},
+                    {"_id": TgClient.ID},
                     runtime_config,
                     upsert=True,
                 )
-                LOGGER.info(f"Added new variables: {list(new_vars.keys())}")
+                LOGGER.info(f"Updated variables from config.py: {list(changed_vars.keys())}")
 
+            # Update the deploy config with the current config
             await database.db.settings.deployConfig.replace_one(
-                {"_id": BOT_ID},
+                {"_id": TgClient.ID},
                 current_deploy_config,
                 upsert=True,
             )
 
         runtime_config = await database.db.settings.config.find_one(
-            {"_id": BOT_ID},
+            {"_id": TgClient.ID},
             {"_id": 0},
         )
         if runtime_config:
             Config.load_dict(runtime_config)
 
         if pf_dict := await database.db.settings.files.find_one(
-            {"_id": BOT_ID},
+            {"_id": TgClient.ID},
             {"_id": 0},
         ):
             for key, value in pf_dict.items():
@@ -179,13 +183,13 @@ async def load_settings():
                         await f.write(value)
 
         if a2c_options := await database.db.settings.aria2c.find_one(
-            {"_id": BOT_ID},
+            {"_id": TgClient.ID},
             {"_id": 0},
         ):
             aria2_options.update(a2c_options)
 
         if qbit_opt := await database.db.settings.qbittorrent.find_one(
-            {"_id": BOT_ID},
+            {"_id": TgClient.ID},
             {"_id": 0},
         ):
             qbit_options.update(qbit_opt)
@@ -193,7 +197,7 @@ async def load_settings():
         # Load SABnzbd config if it exists in the database
         try:
             if nzb_opt := await database.db.settings.nzb.find_one(
-                {"_id": BOT_ID},
+                {"_id": TgClient.ID},
                 {"_id": 0},
             ):
                 # Make sure the sabnzbd directory exists
@@ -260,8 +264,8 @@ async def load_settings():
                 user_data[uid] = row
             LOGGER.info("Users data has been imported from Database")
 
-        if await database.db.rss[BOT_ID].find_one():
-            rows = database.db.rss[BOT_ID].find({})
+        if await database.db.rss[TgClient.ID].find_one():
+            rows = database.db.rss[TgClient.ID].find({})
             async for row in rows:
                 user_id = row["_id"]
                 del row["_id"]

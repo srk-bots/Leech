@@ -40,7 +40,8 @@ class DbManager:
                 connectTimeoutMS=5000,  # 5 second connection timeout
                 socketTimeoutMS=10000,  # 10 second socket timeout
             )
-            self.db = self._conn.luna
+            # Use 'aeon' as the database name for consistency across the codebase
+            self.db = self._conn.aeon
             self._return = False
             LOGGER.info("Successfully connected to database")
         except PyMongoError as e:
@@ -73,11 +74,40 @@ class DbManager:
             for key, value in vars(settings).items()
             if not key.startswith("__")
         }
+
+        # Update deployConfig with the new config
         await self.db.settings.deployConfig.replace_one(
             {"_id": TgClient.ID},
             config_file,
             upsert=True,
         )
+
+        # Also update the runtime config with the new values
+        # First get the current runtime config
+        runtime_config = (
+            await self.db.settings.config.find_one(
+                {"_id": TgClient.ID},
+                {"_id": 0},
+            )
+            or {}
+        )
+
+        # Find all variables that are new or have changed values
+        changed_vars = {}
+        for k, v in config_file.items():
+            # Add new variables or update variables with changed values
+            if k not in runtime_config or runtime_config.get(k) != v:
+                changed_vars[k] = v
+
+        if changed_vars:
+            # Update runtime configuration with all changed variables
+            runtime_config.update(changed_vars)
+            await self.db.settings.config.replace_one(
+                {"_id": TgClient.ID},
+                runtime_config,
+                upsert=True,
+            )
+            LOGGER.info(f"Updated runtime config variables from config.py: {list(changed_vars.keys())}")
 
     async def update_config(self, dict_):
         if self._return:
