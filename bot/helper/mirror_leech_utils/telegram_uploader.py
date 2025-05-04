@@ -458,14 +458,31 @@ class TelegramUploader:
         if Config.LEECH_DUMP_CHAT:
             try:
                 msg = self._listener.message.text.lstrip("/")
-                # Send command message to owner's dump
-                owner_dump_msg = await self._listener.client.send_message(
-                    chat_id=Config.LEECH_DUMP_CHAT,
-                    text=msg,
-                    disable_web_page_preview=True,
-                    disable_notification=True,
-                )  # Store this message for potential deletion later
-                self.log_msg = owner_dump_msg
+
+                # Handle both string and list types for LEECH_DUMP_CHAT
+                if (
+                    isinstance(Config.LEECH_DUMP_CHAT, list)
+                    and Config.LEECH_DUMP_CHAT
+                ):
+                    # Use the first chat ID for the initial upload
+                    primary_dump_chat = Config.LEECH_DUMP_CHAT[0]
+                    # Send command message to the primary owner's dump
+                    owner_dump_msg = await self._listener.client.send_message(
+                        chat_id=primary_dump_chat,
+                        text=msg,
+                        disable_web_page_preview=True,
+                        disable_notification=True,
+                    )  # Store this message for potential deletion later
+                    self.log_msg = owner_dump_msg
+                else:
+                    # Backward compatibility for string type
+                    owner_dump_msg = await self._listener.client.send_message(
+                        chat_id=Config.LEECH_DUMP_CHAT,
+                        text=msg,
+                        disable_web_page_preview=True,
+                        disable_notification=True,
+                    )  # Store this message for potential deletion later
+                    self.log_msg = owner_dump_msg
             except Exception as e:
                 LOGGER.error(f"Failed to send command message to owner's dump: {e}")
 
@@ -1604,11 +1621,20 @@ class TelegramUploader:
             # Case 1: If user didn't set any dump and owner has premium or non-premium string
             if not self._user_dump:
                 # Send to owner leech dump and bot PM
-                if (
-                    Config.LEECH_DUMP_CHAT
-                    and source_chat_id != Config.LEECH_DUMP_CHAT
-                ):
-                    destinations.append(Config.LEECH_DUMP_CHAT)
+                if Config.LEECH_DUMP_CHAT:
+                    # Handle both string and list types for LEECH_DUMP_CHAT
+                    if isinstance(Config.LEECH_DUMP_CHAT, list):
+                        # Add all chat IDs from the list except the one we're already in
+                        destinations.extend(
+                            [
+                                chat_id
+                                for chat_id in Config.LEECH_DUMP_CHAT
+                                if source_chat_id != chat_id
+                            ]
+                        )
+                    elif source_chat_id != Config.LEECH_DUMP_CHAT:
+                        # Backward compatibility for string type
+                        destinations.append(Config.LEECH_DUMP_CHAT)
 
                 # Add user's PM if not already there
                 if source_chat_id != self._user_id:
@@ -1620,11 +1646,20 @@ class TelegramUploader:
                 if source_chat_id != int(self._user_dump):
                     destinations.append(int(self._user_dump))
 
-                if (
-                    Config.LEECH_DUMP_CHAT
-                    and source_chat_id != Config.LEECH_DUMP_CHAT
-                ):
-                    destinations.append(Config.LEECH_DUMP_CHAT)
+                if Config.LEECH_DUMP_CHAT:
+                    # Handle both string and list types for LEECH_DUMP_CHAT
+                    if isinstance(Config.LEECH_DUMP_CHAT, list):
+                        # Add all chat IDs from the list except the one we're already in
+                        destinations.extend(
+                            [
+                                chat_id
+                                for chat_id in Config.LEECH_DUMP_CHAT
+                                if source_chat_id != chat_id
+                            ]
+                        )
+                    elif source_chat_id != Config.LEECH_DUMP_CHAT:
+                        # Backward compatibility for string type
+                        destinations.append(Config.LEECH_DUMP_CHAT)
 
                 # Add user's PM if not already there
                 if source_chat_id != self._user_id:
@@ -1633,11 +1668,20 @@ class TelegramUploader:
             # Case 3: If user set their own dump and owner has premium string
             elif self._user_dump and owner_has_premium:
                 # By default, send to owner leech dump and bot PM
-                if (
-                    Config.LEECH_DUMP_CHAT
-                    and source_chat_id != Config.LEECH_DUMP_CHAT
-                ):
-                    destinations.append(Config.LEECH_DUMP_CHAT)
+                if Config.LEECH_DUMP_CHAT:
+                    # Handle both string and list types for LEECH_DUMP_CHAT
+                    if isinstance(Config.LEECH_DUMP_CHAT, list):
+                        # Add all chat IDs from the list except the one we're already in
+                        destinations.extend(
+                            [
+                                chat_id
+                                for chat_id in Config.LEECH_DUMP_CHAT
+                                if source_chat_id != chat_id
+                            ]
+                        )
+                    elif source_chat_id != Config.LEECH_DUMP_CHAT:
+                        # Backward compatibility for string type
+                        destinations.append(Config.LEECH_DUMP_CHAT)
 
                 # Add user's PM if not already there
                 if source_chat_id != self._user_id:
@@ -1746,11 +1790,20 @@ class TelegramUploader:
             # Case 1: If user didn't set any dump and owner has premium or non-premium string
             if not self._user_dump:
                 # Send to owner leech dump and bot PM
-                if (
-                    Config.LEECH_DUMP_CHAT
-                    and self._sent_msg.chat.id != Config.LEECH_DUMP_CHAT
-                ):
-                    destinations.append(Config.LEECH_DUMP_CHAT)
+                if Config.LEECH_DUMP_CHAT:
+                    # Handle both string and list types for LEECH_DUMP_CHAT
+                    if isinstance(Config.LEECH_DUMP_CHAT, list):
+                        # Add all chat IDs from the list except the one we're already in
+                        destinations.extend(
+                            [
+                                chat_id
+                                for chat_id in Config.LEECH_DUMP_CHAT
+                                if self._sent_msg.chat.id != chat_id
+                            ]
+                        )
+                    elif self._sent_msg.chat.id != Config.LEECH_DUMP_CHAT:
+                        # Backward compatibility for string type
+                        destinations.append(Config.LEECH_DUMP_CHAT)
 
                 # Add user's PM if not already there
                 if self._sent_msg.chat.id != self._user_id:
@@ -1762,11 +1815,20 @@ class TelegramUploader:
                 if self._sent_msg.chat.id != int(self._user_dump):
                     destinations.append(int(self._user_dump))
 
-                if (
-                    Config.LEECH_DUMP_CHAT
-                    and self._sent_msg.chat.id != Config.LEECH_DUMP_CHAT
-                ):
-                    destinations.append(Config.LEECH_DUMP_CHAT)
+                if Config.LEECH_DUMP_CHAT:
+                    # Handle both string and list types for LEECH_DUMP_CHAT
+                    if isinstance(Config.LEECH_DUMP_CHAT, list):
+                        # Add all chat IDs from the list except the one we're already in
+                        destinations.extend(
+                            [
+                                chat_id
+                                for chat_id in Config.LEECH_DUMP_CHAT
+                                if self._sent_msg.chat.id != chat_id
+                            ]
+                        )
+                    elif self._sent_msg.chat.id != Config.LEECH_DUMP_CHAT:
+                        # Backward compatibility for string type
+                        destinations.append(Config.LEECH_DUMP_CHAT)
 
                 # Add user's PM if not already there
                 if self._sent_msg.chat.id != self._user_id:
@@ -1775,11 +1837,20 @@ class TelegramUploader:
             # Case 3: If user set their own dump and owner has premium string
             elif self._user_dump and owner_has_premium:
                 # By default, send to owner leech dump and bot PM
-                if (
-                    Config.LEECH_DUMP_CHAT
-                    and self._sent_msg.chat.id != Config.LEECH_DUMP_CHAT
-                ):
-                    destinations.append(Config.LEECH_DUMP_CHAT)
+                if Config.LEECH_DUMP_CHAT:
+                    # Handle both string and list types for LEECH_DUMP_CHAT
+                    if isinstance(Config.LEECH_DUMP_CHAT, list):
+                        # Add all chat IDs from the list except the one we're already in
+                        destinations.extend(
+                            [
+                                chat_id
+                                for chat_id in Config.LEECH_DUMP_CHAT
+                                if self._sent_msg.chat.id != chat_id
+                            ]
+                        )
+                    elif self._sent_msg.chat.id != Config.LEECH_DUMP_CHAT:
+                        # Backward compatibility for string type
+                        destinations.append(Config.LEECH_DUMP_CHAT)
 
                 # Add user's PM if not already there
                 if self._sent_msg.chat.id != self._user_id:
