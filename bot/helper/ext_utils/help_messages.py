@@ -327,6 +327,11 @@ Private: tg://openmessage?user_id=xxxxxx&message_id=xxxxx
 Super: https://t.me/c/channel_id/message_id
 Range: https://t.me/channel_name/first_message_id-last_message_id
 Range Example: tg://openmessage?user_id=xxxxxx&message_id=555-560 or https://t.me/channel_name/100-150
+Skip Messages: Add -skip followed by a number to skip messages in a range
+Skip Examples:
+• https://t.me/channel_name/100-150 -skip 3 (will download messages 100, 103, 106, etc.)
+• https://t.me/channel_name/100-150-skip3 (same result, more compact format)
+• tg://openmessage?user_id=xxxxxx&message_id=555-560 -skip 2 (will download messages 555, 557, 559)
 Note: Range link will work only by replying cmd to it"""
 
 sample_video = """<b>Sample Video</b>: -sv
@@ -975,11 +980,13 @@ user_settings_text = {
 
 Timeout: 60 sec""",
     "LEECH_SPLIT_SIZE": f"Send Leech split size in bytes or use gb or mb. Example: 40000000 or 2.5gb or 1000mb. IS_PREMIUM_USER: {TgClient.IS_PREMIUM_USER}. Timeout: 60 sec",
-    "LEECH_DUMP_CHAT": """"Send leech destination ID/USERNAME/PM.
+    "LEECH_DUMP_CHAT": """"Send leech destination ID/USERNAME/PM. You can specify multiple destinations separated by commas.
 * b:id/@username/pm (b: means leech by bot) (id or username of the chat or write pm means private message so bot will send the files in private to you) when you should use b:(leech by bot)? When your default settings is leech by user and you want to leech by bot for specific task.
 * u:id/@username(u: means leech by user) This incase OWNER added USER_SESSION_STRING.
 * h:id/@username(hybrid leech) h: to upload files by bot and user based on file size.
+* For multiple destinations, use comma-separated values: -100123456789,-100987654321
 * id/@username|topic_id(leech in specific chat and topic) add | without space and write topic id after chat id or username. Timeout: 60 sec""",
+    "LOG_CHAT_ID": "Send log chat ID for mirror tasks. You can specify multiple chat IDs separated by commas (e.g., -100123456789,-100987654321). Timeout: 60 sec",
     "LEECH_FILENAME_PREFIX": r"Send Leech Filename Prefix. You can add HTML tags. Example: <code>@mychannel</code>. Timeout: 60 sec",
     "LEECH_SUFFIX": r"Send Leech Filename Suffix. You can add HTML tags. Example: <code>@mychannel</code>. Timeout: 60 sec",
     "LEECH_FONT": "Send Leech Font Style. Options: HTML formats (bold, italic), Unicode styles (serif, sans_b), Google Fonts (Roboto, Open Sans), or emojis (🔥). Use /fontstyles for full list. Timeout: 60 sec",
