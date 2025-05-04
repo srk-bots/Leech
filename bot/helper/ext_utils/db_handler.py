@@ -26,9 +26,8 @@ class DbManager:
         self.db = None
 
     async def connect(self):
-        max_retries = 10  # Increased from 5 to 10 retries
+        max_retries = 5
         retry_count = 0
-        last_error = None
 
         while retry_count < max_retries:
             try:
@@ -40,44 +39,24 @@ class DbManager:
 
                 LOGGER.info(f"Connecting to MongoDB (attempt {retry_count + 1}/{max_retries})...")
 
-                # Parse existing parameters from the URL
-                url = Config.DATABASE_URL
-
-                # Create a more robust MongoDB client with optimized settings
                 self._conn = AsyncIOMotorClient(
-                    url,
+                    Config.DATABASE_URL,
                     server_api=ServerApi("1"),
-                    maxPoolSize=20,  # Increased pool size for better concurrency
-                    minPoolSize=5,   # Maintain more connections in the pool
-                    maxIdleTimeMS=60000,  # Allow connections to remain idle longer (1 minute)
-                    connectTimeoutMS=30000,  # 30 second connection timeout
-                    socketTimeoutMS=60000,  # 60 second socket timeout
+                    maxPoolSize=10,  # Limit connection pool size
+                    minPoolSize=1,
+                    maxIdleTimeMS=30000,  # Close idle connections after 30 seconds
+                    connectTimeoutMS=15000,  # 15 second connection timeout (increased from 5s)
+                    socketTimeoutMS=30000,  # 30 second socket timeout (increased from 10s)
                     retryWrites=True,  # Enable retry for write operations
                     retryReads=True,   # Enable retry for read operations
-                    serverSelectionTimeoutMS=30000,  # 30 second server selection timeout
-                    waitQueueTimeoutMS=30000,  # 30 second wait queue timeout
-                    appName="AeonMirrorBot",  # Custom app name for better monitoring
-                    tz_aware=True,  # Make datetime objects timezone aware
-                    connect=True,  # Establish connection immediately
+                    serverSelectionTimeoutMS=20000,  # 20 second server selection timeout
                 )
-
-                # Test the connection by performing a simple operation
-                try:
-                    # Set a timeout for the ping operation
-                    await asyncio.wait_for(
-                        self._conn.admin.command('ping'),
-                        timeout=15
-                    )
-                except (asyncio.TimeoutError, Exception) as ping_error:
-                    raise PyMongoError(f"Connection test failed: {ping_error}")
-
                 self.db = self._conn.luna
                 self._return = False
                 LOGGER.info("Successfully connected to database")
                 return  # Exit the retry loop on success
 
             except PyMongoError as e:
-                last_error = e
                 retry_count += 1
                 if retry_count >= max_retries:
                     LOGGER.error(f"All attempts to connect to MongoDB failed: {e}")
@@ -85,27 +64,10 @@ class DbManager:
                     self._return = True
                     self._conn = None
                 else:
-                    # Wait before retrying with exponential backoff (capped at 30 seconds)
-                    wait_time = min(2**retry_count, 30)
-                    LOGGER.info(f"MongoDB connection failed ({str(e)}). Waiting {wait_time} seconds before retrying...")
+                    # Wait before retrying with exponential backoff
+                    wait_time = 2**retry_count
+                    LOGGER.info(f"MongoDB connection failed. Waiting {wait_time} seconds before retrying...")
                     await asyncio.sleep(wait_time)
-            except Exception as e:
-                last_error = e
-                retry_count += 1
-                if retry_count >= max_retries:
-                    LOGGER.error(f"All attempts to connect to MongoDB failed with unexpected error: {e}")
-                    self.db = None
-                    self._return = True
-                    self._conn = None
-                else:
-                    # Wait before retrying with exponential backoff (capped at 30 seconds)
-                    wait_time = min(2**retry_count, 30)
-                    LOGGER.info(f"MongoDB connection failed with unexpected error ({str(e)}). Waiting {wait_time} seconds before retrying...")
-                    await asyncio.sleep(wait_time)
-
-        # If we get here, all retries failed
-        LOGGER.error(f"MongoDB connection failed after {max_retries} attempts. Last error: {last_error}")
-        return
 
     async def disconnect(self):
         self._return = True
@@ -564,44 +526,4 @@ class DbManager:
         return result
 
 
-    async def check_connection_health(self):
-        """Check if the MongoDB connection is healthy and reconnect if needed"""
-        if self._conn is None or self.db is None:
-            LOGGER.warning("Database connection is not established, attempting to reconnect...")
-            await self.connect()
-            return
-
-        try:
-            # Set a timeout for the ping operation
-            await asyncio.wait_for(
-                self._conn.admin.command('ping'),
-                timeout=10
-            )
-            # Connection is healthy
-            return True
-        except Exception as e:
-            LOGGER.error(f"Database connection health check failed: {e}")
-            LOGGER.info("Attempting to reconnect to database...")
-            await self.connect()
-            return False
-
-
 database = DbManager()
-
-# Start a background task to periodically check database connection health
-async def start_db_health_check():
-    """Start a background task to periodically check database connection health"""
-    while True:
-        try:
-            await asyncio.sleep(300)  # Check every 5 minutes
-            if database._conn is not None:
-                await database.check_connection_health()
-        except Exception as e:
-            LOGGER.error(f"Error in database health check: {e}")
-            await asyncio.sleep(60)  # Wait a minute before retrying if there's an error
-
-# Create the background task when the module is imported
-try:
-    asyncio.create_task(start_db_health_check())
-except Exception as e:
-    LOGGER.error(f"Failed to start database health check task: {e}")

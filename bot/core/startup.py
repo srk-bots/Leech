@@ -120,57 +120,24 @@ async def load_settings():
             await rmtree(p, ignore_errors=True)
 
     # Try to connect to the database with retry logic built into the connect method
-    connection_attempts = 0
-    max_connection_attempts = 3
+    try:
+        LOGGER.info("Connecting to database...")
+        await database.connect()
 
-    while connection_attempts < max_connection_attempts:
+        if database.db is None:
+            LOGGER.warning("Database connection failed, continuing with local configuration")
+            return
+
+        # Process any pending message deletions
         try:
-            LOGGER.info(f"Connecting to database (attempt {connection_attempts + 1}/{max_connection_attempts})...")
-            await database.connect()
-
-            if database.db is None:
-                LOGGER.warning("Database connection failed, retrying...")
-                connection_attempts += 1
-                if connection_attempts >= max_connection_attempts:
-                    LOGGER.error("All database connection attempts failed, continuing with local configuration")
-                    return
-                await asyncio.sleep(5)  # Wait 5 seconds before retrying
-                continue
-
-            # Test the database connection with a simple operation
-            try:
-                # Set a timeout for the ping operation
-                await asyncio.wait_for(
-                    database.db.command("ping"),
-                    timeout=15
-                )
-                LOGGER.info("Database connection verified successfully")
-            except (asyncio.TimeoutError, Exception) as ping_error:
-                LOGGER.error(f"Database connection test failed: {ping_error}")
-                connection_attempts += 1
-                if connection_attempts >= max_connection_attempts:
-                    LOGGER.error("All database connection tests failed, continuing with local configuration")
-                    return
-                await asyncio.sleep(5)  # Wait 5 seconds before retrying
-                continue
-
-            # Process any pending message deletions
-            try:
-                await process_pending_deletions()
-            except Exception as e:
-                LOGGER.error(f"Error processing pending deletions: {e}")
-                # Continue with other operations even if this fails
-
-            # If we get here, the connection was successful
-            break
-
+            await process_pending_deletions()
         except Exception as e:
-            LOGGER.error(f"Error during database connection: {e}")
-            connection_attempts += 1
-            if connection_attempts >= max_connection_attempts:
-                LOGGER.error("All database connection attempts failed, continuing with local configuration")
-                return
-            await asyncio.sleep(5)  # Wait 5 seconds before retrying
+            LOGGER.error(f"Error processing pending deletions: {e}")
+            # Continue with other operations even if this fails
+    except Exception as e:
+        LOGGER.error(f"Error during database connection: {e}")
+        LOGGER.warning("Continuing with local configuration")
+        return
 
     # Only proceed with database operations if we have a valid connection
     try:
