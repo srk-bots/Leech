@@ -3568,17 +3568,11 @@ async def edit_variable(_, message, pre_message, key):
         ).wait()
         # Only start web server if port is not 0
         if value != 0:
-            # Remove the marker file if it exists
-            if await aiopath.exists(".web_server_disabled"):
-                await remove(".web_server_disabled")
             await create_subprocess_shell(
                 f"gunicorn -k uvicorn.workers.UvicornWorker -w 1 web.wserver:app --bind 0.0.0.0:{value}",
             )
         else:
             LOGGER.info("Web server is disabled (BASE_URL_PORT = 0)")
-            # Create a marker file to indicate that the web server should be disabled
-            async with aiopen(".web_server_disabled", "w") as f:
-                await f.write("Web server is disabled by setting BASE_URL_PORT = 0")
     elif key in [
         "RCLONE_SERVE_URL",
         "RCLONE_SERVE_PORT",
@@ -6298,17 +6292,11 @@ async def load_config():
     # Only start web server if BASE_URL_PORT is not 0
     if Config.BASE_URL_PORT != 0:
         LOGGER.info(f"Starting web server on port {Config.BASE_URL_PORT}")
-        # Remove the marker file if it exists
-        if await aiopath.exists(".web_server_disabled"):
-            await remove(".web_server_disabled")
         await create_subprocess_shell(
             f"gunicorn -k uvicorn.workers.UvicornWorker -w 1 web.wserver:app --bind 0.0.0.0:{Config.BASE_URL_PORT}",
         )
     else:
         LOGGER.info("Web server is disabled (BASE_URL_PORT = 0)")
-        # Create a marker file to indicate that the web server should be disabled
-        async with aiopen(".web_server_disabled", "w") as f:
-            await f.write("Web server is disabled by setting BASE_URL_PORT = 0")
 
     if Config.DATABASE_URL:
         await database.connect()
