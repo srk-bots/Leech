@@ -380,7 +380,6 @@ async def get_tg_link_message(link, user_id=""):
     message = None
     links = []
     user_session = None
-    skip_value = 1  # Default skip value (no skipping)
 
     if user_id:
         if user_id in session_cache:
@@ -400,41 +399,6 @@ async def get_tg_link_message(link, user_id=""):
                 session_cache[user_id] = user_session
             else:
                 user_session = TgClient.user
-
-    # Check if -skip parameter is in the link (more robust parsing)
-    if "-skip" in link:
-        # Handle different ways users might input the -skip parameter
-        if " -skip " in link:
-            parts = link.split(" -skip ")
-            link = parts[0].strip()
-            skip_str = parts[1].strip()
-        elif " -skip" in link:
-            parts = link.split(" -skip")
-            link = parts[0].strip()
-            skip_str = parts[1].strip() if len(parts) > 1 else ""
-        elif "-skip " in link:
-            parts = link.split("-skip ")
-            link = parts[0].strip()
-            skip_str = parts[1].strip()
-        else:
-            # Handle case where there are no spaces
-            match = re.search(r"(.*?)-skip(\d+)(.*)", link)
-            if match:
-                link = match.group(1) + match.group(3)
-                skip_str = match.group(2)
-            else:
-                skip_str = ""
-
-        try:
-            # Extract the numeric value from the skip string
-            skip_match = re.search(r"(\d+)", skip_str)
-            if skip_match:
-                skip_value = int(skip_match.group(1))
-                if skip_value < 1:
-                    skip_value = 1  # Ensure skip value is at least 1
-        except ValueError:
-            # If conversion fails, use default skip value
-            pass
 
     if link.startswith("https://t.me/"):
         private = False
@@ -462,19 +426,15 @@ async def get_tg_link_message(link, user_id=""):
         if private:
             link = link.split("&message_id=")[0]
             links.append(f"{link}&message_id={start_id}")
-            current_id = start_id
-            while current_id < end_id:
-                current_id += skip_value
-                if current_id <= end_id:
-                    links.append(f"{link}&message_id={current_id}")
+            for _ in range(btw):
+                start_id += 1
+                links.append(f"{link}&message_id={start_id}")
         else:
             link = link.rsplit("/", 1)[0]
             links.append(f"{link}/{start_id}")
-            current_id = start_id
-            while current_id < end_id:
-                current_id += skip_value
-                if current_id <= end_id:
-                    links.append(f"{link}/{current_id}")
+            for _ in range(btw):
+                start_id += 1
+                links.append(f"{link}/{start_id}")
     else:
         msg_id = int(msg_id)
 
