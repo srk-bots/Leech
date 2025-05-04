@@ -593,9 +593,6 @@ class TaskListener(TaskConfig):
 
                             # Check if user has set their own dump and owner's premium status
                             user_dump = self.user_dict.get("USER_DUMP")
-                            # Ensure user_dump is a string if it exists
-                            if user_dump and not isinstance(user_dump, str):
-                                user_dump = str(user_dump)
                             owner_has_premium = TgClient.IS_PREMIUM_USER
 
                             # Case 1: If user didn't set any dump
@@ -705,9 +702,6 @@ class TaskListener(TaskConfig):
 
                         # Check if user has set their own dump and owner's premium status
                         user_dump = self.user_dict.get("USER_DUMP")
-                        # Ensure user_dump is a string if it exists
-                        if user_dump and not isinstance(user_dump, str):
-                            user_dump = str(user_dump)
                         owner_has_premium = TgClient.IS_PREMIUM_USER
 
                         # Case 1: If user didn't set any dump
@@ -865,9 +859,6 @@ class TaskListener(TaskConfig):
 
                 # Check if user has set their own dump
                 user_dump = self.user_dict.get("USER_DUMP")
-                # Ensure user_dump is a string if it exists
-                if user_dump and not isinstance(user_dump, str):
-                    user_dump = str(user_dump)
 
                 # Case 1: If user set their own dump and owner has set log chat ids
                 if user_dump and Config.LOG_CHAT_ID:
