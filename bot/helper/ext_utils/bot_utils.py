@@ -9,6 +9,7 @@ from asyncio.subprocess import PIPE
 from base64 import urlsafe_b64decode, urlsafe_b64encode
 from concurrent.futures import ThreadPoolExecutor
 from functools import partial, wraps
+from typing import Any
 
 from httpx import AsyncClient
 
@@ -623,6 +624,58 @@ def is_media_tool_enabled(tool_name):
     result = tool_name.lower() in enabled_tools
     LOGGER.debug(f"Tool '{tool_name}' enabled: {result}")
     return result
+
+
+def parse_chat_ids(chat_ids_str: str | int | list[str | int]) -> list:
+    """Parse a string, int, or list of chat IDs into a list of integer chat IDs.
+
+    Args:
+        chat_ids_str: String with comma-separated chat IDs, single chat ID, or list of chat IDs
+
+    Returns:
+        list: List of integer chat IDs
+    """
+    if not chat_ids_str:
+        return []
+
+    # If it's already a list, process each item
+    if isinstance(chat_ids_str, list):
+        result = []
+        for item in chat_ids_str:
+            # Process each item and extend the result list
+            result.extend(parse_chat_ids(item))
+        return result
+
+    # If it's an integer, return it as a single-item list
+    if isinstance(chat_ids_str, int):
+        return [chat_ids_str]
+
+    # If it's a string, split by commas and convert to integers
+    if isinstance(chat_ids_str, str):
+        # Handle empty string
+        if not chat_ids_str.strip():
+            return []
+
+        # Split by commas and process each part
+        chat_ids = []
+        for part in chat_ids_str.split(","):
+            part = part.strip()
+            if not part:
+                continue
+
+            # Try to convert to integer
+            try:
+                chat_id = int(part)
+                chat_ids.append(chat_id)
+            except ValueError:
+                # If it's not a valid integer, it might be a username
+                # Just add it as is - the message sending function will handle it
+                chat_ids.append(part)
+
+        return chat_ids
+
+    # For any other type, return empty list
+    return []
 
 
 def is_flag_enabled(flag_name):

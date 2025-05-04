@@ -405,7 +405,7 @@ class TelegramUploader:
         self._media_group = False
         self._is_private = False
         self._sent_msg = None
-        self.log_msg = None
+        self.log_msgs = []
         self._user_session = self._listener.user_transmission
         self._error = ""
 
@@ -453,21 +453,26 @@ class TelegramUploader:
             self._thumb = None
 
     async def _msg_to_reply(self):
-        # First, send the command message to owner's dump if it's configured
-        # This ensures the command message (with link or replied) goes to owner dump
+        # First, send the command message to owner's dumps if configured
+        # This ensures the command message (with link or replied) goes to owner dumps
+        self.log_msgs = []
         if Config.LEECH_DUMP_CHAT:
-            try:
-                msg = self._listener.message.text.lstrip("/")
-                # Send command message to owner's dump
-                owner_dump_msg = await self._listener.client.send_message(
-                    chat_id=Config.LEECH_DUMP_CHAT,
-                    text=msg,
-                    disable_web_page_preview=True,
-                    disable_notification=True,
-                )  # Store this message for potential deletion later
-                self.log_msg = owner_dump_msg
-            except Exception as e:
-                LOGGER.error(f"Failed to send command message to owner's dump: {e}")
+            msg = self._listener.message.text.lstrip("/")
+            # Send command message to all owner's dump chat IDs
+            for chat_id in Config.LEECH_DUMP_CHAT:
+                try:
+                    # Send command message to owner's dump
+                    owner_dump_msg = await self._listener.client.send_message(
+                        chat_id=chat_id,
+                        text=msg,
+                        disable_web_page_preview=True,
+                        disable_notification=True,
+                    )  # Store this message for potential deletion later
+                    self.log_msgs.append(owner_dump_msg)
+                except Exception as e:
+                    LOGGER.error(
+                        f"Failed to send command message to owner's dump {chat_id}: {e}"
+                    )
 
         # Now handle the normal message reply logic
         if self._listener.up_dest:
@@ -490,9 +495,9 @@ class TelegramUploader:
                         disable_notification=True,
                     )
                     self._is_private = self._sent_msg.chat.type.name == "PRIVATE"
-                # Don't overwrite the log_msg if we already set it to the owner's dump message
-                if not hasattr(self, "log_msg") or self.log_msg is None:
-                    self.log_msg = self._sent_msg
+                # Don't overwrite the log_msgs if we already set it to the owner's dump messages
+                if not hasattr(self, "log_msgs"):
+                    self.log_msgs = [self._sent_msg]
             except Exception as e:
                 await self._listener.on_upload_error(str(e))
                 return False
