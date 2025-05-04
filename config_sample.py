@@ -34,9 +34,6 @@ PAID_CHANNEL_LINK = ""
 SET_COMMANDS = True
 METADATA_KEY = ""
 WATERMARK_KEY = ""
-# For multiple chat IDs, use comma-separated format: "-100123456789, -100987654321, @channel_username"
-# Make sure the bot is an admin in all the channels/groups specified
-# The bot will validate these chat IDs at startup and remove any that are invalid
 LOG_CHAT_ID = 0
 LEECH_FILENAME_CAPTION = ""
 HYDRA_IP = ""
@@ -94,9 +91,6 @@ MEDIA_GROUP = False
 USER_TRANSMISSION = False
 HYBRID_LEECH = False
 LEECH_FILENAME_PREFIX = ""
-# For multiple chat IDs, use comma-separated format: "-100123456789, -100987654321, @channel_username"
-# Make sure the bot is an admin in all the channels/groups specified
-# The bot will validate these chat IDs at startup and remove any that are invalid
 LEECH_DUMP_CHAT = ""
 THUMBNAIL_LAYOUT = ""
 
