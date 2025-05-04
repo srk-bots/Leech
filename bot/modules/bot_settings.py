@@ -5356,9 +5356,17 @@ async def edit_bot_settings(client, query):
                 await (
                     await create_subprocess_exec("pkill", "-9", "-f", "gunicorn")
                 ).wait()
+                # Update Config.BASE_URL_PORT first
+                Config.BASE_URL_PORT = value
                 await create_subprocess_shell(
                     f"gunicorn -k uvicorn.workers.UvicornWorker -w 1 web.wserver:app --bind 0.0.0.0:{value}",
                 )
+        elif data[2] == "RCLONE_SERVE_PORT":
+            value = 8080
+            # Update Config.RCLONE_SERVE_PORT first
+            Config.RCLONE_SERVE_PORT = value
+            # Restart rclone serve
+            await rclone_serve_booter()
         elif data[2] == "GDRIVE_ID":
             if drives_names and drives_names[0] == "Main":
                 drives_names.pop(0)

@@ -413,7 +413,9 @@ async def load_configurations():
         )
     ).wait()
 
-    PORT = environ.get("PORT") or environ.get("BASE_URL_PORT", "80")
+    # Use Config.BASE_URL_PORT instead of environment variable
+    PORT = environ.get("PORT") or str(Config.BASE_URL_PORT) or "80"
+    LOGGER.info(f"Starting web server on port {PORT}")
     await create_subprocess_shell(
         f"gunicorn -k uvicorn.workers.UvicornWorker -w 1 web.wserver:app --bind 0.0.0.0:{PORT}",
     )
