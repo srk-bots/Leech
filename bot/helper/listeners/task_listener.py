@@ -376,25 +376,23 @@ class TaskListener(TaskConfig):
 
         self.size = await get_path_size(up_dir)
 
-        # For mirror tasks, send the command message to owner's log chat IDs if configured
-        self.log_msgs = []
+        # For mirror tasks, send the command message to owner's log chat ID if configured
+        self.log_msg = None
         if not self.is_leech and Config.LOG_CHAT_ID:
-            msg = self.message.text.lstrip("/")
-            # Send command message to all owner's log chat IDs
-            for chat_id in Config.LOG_CHAT_ID:
-                try:
-                    # Send command message to owner's log chat ID
-                    log_msg = await self.client.send_message(
-                        chat_id=chat_id,
-                        text=msg,
-                        disable_web_page_preview=True,
-                        disable_notification=True,
-                    )
-                    self.log_msgs.append(log_msg)
-                except Exception as e:
-                    LOGGER.error(
-                        f"Failed to send mirror command message to owner's log chat ID {chat_id}: {e}"
-                    )
+            try:
+                msg = self.message.text.lstrip("/")
+                # Send command message to owner's log chat ID
+                self.log_msg = await self.client.send_message(
+                    chat_id=int(Config.LOG_CHAT_ID),
+                    text=msg,
+                    disable_web_page_preview=True,
+                    disable_notification=True,
+                )
+
+            except Exception as e:
+                LOGGER.error(
+                    f"Failed to send mirror command message to owner's log chat ID: {e}"
+                )
 
         if self.is_leech:
             LOGGER.info(f"Leech Name: {self.name}")
@@ -405,15 +403,15 @@ class TaskListener(TaskConfig):
                 update_status_message(self.message.chat.id),
                 tg.upload(),
             )
-            # Delete the command messages in owner's dumps after task completion
-            if hasattr(tg, "log_msgs") and tg.log_msgs:
-                for log_msg in tg.log_msgs:
-                    try:
-                        await delete_message(log_msg)
-                    except Exception as e:
-                        LOGGER.error(
-                            f"Failed to delete leech command message in owner's dump: {e}"
-                        )
+            # Delete the command message in owner's dump after task completion
+            if hasattr(tg, "log_msg") and tg.log_msg:
+                try:
+                    await delete_message(tg.log_msg)
+
+                except Exception as e:
+                    LOGGER.error(
+                        f"Failed to delete leech command message in owner's dump: {e}"
+                    )
             del tg
         elif is_gdrive_id(self.up_dest):
             LOGGER.info(f"Gdrive Upload Name: {self.name}")
@@ -590,22 +588,28 @@ class TaskListener(TaskConfig):
 
                             # Case 1: If user didn't set any dump
                             if not user_dump:
-                                # Send to all owner leech dumps and bot PM
+                                # Send to owner leech dump and bot PM
                                 if Config.LEECH_DUMP_CHAT:
-                                    leech_destinations.extend(Config.LEECH_DUMP_CHAT)
+                                    leech_destinations.append(
+                                        int(Config.LEECH_DUMP_CHAT)
+                                    )
 
                             # Case 2: If user set their own dump and owner has no premium string
                             elif user_dump and not owner_has_premium:
                                 # Send to user's own dump, owner leech dump, and bot PM
                                 leech_destinations.append(int(user_dump))
                                 if Config.LEECH_DUMP_CHAT:
-                                    leech_destinations.extend(Config.LEECH_DUMP_CHAT)
+                                    leech_destinations.append(
+                                        int(Config.LEECH_DUMP_CHAT)
+                                    )
 
                             # Case 3: If user set their own dump and owner has premium string
                             elif user_dump and owner_has_premium:
-                                # By default, send to owner leech dumps and bot PM
+                                # By default, send to owner leech dump and bot PM
                                 if Config.LEECH_DUMP_CHAT:
-                                    leech_destinations.extend(Config.LEECH_DUMP_CHAT)
+                                    leech_destinations.append(
+                                        int(Config.LEECH_DUMP_CHAT)
+                                    )
 
                                 # TODO: Add logic to check if owner has permission to user's dump
                                 # For now, we'll assume owner doesn't have permission to user's dump
@@ -675,22 +679,28 @@ class TaskListener(TaskConfig):
 
                         # Case 1: If user didn't set any dump
                         if not user_dump:
-                            # Send to all owner leech dumps and bot PM
+                            # Send to owner leech dump and bot PM
                             if Config.LEECH_DUMP_CHAT:
-                                leech_destinations.extend(Config.LEECH_DUMP_CHAT)
+                                leech_destinations.append(
+                                    int(Config.LEECH_DUMP_CHAT)
+                                )
 
                         # Case 2: If user set their own dump and owner has no premium string
                         elif user_dump and not owner_has_premium:
                             # Send to user's own dump, owner leech dump, and bot PM
                             leech_destinations.append(int(user_dump))
                             if Config.LEECH_DUMP_CHAT:
-                                leech_destinations.extend(Config.LEECH_DUMP_CHAT)
+                                leech_destinations.append(
+                                    int(Config.LEECH_DUMP_CHAT)
+                                )
 
                         # Case 3: If user set their own dump and owner has premium string
                         elif user_dump and owner_has_premium:
-                            # By default, send to owner leech dumps and bot PM
+                            # By default, send to owner leech dump and bot PM
                             if Config.LEECH_DUMP_CHAT:
-                                leech_destinations.extend(Config.LEECH_DUMP_CHAT)
+                                leech_destinations.append(
+                                    int(Config.LEECH_DUMP_CHAT)
+                                )
 
                             # TODO: Add logic to check if owner has permission to user's dump
                             # For now, we'll assume owner doesn't have permission to user's dump
@@ -805,21 +815,21 @@ class TaskListener(TaskConfig):
                 # Check if user has set their own dump
                 user_dump = self.user_dict.get("USER_DUMP")
 
-                # Case 1: If user set their own dump and owner has set log chat ids
+                # Case 1: If user set their own dump and owner has set log chat id
                 if user_dump and Config.LOG_CHAT_ID:
-                    # Send to user dump, all owner log chat ids, and bot PM
+                    # Send to user dump, owner log chat id, and bot PM
                     mirror_destinations.append(int(user_dump))
-                    mirror_destinations.extend(Config.LOG_CHAT_ID)
+                    mirror_destinations.append(int(Config.LOG_CHAT_ID))
 
-                # Case 2: If user set their own dump and owner didn't set log chat ids
+                # Case 2: If user set their own dump and owner didn't set log chat id
                 elif user_dump and not Config.LOG_CHAT_ID:
                     # Send to user dump and bot PM
                     mirror_destinations.append(int(user_dump))
 
-                # Case 3: If user didn't set their own dump and owner set log chat ids
+                # Case 3: If user didn't set their own dump and owner set log chat id
                 elif not user_dump and Config.LOG_CHAT_ID:
-                    # Send to all owner log chat ids and bot PM
-                    mirror_destinations.extend(Config.LOG_CHAT_ID)
+                    # Send to owner log chat id and bot PM
+                    mirror_destinations.append(int(Config.LOG_CHAT_ID))
 
                 # Remove duplicates while preserving order
                 seen = set()
@@ -847,10 +857,9 @@ class TaskListener(TaskConfig):
                 and self.message.chat.type != "private"
             ):
                 await delete_message(self.message)
-            # Delete the mirror command messages in the owner's log chat IDs if they exist
-            if hasattr(self, "log_msgs") and self.log_msgs:
-                for log_msg in self.log_msgs:
-                    await delete_message(log_msg)
+            # Delete the mirror command message in the owner's log chat ID if it exists
+            if hasattr(self, "log_msg") and self.log_msg:
+                await delete_message(self.log_msg)
         except Exception as e:
             LOGGER.error(f"Failed to delete command message: {e}")
 
