@@ -451,20 +451,57 @@ async def generate_caption(filename, directory, caption_template):
             LOGGER.error(f"Error getting file size: {e}")
             readable_size = "Unknown"
 
+        # Extract metadata from filename
+        from bot.helper.mirror_leech_utils.telegram_uploader import extract_metadata_from_filename
+        filename_metadata = await extract_metadata_from_filename(os.path.splitext(filename)[0])
+
+        # Count number of tracks
+        num_videos = len([track for track in track_data if track["@type"] == "Video"])
+        num_audios = len(audio_tracks)
+        num_subtitles = len(subtitle_tracks)
+
+        # Format track counts with leading zeros for single digits
+        num_videos_str = f"{num_videos:02d}" if num_videos < 10 else str(num_videos)
+        num_audios_str = f"{num_audios:02d}" if num_audios < 10 else str(num_audios)
+        num_subtitles_str = f"{num_subtitles:02d}" if num_subtitles < 10 else str(num_subtitles)
+
+        # Generate a unique ID for the file
+        file_id = file_md5_hash[:8]
+
+        # Format extension in uppercase
+        format_upper = os.path.splitext(filename)[1][1:].upper()
+
         # Create caption data dictionary
         caption_data = DefaultDict(
+            # Basic variables
             filename=os.path.splitext(filename)[0],  # Filename without extension
             ext=os.path.splitext(filename)[1][1:],  # Extension without dot
             size=readable_size,
             duration=get_readable_time(video_duration, True),
-            quality=video_quality,
-            codec=video_codec,
+            quality=video_quality or filename_metadata.get("quality", ""),
+
+            # Media information
+            codec=video_codec or filename_metadata.get("codec", ""),
             format=video_format,
-            framerate=video_framerate,
+            framerate=video_framerate or filename_metadata.get("framerate", ""),
             audios=audio_languages_str,
             audio_codecs=audio_codecs_str,
             subtitles=subtitle_languages_str,
             md5_hash=file_md5_hash,
+
+            # TV Show variables
+            season=filename_metadata.get("season", ""),
+            episode=filename_metadata.get("episode", ""),
+            year=filename_metadata.get("year", ""),
+
+            # Track counts
+            NumVideos=num_videos_str,
+            NumAudios=num_audios_str,
+            NumSubtitles=num_subtitles_str,
+
+            # Additional variables
+            id=file_id,
+            formate=format_upper,  # Intentional spelling to match documentation
         )
 
         # Create a cleaned version of the caption data for template processing

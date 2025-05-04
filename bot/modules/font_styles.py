@@ -93,7 +93,7 @@ def get_unicode_emoji_page():
 
 
 def get_template_variables_page():
-    msg = "<b>Template Variables (For Leech Caption):</b>\n\n"
+    msg = "<b>Template Variables (For Leech Caption and Filename):</b>\n\n"
     msg += "<b>Basic Variables:</b>\n"
     msg += "• <code>{filename}</code> - The name of the file without extension\n"
     msg += "• <code>{size}</code> - The size of the file (e.g., 1.5GB, 750MB)\n"
@@ -104,12 +104,15 @@ def get_template_variables_page():
         "• <code>{quality}</code> - The quality of video files (e.g., 1080p, 720p)\n"
     )
     msg += "• <code>{audios}</code> - Audio languages in the file (e.g., English, Hindi)\n"
+    msg += "• <code>{audio_codecs}</code> - Audio codec information (e.g., AAC, AC3)\n"
     msg += "• <code>{subtitles}</code> - Subtitle languages in the file (e.g., English, Spanish)\n"
-    msg += "• <code>{md5_hash}</code> - MD5 hash of the file\n\n"
+    msg += "• <code>{md5_hash}</code> - MD5 hash of the file\n"
+    msg += "• <code>{ext}</code> - File extension (e.g., mkv, mp4)\n\n"
 
     msg += "<b>TV Show Variables:</b>\n"
-    msg += "• <code>{season}</code> - Season number (with leading zero for single digits)\n"
-    msg += "• <code>{episode}</code> - Episode number (with leading zero for single digits)\n\n"
+    msg += "• <code>{season}</code> - Season number extracted from filename\n"
+    msg += "• <code>{episode}</code> - Episode number extracted from filename\n"
+    msg += "• <code>{year}</code> - Release year extracted from filename\n\n"
 
     msg += "<b>Media Information:</b>\n"
     msg += (
@@ -119,13 +122,11 @@ def get_template_variables_page():
         "• <code>{NumAudios}</code> - Number of audio tracks (zero-padded for <10)\n"
     )
     msg += "• <code>{NumSubtitles}</code> - Number of subtitle tracks (zero-padded for <10)\n"
-    msg += (
-        "• <code>{year}</code> - Release year extracted from filename or metadata\n"
-    )
     msg += "• <code>{formate}</code> - File format/extension (uppercase)\n"
-    msg += "• <code>{id}</code> - Unique ID of the file\n"
+    msg += "• <code>{format}</code> - Media container format (e.g., Matroska, MP4)\n"
+    msg += "• <code>{id}</code> - Unique ID of the file (based on MD5 hash)\n"
     msg += "• <code>{framerate}</code> - Video framerate (e.g., 24.00 fps)\n"
-    msg += "• <code>{codec}</code> - Codec information (Video, Audio, Subtitle)\n\n"
+    msg += "• <code>{codec}</code> - Video codec information (e.g., HEVC, AVC)\n\n"
 
     msg += "<b>Variable Styling:</b>\n"
     msg += "You can apply different styles to each variable independently:\n"

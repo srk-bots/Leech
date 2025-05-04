@@ -370,11 +370,60 @@ async def extract_metadata_from_filename(name):
     if quality_matches:
         quality = " ".join(quality_matches)
 
-    # Return the extracted metadata
+    # Extract year from filename
+    year = ""
+    year_pattern = r"(?<![a-zA-Z0-9])(?:19|20)(\d{2})(?![a-zA-Z0-9])"
+    year_matches = re.finditer(year_pattern, name, re.IGNORECASE)
+    for year_match in year_matches:
+        year = year_match.group(0)
+        # Avoid mistaking episode numbers for years
+        if not (episode and year.endswith(episode)):
+            break
+
+    # Extract codec information
+    codec = ""
+    codec_patterns = [
+        r"(H\.?264|H\.?265|HEVC|AVC|XviD|DivX|VP9|AV1|MPEG-?[24])",
+        r"(x264|x265)",
+        r"(10bit|8bit|10-bit|8-bit)",
+        r"(HDR10\+?|Dolby\s*Vision|DV|DoVi)",
+    ]
+
+    codec_matches = []
+    for pattern in codec_patterns:
+        matches = re.finditer(pattern, name, re.IGNORECASE)
+        for match in matches:
+            codec_match = match.group(1)
+            # Avoid duplicates
+            if codec_match.lower() not in [c.lower() for c in codec_matches]:
+                codec_matches.append(codec_match)
+
+    # Join all codec indicators
+    if codec_matches:
+        codec = " ".join(codec_matches)
+
+    # Extract framerate if present
+    framerate = ""
+    fps_patterns = [
+        r"(?<![0-9])(\d{2,3}(?:\.\d+)?)\s*fps(?![0-9])",  # Explicit fps mention
+        r"(?<![0-9])(\d{2,3}(?:\.\d+)?)\s*hz(?![0-9])",   # Explicit hz mention
+        # Removed the pattern that was causing false positives with resolution
+    ]
+
+    for pattern in fps_patterns:
+        fps_match = re.search(pattern, name, re.IGNORECASE)
+        if fps_match:
+            framerate = f"{fps_match.group(1)} fps"
+            break
+
+    # Return the enhanced metadata
     return {
         "season": season,
         "episode": episode,
         "quality": quality,
+        "year": year,
+        "codec": codec,
+        "framerate": framerate,
     }
 
 

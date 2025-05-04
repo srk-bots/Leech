@@ -563,15 +563,36 @@ leech_as = """<b>Leech as</b>: -doc -med
 
 leech_filename = """<b>Leech Filename</b>:
 
-Set a global filename template for all your leech files. The template supports dynamic variables like {season}, {episode}, and {quality}.
+Set a global filename template for all your leech files. The template supports dynamic variables that are automatically extracted from filenames.
 
-Example: Naruto S{season} E{episode} Q{quality}.mkv
+<b>Basic Variables:</b>
+• <code>{filename}</code> - Original filename without extension
+• <code>{ext}</code> - File extension (e.g., mkv, mp4)
+• <code>{size}</code> - File size (e.g., 1.5GB)
+• <code>{quality}</code> - Video quality (e.g., 1080p, 720p)
 
-This will rename all files to follow this pattern, automatically replacing the variables with the actual values from each file.
+<b>TV Show Variables:</b>
+• <code>{season}</code> - Season number extracted from filename
+• <code>{episode}</code> - Episode number extracted from filename
+• <code>{year}</code> - Release year extracted from filename
+
+<b>Media Information:</b>
+• <code>{codec}</code> - Video codec (e.g., HEVC, AVC)
+• <code>{framerate}</code> - Video framerate
+• <code>{format}</code> - Media container format
+• <code>{formate}</code> - File extension in uppercase
+
+<b>Examples:</b>
+• <code>{filename} [{quality}]</code>
+• <code>{filename} S{season}E{episode} [{quality}]</code>
+• <code>{filename} ({year}) [{codec}]</code>
+• <code>Series S{season}E{episode} [{quality}] [{codec}]</code>
 
 You can set this in your user settings by going to /usettings > Leech Settings > Leech Filename.
 
-Note: Leech Caption still takes priority for display purposes, but this affects the actual filename of the files."""
+Use /fontstyles to see all available template variables.
+
+Note: This affects the actual filename of the files, while Leech Caption controls how they appear in Telegram messages."""
 
 font_styles = """<b>Font Styles</b>:
 Use the /fonts or /fontstyles command to see available font styles for leech.
@@ -964,19 +985,46 @@ user_settings_text = {
     "USER_SESSION": "Send your pyrogram user session string for download from private telegram chat. Timeout: 60 sec",
     "USER_DUMP": "Send your channel or group id where you want to store your leeched files. Bot must have permission to send message in your chat. Timeout: 60 sec",
     "USER_COOKIES": "Send your cookies.txt file for YouTube and other yt-dlp downloads. This will be used instead of the owner's cookies file. Create it using browser extensions like 'Get cookies.txt' or 'EditThisCookie'. Timeout: 60 sec",
-    "LEECH_FILENAME_CAPTION": """Send leech filename caption. Use /fontstyles for styling options and template variables.
+    "LEECH_FILENAME_CAPTION": """Send leech caption template. This will be used as the caption for all your leech files.
 
-<b>Basic Variables:</b> {filename}, {size}, {duration}, {quality}, {audios}, {subtitles}
-<b>Media Info:</b> {season}, {episode}, {year}, {formate}, {framerate}, {codec}
-<b>Track Counts:</b> {NumVideos}, {NumAudios}, {NumSubtitles}
-<b>Other:</b> {id}, {md5_hash}
+<b>Basic Variables:</b>
+• <code>{filename}</code> - Original filename without extension
+• <code>{ext}</code> - File extension (e.g., mkv, mp4)
+• <code>{size}</code> - File size (e.g., 1.5GB)
+• <code>{duration}</code> - Media duration (e.g., 01:30:45)
+• <code>{quality}</code> - Video quality (e.g., 1080p, 720p)
+• <code>{audios}</code> - Audio languages in the file
+• <code>{audio_codecs}</code> - Audio codec information
+• <code>{subtitles}</code> - Subtitle languages in the file
+• <code>{md5_hash}</code> - MD5 hash of the file
 
-<b>Styling:</b> Use {{variable}style} format (e.g., {{filename}bold}, {{size}Roboto})
+<b>TV Show Variables:</b>
+• <code>{season}</code> - Season number extracted from filename
+• <code>{episode}</code> - Episode number extracted from filename
+• <code>{year}</code> - Release year extracted from filename
+
+<b>Media Information:</b>
+• <code>{NumVideos}</code> - Number of video tracks
+• <code>{NumAudios}</code> - Number of audio tracks
+• <code>{NumSubtitles}</code> - Number of subtitle tracks
+• <code>{formate}</code> - File extension in uppercase
+• <code>{format}</code> - Media container format
+• <code>{id}</code> - Unique ID of the file
+• <code>{framerate}</code> - Video framerate
+• <code>{codec}</code> - Video codec information
+
+<b>Styling Options:</b>
+• HTML formatting: <code>{{filename}bold}</code>, <code>{{size}italic}</code>
+• Google Fonts: <code>{{filename}Roboto}</code>, <code>{{size}OpenSans}</code>
+• Unicode styles: <code>{{filename}serif_b}</code>, <code>{{size}mono}</code>
+• Emoji decoration: <code>{{filename}🔥}</code>
 
 <b>Examples:</b>
-• {filename} [{size}]
-• {{filename}bold} S{season}E{episode}
-• {{filename}Roboto} [{codec}]
+• <code>📁 {{filename}bold} | 💾 {size} | ⏱️ {duration}</code>
+• <code>🎬 {{filename}Roboto:700} [{quality}] [{codec}]</code>
+• <code>📺 S{season}E{episode} | {{quality}serif_i} | {audios}</code>
+
+Use /fontstyles for more styling options and examples.
 
 Timeout: 60 sec""",
     "LEECH_SPLIT_SIZE": f"Send Leech split size in bytes or use gb or mb. Example: 40000000 or 2.5gb or 1000mb. IS_PREMIUM_USER: {TgClient.IS_PREMIUM_USER}. Timeout: 60 sec",
@@ -990,7 +1038,34 @@ Timeout: 60 sec""",
     "LEECH_FILENAME_PREFIX": r"Send Leech Filename Prefix. You can add HTML tags. Example: <code>@mychannel</code>. Timeout: 60 sec",
     "LEECH_SUFFIX": r"Send Leech Filename Suffix. You can add HTML tags. Example: <code>@mychannel</code>. Timeout: 60 sec",
     "LEECH_FONT": "Send Leech Font Style. Options: HTML formats (bold, italic), Unicode styles (serif, sans_b), Google Fonts (Roboto, Open Sans), or emojis (🔥). Use /fontstyles for full list. Timeout: 60 sec",
-    "LEECH_FILENAME": "Send Leech Filename template. This will change the actual filename of all your leech files. Supports template variables like {season}, {episode}, {quality}. Example: Series S{season}E{episode} [{quality}]. Timeout: 60 sec",
+    "LEECH_FILENAME": """Send Leech Filename template. This will change the actual filename of all your leech files.
+
+<b>Basic Variables:</b>
+• <code>{filename}</code> - Original filename without extension
+• <code>{ext}</code> - File extension (e.g., mkv, mp4)
+• <code>{size}</code> - File size (e.g., 1.5GB)
+• <code>{quality}</code> - Video quality (e.g., 1080p, 720p)
+
+<b>TV Show Variables:</b>
+• <code>{season}</code> - Season number extracted from filename
+• <code>{episode}</code> - Episode number extracted from filename
+• <code>{year}</code> - Release year extracted from filename
+
+<b>Media Information:</b>
+• <code>{codec}</code> - Video codec (e.g., HEVC, AVC)
+• <code>{framerate}</code> - Video framerate
+• <code>{format}</code> - Media container format
+• <code>{formate}</code> - File extension in uppercase
+
+<b>Examples:</b>
+• <code>{filename} [{quality}]</code>
+• <code>{filename} S{season}E{episode} [{quality}]</code>
+• <code>{filename} ({year}) [{codec}]</code>
+• <code>Series S{season}E{episode} [{quality}] [{codec}]</code>
+
+Use /fontstyles to see all available template variables.
+
+Timeout: 60 sec""",
     "THUMBNAIL_LAYOUT": "Send thumbnail layout (widthxheight, 2x2, 3x3, 2x4, 4x4, ...). Example: 3x3. Timeout: 60 sec",
     "RCLONE_PATH": "Send Rclone Path. If you want to use your rclone config edit using owner/user config from usetting or add mrcc: before rclone path. Example mrcc:remote:folder. Timeout: 60 sec",
     "RCLONE_FLAGS": "key:value|key|key|key:value . Check here all <a href='https://rclone.org/flags/'>RcloneFlags</a>\nEx: --drive-starred-only",
