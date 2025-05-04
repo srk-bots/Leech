@@ -380,15 +380,8 @@ class TaskListener(TaskConfig):
         self.log_msgs = []
         if not self.is_leech and Config.LOG_CHAT_ID:
             msg = self.message.text.lstrip("/")
-            # Ensure LOG_CHAT_ID is treated as a list
-            log_chat_ids = Config.LOG_CHAT_ID
-            if not isinstance(log_chat_ids, list):
-                from bot.helper.ext_utils.bot_utils import parse_chat_ids
-
-                log_chat_ids = parse_chat_ids(log_chat_ids)
-
             # Send command message to all owner's log chat IDs
-            for chat_id in log_chat_ids:
+            for chat_id in Config.LOG_CHAT_ID:
                 try:
                     # Send command message to owner's log chat ID
                     log_msg = await self.client.send_message(
@@ -599,44 +592,20 @@ class TaskListener(TaskConfig):
                             if not user_dump:
                                 # Send to all owner leech dumps and bot PM
                                 if Config.LEECH_DUMP_CHAT:
-                                    # Ensure LEECH_DUMP_CHAT is treated as a list
-                                    dump_chat_ids = Config.LEECH_DUMP_CHAT
-                                    if not isinstance(dump_chat_ids, list):
-                                        from bot.helper.ext_utils.bot_utils import (
-                                            parse_chat_ids,
-                                        )
-
-                                        dump_chat_ids = parse_chat_ids(dump_chat_ids)
-                                    leech_destinations.extend(dump_chat_ids)
+                                    leech_destinations.extend(Config.LEECH_DUMP_CHAT)
 
                             # Case 2: If user set their own dump and owner has no premium string
                             elif user_dump and not owner_has_premium:
                                 # Send to user's own dump, owner leech dump, and bot PM
                                 leech_destinations.append(int(user_dump))
                                 if Config.LEECH_DUMP_CHAT:
-                                    # Ensure LEECH_DUMP_CHAT is treated as a list
-                                    dump_chat_ids = Config.LEECH_DUMP_CHAT
-                                    if not isinstance(dump_chat_ids, list):
-                                        from bot.helper.ext_utils.bot_utils import (
-                                            parse_chat_ids,
-                                        )
-
-                                        dump_chat_ids = parse_chat_ids(dump_chat_ids)
-                                    leech_destinations.extend(dump_chat_ids)
+                                    leech_destinations.extend(Config.LEECH_DUMP_CHAT)
 
                             # Case 3: If user set their own dump and owner has premium string
                             elif user_dump and owner_has_premium:
                                 # By default, send to owner leech dumps and bot PM
                                 if Config.LEECH_DUMP_CHAT:
-                                    # Ensure LEECH_DUMP_CHAT is treated as a list
-                                    dump_chat_ids = Config.LEECH_DUMP_CHAT
-                                    if not isinstance(dump_chat_ids, list):
-                                        from bot.helper.ext_utils.bot_utils import (
-                                            parse_chat_ids,
-                                        )
-
-                                        dump_chat_ids = parse_chat_ids(dump_chat_ids)
-                                    leech_destinations.extend(dump_chat_ids)
+                                    leech_destinations.extend(Config.LEECH_DUMP_CHAT)
 
                                 # TODO: Add logic to check if owner has permission to user's dump
                                 # For now, we'll assume owner doesn't have permission to user's dump
@@ -708,44 +677,20 @@ class TaskListener(TaskConfig):
                         if not user_dump:
                             # Send to all owner leech dumps and bot PM
                             if Config.LEECH_DUMP_CHAT:
-                                # Ensure LEECH_DUMP_CHAT is treated as a list
-                                dump_chat_ids = Config.LEECH_DUMP_CHAT
-                                if not isinstance(dump_chat_ids, list):
-                                    from bot.helper.ext_utils.bot_utils import (
-                                        parse_chat_ids,
-                                    )
-
-                                    dump_chat_ids = parse_chat_ids(dump_chat_ids)
-                                leech_destinations.extend(dump_chat_ids)
+                                leech_destinations.extend(Config.LEECH_DUMP_CHAT)
 
                         # Case 2: If user set their own dump and owner has no premium string
                         elif user_dump and not owner_has_premium:
                             # Send to user's own dump, owner leech dump, and bot PM
                             leech_destinations.append(int(user_dump))
                             if Config.LEECH_DUMP_CHAT:
-                                # Ensure LEECH_DUMP_CHAT is treated as a list
-                                dump_chat_ids = Config.LEECH_DUMP_CHAT
-                                if not isinstance(dump_chat_ids, list):
-                                    from bot.helper.ext_utils.bot_utils import (
-                                        parse_chat_ids,
-                                    )
-
-                                    dump_chat_ids = parse_chat_ids(dump_chat_ids)
-                                leech_destinations.extend(dump_chat_ids)
+                                leech_destinations.extend(Config.LEECH_DUMP_CHAT)
 
                         # Case 3: If user set their own dump and owner has premium string
                         elif user_dump and owner_has_premium:
                             # By default, send to owner leech dumps and bot PM
                             if Config.LEECH_DUMP_CHAT:
-                                # Ensure LEECH_DUMP_CHAT is treated as a list
-                                dump_chat_ids = Config.LEECH_DUMP_CHAT
-                                if not isinstance(dump_chat_ids, list):
-                                    from bot.helper.ext_utils.bot_utils import (
-                                        parse_chat_ids,
-                                    )
-
-                                    dump_chat_ids = parse_chat_ids(dump_chat_ids)
-                                leech_destinations.extend(dump_chat_ids)
+                                leech_destinations.extend(Config.LEECH_DUMP_CHAT)
 
                             # TODO: Add logic to check if owner has permission to user's dump
                             # For now, we'll assume owner doesn't have permission to user's dump
@@ -864,13 +809,7 @@ class TaskListener(TaskConfig):
                 if user_dump and Config.LOG_CHAT_ID:
                     # Send to user dump, all owner log chat ids, and bot PM
                     mirror_destinations.append(int(user_dump))
-                    # Ensure LOG_CHAT_ID is treated as a list
-                    log_chat_ids = Config.LOG_CHAT_ID
-                    if not isinstance(log_chat_ids, list):
-                        from bot.helper.ext_utils.bot_utils import parse_chat_ids
-
-                        log_chat_ids = parse_chat_ids(log_chat_ids)
-                    mirror_destinations.extend(log_chat_ids)
+                    mirror_destinations.extend(Config.LOG_CHAT_ID)
 
                 # Case 2: If user set their own dump and owner didn't set log chat ids
                 elif user_dump and not Config.LOG_CHAT_ID:
@@ -880,13 +819,7 @@ class TaskListener(TaskConfig):
                 # Case 3: If user didn't set their own dump and owner set log chat ids
                 elif not user_dump and Config.LOG_CHAT_ID:
                     # Send to all owner log chat ids and bot PM
-                    # Ensure LOG_CHAT_ID is treated as a list
-                    log_chat_ids = Config.LOG_CHAT_ID
-                    if not isinstance(log_chat_ids, list):
-                        from bot.helper.ext_utils.bot_utils import parse_chat_ids
-
-                        log_chat_ids = parse_chat_ids(log_chat_ids)
-                    mirror_destinations.extend(log_chat_ids)
+                    mirror_destinations.extend(Config.LOG_CHAT_ID)
 
                 # Remove duplicates while preserving order
                 seen = set()
