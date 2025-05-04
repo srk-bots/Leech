@@ -444,6 +444,11 @@ class TelegramUploader:
             else ""
         )
         self._user_dump = self._listener.user_dict.get("USER_DUMP")
+        # Add debug logs for user_dump
+        LOGGER.info(
+            f"DEBUG: TelegramUploader init - user_dump value: {self._user_dump}, type: {type(self._user_dump)}"
+        )
+        # No need to convert to string, we're handling lists properly now
         self._lcaption = self._listener.user_dict.get("LEECH_FILENAME_CAPTION") or (
             Config.LEECH_FILENAME_CAPTION
             if "LEECH_FILENAME_CAPTION" not in self._listener.user_dict

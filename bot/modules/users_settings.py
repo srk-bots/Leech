@@ -161,8 +161,13 @@ async def get_user_settings(from_user, stype="main"):
         )
         if user_dict.get("USER_DUMP", False):
             udump = user_dict["USER_DUMP"]
+            # Add debug logs
+            LOGGER.info(
+                f"DEBUG: USER_DUMP in user_settings - value: {udump}, type: {type(udump)}"
+            )
         else:
             udump = "None"
+            LOGGER.info("DEBUG: USER_DUMP in user_settings - Not set")
         buttons.data_button(
             "User Session",
             f"userset {user_id} menu USER_SESSION",
@@ -799,6 +804,22 @@ async def set_option(_, message, option):
     user_id = message.from_user.id
     handler_dict[user_id] = False
     value = message.text
+
+    # Add debug logs for USER_DUMP
+    if option == "USER_DUMP":
+        LOGGER.info(
+            f"DEBUG: Setting USER_DUMP - raw value: {value}, type: {type(value)}"
+        )
+
+        # Always parse USER_DUMP as a list of chat IDs
+        from bot.helper.ext_utils.bot_utils import parse_chat_ids
+
+        parsed_value = parse_chat_ids(value)
+        LOGGER.info(
+            f"DEBUG: USER_DUMP parsed as list: {parsed_value}, type: {type(parsed_value)}"
+        )
+        value = parsed_value
+
     if option == "LEECH_SPLIT_SIZE":
         try:
             # Try to convert the value to an integer

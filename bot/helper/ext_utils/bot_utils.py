@@ -631,25 +631,42 @@ def parse_chat_ids(chat_ids_str: str | int | list[str | int]) -> list:
     Returns:
         list: List of integer chat IDs
     """
+    from bot import LOGGER
+
+    LOGGER.info(
+        f"DEBUG: parse_chat_ids input: {chat_ids_str}, type: {type(chat_ids_str)}"
+    )
+
     if not chat_ids_str:
+        LOGGER.info("DEBUG: parse_chat_ids - empty input, returning empty list")
         return []
 
     # If it's already a list, process each item
     if isinstance(chat_ids_str, list):
+        LOGGER.info(
+            f"DEBUG: parse_chat_ids - input is a list with {len(chat_ids_str)} items"
+        )
         result = []
         for item in chat_ids_str:
             # Process each item and extend the result list
+            LOGGER.info(
+                f"DEBUG: parse_chat_ids - processing list item: {item}, type: {type(item)}"
+            )
             result.extend(parse_chat_ids(item))
+        LOGGER.info(f"DEBUG: parse_chat_ids - processed list result: {result}")
         return result
 
     # If it's an integer, return it as a single-item list
     if isinstance(chat_ids_str, int):
+        LOGGER.info(f"DEBUG: parse_chat_ids - input is an integer: {chat_ids_str}")
         return [chat_ids_str]
 
     # If it's a string, split by commas and convert to integers
     if isinstance(chat_ids_str, str):
+        LOGGER.info(f"DEBUG: parse_chat_ids - input is a string: {chat_ids_str}")
         # Handle empty string
         if not chat_ids_str.strip():
+            LOGGER.info("DEBUG: parse_chat_ids - empty string, returning empty list")
             return []
 
         # Split by commas and process each part
@@ -663,14 +680,24 @@ def parse_chat_ids(chat_ids_str: str | int | list[str | int]) -> list:
             try:
                 chat_id = int(part)
                 chat_ids.append(chat_id)
+                LOGGER.info(
+                    f"DEBUG: parse_chat_ids - converted string part to integer: {chat_id}"
+                )
             except ValueError:
                 # If it's not a valid integer, it might be a username
                 # Just add it as is - the message sending function will handle it
                 chat_ids.append(part)
+                LOGGER.info(
+                    f"DEBUG: parse_chat_ids - added string part as is: {part}"
+                )
 
+        LOGGER.info(f"DEBUG: parse_chat_ids - processed string result: {chat_ids}")
         return chat_ids
 
     # For any other type, return empty list
+    LOGGER.info(
+        f"DEBUG: parse_chat_ids - unknown type: {type(chat_ids_str)}, returning empty list"
+    )
     return []
 
 

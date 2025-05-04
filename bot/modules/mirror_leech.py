@@ -232,6 +232,10 @@ class Mirror(TaskListener):
         self.seed = args["-d"]
         self.name = args["-n"]
         self.up_dest = args["-up"]
+        # Add debug logs for up_dest
+        LOGGER.info(
+            f"DEBUG: up_dest value: {self.up_dest}, type: {type(self.up_dest)}"
+        )
         self.rc_flags = args["-rcf"]
         self.link = args["link"]
         self.compress = args["-z"]
