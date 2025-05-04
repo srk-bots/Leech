@@ -1,4 +1,13 @@
 # ruff: noqa: E402
+import os
+import sys
+from pathlib import Path
+
+# Check if web server is disabled by looking for the marker file
+if Path(".web_server_disabled").exists():
+    print("Web server is disabled (BASE_URL_PORT = 0). Exiting.")
+    sys.exit(0)
+
 from uvloop import install  # type: ignore
 
 install()

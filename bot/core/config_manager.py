@@ -570,6 +570,10 @@ class SystemEnv:
     def load(cls):
         config_vars = Config.get_all()
         for key in config_vars:
+            # Skip BASE_URL_PORT if it's explicitly set to 0 in config.py
+            if key == "BASE_URL_PORT" and Config.BASE_URL_PORT == 0:
+                continue
+
             env_value = os.getenv(key)
             if env_value is not None:
                 converted_value = cls._convert_type(key, env_value)
