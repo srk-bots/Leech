@@ -23,7 +23,7 @@ class Config:
     JD_EMAIL: str = ""
     JD_PASS: str = ""
     IS_TEAM_DRIVE: bool = False
-    LEECH_DUMP_CHAT: list = []
+    LEECH_DUMP_CHAT: str = ""
     LEECH_FILENAME_PREFIX: str = ""
     LEECH_SUFFIX: str = ""
     LEECH_FONT: str = ""
@@ -94,7 +94,7 @@ class Config:
     PAID_CHANNEL_LINK: str = ""
     DELETE_LINKS: bool = False
     FSUB_IDS: str = ""
-    LOG_CHAT_ID: list = []
+    LOG_CHAT_ID: int = 0
     LEECH_FILENAME_CAPTION: str = ""
     HYDRA_IP: str = ""
     HYDRA_API_KEY: str = ""
@@ -520,11 +520,6 @@ class Config:
                                 continue
                         except Exception:
                             continue
-                    elif attr in ["LEECH_DUMP_CHAT", "LOG_CHAT_ID"] and value:
-                        # Handle comma-separated chat IDs
-                        from bot.helper.ext_utils.bot_utils import parse_chat_ids
-
-                        value = parse_chat_ids(value)
                     setattr(cls, attr, value)
 
     @classmethod
@@ -549,11 +544,6 @@ class Config:
                             value = []
                     except Exception:
                         value = []
-                elif key in ["LEECH_DUMP_CHAT", "LOG_CHAT_ID"] and value:
-                    # Handle comma-separated chat IDs
-                    from bot.helper.ext_utils.bot_utils import parse_chat_ids
-
-                    value = parse_chat_ids(value)
                 setattr(cls, key, value)
 
 
