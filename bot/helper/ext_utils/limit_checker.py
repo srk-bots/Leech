@@ -1,12 +1,12 @@
 from bot import LOGGER
 from bot.core.config_manager import Config
 from bot.helper.ext_utils.bot_utils import (
-    get_readable_file_size,
     getdailytasks,
     sync_to_async,
     timeval_check,
 )
 from bot.helper.ext_utils.fs_utils import check_storage_threshold
+from bot.helper.ext_utils.status_utils import get_readable_file_size
 from bot.helper.telegram_helper.filters import CustomFilters
 
 
