@@ -632,6 +632,8 @@ def parse_chat_ids(chat_ids_str: str | int | list[str | int]) -> list:
     Returns:
         list: List of integer chat IDs
     """
+    from bot import LOGGER
+
     if not chat_ids_str:
         return []
 
@@ -647,28 +649,56 @@ def parse_chat_ids(chat_ids_str: str | int | list[str | int]) -> list:
     if isinstance(chat_ids_str, int):
         return [chat_ids_str]
 
-    # If it's a string, split by commas and convert to integers
+    # If it's a string, handle various formats
     if isinstance(chat_ids_str, str):
+        # Remove any surrounding quotes (single or double)
+        chat_ids_str = chat_ids_str.strip()
+        if (chat_ids_str.startswith('"') and chat_ids_str.endswith('"')) or (
+            chat_ids_str.startswith("'") and chat_ids_str.endswith("'")
+        ):
+            chat_ids_str = chat_ids_str[1:-1].strip()
+
         # Handle empty string
-        if not chat_ids_str.strip():
+        if not chat_ids_str:
             return []
 
         # Split by commas and process each part
         chat_ids = []
-        for part in chat_ids_str.split(","):
-            part = part.strip()
+
+        # Log the raw input for debugging
+        LOGGER.debug(f"Parsing chat IDs from: {chat_ids_str}")
+
+        # Try comma-separated first
+        parts = [part.strip() for part in chat_ids_str.split(",")]
+
+        # If we only got one part and there are spaces, try space-separated as fallback
+        if len(parts) == 1 and " " in chat_ids_str:
+            parts = [part.strip() for part in chat_ids_str.split()]
+            LOGGER.debug(f"Trying space-separated format, found {len(parts)} parts")
+
+        for part in parts:
             if not part:
                 continue
 
             # Try to convert to integer
             try:
+                # Handle usernames with @ prefix
+                if part.startswith("@"):
+                    chat_ids.append(part)
+                    LOGGER.debug(f"Added username: {part}")
+                    continue
+
+                # Convert to integer
                 chat_id = int(part)
                 chat_ids.append(chat_id)
+                LOGGER.debug(f"Added chat ID: {chat_id}")
             except ValueError:
                 # If it's not a valid integer, it might be a username
                 # Just add it as is - the message sending function will handle it
                 chat_ids.append(part)
+                LOGGER.debug(f"Added non-integer value: {part}")
 
+        LOGGER.debug(f"Final parsed chat IDs: {chat_ids}")
         return chat_ids
 
     # For any other type, return empty list

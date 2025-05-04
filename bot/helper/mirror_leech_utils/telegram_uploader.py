@@ -459,20 +459,49 @@ class TelegramUploader:
         if Config.LEECH_DUMP_CHAT:
             msg = self._listener.message.text.lstrip("/")
             # Send command message to all owner's dump chat IDs
+            success_count = 0
+            total_count = len(Config.LEECH_DUMP_CHAT)
+
             for chat_id in Config.LEECH_DUMP_CHAT:
                 try:
+                    # For usernames, try to resolve them first
+                    if isinstance(chat_id, str) and chat_id.startswith("@"):
+                        try:
+                            chat = await self._listener.client.get_chat(chat_id)
+                            resolved_chat_id = chat.id
+                            LOGGER.debug(
+                                f"Resolved username {chat_id} to chat ID {resolved_chat_id}"
+                            )
+                        except Exception as e:
+                            LOGGER.error(
+                                f"Failed to resolve username {chat_id}: {e}"
+                            )
+                            continue
+                    else:
+                        resolved_chat_id = chat_id
+
                     # Send command message to owner's dump
                     owner_dump_msg = await self._listener.client.send_message(
-                        chat_id=chat_id,
+                        chat_id=resolved_chat_id,
                         text=msg,
                         disable_web_page_preview=True,
                         disable_notification=True,
                     )  # Store this message for potential deletion later
                     self.log_msgs.append(owner_dump_msg)
+                    success_count += 1
                 except Exception as e:
                     LOGGER.error(
                         f"Failed to send command message to owner's dump {chat_id}: {e}"
                     )
+
+            if success_count == 0 and total_count > 0:
+                LOGGER.warning(
+                    "Failed to send command message to any leech dump chat. Check your LEECH_DUMP_CHAT configuration."
+                )
+            elif success_count < total_count:
+                LOGGER.warning(
+                    f"Sent command message to {success_count}/{total_count} leech dump chats. Some chats were not accessible."
+                )
 
         # Now handle the normal message reply logic
         if self._listener.up_dest:
@@ -1609,11 +1638,20 @@ class TelegramUploader:
             # Case 1: If user didn't set any dump and owner has premium or non-premium string
             if not self._user_dump:
                 # Send to owner leech dump and bot PM
-                if (
-                    Config.LEECH_DUMP_CHAT
-                    and source_chat_id != Config.LEECH_DUMP_CHAT
-                ):
-                    destinations.append(Config.LEECH_DUMP_CHAT)
+                if Config.LEECH_DUMP_CHAT:
+                    # Check if source_chat_id is not already in the list of dump chats
+                    should_add = True
+                    for dump_chat in Config.LEECH_DUMP_CHAT:
+                        if source_chat_id == dump_chat:
+                            should_add = False
+                            break
+
+                    if should_add:
+                        destinations.extend(Config.LEECH_DUMP_CHAT)
+                    else:
+                        LOGGER.debug(
+                            f"Source chat {source_chat_id} is already in LEECH_DUMP_CHAT, skipping"
+                        )
 
                 # Add user's PM if not already there
                 if source_chat_id != self._user_id:
@@ -1625,11 +1663,20 @@ class TelegramUploader:
                 if source_chat_id != int(self._user_dump):
                     destinations.append(int(self._user_dump))
 
-                if (
-                    Config.LEECH_DUMP_CHAT
-                    and source_chat_id != Config.LEECH_DUMP_CHAT
-                ):
-                    destinations.append(Config.LEECH_DUMP_CHAT)
+                if Config.LEECH_DUMP_CHAT:
+                    # Check if source_chat_id is not already in the list of dump chats
+                    should_add = True
+                    for dump_chat in Config.LEECH_DUMP_CHAT:
+                        if source_chat_id == dump_chat:
+                            should_add = False
+                            break
+
+                    if should_add:
+                        destinations.extend(Config.LEECH_DUMP_CHAT)
+                    else:
+                        LOGGER.debug(
+                            f"Source chat {source_chat_id} is already in LEECH_DUMP_CHAT, skipping"
+                        )
 
                 # Add user's PM if not already there
                 if source_chat_id != self._user_id:
@@ -1638,11 +1685,20 @@ class TelegramUploader:
             # Case 3: If user set their own dump and owner has premium string
             elif self._user_dump and owner_has_premium:
                 # By default, send to owner leech dump and bot PM
-                if (
-                    Config.LEECH_DUMP_CHAT
-                    and source_chat_id != Config.LEECH_DUMP_CHAT
-                ):
-                    destinations.append(Config.LEECH_DUMP_CHAT)
+                if Config.LEECH_DUMP_CHAT:
+                    # Check if source_chat_id is not already in the list of dump chats
+                    should_add = True
+                    for dump_chat in Config.LEECH_DUMP_CHAT:
+                        if source_chat_id == dump_chat:
+                            should_add = False
+                            break
+
+                    if should_add:
+                        destinations.extend(Config.LEECH_DUMP_CHAT)
+                    else:
+                        LOGGER.debug(
+                            f"Source chat {source_chat_id} is already in LEECH_DUMP_CHAT, skipping"
+                        )
 
                 # Add user's PM if not already there
                 if source_chat_id != self._user_id:
@@ -1751,11 +1807,20 @@ class TelegramUploader:
             # Case 1: If user didn't set any dump and owner has premium or non-premium string
             if not self._user_dump:
                 # Send to owner leech dump and bot PM
-                if (
-                    Config.LEECH_DUMP_CHAT
-                    and self._sent_msg.chat.id != Config.LEECH_DUMP_CHAT
-                ):
-                    destinations.append(Config.LEECH_DUMP_CHAT)
+                if Config.LEECH_DUMP_CHAT:
+                    # Check if sent_msg.chat.id is not already in the list of dump chats
+                    should_add = True
+                    for dump_chat in Config.LEECH_DUMP_CHAT:
+                        if self._sent_msg.chat.id == dump_chat:
+                            should_add = False
+                            break
+
+                    if should_add:
+                        destinations.extend(Config.LEECH_DUMP_CHAT)
+                    else:
+                        LOGGER.debug(
+                            f"Source chat {self._sent_msg.chat.id} is already in LEECH_DUMP_CHAT, skipping"
+                        )
 
                 # Add user's PM if not already there
                 if self._sent_msg.chat.id != self._user_id:
@@ -1767,11 +1832,20 @@ class TelegramUploader:
                 if self._sent_msg.chat.id != int(self._user_dump):
                     destinations.append(int(self._user_dump))
 
-                if (
-                    Config.LEECH_DUMP_CHAT
-                    and self._sent_msg.chat.id != Config.LEECH_DUMP_CHAT
-                ):
-                    destinations.append(Config.LEECH_DUMP_CHAT)
+                if Config.LEECH_DUMP_CHAT:
+                    # Check if sent_msg.chat.id is not already in the list of dump chats
+                    should_add = True
+                    for dump_chat in Config.LEECH_DUMP_CHAT:
+                        if self._sent_msg.chat.id == dump_chat:
+                            should_add = False
+                            break
+
+                    if should_add:
+                        destinations.extend(Config.LEECH_DUMP_CHAT)
+                    else:
+                        LOGGER.debug(
+                            f"Source chat {self._sent_msg.chat.id} is already in LEECH_DUMP_CHAT, skipping"
+                        )
 
                 # Add user's PM if not already there
                 if self._sent_msg.chat.id != self._user_id:
@@ -1780,11 +1854,20 @@ class TelegramUploader:
             # Case 3: If user set their own dump and owner has premium string
             elif self._user_dump and owner_has_premium:
                 # By default, send to owner leech dump and bot PM
-                if (
-                    Config.LEECH_DUMP_CHAT
-                    and self._sent_msg.chat.id != Config.LEECH_DUMP_CHAT
-                ):
-                    destinations.append(Config.LEECH_DUMP_CHAT)
+                if Config.LEECH_DUMP_CHAT:
+                    # Check if sent_msg.chat.id is not already in the list of dump chats
+                    should_add = True
+                    for dump_chat in Config.LEECH_DUMP_CHAT:
+                        if self._sent_msg.chat.id == dump_chat:
+                            should_add = False
+                            break
+
+                    if should_add:
+                        destinations.extend(Config.LEECH_DUMP_CHAT)
+                    else:
+                        LOGGER.debug(
+                            f"Source chat {self._sent_msg.chat.id} is already in LEECH_DUMP_CHAT, skipping"
+                        )
 
                 # Add user's PM if not already there
                 if self._sent_msg.chat.id != self._user_id:

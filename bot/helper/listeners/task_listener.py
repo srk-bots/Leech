@@ -381,20 +381,49 @@ class TaskListener(TaskConfig):
         if not self.is_leech and Config.LOG_CHAT_ID:
             msg = self.message.text.lstrip("/")
             # Send command message to all owner's log chat IDs
+            success_count = 0
+            total_count = len(Config.LOG_CHAT_ID)
+
             for chat_id in Config.LOG_CHAT_ID:
                 try:
+                    # For usernames, try to resolve them first
+                    if isinstance(chat_id, str) and chat_id.startswith("@"):
+                        try:
+                            chat = await self.client.get_chat(chat_id)
+                            resolved_chat_id = chat.id
+                            LOGGER.debug(
+                                f"Resolved username {chat_id} to chat ID {resolved_chat_id}"
+                            )
+                        except Exception as e:
+                            LOGGER.error(
+                                f"Failed to resolve username {chat_id}: {e}"
+                            )
+                            continue
+                    else:
+                        resolved_chat_id = chat_id
+
                     # Send command message to owner's log chat ID
                     log_msg = await self.client.send_message(
-                        chat_id=chat_id,
+                        chat_id=resolved_chat_id,
                         text=msg,
                         disable_web_page_preview=True,
                         disable_notification=True,
                     )
                     self.log_msgs.append(log_msg)
+                    success_count += 1
                 except Exception as e:
                     LOGGER.error(
                         f"Failed to send mirror command message to owner's log chat ID {chat_id}: {e}"
                     )
+
+            if success_count == 0 and total_count > 0:
+                LOGGER.warning(
+                    "Failed to send command message to any log chat. Check your LOG_CHAT_ID configuration."
+                )
+            elif success_count < total_count:
+                LOGGER.warning(
+                    f"Sent command message to {success_count}/{total_count} log chats. Some chats were not accessible."
+                )
 
         if self.is_leech:
             LOGGER.info(f"Leech Name: {self.name}")
@@ -592,7 +621,11 @@ class TaskListener(TaskConfig):
                             if not user_dump:
                                 # Send to all owner leech dumps and bot PM
                                 if Config.LEECH_DUMP_CHAT:
+                                    # Add all leech dump chats to destinations
                                     leech_destinations.extend(Config.LEECH_DUMP_CHAT)
+                                    LOGGER.debug(
+                                        f"Added {len(Config.LEECH_DUMP_CHAT)} leech dump chats to destinations"
+                                    )
 
                             # Case 2: If user set their own dump and owner has no premium string
                             elif user_dump and not owner_has_premium:
@@ -619,16 +652,47 @@ class TaskListener(TaskConfig):
                             ]
 
                             # Send to all destinations
+                            success_count = 0
+                            total_count = len(leech_destinations)
+
                             for dest in leech_destinations:
                                 try:
+                                    # For usernames, try to resolve them first
+                                    if isinstance(dest, str) and dest.startswith(
+                                        "@"
+                                    ):
+                                        try:
+                                            chat = await self.client.get_chat(dest)
+                                            resolved_dest = chat.id
+                                            LOGGER.debug(
+                                                f"Resolved username {dest} to chat ID {resolved_dest}"
+                                            )
+                                        except Exception as e:
+                                            LOGGER.error(
+                                                f"Failed to resolve username {dest}: {e}"
+                                            )
+                                            continue
+                                    else:
+                                        resolved_dest = dest
+
                                     await send_message(
-                                        dest,
+                                        resolved_dest,
                                         f"{msg}<blockquote expandable>{fmsg}</blockquote>",
                                     )
+                                    success_count += 1
                                 except Exception as e:
                                     LOGGER.error(
                                         f"Failed to send leech log to destination {dest}: {e}"
                                     )
+
+                            if success_count == 0 and total_count > 0:
+                                LOGGER.warning(
+                                    "Failed to send leech log to any destination. Check your LEECH_DUMP_CHAT configuration."
+                                )
+                            elif success_count < total_count:
+                                LOGGER.warning(
+                                    f"Sent leech log to {success_count}/{total_count} destinations. Some destinations were not accessible."
+                                )
 
                         await sleep(1)
                         fmsg = ""
@@ -677,7 +741,11 @@ class TaskListener(TaskConfig):
                         if not user_dump:
                             # Send to all owner leech dumps and bot PM
                             if Config.LEECH_DUMP_CHAT:
+                                # Add all leech dump chats to destinations
                                 leech_destinations.extend(Config.LEECH_DUMP_CHAT)
+                                LOGGER.debug(
+                                    f"Added {len(Config.LEECH_DUMP_CHAT)} leech dump chats to destinations"
+                                )
 
                         # Case 2: If user set their own dump and owner has no premium string
                         elif user_dump and not owner_has_premium:
@@ -704,16 +772,45 @@ class TaskListener(TaskConfig):
                         ]
 
                         # Send to all destinations
+                        success_count = 0
+                        total_count = len(leech_destinations)
+
                         for dest in leech_destinations:
                             try:
+                                # For usernames, try to resolve them first
+                                if isinstance(dest, str) and dest.startswith("@"):
+                                    try:
+                                        chat = await self.client.get_chat(dest)
+                                        resolved_dest = chat.id
+                                        LOGGER.debug(
+                                            f"Resolved username {dest} to chat ID {resolved_dest}"
+                                        )
+                                    except Exception as e:
+                                        LOGGER.error(
+                                            f"Failed to resolve username {dest}: {e}"
+                                        )
+                                        continue
+                                else:
+                                    resolved_dest = dest
+
                                 await send_message(
-                                    dest,
+                                    resolved_dest,
                                     f"{msg}<blockquote expandable>{fmsg}</blockquote>",
                                 )
+                                success_count += 1
                             except Exception as e:
                                 LOGGER.error(
                                     f"Failed to send leech log to destination {dest}: {e}"
                                 )
+
+                        if success_count == 0 and total_count > 0:
+                            LOGGER.warning(
+                                "Failed to send leech log to any destination. Check your LEECH_DUMP_CHAT configuration."
+                            )
+                        elif success_count < total_count:
+                            LOGGER.warning(
+                                f"Sent leech log to {success_count}/{total_count} destinations. Some destinations were not accessible."
+                            )
 
                 # Send completion message to original chat
                 await send_message(self.message, done_msg)
@@ -828,13 +925,42 @@ class TaskListener(TaskConfig):
                 ]
 
                 # Send to all destinations
+                success_count = 0
+                total_count = len(mirror_destinations)
+
                 for dest in mirror_destinations:
                     try:
-                        await send_message(dest, msg, button)
+                        # For usernames, try to resolve them first
+                        if isinstance(dest, str) and dest.startswith("@"):
+                            try:
+                                chat = await self.client.get_chat(dest)
+                                resolved_dest = chat.id
+                                LOGGER.debug(
+                                    f"Resolved username {dest} to chat ID {resolved_dest}"
+                                )
+                            except Exception as e:
+                                LOGGER.error(
+                                    f"Failed to resolve username {dest}: {e}"
+                                )
+                                continue
+                        else:
+                            resolved_dest = dest
+
+                        await send_message(resolved_dest, msg, button)
+                        success_count += 1
                     except Exception as e:
                         LOGGER.error(
                             f"Failed to send mirror log to destination {dest}: {e}"
                         )
+
+                if success_count == 0 and total_count > 0:
+                    LOGGER.warning(
+                        "Failed to send mirror log to any destination. Check your LOG_CHAT_ID configuration."
+                    )
+                elif success_count < total_count:
+                    LOGGER.warning(
+                        f"Sent mirror log to {success_count}/{total_count} destinations. Some destinations were not accessible."
+                    )
 
             # Send completion message to original chat
             await send_message(self.message, done_msg)
