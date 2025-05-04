@@ -3332,9 +3332,6 @@ class TaskConfig:
         checked = False
         cmds = []
 
-        # Log the FFmpeg commands for debugging
-        LOGGER.info(f"FFmpeg commands before processing: {self.ffmpeg_cmds}")
-
         # Check if ffmpeg_cmds is empty or None
         if not self.ffmpeg_cmds:
             return dl_path
@@ -3381,12 +3378,8 @@ class TaskConfig:
             ):
                 # Remove the quotes
                 self.ffmpeg_cmds[0] = self.ffmpeg_cmds[0][1:-1]
-                LOGGER.info(
-                    f"Removed quotes from FFmpeg command: {self.ffmpeg_cmds}"
-                )
-            LOGGER.info(f"Using direct FFmpeg command: {self.ffmpeg_cmds}")
 
-        LOGGER.info(f"FFmpeg commands after lookup: {self.ffmpeg_cmds}")
+        # FFmpeg commands are ready for processing
 
         # Process each FFmpeg command with error handling
         for item in self.ffmpeg_cmds:
@@ -3401,7 +3394,7 @@ class TaskConfig:
                             if part.strip()
                         ]
                         cmds.append(parts)
-                        LOGGER.info(f"Parsed FFmpeg command: {parts}")
+                        LOGGER.debug(f"Parsed FFmpeg command: {parts}")
                     except ValueError as e:
                         # Handle the "No closing quotation" error
                         if "No closing quotation" in str(e):
@@ -3423,7 +3416,7 @@ class TaskConfig:
                                     if part.strip()
                                 ]
                                 cmds.append(parts)
-                                LOGGER.info(f"Parsed fixed FFmpeg command: {parts}")
+
                             except Exception as e2:
                                 LOGGER.error(
                                     f"Error parsing fixed FFmpeg command: {e2}"
@@ -3439,13 +3432,10 @@ class TaskConfig:
                                 part.strip() for part in item.split() if part.strip()
                             ]
                             cmds.append(parts)
-                            LOGGER.info(
-                                f"Parsed FFmpeg command with simple split: {parts}"
-                            )
+
                 elif isinstance(item, list):
                     # If it's already a list, use it directly
                     cmds.append(item)
-                    LOGGER.info(f"Using pre-parsed FFmpeg command: {item}")
                 else:
                     # For other types, convert to string and try to parse
                     LOGGER.warning(
@@ -3464,8 +3454,7 @@ class TaskConfig:
                 if item:
                     cmds.append([str(item)])
 
-        # Log the processed commands
-        LOGGER.info(f"Processed FFmpeg commands: {cmds}")
+        # Commands are processed and ready for execution
 
         # Check if any command is empty or missing input parameter
         valid_cmds = []
@@ -3476,9 +3465,8 @@ class TaskConfig:
 
             # Check if the command contains -i parameter
             if "-i" not in cmd:
-                LOGGER.info(
-                    f"Command missing -i parameter, will add it later: {cmd}"
-                )
+                # Will add -i parameter later
+                pass
 
             # Add the command to the valid commands list
             valid_cmds.append(cmd)

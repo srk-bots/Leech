@@ -545,6 +545,9 @@ def is_media_tool_enabled(tool_name):
         "sample",
     ]
 
+    # This is a synchronous function, so we can't directly access the database
+    # We'll use the current value from Config and rely on the UI to refresh it
+
     # Parse enabled tools from the configuration
     enabled_tools = []
 
@@ -605,12 +608,21 @@ def is_media_tool_enabled(tool_name):
             except Exception as e:
                 LOGGER.error(f"Error parsing MEDIA_TOOLS_ENABLED value: {e}")
 
+    # Debug log the enabled tools and the raw MEDIA_TOOLS_ENABLED value
+    LOGGER.debug(f"Raw MEDIA_TOOLS_ENABLED value: {Config.MEDIA_TOOLS_ENABLED}")
+    LOGGER.debug(f"Parsed enabled tools: {enabled_tools}")
+    LOGGER.debug(f"Checking if tool '{tool_name}' is enabled")
+
     # If checking for 'mediatools' (general media tools status), return True if any tool is enabled
     if tool_name.lower() == "mediatools":
-        return len(enabled_tools) > 0
+        result = len(enabled_tools) > 0
+        LOGGER.debug(f"'mediatools' check result: {result}")
+        return result
 
     # Otherwise, check if the specific tool is in the enabled list
-    return tool_name.lower() in enabled_tools
+    result = tool_name.lower() in enabled_tools
+    LOGGER.debug(f"Tool '{tool_name}' enabled: {result}")
+    return result
 
 
 def is_flag_enabled(flag_name):

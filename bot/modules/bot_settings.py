@@ -5449,7 +5449,26 @@ async def edit_bot_settings(client, query):
             # Create a special menu for selecting media tools
             buttons = ButtonMaker()
 
-            # Get current value
+            # Force refresh Config.MEDIA_TOOLS_ENABLED from database to ensure accurate status
+            try:
+                db_config = await database.db.settings.config.find_one(
+                    {"_id": TgClient.ID},
+                    {"MEDIA_TOOLS_ENABLED": 1, "_id": 0},
+                )
+                if db_config and "MEDIA_TOOLS_ENABLED" in db_config:
+                    # Update the Config object with the current value from database
+                    db_value = db_config["MEDIA_TOOLS_ENABLED"]
+                    if db_value != Config.MEDIA_TOOLS_ENABLED:
+                        LOGGER.debug(
+                            f"Updating MEDIA_TOOLS_ENABLED from {Config.MEDIA_TOOLS_ENABLED} to {db_value}"
+                        )
+                        Config.MEDIA_TOOLS_ENABLED = db_value
+            except Exception as e:
+                LOGGER.error(
+                    f"Error refreshing MEDIA_TOOLS_ENABLED from database: {e}"
+                )
+
+            # Get current value after refresh
             current_value = Config.get(data[2])
 
             # List of all available media tools
@@ -5465,14 +5484,60 @@ async def edit_bot_settings(client, query):
                 "sample",
             ]
 
-            # If it's a string with comma-separated values, parse it
+            # Parse enabled tools from the configuration
             enabled_tools = []
-            if isinstance(current_value, str) and "," in current_value:
-                enabled_tools = [t.strip().lower() for t in current_value.split(",")]
+            if isinstance(current_value, str):
+                # Handle both comma-separated and single values
+                if "," in current_value:
+                    enabled_tools = [
+                        t.strip().lower()
+                        for t in current_value.split(",")
+                        if t.strip()
+                    ]
+                elif current_value.strip():  # Single non-empty value
+                    # Make sure to properly handle a single tool name
+                    single_tool = current_value.strip().lower()
+                    if single_tool in all_tools:
+                        enabled_tools = [single_tool]
+                    # If the single tool is not in all_tools, it might be a comma-separated string without spaces
+                    elif any(t in single_tool for t in all_tools):
+                        # Try to split by comma without spaces
+                        potential_tools = single_tool.split(",")
+                        enabled_tools = [
+                            t for t in potential_tools if t in all_tools
+                        ]
+
+                        # If we couldn't find any valid tools, try the original value again
+                        if not enabled_tools and single_tool:
+                            # Check if it's a valid tool name (might be misspelled or have extra characters)
+                            for t in all_tools:
+                                if t in single_tool:
+                                    enabled_tools = [t]
+                                    break
             elif (
                 current_value is True
             ):  # If it's True (boolean), all tools are enabled
                 enabled_tools = all_tools.copy()
+            elif current_value:  # Any other truthy value
+                if isinstance(current_value, list | tuple | set):
+                    enabled_tools = [
+                        str(t).strip().lower() for t in current_value if t
+                    ]
+                else:
+                    # Try to convert to string and use as a single value
+                    try:
+                        val = str(current_value).strip().lower()
+                        if val:
+                            if val in all_tools:
+                                enabled_tools = [val]
+                            else:
+                                # Check if it contains a valid tool name
+                                for t in all_tools:
+                                    if t in val:
+                                        enabled_tools = [t]
+                                        break
+                    except Exception as e:
+                        LOGGER.error(f"Error parsing MEDIA_TOOLS_ENABLED value: {e}")
 
             # Add toggle buttons for each tool
             for tool in all_tools:
