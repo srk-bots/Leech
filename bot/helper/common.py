@@ -2826,17 +2826,26 @@ class TaskConfig:
             if not self.up_dest:
                 raise ValueError("No Upload Destination!")
             if is_gdrive_id(self.up_dest):
-                if not self.up_dest.startswith(
-                    ("mtp:", "tp:", "sa:"),
-                ) and self.user_dict.get("USER_TOKENS", False):
+                if (
+                    isinstance(self.up_dest, str)
+                    and not self.up_dest.startswith(
+                        ("mtp:", "tp:", "sa:"),
+                    )
+                    and self.user_dict.get("USER_TOKENS", False)
+                ):
                     self.up_dest = f"mtp:{self.up_dest}"
             elif is_rclone_path(self.up_dest):
-                if not self.up_dest.startswith("mrcc:") and self.user_dict.get(
-                    "USER_TOKENS",
-                    False,
+                if (
+                    isinstance(self.up_dest, str)
+                    and not self.up_dest.startswith("mrcc:")
+                    and self.user_dict.get(
+                        "USER_TOKENS",
+                        False,
+                    )
                 ):
                     self.up_dest = f"mrcc:{self.up_dest}"
-                self.up_dest = self.up_dest.strip("/")
+                if isinstance(self.up_dest, str):
+                    self.up_dest = self.up_dest.strip("/")
             else:
                 raise ValueError("Wrong Upload Destination!")
 
@@ -2910,14 +2919,20 @@ class TaskConfig:
                         self.up_dest = self.up_dest.replace("h:", "", 1)
                         self.user_transmission = TgClient.IS_PREMIUM_USER
                         self.hybrid_leech = self.user_transmission
-                    if "|" in self.up_dest:
+                    if isinstance(self.up_dest, str) and "|" in self.up_dest:
                         self.up_dest, self.chat_thread_id = [
                             int(x) if x.lstrip("-").isdigit() else x
                             for x in self.up_dest.split("|", 1)
                         ]
-                    elif self.up_dest.lstrip("-").isdigit():
+                    elif (
+                        isinstance(self.up_dest, str)
+                        and self.up_dest.lstrip("-").isdigit()
+                    ):
                         self.up_dest = int(self.up_dest)
-                    elif self.up_dest.lower() == "pm":
+                    elif (
+                        isinstance(self.up_dest, str)
+                        and self.up_dest.lower() == "pm"
+                    ):
                         self.up_dest = self.user_id
 
                 if self.user_transmission:
