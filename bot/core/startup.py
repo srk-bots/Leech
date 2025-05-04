@@ -1,3 +1,4 @@
+import asyncio
 from asyncio import (
     create_subprocess_exec,
     create_subprocess_shell,
@@ -110,15 +111,36 @@ async def update_nzb_options():
 
 async def load_settings():
     if not Config.DATABASE_URL:
+        LOGGER.info("DATABASE_URL not set, skipping database operations")
         return
+
+    # Clean up existing directories
     for p in ["thumbnails", "tokens", "rclone", "cookies"]:
         if await aiopath.exists(p):
             await rmtree(p, ignore_errors=True)
-    await database.connect()
-    if database.db is not None:
-        # Process any pending message deletions
-        await process_pending_deletions()
 
+    # Try to connect to the database with retry logic built into the connect method
+    try:
+        LOGGER.info("Connecting to database...")
+        await database.connect()
+
+        if database.db is None:
+            LOGGER.warning("Database connection failed, continuing with local configuration")
+            return
+
+        # Process any pending message deletions
+        try:
+            await process_pending_deletions()
+        except Exception as e:
+            LOGGER.error(f"Error processing pending deletions: {e}")
+            # Continue with other operations even if this fails
+    except Exception as e:
+        LOGGER.error(f"Error during database connection: {e}")
+        LOGGER.warning("Continuing with local configuration")
+        return
+
+    # Only proceed with database operations if we have a valid connection
+    try:
         BOT_ID = Config.BOT_TOKEN.split(":", 1)[0]
         current_deploy_config = Config.get_all()
         old_deploy_config = await database.db.settings.deployConfig.find_one(
@@ -267,6 +289,9 @@ async def load_settings():
                 del row["_id"]
                 rss_dict[user_id] = row
             LOGGER.info("Rss data has been imported from Database.")
+    except Exception as e:
+        LOGGER.error(f"Error during database operations: {e}")
+        LOGGER.warning("Some database operations failed, continuing with partial configuration")
 
 
 async def save_settings():
@@ -439,17 +464,36 @@ async def process_pending_deletions():
         # TgClient.bot not initialized yet, skipping pending deletions
         return
 
-    # Check all scheduled deletions for debugging
-    await database.get_all_scheduled_deletions()
+    try:
+        # Check all scheduled deletions for debugging
+        await asyncio.wait_for(database.get_all_scheduled_deletions(), timeout=15)
+    except asyncio.TimeoutError:
+        LOGGER.warning("Timeout while getting scheduled deletions, skipping this operation")
+        return
+    except Exception as e:
+        LOGGER.error(f"Error getting scheduled deletions: {e}")
+        return
 
     # Clean up old scheduled deletion entries once a day
     current_time = int(time())
     last_cleanup_time = getattr(process_pending_deletions, "last_cleanup_time", 0)
     if current_time - last_cleanup_time > 86400:  # 86400 seconds = 1 day
-        await database.clean_old_scheduled_deletions(days=1)
-        process_pending_deletions.last_cleanup_time = current_time
+        try:
+            await asyncio.wait_for(database.clean_old_scheduled_deletions(days=1), timeout=15)
+            process_pending_deletions.last_cleanup_time = current_time
+        except asyncio.TimeoutError:
+            LOGGER.warning("Timeout while cleaning old scheduled deletions, skipping this operation")
+        except Exception as e:
+            LOGGER.error(f"Error cleaning old scheduled deletions: {e}")
 
-    pending_deletions = await database.get_pending_deletions()
+    try:
+        pending_deletions = await asyncio.wait_for(database.get_pending_deletions(), timeout=15)
+    except asyncio.TimeoutError:
+        LOGGER.warning("Timeout while getting pending deletions, skipping this operation")
+        return
+    except Exception as e:
+        LOGGER.error(f"Error getting pending deletions: {e}")
+        return
 
     if not pending_deletions:
         return
@@ -482,8 +526,14 @@ async def process_pending_deletions():
 
                 if msg is None or getattr(msg, "empty", False):
                     # Message not found, removing from database
-                    await database.remove_scheduled_deletion(chat_id, msg_id)
-                    removed_from_db_count += 1
+                    try:
+                        await asyncio.wait_for(
+                            database.remove_scheduled_deletion(chat_id, msg_id),
+                            timeout=10
+                        )
+                        removed_from_db_count += 1
+                    except (asyncio.TimeoutError, Exception) as err:
+                        LOGGER.error(f"Error removing scheduled deletion: {err}")
                     continue
 
                 # Message found, will attempt to delete
@@ -500,8 +550,14 @@ async def process_pending_deletions():
             # Successfully deleted the message
             success_count += 1
             # Remove from database after successful deletion
-            await database.remove_scheduled_deletion(chat_id, msg_id)
-            removed_from_db_count += 1
+            try:
+                await asyncio.wait_for(
+                    database.remove_scheduled_deletion(chat_id, msg_id),
+                    timeout=10
+                )
+                removed_from_db_count += 1
+            except (asyncio.TimeoutError, Exception) as err:
+                LOGGER.error(f"Error removing scheduled deletion after success: {err}")
         except Exception as e:
             # Failed to delete message
             fail_count += 1
@@ -514,8 +570,14 @@ async def process_pending_deletions():
             ):
                 # Chat is invalid, removing from database
                 # Remove from database since the chat is invalid
-                await database.remove_scheduled_deletion(chat_id, msg_id)
-                removed_from_db_count += 1
+                try:
+                    await asyncio.wait_for(
+                        database.remove_scheduled_deletion(chat_id, msg_id),
+                        timeout=10
+                    )
+                    removed_from_db_count += 1
+                except (asyncio.TimeoutError, Exception) as err:
+                    LOGGER.error(f"Error removing scheduled deletion for invalid chat: {err}")
 
     # Log summary
     LOGGER.info(
