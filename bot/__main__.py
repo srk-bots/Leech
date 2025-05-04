@@ -141,6 +141,12 @@ async def main():
 
     init_auto_restart()
 
+    # Load user data for limits tracking
+    from .helper.ext_utils.bot_utils import _load_user_data
+
+    LOGGER.info("Loading user data for limits tracking...")
+    await _load_user_data()
+
     # Initial garbage collection and memory usage logging
     LOGGER.info("Performing initial garbage collection...")
     smart_garbage_collection(

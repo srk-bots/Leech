@@ -1,3 +1,6 @@
+import gc
+from asyncio import create_task
+
 from bot import LOGGER
 from bot.core.config_manager import Config
 from bot.helper.ext_utils.bot_utils import (
@@ -6,8 +9,82 @@ from bot.helper.ext_utils.bot_utils import (
     sync_to_async,
     timeval_check,
 )
+from bot.helper.ext_utils.gc_utils import smart_garbage_collection
 from bot.helper.ext_utils.status_utils import get_readable_file_size
 from bot.helper.telegram_helper.filters import CustomFilters
+from bot.helper.telegram_helper.message_utils import auto_delete_message, send_message
+
+try:
+    import psutil
+except ImportError:
+    psutil = None
+
+
+def optimize_memory(aggressive=False):
+    """Optimize memory usage by forcing garbage collection.
+
+    This function chooses the best available garbage collection method
+    based on what's available in the environment.
+
+    Args:
+        aggressive (bool): Whether to use aggressive garbage collection
+    """
+    # Use smart_garbage_collection which is already imported
+    if aggressive:
+        smart_garbage_collection(aggressive=True)
+    else:
+        smart_garbage_collection(aggressive=False)
+
+
+def log_memory_usage():
+    """Log current memory usage information."""
+    if psutil is None:
+        return None
+
+    try:
+        process = psutil.Process()
+        memory_info = process.memory_info()
+
+        # Calculate memory usage in MB
+        rss_mb = memory_info.rss / (1024 * 1024)
+
+        # Get system memory info
+        system_memory = psutil.virtual_memory()
+        system_memory_percent = system_memory.percent
+
+        # Log memory usage
+        LOGGER.info(f"Memory usage: {rss_mb:.1f} MB (RSS), {system_memory_percent:.1f}% of system memory")
+
+        return {
+            "rss_mb": rss_mb,
+            "system_percent": system_memory_percent,
+        }
+    except Exception as e:
+        LOGGER.error(f"Error logging memory usage: {e}")
+        return None
+
+
+def get_limit_message(limit_result):
+    """Extract the error message from limit_checker result.
+
+    This helper function handles both old-style string returns and
+    new-style tuple returns from limit_checker.
+
+    Args:
+        limit_result: Result from limit_checker (str, tuple, or None)
+
+    Returns:
+        str: The error message, or None if no limit was exceeded
+    """
+    if limit_result is None:
+        return None
+
+    # If it's a tuple (message_object, error_message)
+    if isinstance(limit_result, tuple) and len(limit_result) == 2:
+        return limit_result[1]
+
+    # If it's just a string message
+    return limit_result
 
 
 async def limit_checker(
@@ -23,6 +100,9 @@ async def limit_checker(
 ):
     """Check size limits with improved memory management.
 
+    This function checks various limits based on the type of download and user configuration.
+    It now includes auto-delete functionality for warning messages.
+
     Args:
         size: Size to check
         listener: Listener object
@@ -35,14 +115,28 @@ async def limit_checker(
         is_nzb: Whether it's an NZB download
 
     Returns:
-        str: Limit exceeded message, or None if no limit exceeded
+        None: If no limit exceeded
+        tuple: (message_object, error_message) if limit exceeded
+              The message_object is the Telegram message that was sent
+              The error_message is the text of the warning message
+
+    Note:
+        Use the get_limit_message() helper function to extract just the error message
+        from the return value if needed.
     """
     LOGGER.info("Checking Size Limit of link/file/folder/tasks...")
-    user_id = (
-        listener.message.from_user.id
-        if hasattr(listener.message, "from_user")
-        else listener.message.chat.id
+
+    # Skip processing if size is 0 or negative
+    if size <= 0:
+        return None
+
+    # Get user ID efficiently
+    user_id = getattr(
+        listener.message,
+        "from_user",
+        None
     )
+    user_id = getattr(user_id, "id", None) if user_id else listener.message.chat.id
 
     # Skip limit check for sudo users
     if await CustomFilters.sudo("", listener.message):
@@ -50,123 +144,143 @@ async def limit_checker(
 
     # Check time interval between tasks
     if wait_time := await timeval_check(user_id):
-        return f"⚠️ Please wait {wait_time:.1f} seconds before starting another task."
+        error_msg = f"⚠️ Please wait {wait_time:.1f} seconds before starting another task."
+        msg = await send_message(listener.message, error_msg)
+        create_task(auto_delete_message(msg, time=300))  # Auto-delete after 5 minutes
+        return msg, error_msg
 
-    limit_exceeded = ""
-
-    # Check specific limits based on link type
+    # Get common attributes once to avoid repeated getattr calls
     is_clone = getattr(listener, "isClone", False)
-    # Use parameters if provided, otherwise check listener attributes
     is_jd = is_jd or getattr(listener, "is_jd", False)
     is_nzb = is_nzb or getattr(listener, "is_nzb", False)
+    is_leech = getattr(listener, "is_leech", getattr(listener, "isLeech", False))
 
-    if is_clone:
-        if CLONE_LIMIT := Config.CLONE_LIMIT:
-            limit = CLONE_LIMIT * 1024**3
-            if size > 0 and size > limit:
-                limit_exceeded = f"Clone limit is {get_readable_file_size(limit)}."
-    elif is_jd:
-        if JD_LIMIT := Config.JD_LIMIT:
-            limit = JD_LIMIT * 1024**3
-            if size > 0 and size > limit:
-                limit_exceeded = (
-                    f"JDownloader limit is {get_readable_file_size(limit)}"
-                )
-    elif is_nzb:
-        if NZB_LIMIT := Config.NZB_LIMIT:
-            limit = NZB_LIMIT * 1024**3
-            if size > 0 and size > limit:
-                limit_exceeded = f"NZB limit is {get_readable_file_size(limit)}"
-    elif isMega:
-        if MEGA_LIMIT := Config.MEGA_LIMIT:
-            limit = MEGA_LIMIT * 1024**3
-            if size > 0 and size > limit:
-                limit_exceeded = f"Mega limit is {get_readable_file_size(limit)}"
-    elif isDriveLink:
-        if GDRIVE_LIMIT := Config.GDRIVE_LIMIT:
-            limit = GDRIVE_LIMIT * 1024**3
-            if size > 0 and size > limit:
-                limit_exceeded = (
-                    f"Google Drive limit is {get_readable_file_size(limit)}"
-                )
+    # Check specific limits based on link type
+    if is_clone and (CLONE_LIMIT := Config.CLONE_LIMIT):
+        limit = CLONE_LIMIT * 1024**3
+        if size > limit:
+            error_msg = f"⚠️ Clone limit is {get_readable_file_size(limit)}. Your task has been cancelled."
+            msg = await send_message(listener.message, error_msg)
+            create_task(auto_delete_message(msg, time=300))  # Auto-delete after 5 minutes
+            return msg, error_msg
+
+    elif is_jd and (JD_LIMIT := Config.JD_LIMIT):
+        limit = JD_LIMIT * 1024**3
+        if size > limit:
+            error_msg = f"⚠️ JDownloader limit is {get_readable_file_size(limit)}. Your task has been cancelled."
+            msg = await send_message(listener.message, error_msg)
+            create_task(auto_delete_message(msg, time=300))  # Auto-delete after 5 minutes
+            return msg, error_msg
+
+    elif is_nzb and (NZB_LIMIT := Config.NZB_LIMIT):
+        limit = NZB_LIMIT * 1024**3
+        if size > limit:
+            error_msg = f"⚠️ NZB limit is {get_readable_file_size(limit)}. Your task has been cancelled."
+            msg = await send_message(listener.message, error_msg)
+            create_task(auto_delete_message(msg, time=300))  # Auto-delete after 5 minutes
+            return msg, error_msg
+
+    elif isMega and (MEGA_LIMIT := Config.MEGA_LIMIT):
+        limit = MEGA_LIMIT * 1024**3
+        if size > limit:
+            error_msg = f"⚠️ Mega limit is {get_readable_file_size(limit)}. Your task has been cancelled."
+            msg = await send_message(listener.message, error_msg)
+            create_task(auto_delete_message(msg, time=300))  # Auto-delete after 5 minutes
+            return msg, error_msg
+
+    elif isDriveLink and (GDRIVE_LIMIT := Config.GDRIVE_LIMIT):
+        limit = GDRIVE_LIMIT * 1024**3
+        if size > limit:
+            error_msg = f"⚠️ Google Drive limit is {get_readable_file_size(limit)}. Your task has been cancelled."
+            msg = await send_message(listener.message, error_msg)
+            create_task(auto_delete_message(msg, time=300))  # Auto-delete after 5 minutes
+            return msg, error_msg
+
     elif isYtdlp:
-        if YTDLP_LIMIT := Config.YTDLP_LIMIT:
+        if (YTDLP_LIMIT := Config.YTDLP_LIMIT):
             limit = YTDLP_LIMIT * 1024**3
-            if size > 0 and size > limit:
-                limit_exceeded = f"YouTube limit is {get_readable_file_size(limit)}"
-        if (
-            not limit_exceeded
-            and isPlayList
-            and (PLAYLIST_LIMIT := Config.PLAYLIST_LIMIT)
-            and isPlayList > PLAYLIST_LIMIT
-        ):
-            limit_exceeded = f"Playlist limit is {PLAYLIST_LIMIT}"
-    elif isTorrent:
-        if TORRENT_LIMIT := Config.TORRENT_LIMIT:
-            limit = TORRENT_LIMIT * 1024**3
-            if size > 0 and size > limit:
-                limit_exceeded = f"Torrent limit is {get_readable_file_size(limit)}"
-    elif DIRECT_LIMIT := Config.DIRECT_LIMIT:
+            if size > limit:
+                error_msg = f"⚠️ YouTube limit is {get_readable_file_size(limit)}. Your task has been cancelled."
+                msg = await send_message(listener.message, error_msg)
+                create_task(auto_delete_message(msg, time=300))  # Auto-delete after 5 minutes
+                return msg, error_msg
+
+        if isPlayList and (PLAYLIST_LIMIT := Config.PLAYLIST_LIMIT) and isPlayList > PLAYLIST_LIMIT:
+            error_msg = f"⚠️ Playlist limit is {PLAYLIST_LIMIT}. Your task has been cancelled."
+            msg = await send_message(listener.message, error_msg)
+            create_task(auto_delete_message(msg, time=300))  # Auto-delete after 5 minutes
+            return msg, error_msg
+
+    elif isTorrent and (TORRENT_LIMIT := Config.TORRENT_LIMIT):
+        limit = TORRENT_LIMIT * 1024**3
+        if size > limit:
+            error_msg = f"⚠️ Torrent limit is {get_readable_file_size(limit)}. Your task has been cancelled."
+            msg = await send_message(listener.message, error_msg)
+            create_task(auto_delete_message(msg, time=300))  # Auto-delete after 5 minutes
+            return msg, error_msg
+
+    elif (DIRECT_LIMIT := Config.DIRECT_LIMIT):
         limit = DIRECT_LIMIT * 1024**3
-        if size > 0 and size > limit:
-            limit_exceeded = f"Direct link limit is {get_readable_file_size(limit)}"
+        if size > limit:
+            error_msg = f"⚠️ Direct link limit is {get_readable_file_size(limit)}. Your task has been cancelled."
+            msg = await send_message(listener.message, error_msg)
+            create_task(auto_delete_message(msg, time=300))  # Auto-delete after 5 minutes
+            return msg, error_msg
 
-    # If no specific limit exceeded, check general limits
-    if not limit_exceeded:
-        # Check leech limit
-        is_leech = getattr(listener, "is_leech", getattr(listener, "isLeech", False))
-        if (LEECH_LIMIT := Config.LEECH_LIMIT) and is_leech:
-            limit = LEECH_LIMIT * 1024**3
-            if size > 0 and size > limit:
-                limit_exceeded = f"Leech limit is {get_readable_file_size(limit)}"
+    # Check leech limit
+    if (LEECH_LIMIT := Config.LEECH_LIMIT) and is_leech:
+        limit = LEECH_LIMIT * 1024**3
+        if size > limit:
+            error_msg = f"⚠️ Leech limit is {get_readable_file_size(limit)}. Your task has been cancelled."
+            msg = await send_message(listener.message, error_msg)
+            create_task(auto_delete_message(msg, time=300))  # Auto-delete after 5 minutes
+            return msg, error_msg
 
-        # Check storage threshold
-        is_clone = getattr(listener, "isClone", False)
-        if (STORAGE_THRESHOLD := Config.STORAGE_THRESHOLD) and not is_clone:
-            compress = getattr(listener, "compress", False)
-            extract = getattr(listener, "extract", False)
-            arch = any([compress, extract])
-            limit = STORAGE_THRESHOLD * 1024**3
-            acpt = await sync_to_async(check_storage_threshold, size, limit, arch)
-            if not acpt:
-                limit_exceeded = (
-                    f"You must leave {get_readable_file_size(limit)} free storage."
-                )
+    # Check storage threshold
+    if (STORAGE_THRESHOLD := Config.STORAGE_THRESHOLD) and not is_clone:
+        compress = getattr(listener, "compress", False)
+        extract = getattr(listener, "extract", False)
+        arch = compress or extract  # Simplified from any([compress, extract])
+        limit = STORAGE_THRESHOLD * 1024**3
+        acpt = await sync_to_async(check_storage_threshold, size, limit, arch)
+        if not acpt:
+            error_msg = f"⚠️ You must leave {get_readable_file_size(limit)} free storage. Your task has been cancelled."
+            msg = await send_message(listener.message, error_msg)
+            create_task(auto_delete_message(msg, time=300))  # Auto-delete after 5 minutes
+            return msg, error_msg
 
-        # Check daily task limit first
-        if (
-            DAILY_TASK_LIMIT := Config.DAILY_TASK_LIMIT
-        ) and await check_daily_task_limit(DAILY_TASK_LIMIT, listener):
-            limit_exceeded = f"Daily task limit is {DAILY_TASK_LIMIT} tasks"
+    # Check daily task limit first
+    if (DAILY_TASK_LIMIT := Config.DAILY_TASK_LIMIT) and await check_daily_task_limit(DAILY_TASK_LIMIT, listener):
+        error_msg = f"⚠️ Daily task limit is {DAILY_TASK_LIMIT} tasks. Your task has been cancelled."
+        msg = await send_message(listener.message, error_msg)
+        create_task(auto_delete_message(msg, time=300))  # Auto-delete after 5 minutes
+        return msg, error_msg
 
-        # Check daily mirror limit
-        if (
-            not limit_exceeded
-            and (DAILY_MIRROR_LIMIT := Config.DAILY_MIRROR_LIMIT)
-            and not is_leech
-        ):
-            limit = DAILY_MIRROR_LIMIT * 1024**3
-            if await check_daily_mirror_limit(limit, listener, size):
-                limit_exceeded = (
-                    f"Daily mirror limit is {get_readable_file_size(limit)}"
-                )
+    # Check daily mirror limit
+    if (DAILY_MIRROR_LIMIT := Config.DAILY_MIRROR_LIMIT) and not is_leech:
+        limit = DAILY_MIRROR_LIMIT * 1024**3
+        if await check_daily_mirror_limit(limit, listener, size):
+            error_msg = f"⚠️ Daily mirror limit is {get_readable_file_size(limit)}. Your task has been cancelled."
+            msg = await send_message(listener.message, error_msg)
+            create_task(auto_delete_message(msg, time=300))  # Auto-delete after 5 minutes
+            return msg, error_msg
 
-        # Check daily leech limit
-        if (
-            not limit_exceeded
-            and (DAILY_LEECH_LIMIT := Config.DAILY_LEECH_LIMIT)
-            and is_leech
-        ):
-            limit = DAILY_LEECH_LIMIT * 1024**3
-            if await check_daily_leech_limit(limit, listener, size):
-                limit_exceeded = (
-                    f"Daily leech limit is {get_readable_file_size(limit)}"
-                )
+    # Check daily leech limit
+    if (DAILY_LEECH_LIMIT := Config.DAILY_LEECH_LIMIT) and is_leech:
+        limit = DAILY_LEECH_LIMIT * 1024**3
+        if await check_daily_leech_limit(limit, listener, size):
+            error_msg = f"⚠️ Daily leech limit is {get_readable_file_size(limit)}. Your task has been cancelled."
+            msg = await send_message(listener.message, error_msg)
+            create_task(auto_delete_message(msg, time=300))  # Auto-delete after 5 minutes
+            return msg, error_msg
 
-    if limit_exceeded:
-        # Log the limit exceeded message for debugging
-        LOGGER.warning(f"Limit exceeded for user {user_id}: {limit_exceeded}")
-        return f"⚠️ {limit_exceeded}. Your task has been cancelled."
+    # Run memory optimization to free memory
+    optimize_memory(aggressive=False)
+
+    # Log memory usage after optimization
+    if psutil is not None:
+        log_memory_usage()
+
     return None
 
 
@@ -181,26 +295,31 @@ async def check_daily_mirror_limit(limit, listener, size):
     Returns:
         bool: True if limit exceeded, False otherwise
     """
-    user_id = (
-        listener.message.from_user.id
-        if hasattr(listener.message, "from_user")
-        else listener.message.chat.id
-    )
+    # Skip if size is 0 or negative
+    if size <= 0:
+        return False
+
+    # Get user ID efficiently
+    user_id = getattr(listener.message, "from_user", None)
+    user_id = getattr(user_id, "id", None) if user_id else listener.message.chat.id
 
     # Get current mirror usage
     current_usage = await getdailytasks(user_id, check_mirror=True)
 
     # Check if adding this task would exceed the limit
-    if size > 0 and (size >= (limit - current_usage) or limit <= current_usage):
+    if size >= (limit - current_usage) or limit <= current_usage:
         return True
 
-    # Update mirror usage if not checking
+    # Update mirror usage if not a clone task
     is_clone = getattr(listener, "isClone", False)
     if not is_clone:
         await getdailytasks(user_id, upmirror=size)
         LOGGER.info(
             f"User: {user_id} | Daily Mirror Size: {get_readable_file_size(current_usage + size)}"
         )
+
+        # Run memory optimization after updating stats
+        optimize_memory(aggressive=False)
 
     return False
 
@@ -216,24 +335,29 @@ async def check_daily_leech_limit(limit, listener, size):
     Returns:
         bool: True if limit exceeded, False otherwise
     """
-    user_id = (
-        listener.message.from_user.id
-        if hasattr(listener.message, "from_user")
-        else listener.message.chat.id
-    )
+    # Skip if size is 0 or negative
+    if size <= 0:
+        return False
+
+    # Get user ID efficiently
+    user_id = getattr(listener.message, "from_user", None)
+    user_id = getattr(user_id, "id", None) if user_id else listener.message.chat.id
 
     # Get current leech usage
     current_usage = await getdailytasks(user_id, check_leech=True)
 
     # Check if adding this task would exceed the limit
-    if size > 0 and (size >= (limit - current_usage) or limit <= current_usage):
+    if size >= (limit - current_usage) or limit <= current_usage:
         return True
 
-    # Update leech usage if not checking
+    # Update leech usage
     await getdailytasks(user_id, upleech=size)
     LOGGER.info(
         f"User: {user_id} | Daily Leech Size: {get_readable_file_size(current_usage + size)}"
     )
+
+    # Run memory optimization after updating stats
+    optimize_memory(aggressive=False)
 
     return False
 
@@ -248,11 +372,9 @@ async def check_daily_task_limit(limit, listener):
     Returns:
         bool: True if limit exceeded, False otherwise
     """
-    user_id = (
-        listener.message.from_user.id
-        if hasattr(listener.message, "from_user")
-        else listener.message.chat.id
-    )
+    # Get user ID efficiently
+    user_id = getattr(listener.message, "from_user", None)
+    user_id = getattr(user_id, "id", None) if user_id else listener.message.chat.id
 
     # Get current task count before incrementing
     current_tasks = await getdailytasks(user_id)
@@ -264,5 +386,8 @@ async def check_daily_task_limit(limit, listener):
     # Increment task count
     new_count = await getdailytasks(user_id, increase_task=True)
     LOGGER.info(f"User: {user_id} | Daily Tasks: {new_count}")
+
+    # Run memory optimization after updating stats
+    optimize_memory(aggressive=False)
 
     return False

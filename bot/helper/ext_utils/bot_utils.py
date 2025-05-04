@@ -417,60 +417,201 @@ async def getdailytasks(
 ):
     """Get or update daily task statistics for a user.
 
+    This function manages daily usage statistics for users, including task count,
+    mirror usage, and leech usage. It also handles automatic reset at midnight.
+
     Args:
-        user_id: User ID to check or update
-        increase_task: Whether to increase the task count
-        upmirror: Size to add to mirror usage
-        upleech: Size to add to leech usage
-        check_mirror: Whether to return mirror usage
-        check_leech: Whether to return leech usage
+        user_id (int): User ID to check or update
+        increase_task (bool, optional): Whether to increase the task count. Defaults to False.
+        upmirror (int, optional): Size in bytes to add to mirror usage. Defaults to 0.
+        upleech (int, optional): Size in bytes to add to leech usage. Defaults to 0.
+        check_mirror (bool, optional): Whether to return mirror usage. Defaults to False.
+        check_leech (bool, optional): Whether to return leech usage. Defaults to False.
 
     Returns:
         int or float: Task count, mirror usage, or leech usage depending on parameters
     """
-    user_data.setdefault(user_id, {})
-    user_data[user_id].setdefault("daily_tasks", 0)
-    user_data[user_id].setdefault("daily_mirror", 0)
-    user_data[user_id].setdefault("daily_leech", 0)
+    from datetime import datetime
+    from bot import LOGGER
 
-    if increase_task:
-        user_data[user_id]["daily_tasks"] += 1
-        return user_data[user_id]["daily_tasks"]
+    try:
+        # Initialize user data if not exists
+        user_data.setdefault(user_id, {})
+        user_dict = user_data[user_id]
 
-    if upmirror > 0:
-        user_data[user_id]["daily_mirror"] += upmirror
+        # Check if we need to reset daily stats (new day)
+        current_date = datetime.now().strftime("%Y-%m-%d")
+        last_reset_date = user_dict.get("last_reset_date", "")
 
-    if upleech > 0:
-        user_data[user_id]["daily_leech"] += upleech
+        if current_date != last_reset_date:
+            # It's a new day, reset the stats
+            user_dict["daily_tasks"] = 0
+            user_dict["daily_mirror"] = 0
+            user_dict["daily_leech"] = 0
+            user_dict["last_reset_date"] = current_date
+            LOGGER.info(f"Reset daily stats for user {user_id} (new day: {current_date})")
+        else:
+            # Initialize stats if they don't exist
+            user_dict.setdefault("daily_tasks", 0)
+            user_dict.setdefault("daily_mirror", 0)
+            user_dict.setdefault("daily_leech", 0)
+            user_dict.setdefault("last_reset_date", current_date)
 
-    if check_mirror:
-        return user_data[user_id]["daily_mirror"]
+        # Handle task count increase
+        if increase_task:
+            user_dict["daily_tasks"] += 1
+            # Only save data when we make changes
+            await _save_user_data()
+            return user_dict["daily_tasks"]
 
-    if check_leech:
-        return user_data[user_id]["daily_leech"]
+        # Handle mirror usage update
+        if upmirror > 0:
+            user_dict["daily_mirror"] += upmirror
+            # Only save data when we make changes
+            await _save_user_data()
 
-    return user_data[user_id]["daily_tasks"]
+        # Handle leech usage update
+        if upleech > 0:
+            user_dict["daily_leech"] += upleech
+            # Only save data when we make changes
+            await _save_user_data()
+
+        # Return requested statistic
+        if check_mirror:
+            return user_dict["daily_mirror"]
+
+        if check_leech:
+            return user_dict["daily_leech"]
+
+        return user_dict["daily_tasks"]
+
+    except Exception as e:
+        LOGGER.error(f"Error in getdailytasks: {e}")
+        # Return safe defaults in case of error
+        if check_mirror or check_leech:
+            return 0
+        return 0
+
+
+async def _save_user_data():
+    """Save user data to a persistent file.
+
+    This internal function saves the user_data dictionary to a JSON file
+    to ensure data persistence across bot restarts.
+    """
+    import json
+    import os
+    import aiofiles
+    from bot import LOGGER
+
+    try:
+        # Create data directory if it doesn't exist
+        os.makedirs("data", exist_ok=True)
+
+        # Save user data to file - use compact JSON to reduce memory usage
+        async with aiofiles.open("data/user_data.json", "w") as f:
+            # Use separators without extra spaces to reduce file size
+            # and disable pretty printing (indent=None) to save memory
+            await f.write(json.dumps(user_data, separators=(',', ':'), indent=None))
+
+        # Force garbage collection after saving large data
+        try:
+            from bot.helper.ext_utils.gc_utils import smart_garbage_collection
+            smart_garbage_collection(aggressive=False)
+        except ImportError:
+            import gc
+            gc.collect()
+
+    except Exception as e:
+        LOGGER.error(f"Error saving user data: {e}")
+
+
+async def _load_user_data():
+    """Load user data from persistent file.
+
+    This function is called during bot startup to load saved user data.
+    """
+    import json
+    import os
+    import aiofiles
+    from bot import LOGGER
+
+    global user_data
+
+    try:
+        # Check if data file exists
+        if os.path.exists("data/user_data.json"):
+            async with aiofiles.open("data/user_data.json", "r") as f:
+                content = await f.read()
+                if content.strip():  # Check if file is not empty
+                    # Parse JSON with optimized memory usage
+                    loaded_data = json.loads(content)
+
+                    # Process data in chunks to reduce memory usage
+                    # Clear existing data first
+                    user_data.clear()
+
+                    # Process in batches of 100 users
+                    batch_size = 100
+                    keys = list(loaded_data.keys())
+
+                    for i in range(0, len(keys), batch_size):
+                        batch_keys = keys[i:i+batch_size]
+                        for k in batch_keys:
+                            # Convert string keys back to integers
+                            user_data[int(k)] = loaded_data[k]
+
+                        # Force garbage collection after each batch
+                        if (i + batch_size) < len(keys):
+                            try:
+                                from bot.helper.ext_utils.gc_utils import smart_garbage_collection
+                                smart_garbage_collection(aggressive=False)
+                            except ImportError:
+                                import gc
+                                gc.collect()
+
+                    LOGGER.info(f"Loaded user data for {len(user_data)} users")
+
+                    # Clear the loaded_data variable to free memory
+                    del loaded_data
+
+                    # Final garbage collection
+                    try:
+                        from bot.helper.ext_utils.gc_utils import smart_garbage_collection
+                        smart_garbage_collection(aggressive=True)
+                    except ImportError:
+                        import gc
+                        gc.collect()
+    except Exception as e:
+        LOGGER.error(f"Error loading user data: {e}")
+        # Keep using the empty user_data dictionary
 
 
 async def timeval_check(user_id):
     """Check if user needs to wait before starting a new task.
 
+    This function enforces a minimum time interval between user tasks
+    to prevent abuse and rate limit the bot usage.
+
     Args:
-        user_id: User ID to check
+        user_id (int): User ID to check
 
     Returns:
         float: Time to wait in seconds, or 0 if no wait needed
     """
     from time import time
+    from bot import LOGGER
+    from bot.core.config_manager import Config
 
+    # Initialize user data if not exists
     user_data.setdefault(user_id, {})
     user_data[user_id].setdefault("last_task_time", 0)
 
-    # Get time interval setting
-    from bot.core.config_manager import Config
+    # Get time interval setting from config
+    interval = Config.USER_TIME_INTERVAL
 
-    if not (interval := Config.USER_TIME_INTERVAL):
-        # No time interval restriction
+    # If interval is not set or is zero, no time restriction
+    if not interval:
         user_data[user_id]["last_task_time"] = time()
         return 0
 
@@ -479,12 +620,17 @@ async def timeval_check(user_id):
     last_time = user_data[user_id]["last_task_time"]
     elapsed = current_time - last_time
 
+    # If not enough time has passed, user needs to wait
     if elapsed < interval:
-        # User needs to wait
-        return interval - elapsed
+        wait_time = interval - elapsed
+        LOGGER.info(
+            f"User {user_id} needs to wait {wait_time:.1f}s before starting a new task"
+        )
+        return wait_time
 
-    # No wait needed, update last task time
+    # No wait needed, update last task time and save data
     user_data[user_id]["last_task_time"] = current_time
+    await _save_user_data()
     return 0
 
 
@@ -753,28 +899,97 @@ def is_flag_enabled(flag_name):
 def check_storage_threshold(size, threshold, arch=False):
     """Check if there's enough storage space available.
 
+    This function checks if there's enough free space on the disk to download a file
+    and optionally extract it, while maintaining a minimum free space threshold.
+
     Args:
-        size: Size of the file/folder to be downloaded
-        threshold: Minimum free space to maintain
-        arch: Whether the download will be archived/extracted
+        size (int): Size of the file/folder to be downloaded in bytes
+        threshold (int): Minimum free space to maintain in bytes
+        arch (bool, optional): Whether the download will be archived/extracted. Defaults to False.
 
     Returns:
         bool: True if there's enough space, False otherwise
+
+    Note:
+        For archives, the function estimates that extraction will require approximately
+        the same amount of space as the archive itself, so it checks for 2x the size.
+        For very large archives with high compression ratios, this might underestimate
+        the required space.
     """
-    if not size:
+    import os
+    import shutil
+    from bot import DOWNLOAD_DIR, LOGGER
+    from bot.helper.ext_utils.status_utils import get_readable_file_size
+
+    # Handle invalid inputs
+    if not isinstance(size, int | float) or size < 0:
+        LOGGER.warning(f"Invalid size value in check_storage_threshold: {size}")
+        return True  # Default to allowing the download if size is invalid
+
+    if not isinstance(threshold, int | float) or threshold < 0:
+        LOGGER.warning(
+            f"Invalid threshold value in check_storage_threshold: {threshold}"
+        )
+        threshold = 0  # Default to no threshold if invalid
+
+    # If size is 0, no space is needed
+    if size == 0:
         return True
 
-    # Get free space in bytes
-    from bot import DOWNLOAD_DIR
-    import shutil
+    try:
+        # Ensure the download directory exists
+        os.makedirs(DOWNLOAD_DIR, exist_ok=True)
 
-    free = shutil.disk_usage(DOWNLOAD_DIR).free
+        # Get disk usage statistics
+        usage = shutil.disk_usage(DOWNLOAD_DIR)
+        free = usage.free
+        total = usage.total
 
-    # If it's an archive, we need to consider extraction space
-    if arch:
-        # For archives, we need approximately 2x the space
-        # (1x for the archive, 1x for extraction)
-        size *= 2
+        # Log current disk usage
+        used_percent = (usage.used / total) * 100
+        LOGGER.info(
+            f"Current disk usage: {used_percent:.2f}% (Free: {get_readable_file_size(free)})"
+        )
 
-    # Check if there's enough space
-    return (free - size) >= threshold
+        # Calculate space needed based on whether it's an archive
+        space_needed = size
+        if arch:
+            # For archives, estimate extraction will need the same space as the archive
+            # Use a multiplier between 1.5x and 3x based on common compression ratios
+            # 1.5x for basic archives, 2x for typical, 3x for highly compressed
+            compression_multiplier = 2.0  # Default to 2x for typical compression
+
+            # Adjust multiplier based on file size (larger files often have higher compression)
+            if size > 1024**3:  # > 1GB
+                compression_multiplier = 2.5
+            elif size > 10 * 1024**3:  # > 10GB
+                compression_multiplier = 3.0
+
+            space_needed = int(size * compression_multiplier)
+            LOGGER.info(
+                f"Archive detected, estimating {compression_multiplier}x space needed for extraction"
+            )
+
+        # Check if there's enough space
+        has_enough_space = (free - space_needed) >= threshold
+
+        # Log the result
+        if has_enough_space:
+            LOGGER.info(
+                f"Storage check passed: Need {get_readable_file_size(space_needed)}, "
+                f"have {get_readable_file_size(free)}, "
+                f"threshold {get_readable_file_size(threshold)}"
+            )
+        else:
+            LOGGER.warning(
+                f"Storage check failed: Need {get_readable_file_size(space_needed)}, "
+                f"have {get_readable_file_size(free)}, "
+                f"threshold {get_readable_file_size(threshold)}"
+            )
+
+        return has_enough_space
+
+    except Exception as e:
+        LOGGER.error(f"Error checking storage threshold: {e}")
+        # Default to allowing the download if we can't check the space
+        return True
