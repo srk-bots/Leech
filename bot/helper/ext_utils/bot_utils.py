@@ -10,7 +10,6 @@ from base64 import urlsafe_b64decode, urlsafe_b64encode
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 from functools import partial, wraps
-from typing import Any
 
 from httpx import AsyncClient
 
@@ -419,16 +418,12 @@ def decode_slink(b64_str):
     ).decode("ascii")
 
 
-async def cmd_exec(
-    cmd, shell=False, apply_limits=False, process_id=None, task_type="FFmpeg"
-):
+async def cmd_exec(cmd, shell=False, task_type="FFmpeg"):
     """Execute a command and return its output.
 
     Args:
         cmd: Command to execute (list or string)
         shell: Whether to use shell execution
-        apply_limits: Whether to apply resource limits (deprecated, kept for compatibility)
-        process_id: Unique identifier for the process (deprecated, kept for compatibility)
         task_type: Type of task (e.g., "FFmpeg", "Watermark", "Merge")
 
     Returns:
@@ -739,15 +734,21 @@ async def getdailytasks(
 
     # Update database if available
     if hasattr(Config, "DATABASE_URL") and Config.DATABASE_URL:
-        database = DbManager()
-        await database.connect()
-        await database.update_user_data(user_id)
-        await database.disconnect()
+        # Import here to avoid circular imports
+        from bot.helper.ext_utils.db_handler import DbManager, database
+
+        # Try the new database handler first
+        if database is not None:
+            await database.update_user_data(user_id)
+        else:
+            # Fall back to the old database handler
+            db_manager = DbManager()
+            await db_manager.update_user_data(user_id)
 
     # Return appropriate value based on parameters
     if check_leech:
         return lsize
-    elif check_mirror:
+    if check_mirror:
         return msize
     return task
 

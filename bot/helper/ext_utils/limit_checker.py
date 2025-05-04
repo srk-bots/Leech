@@ -1,10 +1,9 @@
-from asyncio import create_task
 from bot import LOGGER
 from bot.core.config_manager import Config
 from bot.helper.ext_utils.bot_utils import (
     get_readable_file_size,
-    sync_to_async,
     getdailytasks,
+    sync_to_async,
     timeval_check,
 )
 from bot.helper.ext_utils.fs_utils import check_storage_threshold
@@ -52,7 +51,8 @@ async def limit_checker(
     limit_exceeded = ""
 
     # Check specific limits based on link type
-    if listener.isClone:
+    is_clone = getattr(listener, "isClone", False)
+    if is_clone:
         if CLONE_LIMIT := Config.CLONE_LIMIT:
             limit = CLONE_LIMIT * 1024**3
             if size > limit:
@@ -94,14 +94,18 @@ async def limit_checker(
     # If no specific limit exceeded, check general limits
     if not limit_exceeded:
         # Check leech limit
-        if (LEECH_LIMIT := Config.LEECH_LIMIT) and listener.is_leech:
+        is_leech = getattr(listener, "is_leech", getattr(listener, "isLeech", False))
+        if (LEECH_LIMIT := Config.LEECH_LIMIT) and is_leech:
             limit = LEECH_LIMIT * 1024**3
             if size > limit:
                 limit_exceeded = f"Leech limit is {get_readable_file_size(limit)}"
 
         # Check storage threshold
-        if (STORAGE_THRESHOLD := Config.STORAGE_THRESHOLD) and not listener.isClone:
-            arch = any([listener.compress, listener.extract])
+        is_clone = getattr(listener, "isClone", False)
+        if (STORAGE_THRESHOLD := Config.STORAGE_THRESHOLD) and not is_clone:
+            compress = getattr(listener, "compress", False)
+            extract = getattr(listener, "extract", False)
+            arch = any([compress, extract])
             limit = STORAGE_THRESHOLD * 1024**3
             acpt = await sync_to_async(check_storage_threshold, size, limit, arch)
             if not acpt:
@@ -119,7 +123,7 @@ async def limit_checker(
         if (
             not limit_exceeded
             and (DAILY_MIRROR_LIMIT := Config.DAILY_MIRROR_LIMIT)
-            and not listener.is_leech
+            and not is_leech
         ):
             limit = DAILY_MIRROR_LIMIT * 1024**3
             if await check_daily_mirror_limit(limit, listener, size):
@@ -131,7 +135,7 @@ async def limit_checker(
         if (
             not limit_exceeded
             and (DAILY_LEECH_LIMIT := Config.DAILY_LEECH_LIMIT)
-            and listener.is_leech
+            and is_leech
         ):
             limit = DAILY_LEECH_LIMIT * 1024**3
             if await check_daily_leech_limit(limit, listener, size):
@@ -169,7 +173,8 @@ async def check_daily_mirror_limit(limit, listener, size):
         return True
 
     # Update mirror usage if not checking
-    if not listener.isClone:
+    is_clone = getattr(listener, "isClone", False)
+    if not is_clone:
         await getdailytasks(user_id, upmirror=size)
         LOGGER.info(
             f"User: {user_id} | Daily Mirror Size: {get_readable_file_size(current_usage + size)}"
