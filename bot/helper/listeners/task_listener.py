@@ -60,8 +60,6 @@ from bot.helper.telegram_helper.message_utils import (
 class TaskListener(TaskConfig):
     def __init__(self):
         super().__init__()
-        # Add debug logs for user_dict
-        LOGGER.info(f"DEBUG: TaskListener init - user_dict: {self.user_dict}")
 
     async def clean(self):
         try:
@@ -608,12 +606,9 @@ class TaskListener(TaskConfig):
 
                             # Check if user has set their own dump and owner's premium status
                             user_dump = self.user_dict.get("USER_DUMP")
-                            # Add debug logs
-                            LOGGER.info(
-                                f"DEBUG: user_dump value: {user_dump}, type: {type(user_dump)}"
-                            )
-
-                            # No need to convert to string, we're handling lists properly now
+                            # Ensure user_dump is a string if it exists
+                            if user_dump and not isinstance(user_dump, str):
+                                user_dump = str(user_dump)
                             owner_has_premium = TgClient.IS_PREMIUM_USER
 
                             # Case 1: If user didn't set any dump
@@ -749,12 +744,9 @@ class TaskListener(TaskConfig):
 
                         # Check if user has set their own dump and owner's premium status
                         user_dump = self.user_dict.get("USER_DUMP")
-                        # Add debug logs
-                        LOGGER.info(
-                            f"DEBUG: user_dump value: {user_dump}, type: {type(user_dump)}"
-                        )
-
-                        # No need to convert to string, we're handling lists properly now
+                        # Ensure user_dump is a string if it exists
+                        if user_dump and not isinstance(user_dump, str):
+                            user_dump = str(user_dump)
                         owner_has_premium = TgClient.IS_PREMIUM_USER
 
                         # Case 1: If user didn't set any dump
@@ -938,12 +930,9 @@ class TaskListener(TaskConfig):
 
                 # Check if user has set their own dump
                 user_dump = self.user_dict.get("USER_DUMP")
-                # Add debug logs
-                LOGGER.info(
-                    f"DEBUG: user_dump value: {user_dump}, type: {type(user_dump)}"
-                )
-
-                # No need to convert to string, we're handling lists properly now
+                # Ensure user_dump is a string if it exists
+                if user_dump and not isinstance(user_dump, str):
+                    user_dump = str(user_dump)
 
                 # Case 1: If user set their own dump and owner has set log chat ids
                 if user_dump and Config.LOG_CHAT_ID:
