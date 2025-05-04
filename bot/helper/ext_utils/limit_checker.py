@@ -1,9 +1,5 @@
 import gc
-import os
-import sys
-import tracemalloc
-from asyncio import create_task, sleep
-from functools import wraps
+from asyncio import create_task
 
 from bot import LOGGER
 from bot.core.config_manager import Config
@@ -23,68 +19,25 @@ try:
 except ImportError:
     psutil = None
 
-# Enable memory tracking for debugging if not already started
-if not tracemalloc.is_tracing():
-    tracemalloc.start(10)  # Track 10 frames
-
 
 def optimize_memory(aggressive=False):
     """Optimize memory usage by forcing garbage collection.
 
-    This function performs aggressive memory optimization to prevent
-    memory leaks and reduce memory usage.
+    This function chooses the best available garbage collection method
+    based on what's available in the environment.
 
     Args:
         aggressive (bool): Whether to use aggressive garbage collection
     """
-    # First, use smart_garbage_collection which is already imported
-    if smart_garbage_collection is not None:
-        if aggressive:
-            smart_garbage_collection(aggressive=True)
-        else:
-            smart_garbage_collection(aggressive=False)
-
-    # Force Python's garbage collector
-    gc.collect(2)  # Full collection
-
+    # Use smart_garbage_collection which is already imported
     if aggressive:
-        # Run a second collection for better results
-        gc.collect(2)
-
-        # Clear memory cache if psutil is available
-        if psutil is not None:
-            try:
-                # Try to drop system caches on Linux
-                if sys.platform.startswith('linux'):
-                    os.system('sync')  # Sync disk with memory
-
-                # Find and clear large objects
-                for obj in gc.get_objects():
-                    try:
-                        if hasattr(obj, '__sizeof__'):
-                            size = obj.__sizeof__()
-                            # Clear objects larger than 10MB if they have a clear method
-                            if size > 10 * 1024 * 1024 and hasattr(obj, 'clear') and callable(obj.clear):
-                                obj.clear()
-                    except Exception:
-                        pass
-            except Exception as e:
-                LOGGER.error(f"Error in aggressive memory optimization: {e}")
-
-    # Log memory snapshots if tracing is enabled
-    if tracemalloc.is_tracing():
-        try:
-            snapshot = tracemalloc.take_snapshot()
-            top_stats = snapshot.statistics('lineno')
-            LOGGER.debug("[ Top 5 memory consumers ]")
-            for stat in top_stats[:5]:
-                LOGGER.debug(f"{stat}")
-        except Exception as e:
-            LOGGER.error(f"Error taking memory snapshot: {e}")
+        smart_garbage_collection(aggressive=True)
+    else:
+        smart_garbage_collection(aggressive=False)
 
 
 def log_memory_usage():
-    """Log current memory usage information with detailed breakdown."""
+    """Log current memory usage information."""
     if psutil is None:
         return None
 
@@ -94,100 +47,21 @@ def log_memory_usage():
 
         # Calculate memory usage in MB
         rss_mb = memory_info.rss / (1024 * 1024)
-        vms_mb = memory_info.vms / (1024 * 1024)
-
-        # Get memory maps for detailed breakdown
-        try:
-            memory_maps = process.memory_maps()
-            private_mb = sum(m.private for m in memory_maps) / (1024 * 1024) if memory_maps else 0
-            shared_mb = sum(m.shared for m in memory_maps) / (1024 * 1024) if memory_maps else 0
-        except Exception:
-            private_mb = 0
-            shared_mb = 0
 
         # Get system memory info
         system_memory = psutil.virtual_memory()
         system_memory_percent = system_memory.percent
-        available_mb = system_memory.available / (1024 * 1024)
-        total_mb = system_memory.total / (1024 * 1024)
 
-        # Get Python's memory allocator info
-        gc_counts = gc.get_count()
-        gc_objects = len(gc.get_objects())
-
-        # Log detailed memory usage
-        LOGGER.info(
-            f"Memory usage: {rss_mb:.1f} MB (RSS), {vms_mb:.1f} MB (VMS), "
-            f"{system_memory_percent:.1f}% of system memory"
-        )
-        LOGGER.info(
-            f"System memory: {available_mb:.1f} MB available of {total_mb:.1f} MB total"
-        )
-        LOGGER.info(
-            f"GC objects: {gc_objects}, GC counts: {gc_counts}"
-        )
-
-        # Log warning if memory usage is high
-        if system_memory_percent > 80:
-            LOGGER.warning(f"HIGH MEMORY USAGE: {system_memory_percent:.1f}% - Consider restarting the bot")
-            # Try emergency memory cleanup
-            optimize_memory(aggressive=True)
+        # Log memory usage
+        LOGGER.info(f"Memory usage: {rss_mb:.1f} MB (RSS), {system_memory_percent:.1f}% of system memory")
 
         return {
             "rss_mb": rss_mb,
-            "vms_mb": vms_mb,
-            "private_mb": private_mb,
-            "shared_mb": shared_mb,
             "system_percent": system_memory_percent,
-            "available_mb": available_mb,
-            "total_mb": total_mb,
-            "gc_objects": gc_objects,
         }
     except Exception as e:
         LOGGER.error(f"Error logging memory usage: {e}")
         return None
-
-
-def memory_safe(func):
-    """Decorator to make functions memory-safe.
-
-    This decorator wraps a function with memory optimization before and after
-    execution, and handles memory cleanup in case of exceptions.
-
-    Args:
-        func: The function to wrap
-
-    Returns:
-        The wrapped function
-    """
-    @wraps(func)
-    async def wrapper(*args, **kwargs):
-        # Optimize memory before execution
-        optimize_memory(aggressive=False)
-
-        try:
-            # Execute the function
-            result = await func(*args, **kwargs)
-
-            # Optimize memory after execution
-            optimize_memory(aggressive=True)
-
-            # Log memory usage
-            if psutil is not None:
-                log_memory_usage()
-
-            return result
-        except Exception as e:
-            # Log the error
-            LOGGER.error(f"Error in {func.__name__}: {e}")
-
-            # Try to recover memory in case of exception
-            optimize_memory(aggressive=True)
-
-            # Re-raise the exception
-            raise
-
-    return wrapper
 
 
 def get_limit_message(limit_result):
@@ -213,7 +87,6 @@ def get_limit_message(limit_result):
     return limit_result
 
 
-@memory_safe
 async def limit_checker(
     size,
     listener,
@@ -228,7 +101,7 @@ async def limit_checker(
     """Check size limits with improved memory management.
 
     This function checks various limits based on the type of download and user configuration.
-    It now includes auto-delete functionality for warning messages and memory optimization.
+    It now includes auto-delete functionality for warning messages.
 
     Args:
         size: Size to check
@@ -252,9 +125,6 @@ async def limit_checker(
         from the return value if needed.
     """
     LOGGER.info("Checking Size Limit of link/file/folder/tasks...")
-
-    # Force garbage collection before starting
-    optimize_memory(aggressive=True)
 
     # Skip processing if size is 0 or negative
     if size <= 0:
@@ -414,7 +284,6 @@ async def limit_checker(
     return None
 
 
-@memory_safe
 async def check_daily_mirror_limit(limit, listener, size):
     """Check if user has exceeded daily mirror limit.
 
@@ -449,10 +318,12 @@ async def check_daily_mirror_limit(limit, listener, size):
             f"User: {user_id} | Daily Mirror Size: {get_readable_file_size(current_usage + size)}"
         )
 
+        # Run memory optimization after updating stats
+        optimize_memory(aggressive=False)
+
     return False
 
 
-@memory_safe
 async def check_daily_leech_limit(limit, listener, size):
     """Check if user has exceeded daily leech limit.
 
@@ -485,10 +356,12 @@ async def check_daily_leech_limit(limit, listener, size):
         f"User: {user_id} | Daily Leech Size: {get_readable_file_size(current_usage + size)}"
     )
 
+    # Run memory optimization after updating stats
+    optimize_memory(aggressive=False)
+
     return False
 
 
-@memory_safe
 async def check_daily_task_limit(limit, listener):
     """Check if user has exceeded daily task count limit.
 
@@ -513,5 +386,8 @@ async def check_daily_task_limit(limit, listener):
     # Increment task count
     new_count = await getdailytasks(user_id, increase_task=True)
     LOGGER.info(f"User: {user_id} | Daily Tasks: {new_count}")
+
+    # Run memory optimization after updating stats
+    optimize_memory(aggressive=False)
 
     return False

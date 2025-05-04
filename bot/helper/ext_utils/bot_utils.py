@@ -419,7 +419,6 @@ async def getdailytasks(
 
     This function manages daily usage statistics for users, including task count,
     mirror usage, and leech usage. It also handles automatic reset at midnight.
-    Optimized for memory efficiency.
 
     Args:
         user_id (int): User ID to check or update
@@ -433,17 +432,11 @@ async def getdailytasks(
         int or float: Task count, mirror usage, or leech usage depending on parameters
     """
     from datetime import datetime
-    import gc
     from bot import LOGGER
 
     try:
-        # Force garbage collection before processing
-        gc.collect()
-
-        # Initialize user data if not exists - use direct dictionary access for efficiency
-        if user_id not in user_data:
-            user_data[user_id] = {}
-
+        # Initialize user data if not exists
+        user_data.setdefault(user_id, {})
         user_dict = user_data[user_id]
 
         # Check if we need to reset daily stats (new day)
@@ -458,56 +451,45 @@ async def getdailytasks(
             user_dict["last_reset_date"] = current_date
             LOGGER.info(f"Reset daily stats for user {user_id} (new day: {current_date})")
         else:
-            # Initialize stats if they don't exist - use direct dictionary access
-            if "daily_tasks" not in user_dict:
-                user_dict["daily_tasks"] = 0
-            if "daily_mirror" not in user_dict:
-                user_dict["daily_mirror"] = 0
-            if "daily_leech" not in user_dict:
-                user_dict["daily_leech"] = 0
-            if "last_reset_date" not in user_dict:
-                user_dict["last_reset_date"] = current_date
-
-        # Store results to avoid multiple dictionary lookups
-        result = 0
-        save_needed = False
+            # Initialize stats if they don't exist
+            user_dict.setdefault("daily_tasks", 0)
+            user_dict.setdefault("daily_mirror", 0)
+            user_dict.setdefault("daily_leech", 0)
+            user_dict.setdefault("last_reset_date", current_date)
 
         # Handle task count increase
         if increase_task:
             user_dict["daily_tasks"] += 1
-            result = user_dict["daily_tasks"]
-            save_needed = True
+            # Only save data when we make changes
+            await _save_user_data()
+            return user_dict["daily_tasks"]
 
         # Handle mirror usage update
         if upmirror > 0:
             user_dict["daily_mirror"] += upmirror
-            save_needed = True
+            # Only save data when we make changes
+            await _save_user_data()
 
         # Handle leech usage update
         if upleech > 0:
             user_dict["daily_leech"] += upleech
-            save_needed = True
-
-        # Save data if needed
-        if save_needed:
+            # Only save data when we make changes
             await _save_user_data()
 
         # Return requested statistic
         if check_mirror:
-            result = user_dict["daily_mirror"]
-        elif check_leech:
-            result = user_dict["daily_leech"]
-        elif not increase_task:  # Only set if not already set by increase_task
-            result = user_dict["daily_tasks"]
+            return user_dict["daily_mirror"]
 
-        # Force garbage collection after processing
-        gc.collect()
+        if check_leech:
+            return user_dict["daily_leech"]
 
-        return result
+        return user_dict["daily_tasks"]
 
     except Exception as e:
         LOGGER.error(f"Error in getdailytasks: {e}")
         # Return safe defaults in case of error
+        if check_mirror or check_leech:
+            return 0
         return 0
 
 
@@ -516,18 +498,13 @@ async def _save_user_data():
 
     This internal function saves the user_data dictionary to a JSON file
     to ensure data persistence across bot restarts.
-    Optimized for memory efficiency.
     """
     import json
     import os
-    import gc
     import aiofiles
     from bot import LOGGER
 
     try:
-        # Force garbage collection before saving
-        gc.collect()
-
         # Create data directory if it doesn't exist
         os.makedirs("data", exist_ok=True)
 
@@ -535,138 +512,79 @@ async def _save_user_data():
         async with aiofiles.open("data/user_data.json", "w") as f:
             # Use separators without extra spaces to reduce file size
             # and disable pretty printing (indent=None) to save memory
-            # Process in chunks to reduce memory usage
+            await f.write(json.dumps(user_data, separators=(',', ':'), indent=None))
 
-            # Start with opening bracket
-            await f.write("{")
-
-            # Process each user separately to avoid creating a large string in memory
-            first_item = True
-            for user_id, user_info in user_data.items():
-                # Add comma separator between items (except for the first one)
-                if not first_item:
-                    await f.write(",")
-                else:
-                    first_item = False
-
-                # Write user_id and user_info as JSON
-                user_id_str = json.dumps(str(user_id))
-                user_info_str = json.dumps(user_info, separators=(',', ':'))
-                await f.write(f"{user_id_str}:{user_info_str}")
-
-                # Force garbage collection after each user
-                if len(user_info_str) > 1024 * 10:  # If user data is larger than 10KB
-                    gc.collect()
-
-            # End with closing bracket
-            await f.write("}")
-
-        # Force aggressive garbage collection after saving
+        # Force garbage collection after saving large data
         try:
             from bot.helper.ext_utils.gc_utils import smart_garbage_collection
-            smart_garbage_collection(aggressive=True)
+            smart_garbage_collection(aggressive=False)
         except ImportError:
-            gc.collect(2)  # Full collection
-            gc.collect(2)  # Second pass
+            import gc
+            gc.collect()
 
     except Exception as e:
         LOGGER.error(f"Error saving user data: {e}")
-        # Try to recover from error
-        gc.collect(2)
 
 
 async def _load_user_data():
     """Load user data from persistent file.
 
     This function is called during bot startup to load saved user data.
-    Optimized for memory efficiency.
     """
     import json
     import os
-    import gc
     import aiofiles
     from bot import LOGGER
-    from asyncio import sleep
 
     global user_data
 
     try:
-        # Force garbage collection before loading
-        gc.collect(2)
-
         # Check if data file exists
         if os.path.exists("data/user_data.json"):
-            # Clear existing data first to free memory
-            user_data.clear()
-
-            # Process the file in chunks to reduce memory usage
             async with aiofiles.open("data/user_data.json", "r") as f:
-                # Read the file in small chunks to avoid loading it all into memory
-                content = ""
-                chunk_size = 1024 * 1024  # 1MB chunks
-
-                while True:
-                    chunk = await f.read(chunk_size)
-                    if not chunk:
-                        break
-                    content += chunk
-
-                    # If content is getting large, process it immediately
-                    if len(content) > 10 * 1024 * 1024:  # If over 10MB
-                        break
-
+                content = await f.read()
                 if content.strip():  # Check if file is not empty
                     # Parse JSON with optimized memory usage
+                    loaded_data = json.loads(content)
+
+                    # Process data in chunks to reduce memory usage
+                    # Clear existing data first
+                    user_data.clear()
+
+                    # Process in batches of 100 users
+                    batch_size = 100
+                    keys = list(loaded_data.keys())
+
+                    for i in range(0, len(keys), batch_size):
+                        batch_keys = keys[i:i+batch_size]
+                        for k in batch_keys:
+                            # Convert string keys back to integers
+                            user_data[int(k)] = loaded_data[k]
+
+                        # Force garbage collection after each batch
+                        if (i + batch_size) < len(keys):
+                            try:
+                                from bot.helper.ext_utils.gc_utils import smart_garbage_collection
+                                smart_garbage_collection(aggressive=False)
+                            except ImportError:
+                                import gc
+                                gc.collect()
+
+                    LOGGER.info(f"Loaded user data for {len(user_data)} users")
+
+                    # Clear the loaded_data variable to free memory
+                    del loaded_data
+
+                    # Final garbage collection
                     try:
-                        loaded_data = json.loads(content)
-
-                        # Process in smaller batches (50 users) to reduce memory usage
-                        batch_size = 50
-                        keys = list(loaded_data.keys())
-
-                        for i in range(0, len(keys), batch_size):
-                            # Force garbage collection before each batch
-                            gc.collect()
-
-                            batch_keys = keys[i:i+batch_size]
-                            for k in batch_keys:
-                                try:
-                                    # Convert string keys back to integers
-                                    user_data[int(k)] = loaded_data[k]
-                                except (ValueError, TypeError) as e:
-                                    LOGGER.error(f"Error converting key {k}: {e}")
-
-                            # Force garbage collection after each batch
-                            gc.collect()
-
-                            # Allow other tasks to run between batches
-                            await sleep(0.1)
-
-                        LOGGER.info(f"Loaded user data for {len(user_data)} users")
-
-                        # Clear variables to free memory
-                        del loaded_data
-                        del content
-                        del keys
-                        del batch_keys
-                    except json.JSONDecodeError as e:
-                        LOGGER.error(f"Error parsing user data JSON: {e}")
-                        user_data.clear()  # Reset to empty if JSON is invalid
-
-            # Final aggressive garbage collection
-            try:
-                from bot.helper.ext_utils.gc_utils import smart_garbage_collection
-                smart_garbage_collection(aggressive=True)
-            except ImportError:
-                gc.collect(2)
-                gc.collect(2)
+                        from bot.helper.ext_utils.gc_utils import smart_garbage_collection
+                        smart_garbage_collection(aggressive=True)
+                    except ImportError:
+                        import gc
+                        gc.collect()
     except Exception as e:
         LOGGER.error(f"Error loading user data: {e}")
-        # Log the full error for debugging
-        import traceback
-        LOGGER.error(traceback.format_exc())
         # Keep using the empty user_data dictionary
-        user_data.clear()
 
 
 async def timeval_check(user_id):
