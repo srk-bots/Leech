@@ -391,9 +391,11 @@ async def load_configurations():
     # Check if web server should be started (BASE_URL_PORT = 0 means disabled)
     if Config.BASE_URL_PORT == 0:
         LOGGER.info("Web server is disabled (BASE_URL_PORT = 0)")
+        # Make sure no web server is running by killing any existing gunicorn processes
+        await (await create_subprocess_exec("pkill", "-9", "-f", "gunicorn")).wait()
     else:
-        # Use Config.BASE_URL_PORT instead of environment variable
-        PORT = environ.get("PORT") or str(Config.BASE_URL_PORT) or "80"
+        # Use Config.BASE_URL_PORT and ignore environment variable if BASE_URL_PORT is explicitly set
+        PORT = str(Config.BASE_URL_PORT) or environ.get("PORT") or "80"
         LOGGER.info(f"Starting web server on port {PORT}")
         await create_subprocess_shell(
             f"gunicorn -k uvicorn.workers.UvicornWorker -w 1 web.wserver:app --bind 0.0.0.0:{PORT}",
