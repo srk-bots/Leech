@@ -230,8 +230,14 @@ def arg_parser(items, arg_base):
                     sub_list.append(items[j])
                 if sub_list:
                     value = " ".join(sub_list)
-                    if part == "-ff" and not value.strip().startswith("["):
-                        arg_base[part].add(value)
+                    if part == "-ff":
+                        # For -ff flag, if it's a direct command (not starting with '['),
+                        # treat it as a direct command string, not a set
+                        if not value.strip().startswith("["):
+                            arg_base[part] = value
+                        else:
+                            # Only add to set if it's a key reference (starts with '[')
+                            arg_base[part].add(value)
                     else:
                         arg_base[part] = value
                     i += len(sub_list)
