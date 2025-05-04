@@ -1,4 +1,3 @@
-import asyncio
 import inspect
 from importlib import import_module
 from time import time as get_time
@@ -26,48 +25,29 @@ class DbManager:
         self.db = None
 
     async def connect(self):
-        max_retries = 5
-        retry_count = 0
-
-        while retry_count < max_retries:
-            try:
-                if self._conn is not None:
-                    try:
-                        await self._conn.close()
-                    except Exception as e:
-                        LOGGER.error(f"Error closing previous DB connection: {e}")
-
-                LOGGER.info(f"Connecting to MongoDB (attempt {retry_count + 1}/{max_retries})...")
-
-                self._conn = AsyncIOMotorClient(
-                    Config.DATABASE_URL,
-                    server_api=ServerApi("1"),
-                    maxPoolSize=10,  # Limit connection pool size
-                    minPoolSize=1,
-                    maxIdleTimeMS=30000,  # Close idle connections after 30 seconds
-                    connectTimeoutMS=15000,  # 15 second connection timeout (increased from 5s)
-                    socketTimeoutMS=30000,  # 30 second socket timeout (increased from 10s)
-                    retryWrites=True,  # Enable retry for write operations
-                    retryReads=True,   # Enable retry for read operations
-                    serverSelectionTimeoutMS=20000,  # 20 second server selection timeout
-                )
-                self.db = self._conn.luna
-                self._return = False
-                LOGGER.info("Successfully connected to database")
-                return  # Exit the retry loop on success
-
-            except PyMongoError as e:
-                retry_count += 1
-                if retry_count >= max_retries:
-                    LOGGER.error(f"All attempts to connect to MongoDB failed: {e}")
-                    self.db = None
-                    self._return = True
-                    self._conn = None
-                else:
-                    # Wait before retrying with exponential backoff
-                    wait_time = 2**retry_count
-                    LOGGER.info(f"MongoDB connection failed. Waiting {wait_time} seconds before retrying...")
-                    await asyncio.sleep(wait_time)
+        try:
+            if self._conn is not None:
+                try:
+                    await self._conn.close()
+                except Exception as e:
+                    LOGGER.error(f"Error closing previous DB connection: {e}")
+            self._conn = AsyncIOMotorClient(
+                Config.DATABASE_URL,
+                server_api=ServerApi("1"),
+                maxPoolSize=10,  # Limit connection pool size
+                minPoolSize=1,
+                maxIdleTimeMS=30000,  # Close idle connections after 30 seconds
+                connectTimeoutMS=5000,  # 5 second connection timeout
+                socketTimeoutMS=10000,  # 10 second socket timeout
+            )
+            self.db = self._conn.luna
+            self._return = False
+            LOGGER.info("Successfully connected to database")
+        except PyMongoError as e:
+            LOGGER.error(f"Error in DB connection: {e}")
+            self.db = None
+            self._return = True
+            self._conn = None
 
     async def disconnect(self):
         self._return = True
