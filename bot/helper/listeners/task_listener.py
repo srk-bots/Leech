@@ -700,8 +700,7 @@ class TaskListener(TaskConfig):
                 if fmsg != "":
                     # Check if user specified a destination with -up flag
                     if (
-                        self.up_dest is not None
-                        and self.up_dest
+                        self.up_dest
                         and not is_gdrive_id(self.up_dest)
                         and not is_rclone_path(self.up_dest)
                     ):
@@ -899,8 +898,7 @@ class TaskListener(TaskConfig):
 
             # Check if user specified a destination with -up flag
             if (
-                self.up_dest is not None
-                and self.up_dest
+                self.up_dest
                 and not is_gdrive_id(self.up_dest)
                 and not is_rclone_path(self.up_dest)
             ):

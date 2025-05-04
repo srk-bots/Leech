@@ -523,10 +523,6 @@ class TelegramUploader:
                 LOGGER.error(f"DEBUG: Error sending to up_dest: {e}")
                 await self._listener.on_upload_error(str(e))
                 return False
-        elif self._listener.up_dest is not None:
-            # Handle the case where up_dest is an empty string but not None
-            LOGGER.warning("DEBUG: up_dest is an empty string, treating as None")
-            self._listener.up_dest = None
         elif self._user_session:
             self._sent_msg = await TgClient.user.get_messages(
                 chat_id=self._listener.message.chat.id,
