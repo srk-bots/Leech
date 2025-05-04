@@ -2,7 +2,6 @@ import contextlib
 import gc
 import logging
 import os
-import sys
 import time
 import tracemalloc
 
@@ -323,6 +322,7 @@ def cleanup_large_objects():
     """
     Find and clean up large objects in memory.
     This is a more aggressive approach for when memory usage is critical.
+    Optimized to use less memory during the cleanup process.
     """
     try:
         # Get memory before collection if psutil is available
@@ -338,59 +338,15 @@ def cleanup_large_objects():
         # Force a full collection first
         gc.collect()
 
-        # Get all objects
-        objects = gc.get_objects()
+        # Clear any unreachable objects
+        if gc.garbage:
+            gc.garbage.clear()
 
-        # Find large objects (>10MB)
-        large_objects = []
-        for obj in objects:
-            try:
-                size = sys.getsizeof(obj)
-                if size > 10 * 1024 * 1024:  # >10MB
-                    large_objects.append((obj, size))
-            except Exception:
-                # Some objects can't have their size measured
-                pass
-
-        # Log information about large objects
-        if large_objects:
-            for _i, (obj, size) in enumerate(
-                sorted(large_objects, key=lambda x: x[1], reverse=True)[:5]
-            ):
-                # Try to identify what the object is
-                try:
-                    if hasattr(obj, "__dict__"):
-                        list(obj.__dict__.keys())[:5]  # Get first 5 attributes
-                    elif hasattr(obj, "__len__"):
-                        pass
-                except Exception:
-                    pass
-
-                # For lists, tuples, and dicts, try to identify contents
-                if isinstance(obj, list | tuple) and len(obj) > 0:
-                    with contextlib.suppress(Exception):
-                        pass
-                elif isinstance(obj, dict) and len(obj) > 0:
-                    with contextlib.suppress(Exception):
-                        next(iter(obj.keys()))
-
-        # Store the count before clearing references
-        count = len(large_objects) if large_objects else 0
-
-        # Clear references to help garbage collection
-        del objects
-        del large_objects
-
-        # Force another collection on all generations
+        # Instead of scanning all objects, which is memory intensive,
+        # just do a thorough garbage collection of all generations
         gc.collect(0)
         gc.collect(1)
         gc.collect(2)
-
-        # Clear any unreachable objects
-        unreachable_count = 0
-        if gc.garbage:
-            unreachable_count = len(gc.garbage)
-            gc.garbage.clear()
 
         # Log memory freed if psutil is available
         if memory_before is not None and psutil is not None:
@@ -398,17 +354,17 @@ def cleanup_large_objects():
                 # Get memory after collection
                 process = psutil.Process(os.getpid())
                 memory_after = process.memory_info().rss / (1024 * 1024)
-                max(0, memory_before - memory_after)  # Avoid negative values
+                memory_freed = max(0, memory_before - memory_after)  # Avoid negative values
 
-                # Only log if significant memory was freed
-                if unreachable_count > 0:
-                    pass
+                # Only log if significant memory was freed (> 10MB)
+                if memory_freed > 10:
+                    LOGGER.debug(f"Freed {memory_freed:.2f} MB during garbage collection")
             except Exception:
                 pass
 
-        return count
+        return 1  # Return a simple success indicator
     except Exception as e:
-        LOGGER.error(f"Error cleaning up large objects: {e}")
+        LOGGER.error(f"Error during garbage collection: {e}")
         # Try a simple collection even if there was an error
         with contextlib.suppress(Exception):
             gc.collect()
@@ -420,6 +376,8 @@ def smart_garbage_collection(aggressive=False, for_split_file=False):
     Perform a smart garbage collection that adapts based on memory usage.
     This function decides whether to use optimized_garbage_collection or
     a more aggressive approach with cleanup_large_objects.
+
+    Optimized to reduce memory overhead during collection.
 
     Args:
         aggressive: Whether to force aggressive collection regardless of memory usage
@@ -442,47 +400,29 @@ def smart_garbage_collection(aggressive=False, for_split_file=False):
         if for_split_file:
             aggressive = True
 
-        # Decide which collection method to use
-        if (
-            aggressive or memory_percent > 80
-        ):  # High memory usage or forced aggressive mode
-            # First try optimized collection with logging
-            optimized_garbage_collection(aggressive=True, log_stats=True)
+        # Decide which collection method to use based on memory pressure
+        if aggressive or memory_percent > 85:  # High memory usage or forced aggressive mode
+            # For very high memory usage or split files, do more thorough cleanup
+            if memory_percent > 90 or for_split_file:
+                # Clear any unreachable objects first
+                if gc.garbage:
+                    gc.garbage.clear()
 
-            # For split files or very high memory usage, do extra cleanup
-            if memory_percent > 90 or aggressive:
+                # Do a thorough collection
                 cleanup_large_objects()
-
-                # For split files, do an extra round of collection
-                if for_split_file:
-                    # Clear any unreachable objects
-                    if gc.garbage:
-                        gc.garbage.clear()
-
-                    # Force collection on all generations again
-                    gc.collect(0)
-                    gc.collect(1)
-                    gc.collect(2)
-
-                    # Try to free more memory by clearing caches
-                    import sys
-
-                    try:
-                        sys._clear_type_cache()
-                        # Clear module caches that might be holding references
-                        for module in list(sys.modules.values()):
-                            if hasattr(module, "_cache") and isinstance(
-                                module._cache, dict
-                            ):
-                                module._cache.clear()
-                    except Exception:
-                        pass
+            else:
+                # Just do an optimized collection for moderate high memory
+                optimized_garbage_collection(aggressive=True, log_stats=False)
 
             return True
-        # Normal memory usage
-        # Use optimized collection with logging if memory usage is moderate
-        log_stats = memory_percent > 60
-        return optimized_garbage_collection(aggressive=False, log_stats=log_stats)
+        elif memory_percent > 70:  # Moderate memory usage
+            # Use optimized collection without logging for better performance
+            return optimized_garbage_collection(aggressive=False, log_stats=False)
+        else:  # Low memory usage
+            # Just collect generation 0 (youngest objects) which is very fast
+            gc.collect(0)
+            return True
+
     except Exception as e:
         LOGGER.error(f"Error during smart garbage collection: {e}")
         # Try a simple collection as fallback

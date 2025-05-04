@@ -176,7 +176,8 @@ class Clone(TaskListener):
                     isYtdlp=False,
                 )
                 if limit_msg:
-                    await send_message(self.message, limit_msg)
+                    # limit_msg is already a tuple with (message_object, error_message)
+                    # and the message has already been sent with the tag
                     return
 
             msg, button = await stop_duplicate_check(self)
@@ -296,7 +297,8 @@ class Clone(TaskListener):
                             isYtdlp=False,
                         )
                         if limit_msg:
-                            await send_message(self.message, limit_msg)
+                            # limit_msg is already a tuple with (message_object, error_message)
+                            # and the message has already been sent with the tag
                             return
                 except Exception as e:
                     LOGGER.error(f"Error parsing rclone size: {e}")

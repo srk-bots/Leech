@@ -937,18 +937,22 @@ Timeout: 60 sec"""
         # Force refresh Config.MEDIA_TOOLS_ENABLED from database to ensure accurate status
         if hasattr(Config, "MEDIA_TOOLS_ENABLED"):
             try:
-                db_config = await database.db.settings.config.find_one(
-                    {"_id": TgClient.ID},
-                    {"MEDIA_TOOLS_ENABLED": 1, "_id": 0},
-                )
-                if db_config and "MEDIA_TOOLS_ENABLED" in db_config:
-                    # Update the Config object with the current value from database
-                    db_value = db_config["MEDIA_TOOLS_ENABLED"]
-                    if db_value != Config.MEDIA_TOOLS_ENABLED:
-                        LOGGER.debug(
-                            f"Updating MEDIA_TOOLS_ENABLED from {Config.MEDIA_TOOLS_ENABLED} to {db_value}"
-                        )
-                        Config.MEDIA_TOOLS_ENABLED = db_value
+                # Check if database is connected and db attribute exists
+                if database.db is not None and hasattr(database, "db") and hasattr(database.db, "settings"):
+                    db_config = await database.db.settings.config.find_one(
+                        {"_id": TgClient.ID},
+                        {"MEDIA_TOOLS_ENABLED": 1, "_id": 0},
+                    )
+                    if db_config and "MEDIA_TOOLS_ENABLED" in db_config:
+                        # Update the Config object with the current value from database
+                        db_value = db_config["MEDIA_TOOLS_ENABLED"]
+                        if db_value != Config.MEDIA_TOOLS_ENABLED:
+                            LOGGER.debug(
+                                f"Updating MEDIA_TOOLS_ENABLED from {Config.MEDIA_TOOLS_ENABLED} to {db_value}"
+                            )
+                            Config.MEDIA_TOOLS_ENABLED = db_value
+                else:
+                    LOGGER.debug("Database not connected or settings collection not available, skipping MEDIA_TOOLS_ENABLED refresh")
             except Exception as e:
                 LOGGER.error(
                     f"Error refreshing MEDIA_TOOLS_ENABLED from database: {e}"
@@ -5532,18 +5536,22 @@ async def edit_bot_settings(client, query):
 
             # Force refresh Config.MEDIA_TOOLS_ENABLED from database to ensure accurate status
             try:
-                db_config = await database.db.settings.config.find_one(
-                    {"_id": TgClient.ID},
-                    {"MEDIA_TOOLS_ENABLED": 1, "_id": 0},
-                )
-                if db_config and "MEDIA_TOOLS_ENABLED" in db_config:
-                    # Update the Config object with the current value from database
-                    db_value = db_config["MEDIA_TOOLS_ENABLED"]
-                    if db_value != Config.MEDIA_TOOLS_ENABLED:
-                        LOGGER.debug(
-                            f"Updating MEDIA_TOOLS_ENABLED from {Config.MEDIA_TOOLS_ENABLED} to {db_value}"
-                        )
-                        Config.MEDIA_TOOLS_ENABLED = db_value
+                # Check if database is connected and db attribute exists
+                if database.db is not None and hasattr(database, "db") and hasattr(database.db, "settings"):
+                    db_config = await database.db.settings.config.find_one(
+                        {"_id": TgClient.ID},
+                        {"MEDIA_TOOLS_ENABLED": 1, "_id": 0},
+                    )
+                    if db_config and "MEDIA_TOOLS_ENABLED" in db_config:
+                        # Update the Config object with the current value from database
+                        db_value = db_config["MEDIA_TOOLS_ENABLED"]
+                        if db_value != Config.MEDIA_TOOLS_ENABLED:
+                            LOGGER.debug(
+                                f"Updating MEDIA_TOOLS_ENABLED from {Config.MEDIA_TOOLS_ENABLED} to {db_value}"
+                            )
+                            Config.MEDIA_TOOLS_ENABLED = db_value
+                else:
+                    LOGGER.debug("Database not connected or settings collection not available, skipping MEDIA_TOOLS_ENABLED refresh")
             except Exception as e:
                 LOGGER.error(
                     f"Error refreshing MEDIA_TOOLS_ENABLED from database: {e}"
@@ -5902,20 +5910,25 @@ async def edit_bot_settings(client, query):
 
         # Force reload the current value after database update to ensure consistency
         try:
-            db_config = await database.db.settings.config.find_one(
-                {"_id": TgClient.ID},
-                {key: 1, "_id": 0},
-            )
-            if db_config and key in db_config:
-                # Update the Config object with the current value from database
-                db_value = db_config[key]
-                if db_value != Config.get(key):
-                    LOGGER.debug(
-                        f"Updating {key} from {Config.get(key)} to {db_value}"
-                    )
-                    Config.set(key, db_value)
-                current_value = db_value
+            # Check if database is connected and db attribute exists
+            if database.db is not None and hasattr(database, "db") and hasattr(database.db, "settings"):
+                db_config = await database.db.settings.config.find_one(
+                    {"_id": TgClient.ID},
+                    {key: 1, "_id": 0},
+                )
+                if db_config and key in db_config:
+                    # Update the Config object with the current value from database
+                    db_value = db_config[key]
+                    if db_value != Config.get(key):
+                        LOGGER.debug(
+                            f"Updating {key} from {Config.get(key)} to {db_value}"
+                        )
+                        Config.set(key, db_value)
+                    current_value = db_value
+                else:
+                    current_value = Config.get(key)
             else:
+                LOGGER.debug(f"Database not connected or settings collection not available, skipping {key} refresh")
                 current_value = Config.get(key)
         except Exception as e:
             LOGGER.error(f"Error refreshing {key} from database: {e}")
@@ -6019,18 +6032,22 @@ async def edit_bot_settings(client, query):
 
         # Force reload the current value after database update to ensure consistency
         try:
-            db_config = await database.db.settings.config.find_one(
-                {"_id": TgClient.ID},
-                {key: 1, "_id": 0},
-            )
-            if db_config and key in db_config:
-                # Update the Config object with the current value from database
-                db_value = db_config[key]
-                if db_value != Config.get(key):
-                    LOGGER.debug(
-                        f"Updating {key} from {Config.get(key)} to {db_value}"
-                    )
-                    Config.set(key, db_value)
+            # Check if database is connected and db attribute exists
+            if database.db is not None and hasattr(database, "db") and hasattr(database.db, "settings"):
+                db_config = await database.db.settings.config.find_one(
+                    {"_id": TgClient.ID},
+                    {key: 1, "_id": 0},
+                )
+                if db_config and key in db_config:
+                    # Update the Config object with the current value from database
+                    db_value = db_config[key]
+                    if db_value != Config.get(key):
+                        LOGGER.debug(
+                            f"Updating {key} from {Config.get(key)} to {db_value}"
+                        )
+                        Config.set(key, db_value)
+            else:
+                LOGGER.debug(f"Database not connected or settings collection not available, skipping {key} refresh")
         except Exception as e:
             LOGGER.error(f"Error refreshing {key} from database: {e}")
 
@@ -6088,18 +6105,22 @@ async def edit_bot_settings(client, query):
 
         # Force reload the current value after database update to ensure consistency
         try:
-            db_config = await database.db.settings.config.find_one(
-                {"_id": TgClient.ID},
-                {key: 1, "_id": 0},
-            )
-            if db_config and key in db_config:
-                # Update the Config object with the current value from database
-                db_value = db_config[key]
-                if db_value != Config.get(key):
-                    LOGGER.debug(
-                        f"Updating {key} from {Config.get(key)} to {db_value}"
-                    )
-                    Config.set(key, db_value)
+            # Check if database is connected and db attribute exists
+            if database.db is not None and hasattr(database, "db") and hasattr(database.db, "settings"):
+                db_config = await database.db.settings.config.find_one(
+                    {"_id": TgClient.ID},
+                    {key: 1, "_id": 0},
+                )
+                if db_config and key in db_config:
+                    # Update the Config object with the current value from database
+                    db_value = db_config[key]
+                    if db_value != Config.get(key):
+                        LOGGER.debug(
+                            f"Updating {key} from {Config.get(key)} to {db_value}"
+                        )
+                        Config.set(key, db_value)
+            else:
+                LOGGER.debug(f"Database not connected or settings collection not available, skipping {key} refresh")
         except Exception as e:
             LOGGER.error(f"Error refreshing {key} from database: {e}")
 
@@ -6260,16 +6281,20 @@ async def edit_bot_settings(client, query):
 
         # Force reload the current value after database update to ensure consistency
         try:
-            db_config = await database.db.settings.config.find_one(
-                {"_id": TgClient.ID},
-                {key: 1, "_id": 0},
-            )
-            if db_config and key in db_config:
-                # Update the Config object with the current value from database
-                db_value = db_config[key]
-                if db_value != value:
-                    LOGGER.debug(f"Updating {key} from {value} to {db_value}")
-                    Config.set(key, db_value)
+            # Check if database is connected and db attribute exists
+            if database.db is not None and hasattr(database, "db") and hasattr(database.db, "settings"):
+                db_config = await database.db.settings.config.find_one(
+                    {"_id": TgClient.ID},
+                    {key: 1, "_id": 0},
+                )
+                if db_config and key in db_config:
+                    # Update the Config object with the current value from database
+                    db_value = db_config[key]
+                    if db_value != value:
+                        LOGGER.debug(f"Updating {key} from {value} to {db_value}")
+                        Config.set(key, db_value)
+            else:
+                LOGGER.debug(f"Database not connected or settings collection not available, skipping {key} refresh")
         except Exception as e:
             LOGGER.error(f"Error refreshing {key} from database: {e}")
 

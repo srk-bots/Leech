@@ -606,10 +606,11 @@ class Mirror(TaskListener):
                 isYtdlp=False,
             )
             if limit_msg:
-                x = await send_message(self.message, limit_msg)
+                # limit_msg is already a tuple with (message_object, error_message)
+                # and the message has already been sent with the tag
                 await self.remove_from_same_dir()
                 await delete_links(self.message)
-                return await auto_delete_message(x, time=300)
+                return
 
         if (
             not self.is_jd

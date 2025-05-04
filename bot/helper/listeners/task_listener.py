@@ -901,19 +901,25 @@ class TaskListener(TaskConfig):
         # Delete command message and any replied message for all tasks
         await delete_links(self.message)
 
-        # Send and auto-delete error message
-        # Make sure to include the user tag
-        error_str = escape(str(error))
-        if "⚠️" in error_str and "limit" in error_str.lower():
-            # This is a limit error, make sure to tag the user
-            msg = f"{self.tag} ⚠️ Download Error: {error_str}"
+        # Check if error is already a message object (from limit_checker)
+        if isinstance(error, tuple) and len(error) == 2:
+            # This is a tuple from limit_checker with (message_object, error_message)
+            # The message has already been sent with the tag, so we don't need to send it again
+            error_msg = error[0]  # Use the message that was already sent
         else:
-            msg = f"{self.tag} Download: {error_str}"
+            # Send and auto-delete error message
+            # Make sure to include the user tag
+            error_str = escape(str(error))
+            if "⚠️" in error_str and "limit" in error_str.lower():
+                # This is a limit error, make sure to tag the user
+                msg = f"{self.tag} ⚠️ Download Error: {error_str}"
+            else:
+                msg = f"{self.tag} Download: {error_str}"
 
-        error_msg = await send_message(self.message, msg, button)
-        create_task(
-            auto_delete_message(error_msg, time=300),
-        )  # noqa: RUF006, RUF100
+            error_msg = await send_message(self.message, msg, button)
+            create_task(
+                auto_delete_message(error_msg, time=300),
+            )  # noqa: RUF006, RUF100
 
         if count == 0:
             await self.clean()
@@ -956,8 +962,16 @@ class TaskListener(TaskConfig):
             if self.mid in task_dict:
                 del task_dict[self.mid]
             count = len(task_dict)
-        x = await send_message(self.message, f"{self.tag} {escape(str(error))}")
-        create_task(auto_delete_message(x, time=300))  # noqa: RUF006, RUF100
+
+        # Check if error is already a message object (from limit_checker)
+        if isinstance(error, tuple) and len(error) == 2:
+            # This is a tuple from limit_checker with (message_object, error_message)
+            # The message has already been sent with the tag, so we don't need to send it again
+            x = error[0]  # Use the message that was already sent
+        else:
+            # Send and auto-delete error message with the user tag
+            x = await send_message(self.message, f"{self.tag} {escape(str(error))}")
+            create_task(auto_delete_message(x, time=300))  # noqa: RUF006, RUF100
         if count == 0:
             await self.clean()
         else:

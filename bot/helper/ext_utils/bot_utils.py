@@ -31,7 +31,7 @@ from .telegraph_helper import telegraph
 
 COMMAND_USAGE = {}
 
-THREAD_POOL = ThreadPoolExecutor(max_workers=500)
+THREAD_POOL = ThreadPoolExecutor(max_workers=100)  # Reduced from 500 to improve memory usage
 
 
 class SetInterval:
@@ -414,6 +414,7 @@ async def getdailytasks(
     upleech=0,
     check_mirror=False,
     check_leech=False,
+    save_data=True,
 ):
     """Get or update daily task statistics for a user.
 
@@ -427,6 +428,7 @@ async def getdailytasks(
         upleech (int, optional): Size in bytes to add to leech usage. Defaults to 0.
         check_mirror (bool, optional): Whether to return mirror usage. Defaults to False.
         check_leech (bool, optional): Whether to return leech usage. Defaults to False.
+        save_data (bool, optional): Whether to save data to disk. Defaults to True.
 
     Returns:
         int or float: Task count, mirror usage, or leech usage depending on parameters
@@ -448,6 +450,9 @@ async def getdailytasks(
             user_dict["daily_mirror"] = 0
             user_dict["daily_leech"] = 0
             user_dict["last_reset_date"] = current_date
+            # Always save when resetting stats for a new day
+            if save_data:
+                await _save_user_data()
         else:
             # Initialize stats if they don't exist
             user_dict.setdefault("daily_tasks", 0)
@@ -455,33 +460,38 @@ async def getdailytasks(
             user_dict.setdefault("daily_leech", 0)
             user_dict.setdefault("last_reset_date", current_date)
 
+        # Track if we made any changes
+        made_changes = False
+
         # Handle task count increase
         if increase_task:
             user_dict["daily_tasks"] += 1
-            # Only save data when we make changes
-            await _save_user_data()
-            return user_dict["daily_tasks"]
-
+            made_changes = True
+            result = user_dict["daily_tasks"]
         # Handle mirror usage update
-        if upmirror > 0:
+        elif upmirror > 0:
             user_dict["daily_mirror"] += upmirror
-            # Only save data when we make changes
-            await _save_user_data()
-
+            made_changes = True
+            result = None
         # Handle leech usage update
-        if upleech > 0:
+        elif upleech > 0:
             user_dict["daily_leech"] += upleech
-            # Only save data when we make changes
+            made_changes = True
+            result = None
+        # Just checking values, no changes
+        else:
+            if check_mirror:
+                result = user_dict["daily_mirror"]
+            elif check_leech:
+                result = user_dict["daily_leech"]
+            else:
+                result = user_dict["daily_tasks"]
+
+        # Only save if changes were made and save_data is True
+        if made_changes and save_data:
             await _save_user_data()
 
-        # Return requested statistic
-        if check_mirror:
-            return user_dict["daily_mirror"]
-
-        if check_leech:
-            return user_dict["daily_leech"]
-
-        return user_dict["daily_tasks"]
+        return result
 
     except Exception:
         # Return safe defaults in case of error

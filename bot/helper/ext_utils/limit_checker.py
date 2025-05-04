@@ -82,6 +82,23 @@ def get_limit_message(limit_result):
     return limit_result
 
 
+async def send_limit_error(listener, error_msg):
+    """Send a limit error message with the user tag.
+
+    Args:
+        listener: Listener object with user info
+        error_msg: Error message to send
+
+    Returns:
+        tuple: (message_object, error_message)
+    """
+    # Include the user tag in the message
+    tagged_msg = f"{listener.tag} {error_msg}"
+    msg = await send_message(listener.message, tagged_msg)
+    create_task(auto_delete_message(msg, time=300))  # Auto-delete after 5 minutes
+    return msg, error_msg
+
+
 async def limit_checker(
     size,
     listener,
@@ -139,9 +156,7 @@ async def limit_checker(
     # Check time interval between tasks
     if wait_time := await timeval_check(user_id):
         error_msg = f"⚠️ Please wait {wait_time:.1f} seconds before starting another task."
-        msg = await send_message(listener.message, error_msg)
-        create_task(auto_delete_message(msg, time=300))  # Auto-delete after 5 minutes
-        return msg, error_msg
+        return await send_limit_error(listener, error_msg)
 
     # Get common attributes once to avoid repeated getattr calls
     is_clone = getattr(listener, "isClone", False)
@@ -154,81 +169,61 @@ async def limit_checker(
         limit = CLONE_LIMIT * 1024**3
         if size > limit:
             error_msg = f"⚠️ Clone limit is {get_readable_file_size(limit)}. Your task has been cancelled."
-            msg = await send_message(listener.message, error_msg)
-            create_task(auto_delete_message(msg, time=300))  # Auto-delete after 5 minutes
-            return msg, error_msg
+            return await send_limit_error(listener, error_msg)
 
     elif is_jd and (JD_LIMIT := Config.JD_LIMIT):
         limit = JD_LIMIT * 1024**3
         if size > limit:
             error_msg = f"⚠️ JDownloader limit is {get_readable_file_size(limit)}. Your task has been cancelled."
-            msg = await send_message(listener.message, error_msg)
-            create_task(auto_delete_message(msg, time=300))  # Auto-delete after 5 minutes
-            return msg, error_msg
+            return await send_limit_error(listener, error_msg)
 
     elif is_nzb and (NZB_LIMIT := Config.NZB_LIMIT):
         limit = NZB_LIMIT * 1024**3
         if size > limit:
             error_msg = f"⚠️ NZB limit is {get_readable_file_size(limit)}. Your task has been cancelled."
-            msg = await send_message(listener.message, error_msg)
-            create_task(auto_delete_message(msg, time=300))  # Auto-delete after 5 minutes
-            return msg, error_msg
+            return await send_limit_error(listener, error_msg)
 
     elif isMega and (MEGA_LIMIT := Config.MEGA_LIMIT):
         limit = MEGA_LIMIT * 1024**3
         if size > limit:
             error_msg = f"⚠️ Mega limit is {get_readable_file_size(limit)}. Your task has been cancelled."
-            msg = await send_message(listener.message, error_msg)
-            create_task(auto_delete_message(msg, time=300))  # Auto-delete after 5 minutes
-            return msg, error_msg
+            return await send_limit_error(listener, error_msg)
 
     elif isDriveLink and (GDRIVE_LIMIT := Config.GDRIVE_LIMIT):
         limit = GDRIVE_LIMIT * 1024**3
         if size > limit:
             error_msg = f"⚠️ Google Drive limit is {get_readable_file_size(limit)}. Your task has been cancelled."
-            msg = await send_message(listener.message, error_msg)
-            create_task(auto_delete_message(msg, time=300))  # Auto-delete after 5 minutes
-            return msg, error_msg
+            return await send_limit_error(listener, error_msg)
 
     elif isYtdlp:
         if (YTDLP_LIMIT := Config.YTDLP_LIMIT):
             limit = YTDLP_LIMIT * 1024**3
             if size > limit:
                 error_msg = f"⚠️ YouTube limit is {get_readable_file_size(limit)}. Your task has been cancelled."
-                msg = await send_message(listener.message, error_msg)
-                create_task(auto_delete_message(msg, time=300))  # Auto-delete after 5 minutes
-                return msg, error_msg
+                return await send_limit_error(listener, error_msg)
 
         if isPlayList and (PLAYLIST_LIMIT := Config.PLAYLIST_LIMIT) and isPlayList > PLAYLIST_LIMIT:
             error_msg = f"⚠️ Playlist limit is {PLAYLIST_LIMIT}. Your task has been cancelled."
-            msg = await send_message(listener.message, error_msg)
-            create_task(auto_delete_message(msg, time=300))  # Auto-delete after 5 minutes
-            return msg, error_msg
+            return await send_limit_error(listener, error_msg)
 
     elif isTorrent and (TORRENT_LIMIT := Config.TORRENT_LIMIT):
         limit = TORRENT_LIMIT * 1024**3
         if size > limit:
             error_msg = f"⚠️ Torrent limit is {get_readable_file_size(limit)}. Your task has been cancelled."
-            msg = await send_message(listener.message, error_msg)
-            create_task(auto_delete_message(msg, time=300))  # Auto-delete after 5 minutes
-            return msg, error_msg
+            return await send_limit_error(listener, error_msg)
 
     elif (DIRECT_LIMIT := Config.DIRECT_LIMIT):
         limit = DIRECT_LIMIT * 1024**3
         if size > limit:
             error_msg = f"⚠️ Direct link limit is {get_readable_file_size(limit)}. Your task has been cancelled."
-            msg = await send_message(listener.message, error_msg)
-            create_task(auto_delete_message(msg, time=300))  # Auto-delete after 5 minutes
-            return msg, error_msg
+            return await send_limit_error(listener, error_msg)
 
     # Check leech limit
     if (LEECH_LIMIT := Config.LEECH_LIMIT) and is_leech:
         limit = LEECH_LIMIT * 1024**3
         if size > limit:
             error_msg = f"⚠️ Leech limit is {get_readable_file_size(limit)}. Your task has been cancelled."
-            msg = await send_message(listener.message, error_msg)
-            create_task(auto_delete_message(msg, time=300))  # Auto-delete after 5 minutes
-            return msg, error_msg
+            return await send_limit_error(listener, error_msg)
 
     # Check storage threshold
     if (STORAGE_THRESHOLD := Config.STORAGE_THRESHOLD) and not is_clone:
@@ -239,36 +234,32 @@ async def limit_checker(
         acpt = await sync_to_async(check_storage_threshold, size, limit, arch)
         if not acpt:
             error_msg = f"⚠️ You must leave {get_readable_file_size(limit)} free storage. Your task has been cancelled."
-            msg = await send_message(listener.message, error_msg)
-            create_task(auto_delete_message(msg, time=300))  # Auto-delete after 5 minutes
-            return msg, error_msg
+            return await send_limit_error(listener, error_msg)
 
     # Check daily task limit first
     if (DAILY_TASK_LIMIT := Config.DAILY_TASK_LIMIT) and await check_daily_task_limit(DAILY_TASK_LIMIT, listener):
         error_msg = f"⚠️ Daily task limit is {DAILY_TASK_LIMIT} tasks. Your task has been cancelled."
-        msg = await send_message(listener.message, error_msg)
-        create_task(auto_delete_message(msg, time=300))  # Auto-delete after 5 minutes
-        return msg, error_msg
+        return await send_limit_error(listener, error_msg)
 
     # Check daily mirror limit
     if (DAILY_MIRROR_LIMIT := Config.DAILY_MIRROR_LIMIT) and not is_leech:
         limit = DAILY_MIRROR_LIMIT * 1024**3
         if await check_daily_mirror_limit(limit, listener, size):
             error_msg = f"⚠️ Daily mirror limit is {get_readable_file_size(limit)}. Your task has been cancelled."
-            msg = await send_message(listener.message, error_msg)
-            create_task(auto_delete_message(msg, time=300))  # Auto-delete after 5 minutes
-            return msg, error_msg
+            return await send_limit_error(listener, error_msg)
 
     # Check daily leech limit
     if (DAILY_LEECH_LIMIT := Config.DAILY_LEECH_LIMIT) and is_leech:
         limit = DAILY_LEECH_LIMIT * 1024**3
         if await check_daily_leech_limit(limit, listener, size):
             error_msg = f"⚠️ Daily leech limit is {get_readable_file_size(limit)}. Your task has been cancelled."
-            msg = await send_message(listener.message, error_msg)
-            create_task(auto_delete_message(msg, time=300))  # Auto-delete after 5 minutes
-            return msg, error_msg
+            return await send_limit_error(listener, error_msg)
 
-    # Run memory optimization to free memory
+    # Save all user data changes at once
+    from bot.helper.ext_utils.bot_utils import _save_user_data
+    await _save_user_data()
+
+    # Run memory optimization to free memory only once at the end
     optimize_memory(aggressive=False)
 
     # Log memory usage after optimization
@@ -307,10 +298,8 @@ async def check_daily_mirror_limit(limit, listener, size):
     # Update mirror usage if not a clone task
     is_clone = getattr(listener, "isClone", False)
     if not is_clone:
-        await getdailytasks(user_id, upmirror=size)
-
-        # Run memory optimization after updating stats
-        optimize_memory(aggressive=False)
+        # Don't save data here, we'll save once at the end of limit_checker
+        await getdailytasks(user_id, upmirror=size, save_data=False)
 
     return False
 
@@ -341,11 +330,8 @@ async def check_daily_leech_limit(limit, listener, size):
     if size >= (limit - current_usage) or limit <= current_usage:
         return True
 
-    # Update leech usage
-    await getdailytasks(user_id, upleech=size)
-
-    # Run memory optimization after updating stats
-    optimize_memory(aggressive=False)
+    # Update leech usage without saving to disk yet
+    await getdailytasks(user_id, upleech=size, save_data=False)
 
     return False
 
@@ -371,10 +357,7 @@ async def check_daily_task_limit(limit, listener):
     if current_tasks >= limit:
         return True
 
-    # Increment task count
-    await getdailytasks(user_id, increase_task=True)
-
-    # Run memory optimization after updating stats
-    optimize_memory(aggressive=False)
+    # Increment task count without saving to disk yet
+    await getdailytasks(user_id, increase_task=True, save_data=False)
 
     return False
