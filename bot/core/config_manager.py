@@ -574,6 +574,11 @@ class SystemEnv:
                 return original_value
 
         if isinstance(original_value, list):
+            # For LEECH_DUMP_CHAT and LOG_CHAT_ID, use parse_chat_ids
+            if key in ["LEECH_DUMP_CHAT", "LOG_CHAT_ID"]:
+                from bot.helper.ext_utils.bot_utils import parse_chat_ids
+
+                return parse_chat_ids(value)
             return value.split(",")
 
         if isinstance(original_value, dict):
