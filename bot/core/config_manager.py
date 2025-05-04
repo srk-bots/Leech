@@ -500,7 +500,15 @@ class Config:
             for attr in dir(settings):
                 if hasattr(cls, attr):
                     value = getattr(settings, attr)
-                    if not value:
+                    if value is None:  # Skip None values
+                        continue
+                    # Special handling for BASE_URL_PORT and RCLONE_SERVE_PORT
+                    # to ensure 0 values are properly processed
+                    if attr in ["BASE_URL_PORT", "RCLONE_SERVE_PORT"] and value == 0:
+                        setattr(cls, attr, 0)
+                        continue
+                    # Skip other falsy values
+                    if not value and not isinstance(value, (int, float, bool)):
                         continue
                     if isinstance(value, str):
                         value = value.strip()

@@ -388,17 +388,32 @@ async def load_configurations():
         )
     ).wait()
 
+    # First, kill any running web server processes regardless of configuration
+    try:
+        LOGGER.info("Killing any existing web server processes...")
+        await (await create_subprocess_exec("pkill", "-9", "-f", "gunicorn")).wait()
+    except Exception as e:
+        LOGGER.error(f"Error killing web server processes: {e}")
+
     # Check if web server should be started (BASE_URL_PORT = 0 means disabled)
     if Config.BASE_URL_PORT == 0:
         LOGGER.info("Web server is disabled (BASE_URL_PORT = 0)")
-        # Kill any running web server to ensure it's stopped
+        # Double-check to make sure no web server is running
         try:
-            await (await create_subprocess_exec("pkill", "-9", "-f", "gunicorn")).wait()
-            LOGGER.info("Killed any running web server processes")
+            # Use ps to check if any gunicorn processes are still running
+            process = await create_subprocess_exec(
+                "ps", "-ef", "|", "grep", "gunicorn", "|", "grep", "-v", "grep",
+                stdout=-1
+            )
+            stdout, _ = await process.communicate()
+            if stdout:
+                LOGGER.warning("Gunicorn processes still detected, attempting to kill again...")
+                await (await create_subprocess_exec("pkill", "-9", "-f", "gunicorn")).wait()
         except Exception as e:
-            LOGGER.error(f"Error killing web server processes: {e}")
+            LOGGER.error(f"Error checking for gunicorn processes: {e}")
     else:
         # Use Config.BASE_URL_PORT instead of environment variable
+        # Explicitly convert to string to avoid any type issues
         PORT = environ.get("PORT") or str(Config.BASE_URL_PORT) or "80"
         LOGGER.info(f"Starting web server on port {PORT}")
         await create_subprocess_shell(

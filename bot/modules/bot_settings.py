@@ -3563,16 +3563,33 @@ async def edit_variable(_, message, pre_message, key):
         await start_from_queued()
     elif key == "BASE_URL_PORT":
         # Kill any running web server
-        await (
-            await create_subprocess_exec("pkill", "-9", "-f", "gunicorn")
-        ).wait()
+        try:
+            LOGGER.info("Killing any existing web server processes...")
+            await (await create_subprocess_exec("pkill", "-9", "-f", "gunicorn")).wait()
+        except Exception as e:
+            LOGGER.error(f"Error killing web server processes: {e}")
+
         # Only start web server if port is not 0
         if value != 0:
+            LOGGER.info(f"Starting web server on port {value}")
             await create_subprocess_shell(
                 f"gunicorn -k uvicorn.workers.UvicornWorker -w 1 web.wserver:app --bind 0.0.0.0:{value}",
             )
         else:
             LOGGER.info("Web server is disabled (BASE_URL_PORT = 0)")
+            # Double-check to make sure no web server is running
+            try:
+                # Use ps to check if any gunicorn processes are still running
+                process = await create_subprocess_exec(
+                    "ps", "-ef", "|", "grep", "gunicorn", "|", "grep", "-v", "grep",
+                    stdout=-1
+                )
+                stdout, _ = await process.communicate()
+                if stdout:
+                    LOGGER.warning("Gunicorn processes still detected, attempting to kill again...")
+                    await (await create_subprocess_exec("pkill", "-9", "-f", "gunicorn")).wait()
+            except Exception as e:
+                LOGGER.error(f"Error checking for gunicorn processes: {e}")
     elif key in [
         "RCLONE_SERVE_URL",
         "RCLONE_SERVE_PORT",
@@ -5365,18 +5382,36 @@ async def edit_bot_settings(client, query):
         elif data[2] == "BASE_URL_PORT":
             value = 80
             # Kill any running web server
-            await (
-                await create_subprocess_exec("pkill", "-9", "-f", "gunicorn")
-            ).wait()
+            try:
+                LOGGER.info("Killing any existing web server processes...")
+                await (await create_subprocess_exec("pkill", "-9", "-f", "gunicorn")).wait()
+            except Exception as e:
+                LOGGER.error(f"Error killing web server processes: {e}")
+
             # Update Config.BASE_URL_PORT first
             Config.BASE_URL_PORT = value
+
             # Only start web server if port is not 0
             if value != 0:
+                LOGGER.info(f"Starting web server on port {value}")
                 await create_subprocess_shell(
                     f"gunicorn -k uvicorn.workers.UvicornWorker -w 1 web.wserver:app --bind 0.0.0.0:{value}",
                 )
             else:
                 LOGGER.info("Web server is disabled (BASE_URL_PORT = 0)")
+                # Double-check to make sure no web server is running
+                try:
+                    # Use ps to check if any gunicorn processes are still running
+                    process = await create_subprocess_exec(
+                        "ps", "-ef", "|", "grep", "gunicorn", "|", "grep", "-v", "grep",
+                        stdout=-1
+                    )
+                    stdout, _ = await process.communicate()
+                    if stdout:
+                        LOGGER.warning("Gunicorn processes still detected, attempting to kill again...")
+                        await (await create_subprocess_exec("pkill", "-9", "-f", "gunicorn")).wait()
+                except Exception as e:
+                    LOGGER.error(f"Error checking for gunicorn processes: {e}")
         elif data[2] == "RCLONE_SERVE_PORT":
             value = 8080
             # Update Config.RCLONE_SERVE_PORT first
@@ -6288,15 +6323,34 @@ async def load_config():
     if not Config.INCOMPLETE_TASK_NOTIFIER:
         await database.trunc_table("tasks")
 
-    await (await create_subprocess_exec("pkill", "-9", "-f", "gunicorn")).wait()
+    # First, kill any running web server processes
+    try:
+        LOGGER.info("Killing any existing web server processes...")
+        await (await create_subprocess_exec("pkill", "-9", "-f", "gunicorn")).wait()
+    except Exception as e:
+        LOGGER.error(f"Error killing web server processes: {e}")
+
     # Only start web server if BASE_URL_PORT is not 0
-    if Config.BASE_URL_PORT != 0:
+    if Config.BASE_URL_PORT == 0:
+        LOGGER.info("Web server is disabled (BASE_URL_PORT = 0)")
+        # Double-check to make sure no web server is running
+        try:
+            # Use ps to check if any gunicorn processes are still running
+            process = await create_subprocess_exec(
+                "ps", "-ef", "|", "grep", "gunicorn", "|", "grep", "-v", "grep",
+                stdout=-1
+            )
+            stdout, _ = await process.communicate()
+            if stdout:
+                LOGGER.warning("Gunicorn processes still detected, attempting to kill again...")
+                await (await create_subprocess_exec("pkill", "-9", "-f", "gunicorn")).wait()
+        except Exception as e:
+            LOGGER.error(f"Error checking for gunicorn processes: {e}")
+    else:
         LOGGER.info(f"Starting web server on port {Config.BASE_URL_PORT}")
         await create_subprocess_shell(
             f"gunicorn -k uvicorn.workers.UvicornWorker -w 1 web.wserver:app --bind 0.0.0.0:{Config.BASE_URL_PORT}",
         )
-    else:
-        LOGGER.info("Web server is disabled (BASE_URL_PORT = 0)")
 
     if Config.DATABASE_URL:
         await database.connect()
