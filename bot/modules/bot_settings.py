@@ -909,23 +909,30 @@ Timeout: 60 sec"""
         msg = f"Usenet Servers | Page: {int(start / 10)} | State: {state}"
     elif key.startswith("nzbser"):
         index = int(key.replace("nzbser", ""))
-        for k in list(Config.USENET_SERVERS[index].keys())[start : 10 + start]:
-            buttons.data_button(k, f"botset nzbsevar{index} {k}")
-        if state == "view":
-            buttons.data_button("Edit", f"botset edit {key}")
+        # Check if index is valid before accessing Config.USENET_SERVERS
+        if 0 <= index < len(Config.USENET_SERVERS):
+            for k in list(Config.USENET_SERVERS[index].keys())[start : 10 + start]:
+                buttons.data_button(k, f"botset nzbsevar{index} {k}")
+            if state == "view":
+                buttons.data_button("Edit", f"botset edit {key}")
+            else:
+                buttons.data_button("View", f"botset view {key}")
+            buttons.data_button("Remove Server", f"botset remser {index}")
+            buttons.data_button("Back", "botset nzbserver")
+            buttons.data_button("Close", "botset close")
+            if len(Config.USENET_SERVERS[index].keys()) > 10:
+                for x in range(0, len(Config.USENET_SERVERS[index]), 10):
+                    buttons.data_button(
+                        f"{int(x / 10)}",
+                        f"botset start {key} {x}",
+                        position="footer",
+                    )
+            msg = f"Server Keys | Page: {int(start / 10)} | State: {state}"
         else:
-            buttons.data_button("View", f"botset view {key}")
-        buttons.data_button("Remove Server", f"botset remser {index}")
-        buttons.data_button("Back", "botset nzbserver")
-        buttons.data_button("Close", "botset close")
-        if len(Config.USENET_SERVERS[index].keys()) > 10:
-            for x in range(0, len(Config.USENET_SERVERS[index]), 10):
-                buttons.data_button(
-                    f"{int(x / 10)}",
-                    f"botset start {key} {x}",
-                    position="footer",
-                )
-        msg = f"Server Keys | Page: {int(start / 10)} | State: {state}"
+            # Handle invalid index
+            buttons.data_button("Back", "botset nzbserver")
+            buttons.data_button("Close", "botset close")
+            msg = "Invalid server index. Please go back and try again."
     elif key == "mediatools":
         # Force refresh Config.MEDIA_TOOLS_ENABLED from database to ensure accurate status
         if hasattr(Config, "MEDIA_TOOLS_ENABLED"):
@@ -4748,6 +4755,7 @@ async def edit_bot_settings(client, query):
         "mediatools_trim",
         "mediatools_extract",
         "ai",
+        "taskmonitor",
     ]:
         await query.answer()
         # Set the global state to edit mode
@@ -4770,6 +4778,8 @@ async def edit_bot_settings(client, query):
             await update_buttons(message, "mediatools_extract")
         elif data[2] == "ai":
             await update_buttons(message, "ai")
+        elif data[2] == "taskmonitor":
+            await update_buttons(message, "taskmonitor")
         else:
             await update_buttons(message, data[2])
     elif data[1] == "view" and data[2] in [
@@ -4782,6 +4792,7 @@ async def edit_bot_settings(client, query):
         "mediatools_trim",
         "mediatools_extract",
         "ai",
+        "taskmonitor",
     ]:
         await query.answer()
         # Set the global state to view mode
@@ -4803,6 +4814,8 @@ async def edit_bot_settings(client, query):
             await update_buttons(message, "mediatools_extract")
         elif data[2] == "ai":
             await update_buttons(message, "ai")
+        elif data[2] == "taskmonitor":
+            await update_buttons(message, "taskmonitor")
         else:
             await update_buttons(message, data[2])
         # This section is now handled above
@@ -5430,13 +5443,22 @@ async def edit_bot_settings(client, query):
         await database.update_nzb_config()
     elif data[1] == "remser":
         index = int(data[2])
-        await sabnzbd_client.delete_config(
-            "servers",
-            Config.USENET_SERVERS[index]["name"],
-        )
-        del Config.USENET_SERVERS[index]
+        # Check if index is valid before accessing Config.USENET_SERVERS
+        if 0 <= index < len(Config.USENET_SERVERS):
+            await sabnzbd_client.delete_config(
+                "servers",
+                Config.USENET_SERVERS[index]["name"],
+            )
+            del Config.USENET_SERVERS[index]
+            await database.update_config({"USENET_SERVERS": Config.USENET_SERVERS})
+        else:
+            # Handle invalid index
+            await query.answer(
+                "Invalid server index. Please go back and try again.",
+                show_alert=True,
+            )
+        # Always update the UI
         await update_buttons(message, "nzbserver")
-        await database.update_config({"USENET_SERVERS": Config.USENET_SERVERS})
     elif data[1] == "private":
         await query.answer()
         await update_buttons(message, data[1])
@@ -5665,37 +5687,67 @@ async def edit_bot_settings(client, query):
         await query.answer(f"{value}", show_alert=True)
     elif data[1] == "emptyserkey":
         await query.answer()
-        await update_buttons(message, f"nzbser{data[2]}")
         index = int(data[2])
-        res = await sabnzbd_client.add_server(
-            {"name": Config.USENET_SERVERS[index]["name"], data[3]: ""},
-        )
-        Config.USENET_SERVERS[index][data[3]] = res["config"]["servers"][0][data[3]]
-        await database.update_config({"USENET_SERVERS": Config.USENET_SERVERS})
+        # Check if index is valid before accessing Config.USENET_SERVERS
+        if 0 <= index < len(Config.USENET_SERVERS):
+            res = await sabnzbd_client.add_server(
+                {"name": Config.USENET_SERVERS[index]["name"], data[3]: ""},
+            )
+            Config.USENET_SERVERS[index][data[3]] = res["config"]["servers"][0][
+                data[3]
+            ]
+            await database.update_config({"USENET_SERVERS": Config.USENET_SERVERS})
+            await update_buttons(message, f"nzbser{data[2]}")
+        else:
+            # Handle invalid index
+            await query.answer(
+                "Invalid server index. Please go back and try again.",
+                show_alert=True,
+            )
+            await update_buttons(message, "nzbserver")
     elif data[1].startswith("nzbsevar") and (state == "edit" or data[2] == "newser"):
         index = 0 if data[2] == "newser" else int(data[1].replace("nzbsevar", ""))
         await query.answer()
-        await update_buttons(message, data[2], data[1])
-        pfunc = partial(
-            edit_nzb_server,
-            pre_message=message,
-            key=data[2],
-            index=index,
-        )
-        rfunc = partial(update_buttons, message, data[1])
-        await event_handler(client, query, pfunc, rfunc)
+
+        # Check if index is valid before proceeding (except for newser which creates a new server)
+        if data[2] == "newser" or (0 <= index < len(Config.USENET_SERVERS)):
+            await update_buttons(message, data[2], data[1])
+            pfunc = partial(
+                edit_nzb_server,
+                pre_message=message,
+                key=data[2],
+                index=index,
+            )
+            rfunc = partial(update_buttons, message, data[1])
+            await event_handler(client, query, pfunc, rfunc)
+        else:
+            # Handle invalid index
+            await query.answer(
+                "Invalid server index. Please go back and try again.",
+                show_alert=True,
+            )
+            await update_buttons(message, "nzbserver")
     elif data[1].startswith("nzbsevar") and state == "view":
         index = int(data[1].replace("nzbsevar", ""))
-        value = f"{Config.USENET_SERVERS[index][data[2]]}"
-        if len(value) > 200:
-            await query.answer()
-            with BytesIO(str.encode(value)) as out_file:
-                out_file.name = f"{data[2]}.txt"
-                await send_file(message, out_file)
-            return
-        if value == "":
-            value = None
-        await query.answer(f"{value}", show_alert=True)
+        # Check if index is valid before accessing Config.USENET_SERVERS
+        if 0 <= index < len(Config.USENET_SERVERS):
+            value = f"{Config.USENET_SERVERS[index][data[2]]}"
+            if len(value) > 200:
+                await query.answer()
+                with BytesIO(str.encode(value)) as out_file:
+                    out_file.name = f"{data[2]}.txt"
+                    await send_file(message, out_file)
+                return
+            if value == "":
+                value = None
+            await query.answer(f"{value}", show_alert=True)
+        else:
+            # Handle invalid index
+            await query.answer(
+                "Invalid server index. Please go back and try again.",
+                show_alert=True,
+            )
+            await update_buttons(message, "nzbserver")
     elif data[1] == "toggle_tool":
         await query.answer()
         key = data[2]  # MEDIA_TOOLS_ENABLED
@@ -6023,6 +6075,13 @@ async def edit_bot_settings(client, query):
         await database.update_config({"DEFAULT_AI_PROVIDER": data[2]})
         # Update the UI
         await update_buttons(message, "ai")
+    elif data[1] == "cancel":
+        await query.answer()
+        # Check if we're in the AI settings menu
+        if message.text and "Select Default AI Provider" in message.text:
+            await update_buttons(message, "ai")
+        else:
+            await update_buttons(message, "var")
     elif data[1] == "edit":
         await query.answer()
         globals()["state"] = "edit"

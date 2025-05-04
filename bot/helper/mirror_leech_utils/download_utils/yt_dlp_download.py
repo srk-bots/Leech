@@ -224,6 +224,23 @@ class YoutubeDLHelper:
             self.opts["hls_prefer_native"] = False
             self.opts["hls_use_mpegts"] = True
 
+            # Disable YouTube-specific extractor args for HLS streams to prevent conflicts
+            if (
+                "extractor_args" in self.opts
+                and "youtube" in self.opts["extractor_args"]
+            ):
+                # Only use YouTube extractor args for actual YouTube links
+                if not (
+                    "youtube.com" in self._listener.link
+                    or "youtu.be" in self._listener.link
+                ):
+                    LOGGER.info(
+                        "Non-YouTube HLS stream detected, removing YouTube extractor args"
+                    )
+                    del self.opts["extractor_args"]["youtube"]
+                    if not self.opts["extractor_args"]:
+                        del self.opts["extractor_args"]
+
             # For live streams
             if "live" in self._listener.link.lower():
                 LOGGER.info("Live HLS stream detected, adding live stream options")
@@ -632,17 +649,57 @@ class YoutubeDLHelper:
                     break
 
                 except Exception as inner_e:
+                    error_str = str(inner_e)
                     # Handle specific 'can_download' error
-                    if "'NoneType' object has no attribute 'can_download'" in str(
-                        inner_e
+                    if (
+                        "'NoneType' object has no attribute 'can_download'"
+                        in error_str
                     ):
-                        LOGGER.error(f"YouTube extractor error: {inner_e}")
+                        LOGGER.error(f"Extractor error: {inner_e}")
 
-                        # Only retry for YouTube links
-                        if (
+                        # Check if this is an HLS stream
+                        is_hls = (
+                            ".m3u8" in self._listener.link
+                            or "hls" in self._listener.link.lower()
+                        )
+                        is_youtube = (
                             "youtube" in self._listener.link.lower()
-                            and retry_count < max_retries - 1
-                        ):
+                            or "youtu.be" in self._listener.link.lower()
+                        )
+
+                        # For HLS streams that aren't YouTube, try with different options
+                        if is_hls and not is_youtube:
+                            LOGGER.info(
+                                "HLS stream detected with extractor error, trying with modified options"
+                            )
+                            retry_count += 1
+
+                            # Remove any YouTube-specific settings that might be causing conflicts
+                            if "extractor_args" in self.opts:
+                                if "youtube" in self.opts["extractor_args"]:
+                                    del self.opts["extractor_args"]["youtube"]
+                                if not self.opts["extractor_args"]:
+                                    del self.opts["extractor_args"]
+
+                            # Use more generic options for HLS streams
+                            self.opts["external_downloader"] = "xtra"
+                            self.opts["hls_prefer_native"] = False
+
+                            # Try with different format specification
+                            if retry_count == 1:
+                                self.opts["format"] = "best"
+                                LOGGER.info("Retrying HLS stream with format=best")
+                            elif retry_count == 2:
+                                self.opts["format"] = "bestvideo+bestaudio/best"
+                                LOGGER.info(
+                                    "Retrying HLS stream with format=bestvideo+bestaudio/best"
+                                )
+
+                            if retry_count < max_retries:
+                                continue
+
+                        # Only retry for YouTube links with different clients
+                        elif is_youtube and retry_count < max_retries - 1:
                             retry_count += 1
                             # Try different client types in sequence
                             available_clients = ["tv", "android", "web", "ios"]
@@ -658,13 +715,41 @@ class YoutubeDLHelper:
                                 LOGGER.info(
                                     f"Retrying with different YouTube client: {next_client}"
                                 )
-                                self.opts["extractor_args"]["youtube"][
-                                    "player_client"
-                                ] = [next_client]
+                                if "extractor_args" not in self.opts:
+                                    self.opts["extractor_args"] = {
+                                        "youtube": {"player_client": [next_client]}
+                                    }
+                                elif "youtube" not in self.opts["extractor_args"]:
+                                    self.opts["extractor_args"]["youtube"] = {
+                                        "player_client": [next_client]
+                                    }
+                                else:
+                                    self.opts["extractor_args"]["youtube"][
+                                        "player_client"
+                                    ] = [next_client]
                                 continue
 
-                        # If we've tried all clients or max retries, raise the error
-                        raise
+                        # If we've tried all options or max retries, provide a more helpful error message
+                        if is_hls:
+                            self._on_download_error(
+                                f"Error: Failed to download HLS stream. The stream might be protected or requires authentication. "
+                                f"Try downloading with a different method or check if the stream is accessible."
+                            )
+                            return
+                        elif is_youtube:
+                            self._on_download_error(
+                                f"Error: YouTube extractor failed to initialize properly. This is likely due to YouTube's SSAP experiment. "
+                                f"We tried the following clients: {', '.join(tried_clients)}. "
+                                f"Try again later or try a different format/quality."
+                            )
+                            return
+                        else:
+                            # Generic error for other URLs
+                            self._on_download_error(
+                                f"Error: The extractor failed to initialize properly. The URL might be invalid or unsupported."
+                            )
+                            return
+
                     # For other exceptions, just raise
                     raise
 
@@ -711,11 +796,30 @@ class YoutubeDLHelper:
                 async_to_sync(self._listener.on_download_complete)
             elif "'NoneType' object has no attribute 'can_download'" in error_str:
                 # Handle the specific can_download error
-                self._on_download_error(
-                    f"Error: YouTube extractor failed to initialize properly. This is likely due to YouTube's SSAP experiment. "
-                    f"We tried the following clients: {', '.join(tried_clients)}. "
-                    f"Try again later or try a different format/quality."
+                is_hls = (
+                    ".m3u8" in self._listener.link
+                    or "hls" in self._listener.link.lower()
                 )
+                is_youtube = (
+                    "youtube" in self._listener.link.lower()
+                    or "youtu.be" in self._listener.link.lower()
+                )
+
+                if is_hls and not is_youtube:
+                    self._on_download_error(
+                        f"Error: Failed to download HLS stream. The stream might be protected or requires authentication. "
+                        f"Try downloading with a different method or check if the stream is accessible."
+                    )
+                elif is_youtube:
+                    self._on_download_error(
+                        f"Error: YouTube extractor failed to initialize properly. This is likely due to YouTube's SSAP experiment. "
+                        f"We tried the following clients: {', '.join(tried_clients)}. "
+                        f"Try again later or try a different format/quality."
+                    )
+                else:
+                    self._on_download_error(
+                        f"Error: The extractor failed to initialize properly. The URL might be invalid or unsupported."
+                    )
             else:
                 self._on_download_error(f"Download error: {error_str}")
         return

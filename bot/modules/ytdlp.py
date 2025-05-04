@@ -977,8 +977,42 @@ class YtDlp(TaskListener):
             LOGGER.info("Using default cookies.txt file")
 
         try:
+            # Check for HLS streams and configure appropriately
+            if ".m3u8" in self.link or "hls" in self.link.lower():
+                LOGGER.info(
+                    "HLS stream detected in ytdlp module, configuring appropriate options"
+                )
+                # Add HLS-specific options
+                options["external_downloader"] = "xtra"
+                options["hls_prefer_native"] = False
+                options["hls_use_mpegts"] = True
+
+                # For live streams
+                if "live" in self.link.lower():
+                    LOGGER.info(
+                        "Live HLS stream detected, adding live stream options"
+                    )
+                    options["live_from_start"] = True
+                    options["wait_for_video"] = (
+                        5,
+                        60,
+                    )  # Wait between 5-60 seconds for video
+
+                # Don't use YouTube-specific extractor args for HLS streams unless it's actually a YouTube link
+                if (
+                    "extractor_args" in options
+                    and "youtube" in options["extractor_args"]
+                    and not ("youtube.com" in self.link or "youtu.be" in self.link)
+                ):
+                    LOGGER.info(
+                        "Non-YouTube HLS stream detected, removing YouTube extractor args"
+                    )
+                    del options["extractor_args"]["youtube"]
+                    if not options["extractor_args"]:
+                        del options["extractor_args"]
+
             # Log which client is being used for YouTube
-            if "youtube.com" in self.link or "youtu.be" in self.link:
+            elif "youtube.com" in self.link or "youtu.be" in self.link:
                 LOGGER.info("Extracting YouTube video info with TV client")
                 # Add YouTube TV client settings to help with SSAP experiment issues
                 if "extractor_args" not in options:
@@ -1002,8 +1036,41 @@ class YtDlp(TaskListener):
         except Exception as e:
             msg = str(e).replace("<", " ").replace(">", " ")
 
+            # Check if this is an HLS stream
+            is_hls = ".m3u8" in self.link or "hls" in self.link.lower()
+            is_youtube = (
+                "youtube" in self.link.lower() or "youtu.be" in self.link.lower()
+            )
+
+            # Handle HLS stream errors
+            if is_hls and "'NoneType' object has no attribute 'can_download'" in msg:
+                LOGGER.error(f"HLS stream error: {msg}")
+                try:
+                    # Try with different format specification
+                    options["format"] = "best"
+                    LOGGER.info("Retrying HLS stream with format=best")
+                    result = await sync_to_async(extract_info, self.link, options)
+                except Exception:
+                    try:
+                        # Try with different format specification
+                        options["format"] = "bestvideo+bestaudio/best"
+                        LOGGER.info(
+                            "Retrying HLS stream with format=bestvideo+bestaudio/best"
+                        )
+                        result = await sync_to_async(
+                            extract_info, self.link, options
+                        )
+                    except Exception:
+                        # If all retries fail, raise a more helpful error
+                        error_msg = (
+                            f"Error: Failed to download HLS stream. The stream might be protected or requires authentication. "
+                            f"Try downloading with a different method or check if the stream is accessible. "
+                            f"Original error: {msg}"
+                        )
+                        raise ValueError(error_msg) from None
+
             # Handle YouTube SSAP experiment issues
-            if "youtube" in self.link.lower() and (
+            elif is_youtube and (
                 "Unable to extract video data" in msg
                 or "This video is unavailable" in msg
                 or "Sign in to confirm" in msg
