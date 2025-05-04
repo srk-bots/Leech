@@ -565,24 +565,11 @@ class TaskListener(TaskConfig):
                             try:
                                 # Send to the specified destination
                                 await send_message(
-                                    self.up_dest,
+                                    int(self.up_dest),
                                     f"{msg}<blockquote expandable>{fmsg}</blockquote>",
                                 )
                                 # Also send to user's PM if it's not the same as the specified destination
-                                # Ensure self.up_dest is a string or int before comparison
-                                up_dest_id = self.up_dest
-                                if isinstance(up_dest_id, list) and up_dest_id:
-                                    up_dest_id = up_dest_id[
-                                        0
-                                    ]  # Take the first item if it's a list
-
-                                if (
-                                    isinstance(up_dest_id, str)
-                                    and up_dest_id.lstrip("-").isdigit()
-                                ):
-                                    up_dest_id = int(up_dest_id)
-
-                                if up_dest_id != self.user_id:
+                                if int(self.up_dest) != self.user_id:
                                     await send_message(
                                         self.user_id,
                                         f"{msg}<blockquote expandable>{fmsg}</blockquote>",
@@ -628,20 +615,7 @@ class TaskListener(TaskConfig):
                             # Case 2: If user set their own dump and owner has no premium string
                             elif user_dump and not owner_has_premium:
                                 # Send to user's own dump, owner leech dump, and bot PM
-                                # Ensure user_dump is a string or int before conversion
-                                user_dump_id = user_dump
-                                if isinstance(user_dump_id, list) and user_dump_id:
-                                    user_dump_id = user_dump_id[
-                                        0
-                                    ]  # Take the first item if it's a list
-
-                                if (
-                                    isinstance(user_dump_id, str)
-                                    and user_dump_id.lstrip("-").isdigit()
-                                ):
-                                    user_dump_id = int(user_dump_id)
-
-                                leech_destinations.append(user_dump_id)
+                                leech_destinations.append(int(user_dump))
                                 if Config.LEECH_DUMP_CHAT:
                                     # Ensure LEECH_DUMP_CHAT is treated as a list
                                     dump_chat_ids = Config.LEECH_DUMP_CHAT
@@ -703,24 +677,11 @@ class TaskListener(TaskConfig):
                         try:
                             # Send to the specified destination
                             await send_message(
-                                self.up_dest,
+                                int(self.up_dest),
                                 f"{msg}<blockquote expandable>{fmsg}</blockquote>",
                             )
                             # Also send to user's PM if it's not the same as the specified destination
-                            # Ensure self.up_dest is a string or int before comparison
-                            up_dest_id = self.up_dest
-                            if isinstance(up_dest_id, list) and up_dest_id:
-                                up_dest_id = up_dest_id[
-                                    0
-                                ]  # Take the first item if it's a list
-
-                            if (
-                                isinstance(up_dest_id, str)
-                                and up_dest_id.lstrip("-").isdigit()
-                            ):
-                                up_dest_id = int(up_dest_id)
-
-                            if up_dest_id != self.user_id:
+                            if int(self.up_dest) != self.user_id:
                                 await send_message(
                                     self.user_id,
                                     f"{msg}<blockquote expandable>{fmsg}</blockquote>",
@@ -766,20 +727,7 @@ class TaskListener(TaskConfig):
                         # Case 2: If user set their own dump and owner has no premium string
                         elif user_dump and not owner_has_premium:
                             # Send to user's own dump, owner leech dump, and bot PM
-                            # Ensure user_dump is a string or int before conversion
-                            user_dump_id = user_dump
-                            if isinstance(user_dump_id, list) and user_dump_id:
-                                user_dump_id = user_dump_id[
-                                    0
-                                ]  # Take the first item if it's a list
-
-                            if (
-                                isinstance(user_dump_id, str)
-                                and user_dump_id.lstrip("-").isdigit()
-                            ):
-                                user_dump_id = int(user_dump_id)
-
-                            leech_destinations.append(user_dump_id)
+                            leech_destinations.append(int(user_dump))
                             if Config.LEECH_DUMP_CHAT:
                                 # Ensure LEECH_DUMP_CHAT is treated as a list
                                 dump_chat_ids = Config.LEECH_DUMP_CHAT
@@ -897,22 +845,9 @@ class TaskListener(TaskConfig):
                 # If user specified a destination with -up flag, it takes precedence
                 try:
                     # Send to the specified destination
-                    await send_message(self.up_dest, msg, button)
+                    await send_message(int(self.up_dest), msg, button)
                     # Also send to user's PM if it's not the same as the specified destination
-                    # Ensure self.up_dest is a string or int before comparison
-                    up_dest_id = self.up_dest
-                    if isinstance(up_dest_id, list) and up_dest_id:
-                        up_dest_id = up_dest_id[
-                            0
-                        ]  # Take the first item if it's a list
-
-                    if (
-                        isinstance(up_dest_id, str)
-                        and up_dest_id.lstrip("-").isdigit()
-                    ):
-                        up_dest_id = int(up_dest_id)
-
-                    if up_dest_id != self.user_id:
+                    if int(self.up_dest) != self.user_id:
                         await send_message(self.user_id, msg, button)
                 except Exception as e:
                     LOGGER.error(
@@ -937,20 +872,7 @@ class TaskListener(TaskConfig):
                 # Case 1: If user set their own dump and owner has set log chat ids
                 if user_dump and Config.LOG_CHAT_ID:
                     # Send to user dump, all owner log chat ids, and bot PM
-                    # Ensure user_dump is a string or int before conversion
-                    user_dump_id = user_dump
-                    if isinstance(user_dump_id, list) and user_dump_id:
-                        user_dump_id = user_dump_id[
-                            0
-                        ]  # Take the first item if it's a list
-
-                    if (
-                        isinstance(user_dump_id, str)
-                        and user_dump_id.lstrip("-").isdigit()
-                    ):
-                        user_dump_id = int(user_dump_id)
-
-                    mirror_destinations.append(user_dump_id)
+                    mirror_destinations.append(int(user_dump))
                     # Ensure LOG_CHAT_ID is treated as a list
                     log_chat_ids = Config.LOG_CHAT_ID
                     if not isinstance(log_chat_ids, list):
@@ -962,20 +884,7 @@ class TaskListener(TaskConfig):
                 # Case 2: If user set their own dump and owner didn't set log chat ids
                 elif user_dump and not Config.LOG_CHAT_ID:
                     # Send to user dump and bot PM
-                    # Ensure user_dump is a string or int before conversion
-                    user_dump_id = user_dump
-                    if isinstance(user_dump_id, list) and user_dump_id:
-                        user_dump_id = user_dump_id[
-                            0
-                        ]  # Take the first item if it's a list
-
-                    if (
-                        isinstance(user_dump_id, str)
-                        and user_dump_id.lstrip("-").isdigit()
-                    ):
-                        user_dump_id = int(user_dump_id)
-
-                    mirror_destinations.append(user_dump_id)
+                    mirror_destinations.append(int(user_dump))
 
                 # Case 3: If user didn't set their own dump and owner set log chat ids
                 elif not user_dump and Config.LOG_CHAT_ID:

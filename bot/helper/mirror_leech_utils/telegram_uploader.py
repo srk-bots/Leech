@@ -444,6 +444,9 @@ class TelegramUploader:
             else ""
         )
         self._user_dump = self._listener.user_dict.get("USER_DUMP")
+        # Ensure user_dump is a string if it exists
+        if self._user_dump and not isinstance(self._user_dump, str):
+            self._user_dump = str(self._user_dump)
         self._lcaption = self._listener.user_dict.get("LEECH_FILENAME_CAPTION") or (
             Config.LEECH_FILENAME_CAPTION
             if "LEECH_FILENAME_CAPTION" not in self._listener.user_dict
@@ -1636,21 +1639,8 @@ class TelegramUploader:
             # Case 2: If user set their own dump and owner has no premium string
             elif self._user_dump and not owner_has_premium:
                 # Send to user's own dump, owner leech dump, and bot PM
-                # Ensure self._user_dump is a string or int before conversion
-                user_dump_id = self._user_dump
-                if isinstance(user_dump_id, list) and user_dump_id:
-                    user_dump_id = user_dump_id[
-                        0
-                    ]  # Take the first item if it's a list
-
-                if (
-                    isinstance(user_dump_id, str)
-                    and user_dump_id.lstrip("-").isdigit()
-                ):
-                    user_dump_id = int(user_dump_id)
-
-                if source_chat_id != user_dump_id:
-                    destinations.append(user_dump_id)
+                if source_chat_id != int(self._user_dump):
+                    destinations.append(int(self._user_dump))
 
                 if Config.LEECH_DUMP_CHAT:
                     # Add all dump chat IDs that are not the current chat
@@ -1812,21 +1802,8 @@ class TelegramUploader:
             # Case 2: If user set their own dump and owner has no premium string
             elif self._user_dump and not owner_has_premium:
                 # Send to user's own dump, owner leech dump, and bot PM
-                # Ensure self._user_dump is a string or int before conversion
-                user_dump_id = self._user_dump
-                if isinstance(user_dump_id, list) and user_dump_id:
-                    user_dump_id = user_dump_id[
-                        0
-                    ]  # Take the first item if it's a list
-
-                if (
-                    isinstance(user_dump_id, str)
-                    and user_dump_id.lstrip("-").isdigit()
-                ):
-                    user_dump_id = int(user_dump_id)
-
-                if self._sent_msg.chat.id != user_dump_id:
-                    destinations.append(user_dump_id)
+                if self._sent_msg.chat.id != int(self._user_dump):
+                    destinations.append(int(self._user_dump))
 
                 if Config.LEECH_DUMP_CHAT:
                     # Add all dump chat IDs that are not the current chat
