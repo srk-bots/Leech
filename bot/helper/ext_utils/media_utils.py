@@ -4,11 +4,11 @@ import json
 import os
 import resource
 import shutil
-from asyncio import create_subprocess_exec, gather, sleep, wait_for, subprocess
+from asyncio import create_subprocess_exec, gather, sleep, subprocess, wait_for
 from asyncio.subprocess import PIPE
 from os import path as ospath
 from pathlib import Path
-from re import escape, compile
+from re import compile, escape
 from re import search as re_search
 from time import time
 

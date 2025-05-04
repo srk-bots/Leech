@@ -515,6 +515,7 @@ def is_media_tool_enabled(tool_name):
     Returns:
         bool: True if the tool is enabled, False otherwise
     """
+    from bot import LOGGER
     from bot.core.config_manager import Config
 
     # If ENABLE_EXTRA_MODULES is False, all extra modules are disabled
@@ -545,6 +546,7 @@ def is_media_tool_enabled(tool_name):
     if isinstance(Config.MEDIA_TOOLS_ENABLED, str):
         # Handle both comma-separated and single values
         if "," in Config.MEDIA_TOOLS_ENABLED:
+            # Split by comma and strip whitespace
             enabled_tools = [
                 t.strip().lower()
                 for t in Config.MEDIA_TOOLS_ENABLED.split(",")
@@ -561,6 +563,16 @@ def is_media_tool_enabled(tool_name):
                 potential_tools = single_tool.split(",")
                 enabled_tools = [t for t in potential_tools if t in all_tools]
 
+                # If we couldn't find any valid tools, try the original value again
+                if not enabled_tools and single_tool:
+                    # Log for debugging
+                    LOGGER.debug(f"Checking if '{single_tool}' is a valid tool")
+                    # Check if it's a valid tool name (might be misspelled or have extra characters)
+                    for tool in all_tools:
+                        if tool in single_tool:
+                            enabled_tools = [tool]
+                            break
+
     # If MEDIA_TOOLS_ENABLED is True (boolean), all tools are enabled
     elif Config.MEDIA_TOOLS_ENABLED is True:
         enabled_tools = all_tools.copy()
@@ -576,9 +588,16 @@ def is_media_tool_enabled(tool_name):
             try:
                 val = str(Config.MEDIA_TOOLS_ENABLED).strip().lower()
                 if val:
-                    enabled_tools = [val]
-            except Exception:
-                pass
+                    if val in all_tools:
+                        enabled_tools = [val]
+                    else:
+                        # Check if it contains a valid tool name
+                        for tool in all_tools:
+                            if tool in val:
+                                enabled_tools = [tool]
+                                break
+            except Exception as e:
+                LOGGER.error(f"Error parsing MEDIA_TOOLS_ENABLED value: {e}")
 
     # If checking for 'mediatools' (general media tools status), return True if any tool is enabled
     if tool_name.lower() == "mediatools":

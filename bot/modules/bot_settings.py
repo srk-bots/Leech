@@ -927,8 +927,6 @@ Timeout: 60 sec"""
                 )
         msg = f"Server Keys | Page: {int(start / 10)} | State: {state}"
     elif key == "mediatools":
-        from bot.helper.ext_utils.bot_utils import is_media_tool_enabled
-
         # Force refresh Config.MEDIA_TOOLS_ENABLED from database to ensure accurate status
         if hasattr(Config, "MEDIA_TOOLS_ENABLED"):
             try:
@@ -937,11 +935,20 @@ Timeout: 60 sec"""
                     {"MEDIA_TOOLS_ENABLED": 1, "_id": 0},
                 )
                 if db_config and "MEDIA_TOOLS_ENABLED" in db_config:
-                    Config.MEDIA_TOOLS_ENABLED = db_config["MEDIA_TOOLS_ENABLED"]
+                    # Update the Config object with the current value from database
+                    db_value = db_config["MEDIA_TOOLS_ENABLED"]
+                    if db_value != Config.MEDIA_TOOLS_ENABLED:
+                        LOGGER.debug(
+                            f"Updating MEDIA_TOOLS_ENABLED from {Config.MEDIA_TOOLS_ENABLED} to {db_value}"
+                        )
+                        Config.MEDIA_TOOLS_ENABLED = db_value
             except Exception as e:
                 LOGGER.error(
                     f"Error refreshing MEDIA_TOOLS_ENABLED from database: {e}"
                 )
+
+        # Import after refreshing the config to ensure we use the latest value
+        from bot.helper.ext_utils.bot_utils import is_media_tool_enabled
 
         # Only show enabled tools
         if is_media_tool_enabled("watermark"):
@@ -5294,14 +5301,20 @@ async def edit_bot_settings(client, query):
             globals()["start"] = 0
         await query.answer()
         # Force refresh of Config.MEDIA_TOOLS_ENABLED from database before updating UI
-        if data[1] == "mediatools" and hasattr(Config, "MEDIA_TOOLS_ENABLED"):
+        if hasattr(Config, "MEDIA_TOOLS_ENABLED"):
             try:
                 db_config = await database.db.settings.config.find_one(
                     {"_id": TgClient.ID},
                     {"MEDIA_TOOLS_ENABLED": 1, "_id": 0},
                 )
                 if db_config and "MEDIA_TOOLS_ENABLED" in db_config:
-                    Config.MEDIA_TOOLS_ENABLED = db_config["MEDIA_TOOLS_ENABLED"]
+                    # Update the Config object with the current value from database
+                    db_value = db_config["MEDIA_TOOLS_ENABLED"]
+                    if db_value != Config.MEDIA_TOOLS_ENABLED:
+                        LOGGER.debug(
+                            f"Updating MEDIA_TOOLS_ENABLED from {Config.MEDIA_TOOLS_ENABLED} to {db_value}"
+                        )
+                        Config.MEDIA_TOOLS_ENABLED = db_value
             except Exception as e:
                 LOGGER.error(
                     f"Error refreshing MEDIA_TOOLS_ENABLED from database: {e}"
@@ -5648,7 +5661,22 @@ async def edit_bot_settings(client, query):
                     t.strip().lower() for t in current_value.split(",") if t.strip()
                 ]
             elif current_value.strip():  # Single non-empty value
-                enabled_tools = [current_value.strip().lower()]
+                single_tool = current_value.strip().lower()
+                if single_tool in all_tools:
+                    enabled_tools = [single_tool]
+                # If the single tool is not in all_tools, it might be a comma-separated string without spaces
+                elif any(t in single_tool for t in all_tools):
+                    # Try to split by comma without spaces
+                    potential_tools = single_tool.split(",")
+                    enabled_tools = [t for t in potential_tools if t in all_tools]
+
+                    # If we couldn't find any valid tools, try the original value again
+                    if not enabled_tools and single_tool:
+                        # Check if it's a valid tool name (might be misspelled or have extra characters)
+                        for t in all_tools:
+                            if t in single_tool:
+                                enabled_tools = [t]
+                                break
         elif current_value is True:  # If it's True (boolean), all tools are enabled
             enabled_tools = all_tools.copy()
         elif current_value:  # Any other truthy value
@@ -5659,9 +5687,16 @@ async def edit_bot_settings(client, query):
                 try:
                     val = str(current_value).strip().lower()
                     if val:
-                        enabled_tools = [val]
-                except:
-                    pass
+                        if val in all_tools:
+                            enabled_tools = [val]
+                        else:
+                            # Check if it contains a valid tool name
+                            for t in all_tools:
+                                if t in val:
+                                    enabled_tools = [t]
+                                    break
+                except Exception as e:
+                    LOGGER.error(f"Error parsing MEDIA_TOOLS_ENABLED value: {e}")
 
         # Check if we're disabling a tool
         is_disabling = tool in enabled_tools
@@ -5690,7 +5725,25 @@ async def edit_bot_settings(client, query):
         await database.update_config({key: Config.get(key)})
 
         # Force reload the current value after database update to ensure consistency
-        current_value = Config.get(key)
+        try:
+            db_config = await database.db.settings.config.find_one(
+                {"_id": TgClient.ID},
+                {key: 1, "_id": 0},
+            )
+            if db_config and key in db_config:
+                # Update the Config object with the current value from database
+                db_value = db_config[key]
+                if db_value != Config.get(key):
+                    LOGGER.debug(
+                        f"Updating {key} from {Config.get(key)} to {db_value}"
+                    )
+                    Config.set(key, db_value)
+                current_value = db_value
+            else:
+                current_value = Config.get(key)
+        except Exception as e:
+            LOGGER.error(f"Error refreshing {key} from database: {e}")
+            current_value = Config.get(key)
 
         # Re-parse enabled tools after the update
         enabled_tools = []
@@ -5701,7 +5754,22 @@ async def edit_bot_settings(client, query):
                     t.strip().lower() for t in current_value.split(",") if t.strip()
                 ]
             elif current_value.strip():  # Single non-empty value
-                enabled_tools = [current_value.strip().lower()]
+                single_tool = current_value.strip().lower()
+                if single_tool in all_tools:
+                    enabled_tools = [single_tool]
+                # If the single tool is not in all_tools, it might be a comma-separated string without spaces
+                elif any(t in single_tool for t in all_tools):
+                    # Try to split by comma without spaces
+                    potential_tools = single_tool.split(",")
+                    enabled_tools = [t for t in potential_tools if t in all_tools]
+
+                    # If we couldn't find any valid tools, try the original value again
+                    if not enabled_tools and single_tool:
+                        # Check if it's a valid tool name (might be misspelled or have extra characters)
+                        for t in all_tools:
+                            if t in single_tool:
+                                enabled_tools = [t]
+                                break
         elif current_value is True:  # If it's True (boolean), all tools are enabled
             enabled_tools = all_tools.copy()
         elif current_value:  # Any other truthy value
@@ -5712,9 +5780,16 @@ async def edit_bot_settings(client, query):
                 try:
                     val = str(current_value).strip().lower()
                     if val:
-                        enabled_tools = [val]
-                except:
-                    pass
+                        if val in all_tools:
+                            enabled_tools = [val]
+                        else:
+                            # Check if it contains a valid tool name
+                            for t in all_tools:
+                                if t in val:
+                                    enabled_tools = [t]
+                                    break
+                except Exception as e:
+                    LOGGER.error(f"Error re-parsing MEDIA_TOOLS_ENABLED value: {e}")
 
         # Refresh the menu
         buttons = ButtonMaker()
@@ -5765,6 +5840,23 @@ async def edit_bot_settings(client, query):
 
         # Update the database
         await database.update_config({key: Config.get(key)})
+
+        # Force reload the current value after database update to ensure consistency
+        try:
+            db_config = await database.db.settings.config.find_one(
+                {"_id": TgClient.ID},
+                {key: 1, "_id": 0},
+            )
+            if db_config and key in db_config:
+                # Update the Config object with the current value from database
+                db_value = db_config[key]
+                if db_value != Config.get(key):
+                    LOGGER.debug(
+                        f"Updating {key} from {Config.get(key)} to {db_value}"
+                    )
+                    Config.set(key, db_value)
+        except Exception as e:
+            LOGGER.error(f"Error refreshing {key} from database: {e}")
 
         # Refresh the menu
         buttons = ButtonMaker()
@@ -5817,6 +5909,23 @@ async def edit_bot_settings(client, query):
 
         # Update the database
         await database.update_config({key: Config.get(key)})
+
+        # Force reload the current value after database update to ensure consistency
+        try:
+            db_config = await database.db.settings.config.find_one(
+                {"_id": TgClient.ID},
+                {key: 1, "_id": 0},
+            )
+            if db_config and key in db_config:
+                # Update the Config object with the current value from database
+                db_value = db_config[key]
+                if db_value != Config.get(key):
+                    LOGGER.debug(
+                        f"Updating {key} from {Config.get(key)} to {db_value}"
+                    )
+                    Config.set(key, db_value)
+        except Exception as e:
+            LOGGER.error(f"Error refreshing {key} from database: {e}")
 
         # Refresh the menu
         buttons = ButtonMaker()
@@ -5963,8 +6072,26 @@ async def edit_bot_settings(client, query):
             return_menu = "var"
         elif key.startswith(("MISTRAL_", "DEEPSEEK_", "CHATGPT_", "GEMINI_")):
             return_menu = "ai"
-        await update_buttons(message, return_menu)
+        # Update the database
         await database.update_config({key: value})
+
+        # Force reload the current value after database update to ensure consistency
+        try:
+            db_config = await database.db.settings.config.find_one(
+                {"_id": TgClient.ID},
+                {key: 1, "_id": 0},
+            )
+            if db_config and key in db_config:
+                # Update the Config object with the current value from database
+                db_value = db_config[key]
+                if db_value != value:
+                    LOGGER.debug(f"Updating {key} from {value} to {db_value}")
+                    Config.set(key, db_value)
+        except Exception as e:
+            LOGGER.error(f"Error refreshing {key} from database: {e}")
+
+        # Update the UI
+        await update_buttons(message, return_menu)
     # Handle redirects for mediatools callbacks
     elif data[0] == "mediatools" and len(data) >= 3 and data[2] == "merge_config":
         # This is a callback from the pagination buttons in mediatools_merge_config
