@@ -1,7 +1,7 @@
 import ast
 import os
 from importlib import import_module
-from typing import Any, ClassVar, Union
+from typing import Any, ClassVar
 
 
 class Config:
@@ -23,7 +23,7 @@ class Config:
     JD_EMAIL: str = ""
     JD_PASS: str = ""
     IS_TEAM_DRIVE: bool = False
-    LEECH_DUMP_CHAT: Union[str, list[int]] = ""
+    LEECH_DUMP_CHAT: str = ""
     LEECH_FILENAME_PREFIX: str = ""
     LEECH_SUFFIX: str = ""
     LEECH_FONT: str = ""
@@ -94,7 +94,7 @@ class Config:
     PAID_CHANNEL_LINK: str = ""
     DELETE_LINKS: bool = False
     FSUB_IDS: str = ""
-    LOG_CHAT_ID: Union[int, list[int]] = 0
+    LOG_CHAT_ID: int = 0
     LEECH_FILENAME_CAPTION: str = ""
     HYDRA_IP: str = ""
     HYDRA_API_KEY: str = ""
@@ -520,34 +520,6 @@ class Config:
                                 continue
                         except Exception:
                             continue
-                    # Handle comma-separated chat IDs for LEECH_DUMP_CHAT and LOG_CHAT_ID
-                    elif (
-                        attr in {"LEECH_DUMP_CHAT", "LOG_CHAT_ID"}
-                        and isinstance(value, str)
-                        and value
-                        and "," in value
-                    ):
-                        # Split by comma and convert to list of integers, handling usernames
-                        chat_ids = []
-                        for chat_id in value.split(","):
-                            chat_id = chat_id.strip()
-                            if chat_id:
-                                if chat_id.startswith(("@", "-")):
-                                    # Keep usernames as strings, convert numeric IDs to integers
-                                    if (
-                                        chat_id.startswith("-")
-                                        and chat_id[1:].isdigit()
-                                    ):
-                                        chat_ids.append(int(chat_id))
-                                    else:
-                                        chat_ids.append(chat_id)
-                                else:
-                                    # Try to convert to integer if it's a numeric ID
-                                    try:
-                                        chat_ids.append(int(chat_id))
-                                    except ValueError:
-                                        chat_ids.append(chat_id)
-                        value = chat_ids
                     setattr(cls, attr, value)
 
     @classmethod
@@ -572,31 +544,6 @@ class Config:
                             value = []
                     except Exception:
                         value = []
-                # Handle comma-separated chat IDs for LEECH_DUMP_CHAT and LOG_CHAT_ID
-                elif (
-                    key in {"LEECH_DUMP_CHAT", "LOG_CHAT_ID"}
-                    and isinstance(value, str)
-                    and value
-                    and "," in value
-                ):
-                    # Split by comma and convert to list of integers, handling usernames
-                    chat_ids = []
-                    for chat_id in value.split(","):
-                        chat_id = chat_id.strip()
-                        if chat_id:
-                            if chat_id.startswith(("@", "-")):
-                                # Keep usernames as strings, convert numeric IDs to integers
-                                if chat_id.startswith("-") and chat_id[1:].isdigit():
-                                    chat_ids.append(int(chat_id))
-                                else:
-                                    chat_ids.append(chat_id)
-                            else:
-                                # Try to convert to integer if it's a numeric ID
-                                try:
-                                    chat_ids.append(int(chat_id))
-                                except ValueError:
-                                    chat_ids.append(chat_id)
-                    value = chat_ids
                 setattr(cls, key, value)
 
 
@@ -631,27 +578,6 @@ class SystemEnv:
                 return float(value)
             except ValueError:
                 return original_value
-
-        # Handle comma-separated chat IDs for LEECH_DUMP_CHAT and LOG_CHAT_ID
-        if key in {"LEECH_DUMP_CHAT", "LOG_CHAT_ID"} and "," in value:
-            # Split by comma and convert to list of integers, handling usernames
-            chat_ids = []
-            for chat_id in value.split(","):
-                chat_id = chat_id.strip()
-                if chat_id:
-                    if chat_id.startswith(("@", "-")):
-                        # Keep usernames as strings, convert numeric IDs to integers
-                        if chat_id.startswith("-") and chat_id[1:].isdigit():
-                            chat_ids.append(int(chat_id))
-                        else:
-                            chat_ids.append(chat_id)
-                    else:
-                        # Try to convert to integer if it's a numeric ID
-                        try:
-                            chat_ids.append(int(chat_id))
-                        except ValueError:
-                            chat_ids.append(chat_id)
-            return chat_ids
 
         if isinstance(original_value, list):
             return value.split(",")

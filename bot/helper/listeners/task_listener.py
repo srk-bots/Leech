@@ -381,41 +381,13 @@ class TaskListener(TaskConfig):
         if not self.is_leech and Config.LOG_CHAT_ID:
             try:
                 msg = self.message.text.lstrip("/")
-
-                # Handle both string/int and list types for LOG_CHAT_ID
-                if isinstance(Config.LOG_CHAT_ID, list) and Config.LOG_CHAT_ID:
-                    # Use the first chat ID for the primary log message
-                    primary_log_chat = Config.LOG_CHAT_ID[0]
-                    # Send command message to the primary log chat ID
-                    self.log_msg = await self.client.send_message(
-                        chat_id=primary_log_chat,
-                        text=msg,
-                        disable_web_page_preview=True,
-                        disable_notification=True,
-                    )
-
-                    # Copy to additional log chat IDs if there are any
-                    if len(Config.LOG_CHAT_ID) > 1:
-                        for chat_id in Config.LOG_CHAT_ID[1:]:
-                            try:
-                                await self.client.send_message(
-                                    chat_id=chat_id,
-                                    text=msg,
-                                    disable_web_page_preview=True,
-                                    disable_notification=True,
-                                )
-                            except Exception as e:
-                                LOGGER.error(
-                                    f"Failed to copy mirror command message to additional log chat ID {chat_id}: {e}"
-                                )
-                else:
-                    # Backward compatibility for int/string type
-                    self.log_msg = await self.client.send_message(
-                        chat_id=int(Config.LOG_CHAT_ID),
-                        text=msg,
-                        disable_web_page_preview=True,
-                        disable_notification=True,
-                    )
+                # Send command message to owner's log chat ID
+                self.log_msg = await self.client.send_message(
+                    chat_id=int(Config.LOG_CHAT_ID),
+                    text=msg,
+                    disable_web_page_preview=True,
+                    disable_notification=True,
+                )
 
             except Exception as e:
                 LOGGER.error(
@@ -847,14 +819,7 @@ class TaskListener(TaskConfig):
                 if user_dump and Config.LOG_CHAT_ID:
                     # Send to user dump, owner log chat id, and bot PM
                     mirror_destinations.append(int(user_dump))
-
-                    # Handle both string/int and list types for LOG_CHAT_ID
-                    if isinstance(Config.LOG_CHAT_ID, list):
-                        # Add all log chat IDs
-                        mirror_destinations.extend(Config.LOG_CHAT_ID)
-                    else:
-                        # Backward compatibility for int type
-                        mirror_destinations.append(int(Config.LOG_CHAT_ID))
+                    mirror_destinations.append(int(Config.LOG_CHAT_ID))
 
                 # Case 2: If user set their own dump and owner didn't set log chat id
                 elif user_dump and not Config.LOG_CHAT_ID:
@@ -864,12 +829,7 @@ class TaskListener(TaskConfig):
                 # Case 3: If user didn't set their own dump and owner set log chat id
                 elif not user_dump and Config.LOG_CHAT_ID:
                     # Send to owner log chat id and bot PM
-                    if isinstance(Config.LOG_CHAT_ID, list):
-                        # Add all log chat IDs
-                        mirror_destinations.extend(Config.LOG_CHAT_ID)
-                    else:
-                        # Backward compatibility for int type
-                        mirror_destinations.append(int(Config.LOG_CHAT_ID))
+                    mirror_destinations.append(int(Config.LOG_CHAT_ID))
 
                 # Remove duplicates while preserving order
                 seen = set()
