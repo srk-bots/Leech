@@ -231,11 +231,22 @@ class Mirror(TaskListener):
         self.select = args["-s"]
         self.seed = args["-d"]
         self.name = args["-n"]
-        self.up_dest = args["-up"]
-        # Add debug logs for up_dest
+        # Get the raw up_dest value
+        raw_up_dest = args["-up"]
         LOGGER.info(
-            f"DEBUG: up_dest value: {self.up_dest}, type: {type(self.up_dest)}"
+            f"DEBUG: raw up_dest value: {raw_up_dest}, type: {type(raw_up_dest)}"
         )
+
+        # Parse up_dest as a list of chat IDs, similar to USER_DUMP
+        if raw_up_dest:
+            from bot.helper.ext_utils.bot_utils import parse_chat_ids
+
+            self.up_dest = parse_chat_ids(raw_up_dest)
+            LOGGER.info(
+                f"DEBUG: parsed up_dest value: {self.up_dest}, type: {type(self.up_dest)}"
+            )
+        else:
+            self.up_dest = raw_up_dest
         self.rc_flags = args["-rcf"]
         self.link = args["link"]
         self.compress = args["-z"]
