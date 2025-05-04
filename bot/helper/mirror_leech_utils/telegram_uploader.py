@@ -490,18 +490,9 @@ class TelegramUploader:
         if self._listener.up_dest:
             msg = self._listener.message.text.lstrip("/")
             try:
-                # Get the first chat ID from up_dest if it's a list
-                up_dest_id = self._listener.up_dest
-                if isinstance(up_dest_id, list) and up_dest_id:
-                    up_dest_id = up_dest_id[0]  # Take the first item if it's a list
-
-                LOGGER.info(
-                    f"DEBUG: Sending to up_dest_id: {up_dest_id}, type: {type(up_dest_id)}"
-                )
-
                 if self._user_session:
                     self._sent_msg = await TgClient.user.send_message(
-                        chat_id=up_dest_id,
+                        chat_id=self._listener.up_dest,
                         text=msg,
                         disable_web_page_preview=True,
                         message_thread_id=self._listener.chat_thread_id,
@@ -509,7 +500,7 @@ class TelegramUploader:
                     )
                 else:
                     self._sent_msg = await self._listener.client.send_message(
-                        chat_id=up_dest_id,
+                        chat_id=self._listener.up_dest,
                         text=msg,
                         disable_web_page_preview=True,
                         message_thread_id=self._listener.chat_thread_id,
@@ -520,7 +511,6 @@ class TelegramUploader:
                 if not hasattr(self, "log_msgs"):
                     self.log_msgs = [self._sent_msg]
             except Exception as e:
-                LOGGER.error(f"DEBUG: Error sending to up_dest: {e}")
                 await self._listener.on_upload_error(str(e))
                 return False
         elif self._user_session:
