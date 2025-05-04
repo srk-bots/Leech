@@ -18,6 +18,8 @@ async def limit_checker(
     isDriveLink=False,
     isYtdlp=False,
     isPlayList=None,
+    is_jd=False,
+    is_nzb=False,
 ):
     """Check size limits with improved memory management.
 
@@ -29,6 +31,8 @@ async def limit_checker(
         isDriveLink: Whether it's a Drive link
         isYtdlp: Whether it's a YouTube link
         isPlayList: Number of items in playlist
+        is_jd: Whether it's a JDownloader download
+        is_nzb: Whether it's an NZB download
 
     Returns:
         str: Limit exceeded message, or None if no limit exceeded
@@ -52,27 +56,43 @@ async def limit_checker(
 
     # Check specific limits based on link type
     is_clone = getattr(listener, "isClone", False)
+    # Use parameters if provided, otherwise check listener attributes
+    is_jd = is_jd or getattr(listener, "is_jd", False)
+    is_nzb = is_nzb or getattr(listener, "is_nzb", False)
+
     if is_clone:
         if CLONE_LIMIT := Config.CLONE_LIMIT:
             limit = CLONE_LIMIT * 1024**3
-            if size > limit:
+            if size > 0 and size > limit:
                 limit_exceeded = f"Clone limit is {get_readable_file_size(limit)}."
+    elif is_jd:
+        if JD_LIMIT := Config.JD_LIMIT:
+            limit = JD_LIMIT * 1024**3
+            if size > 0 and size > limit:
+                limit_exceeded = (
+                    f"JDownloader limit is {get_readable_file_size(limit)}"
+                )
+    elif is_nzb:
+        if NZB_LIMIT := Config.NZB_LIMIT:
+            limit = NZB_LIMIT * 1024**3
+            if size > 0 and size > limit:
+                limit_exceeded = f"NZB limit is {get_readable_file_size(limit)}"
     elif isMega:
         if MEGA_LIMIT := Config.MEGA_LIMIT:
             limit = MEGA_LIMIT * 1024**3
-            if size > limit:
+            if size > 0 and size > limit:
                 limit_exceeded = f"Mega limit is {get_readable_file_size(limit)}"
     elif isDriveLink:
         if GDRIVE_LIMIT := Config.GDRIVE_LIMIT:
             limit = GDRIVE_LIMIT * 1024**3
-            if size > limit:
+            if size > 0 and size > limit:
                 limit_exceeded = (
                     f"Google Drive limit is {get_readable_file_size(limit)}"
                 )
     elif isYtdlp:
         if YTDLP_LIMIT := Config.YTDLP_LIMIT:
             limit = YTDLP_LIMIT * 1024**3
-            if size > limit:
+            if size > 0 and size > limit:
                 limit_exceeded = f"YouTube limit is {get_readable_file_size(limit)}"
         if (
             not limit_exceeded
@@ -84,11 +104,11 @@ async def limit_checker(
     elif isTorrent:
         if TORRENT_LIMIT := Config.TORRENT_LIMIT:
             limit = TORRENT_LIMIT * 1024**3
-            if size > limit:
+            if size > 0 and size > limit:
                 limit_exceeded = f"Torrent limit is {get_readable_file_size(limit)}"
     elif DIRECT_LIMIT := Config.DIRECT_LIMIT:
         limit = DIRECT_LIMIT * 1024**3
-        if size > limit:
+        if size > 0 and size > limit:
             limit_exceeded = f"Direct link limit is {get_readable_file_size(limit)}"
 
     # If no specific limit exceeded, check general limits
@@ -97,7 +117,7 @@ async def limit_checker(
         is_leech = getattr(listener, "is_leech", getattr(listener, "isLeech", False))
         if (LEECH_LIMIT := Config.LEECH_LIMIT) and is_leech:
             limit = LEECH_LIMIT * 1024**3
-            if size > limit:
+            if size > 0 and size > limit:
                 limit_exceeded = f"Leech limit is {get_readable_file_size(limit)}"
 
         # Check storage threshold
@@ -144,6 +164,8 @@ async def limit_checker(
                 )
 
     if limit_exceeded:
+        # Log the limit exceeded message for debugging
+        LOGGER.warning(f"Limit exceeded for user {user_id}: {limit_exceeded}")
         return f"⚠️ {limit_exceeded}. Your task has been cancelled."
     return None
 
@@ -169,7 +191,7 @@ async def check_daily_mirror_limit(limit, listener, size):
     current_usage = await getdailytasks(user_id, check_mirror=True)
 
     # Check if adding this task would exceed the limit
-    if size >= (limit - current_usage) or limit <= current_usage:
+    if size > 0 and (size >= (limit - current_usage) or limit <= current_usage):
         return True
 
     # Update mirror usage if not checking
@@ -204,7 +226,7 @@ async def check_daily_leech_limit(limit, listener, size):
     current_usage = await getdailytasks(user_id, check_leech=True)
 
     # Check if adding this task would exceed the limit
-    if size >= (limit - current_usage) or limit <= current_usage:
+    if size > 0 and (size >= (limit - current_usage) or limit <= current_usage):
         return True
 
     # Update leech usage if not checking

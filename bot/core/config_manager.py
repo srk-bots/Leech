@@ -436,6 +436,8 @@ class Config:
     CLONE_LIMIT: float = 0  # GB
     MEGA_LIMIT: float = 0  # GB
     LEECH_LIMIT: float = 0  # GB
+    JD_LIMIT: float = 0  # GB
+    NZB_LIMIT: float = 0  # GB
     PLAYLIST_LIMIT: int = 0  # Number of videos
     DAILY_TASK_LIMIT: int = 0  # Number of tasks per day
     DAILY_MIRROR_LIMIT: float = 0  # GB per day
@@ -520,6 +522,14 @@ class Config:
                                 continue
                         except Exception:
                             continue
+                    # Convert integer limit values to float
+                    elif (
+                        attr.endswith("_LIMIT")
+                        and not attr.startswith("PLAYLIST")
+                        and not attr.startswith("DAILY_TASK")
+                        and isinstance(value, int)
+                    ):
+                        value = float(value)
                     setattr(cls, attr, value)
 
     @classmethod
@@ -544,6 +554,14 @@ class Config:
                             value = []
                     except Exception:
                         value = []
+                # Convert integer limit values to float
+                elif (
+                    key.endswith("_LIMIT")
+                    and not key.startswith("PLAYLIST")
+                    and not key.startswith("DAILY_TASK")
+                    and isinstance(value, int)
+                ):
+                    value = float(value)
                 setattr(cls, key, value)
 
 
@@ -566,6 +584,17 @@ class SystemEnv:
 
         if isinstance(original_value, bool):
             return value.lower() in ("true", "1", "yes")
+
+        # Special handling for limit values - convert to float
+        if (
+            key.endswith("_LIMIT")
+            and not key.startswith("PLAYLIST")
+            and not key.startswith("DAILY_TASK")
+        ):
+            try:
+                return float(value)
+            except ValueError:
+                return original_value
 
         if isinstance(original_value, int):
             try:

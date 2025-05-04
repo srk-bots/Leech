@@ -6,6 +6,7 @@ from pyrogram.errors import FloodPremiumWait, FloodWait
 
 from bot import LOGGER, task_dict, task_dict_lock
 from bot.core.aeon_client import TgClient
+from bot.helper.ext_utils.limit_checker import limit_checker
 from bot.helper.ext_utils.task_manager import (
     check_running_tasks,
     stop_duplicate_check,
@@ -161,6 +162,20 @@ class TelegramDownloadHelper:
                     path = path + self._listener.name
                 self._listener.size = media.file_size
                 gid = token_hex(4)
+
+                # Check size limits
+                if self._listener.size > 0:
+                    limit_msg = await limit_checker(
+                        self._listener.size,
+                        self._listener,
+                        isTorrent=False,
+                        isMega=False,
+                        isDriveLink=False,
+                        isYtdlp=False,
+                    )
+                    if limit_msg:
+                        await self._listener.on_download_error(limit_msg)
+                        return
 
                 msg, button = await stop_duplicate_check(self._listener)
                 if msg:

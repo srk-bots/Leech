@@ -17,6 +17,7 @@ from bot.helper.ext_utils.bot_utils import (
     sync_to_async,
 )
 from bot.helper.ext_utils.exceptions import DirectDownloadLinkException
+from bot.helper.ext_utils.limit_checker import limit_checker
 from bot.helper.ext_utils.links_utils import (
     is_gdrive_id,
     is_gdrive_link,
@@ -586,6 +587,29 @@ class Mirror(TaskListener):
             await self.remove_from_same_dir()
             await delete_links(self.message)
             return await auto_delete_message(x, time=300)
+
+        # Get file size for limit checking
+        size = 0
+        if file_:
+            size = file_.file_size
+
+        # Check limits before proceeding
+        if size > 0:
+            limit_msg = await limit_checker(
+                size,
+                self,
+                isTorrent=self.is_qbit
+                or is_magnet(self.link)
+                or (self.link and self.link.endswith(".torrent")),
+                isMega=is_mega_link(self.link),
+                isDriveLink=is_gdrive_link(self.link) or is_gdrive_id(self.link),
+                isYtdlp=False,
+            )
+            if limit_msg:
+                x = await send_message(self.message, limit_msg)
+                await self.remove_from_same_dir()
+                await delete_links(self.message)
+                return await auto_delete_message(x, time=300)
 
         if (
             not self.is_jd

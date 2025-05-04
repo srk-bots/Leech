@@ -902,7 +902,14 @@ class TaskListener(TaskConfig):
         await delete_links(self.message)
 
         # Send and auto-delete error message
-        msg = f"{self.tag} Download: {escape(str(error))}"
+        # Make sure to include the user tag
+        error_str = escape(str(error))
+        if "⚠️" in error_str and "limit" in error_str.lower():
+            # This is a limit error, make sure to tag the user
+            msg = f"{self.tag} ⚠️ Download Error: {error_str}"
+        else:
+            msg = f"{self.tag} Download: {error_str}"
+
         error_msg = await send_message(self.message, msg, button)
         create_task(
             auto_delete_message(error_msg, time=300),

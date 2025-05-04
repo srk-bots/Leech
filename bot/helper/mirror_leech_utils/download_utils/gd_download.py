@@ -2,6 +2,7 @@ from secrets import token_hex
 
 from bot import LOGGER, task_dict, task_dict_lock
 from bot.helper.ext_utils.bot_utils import sync_to_async
+from bot.helper.ext_utils.limit_checker import limit_checker
 from bot.helper.ext_utils.task_manager import (
     check_running_tasks,
     stop_duplicate_check,
@@ -28,6 +29,20 @@ async def add_gd_download(listener, path):
 
     listener.name = listener.name or name
     gid = token_hex(4)
+
+    # Check size limits
+    if listener.size > 0:
+        limit_msg = await limit_checker(
+            listener.size,
+            listener,
+            isTorrent=False,
+            isMega=False,
+            isDriveLink=True,
+            isYtdlp=False,
+        )
+        if limit_msg:
+            await listener.on_download_error(limit_msg)
+            return
 
     msg, button = await stop_duplicate_check(listener)
     if msg:

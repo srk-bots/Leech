@@ -7,6 +7,7 @@ from bot import LOGGER, sabnzbd_client, task_dict, task_dict_lock
 from bot.core.config_manager import Config
 from bot.helper.ext_utils.bot_utils import bt_selection_buttons
 from bot.helper.ext_utils.db_handler import database
+from bot.helper.ext_utils.limit_checker import limit_checker
 from bot.helper.ext_utils.task_manager import check_running_tasks
 from bot.helper.listeners.nzb_listener import on_download_start
 from bot.helper.mirror_leech_utils.status_utils.nzb_status import SabnzbdStatus
@@ -109,6 +110,27 @@ async def add_nzb(listener, path):
             name = history["history"]["slots"][0]["name"]
         else:
             name = downloads["queue"]["slots"][0]["filename"]
+
+        # Get size from the download info
+        size = 0
+        if downloads["queue"]["slots"]:
+            size = int(float(downloads["queue"]["slots"][0]["mb"]) * 1024 * 1024)
+
+        # Check size limits
+        if size > 0:
+            limit_msg = await limit_checker(
+                size,
+                listener,
+                isTorrent=False,
+                isMega=False,
+                isDriveLink=False,
+                isYtdlp=False,
+                is_nzb=True,
+            )
+            if limit_msg:
+                await sabnzbd_client.delete_history(job_id, delete_files=True)
+                await listener.on_download_error(limit_msg)
+                return
 
         async with task_dict_lock:
             task_dict[listener.mid] = SabnzbdStatus(

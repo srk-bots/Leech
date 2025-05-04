@@ -13,6 +13,7 @@ from bot.helper.ext_utils.bot_utils import (
     sync_to_async,
 )
 from bot.helper.ext_utils.exceptions import DirectDownloadLinkException
+from bot.helper.ext_utils.limit_checker import limit_checker
 from bot.helper.ext_utils.links_utils import (
     is_gdrive_id,
     is_gdrive_link,
@@ -162,6 +163,22 @@ class Clone(TaskListener):
             if mime_type is None:
                 await send_message(self.message, self.name)
                 return
+
+            # Check size limits
+            if self.size > 0:
+                self.isClone = True  # Set isClone attribute for limit_checker
+                limit_msg = await limit_checker(
+                    self.size,
+                    self,
+                    isTorrent=False,
+                    isMega=False,
+                    isDriveLink=True,
+                    isYtdlp=False,
+                )
+                if limit_msg:
+                    await send_message(self.message, limit_msg)
+                    return
+
             msg, button = await stop_duplicate_check(self)
             if msg:
                 await send_message(self.message, msg, button)
@@ -246,6 +263,43 @@ class Clone(TaskListener):
                     if not self.name:
                         self.name = src_path.rsplit("/", 1)[-1]
                     mime_type = rstat["MimeType"]
+
+            # Get size for rclone path
+            cmd_size = [
+                "xone",
+                "size",
+                "--fast-list",
+                "--json",
+                "--config",
+                config_path,
+                f"{remote}:{src_path}",
+                "-v",
+                "--log-systemd",
+            ]
+            res_size = await cmd_exec(cmd_size)
+            if res_size[2] == 0:
+                try:
+                    rsize = loads(res_size[0])
+                    self.size = rsize["bytes"]
+
+                    # Check size limits
+                    if self.size > 0:
+                        self.isClone = (
+                            True  # Set isClone attribute for limit_checker
+                        )
+                        limit_msg = await limit_checker(
+                            self.size,
+                            self,
+                            isTorrent=False,
+                            isMega=False,
+                            isDriveLink=False,
+                            isYtdlp=False,
+                        )
+                        if limit_msg:
+                            await send_message(self.message, limit_msg)
+                            return
+                except Exception as e:
+                    LOGGER.error(f"Error parsing rclone size: {e}")
 
             await self.on_download_start()
 

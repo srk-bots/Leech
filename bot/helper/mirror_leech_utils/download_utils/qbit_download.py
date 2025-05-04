@@ -12,6 +12,7 @@ from bot import LOGGER, qb_torrents, task_dict, task_dict_lock
 from bot.core.config_manager import Config
 from bot.core.torrent_manager import TorrentManager
 from bot.helper.ext_utils.bot_utils import bt_selection_buttons
+from bot.helper.ext_utils.limit_checker import limit_checker
 from bot.helper.ext_utils.task_manager import check_running_tasks
 from bot.helper.listeners.qbit_listener import on_download_start
 from bot.helper.mirror_leech_utils.status_utils.qbit_status import QbittorrentStatus
@@ -96,6 +97,22 @@ async def add_qb_torrent(listener, path, ratio, seed_time):
         tor_info = tor_info[0]
         listener.name = tor_info.name
         ext_hash = tor_info.hash
+
+        # Check size limits
+        size = tor_info.size
+        if size > 0:
+            limit_msg = await limit_checker(
+                size,
+                listener,
+                isTorrent=True,
+                isMega=False,
+                isDriveLink=False,
+                isYtdlp=False,
+            )
+            if limit_msg:
+                await TorrentManager.qbittorrent.torrents.delete([ext_hash], True)
+                await listener.on_download_error(limit_msg)
+                return
 
         async with task_dict_lock:
             task_dict[listener.mid] = QbittorrentStatus(

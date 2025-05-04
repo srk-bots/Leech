@@ -12,6 +12,7 @@ from yt_dlp import DownloadError, YoutubeDL
 
 from bot import task_dict, task_dict_lock
 from bot.helper.ext_utils.bot_utils import async_to_sync, sync_to_async
+from bot.helper.ext_utils.limit_checker import limit_checker
 from bot.helper.ext_utils.task_manager import (
     check_running_tasks,
     stop_duplicate_check,
@@ -975,6 +976,18 @@ class YoutubeDLHelper:
             )
         elif not self._listener.is_leech:
             self.opts["writethumbnail"] = False
+
+        # Check size limits if size is available
+        if self._listener.size > 0:
+            limit_msg = await limit_checker(
+                self._listener.size,
+                self._listener,
+                isYtdlp=True,
+                isPlayList=self.is_playlist,
+            )
+            if limit_msg:
+                await self._listener.on_download_error(limit_msg)
+                return
 
         msg, button = await stop_duplicate_check(self._listener)
         if msg:

@@ -9,6 +9,7 @@ from bot import LOGGER, task_dict, task_dict_lock
 from bot.core.config_manager import Config
 from bot.core.torrent_manager import TorrentManager, aria2_name, is_metadata
 from bot.helper.ext_utils.bot_utils import bt_selection_buttons
+from bot.helper.ext_utils.limit_checker import limit_checker
 from bot.helper.ext_utils.task_manager import check_running_tasks
 from bot.helper.mirror_leech_utils.status_utils.aria2_status import Aria2Status
 from bot.helper.telegram_helper.message_utils import (
@@ -61,6 +62,24 @@ async def add_aria2_download(listener, dpath, header, ratio, seed_time):
         await TorrentManager.aria2_remove(download)
         await listener.on_download_error(error)
         return
+
+    # Check size limits
+    size = int(download.get("totalLength", "0"))
+    if size > 0:
+        is_torrent = "bittorrent" in download
+        limit_msg = await limit_checker(
+            size,
+            listener,
+            isTorrent=is_torrent,
+            isMega=False,
+            isDriveLink=False,
+            isYtdlp=False,
+        )
+        if limit_msg:
+            await TorrentManager.aria2_remove(download)
+            await listener.on_download_error(limit_msg)
+            return
+
     if await aiopath.exists(listener.link):
         await remove(listener.link)
 
