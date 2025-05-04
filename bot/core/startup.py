@@ -388,12 +388,16 @@ async def load_configurations():
         )
     ).wait()
 
-    # Use Config.BASE_URL_PORT instead of environment variable
-    PORT = environ.get("PORT") or str(Config.BASE_URL_PORT) or "80"
-    LOGGER.info(f"Starting web server on port {PORT}")
-    await create_subprocess_shell(
-        f"gunicorn -k uvicorn.workers.UvicornWorker -w 1 web.wserver:app --bind 0.0.0.0:{PORT}",
-    )
+    # Check if web server should be started (BASE_URL_PORT = 0 means disabled)
+    if Config.BASE_URL_PORT == 0:
+        LOGGER.info("Web server is disabled (BASE_URL_PORT = 0)")
+    else:
+        # Use Config.BASE_URL_PORT instead of environment variable
+        PORT = environ.get("PORT") or str(Config.BASE_URL_PORT) or "80"
+        LOGGER.info(f"Starting web server on port {PORT}")
+        await create_subprocess_shell(
+            f"gunicorn -k uvicorn.workers.UvicornWorker -w 1 web.wserver:app --bind 0.0.0.0:{PORT}",
+        )
 
     if await aiopath.exists("cfg.zip"):
         if await aiopath.exists("/JDownloader/cfg"):

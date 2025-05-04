@@ -3561,6 +3561,18 @@ async def edit_variable(_, message, pre_message, key):
 
     if key in ["QUEUE_ALL", "QUEUE_DOWNLOAD", "QUEUE_UPLOAD"]:
         await start_from_queued()
+    elif key == "BASE_URL_PORT":
+        # Kill any running web server
+        await (
+            await create_subprocess_exec("pkill", "-9", "-f", "gunicorn")
+        ).wait()
+        # Only start web server if port is not 0
+        if value != 0:
+            await create_subprocess_shell(
+                f"gunicorn -k uvicorn.workers.UvicornWorker -w 1 web.wserver:app --bind 0.0.0.0:{value}",
+            )
+        else:
+            LOGGER.info("Web server is disabled (BASE_URL_PORT = 0)")
     elif key in [
         "RCLONE_SERVE_URL",
         "RCLONE_SERVE_PORT",
@@ -5352,15 +5364,19 @@ async def edit_bot_settings(client, query):
             ).wait()
         elif data[2] == "BASE_URL_PORT":
             value = 80
-            if Config.BASE_URL:
-                await (
-                    await create_subprocess_exec("pkill", "-9", "-f", "gunicorn")
-                ).wait()
-                # Update Config.BASE_URL_PORT first
-                Config.BASE_URL_PORT = value
+            # Kill any running web server
+            await (
+                await create_subprocess_exec("pkill", "-9", "-f", "gunicorn")
+            ).wait()
+            # Update Config.BASE_URL_PORT first
+            Config.BASE_URL_PORT = value
+            # Only start web server if port is not 0
+            if value != 0:
                 await create_subprocess_shell(
                     f"gunicorn -k uvicorn.workers.UvicornWorker -w 1 web.wserver:app --bind 0.0.0.0:{value}",
                 )
+            else:
+                LOGGER.info("Web server is disabled (BASE_URL_PORT = 0)")
         elif data[2] == "RCLONE_SERVE_PORT":
             value = 8080
             # Update Config.RCLONE_SERVE_PORT first
@@ -6273,10 +6289,14 @@ async def load_config():
         await database.trunc_table("tasks")
 
     await (await create_subprocess_exec("pkill", "-9", "-f", "gunicorn")).wait()
-    if Config.BASE_URL:
+    # Only start web server if BASE_URL_PORT is not 0
+    if Config.BASE_URL_PORT != 0:
+        LOGGER.info(f"Starting web server on port {Config.BASE_URL_PORT}")
         await create_subprocess_shell(
             f"gunicorn -k uvicorn.workers.UvicornWorker -w 1 web.wserver:app --bind 0.0.0.0:{Config.BASE_URL_PORT}",
         )
+    else:
+        LOGGER.info("Web server is disabled (BASE_URL_PORT = 0)")
 
     if Config.DATABASE_URL:
         await database.connect()
