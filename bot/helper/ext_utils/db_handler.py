@@ -257,8 +257,10 @@ class DbManager:
     async def rss_update_all(self):
         if self._return:
             return
+        # Convert TgClient.ID to string for MongoDB collection names
+        # MongoDB collection names must be strings, not integers
         for user_id in list(rss_dict.keys()):
-            await self.db.rss[TgClient.ID].replace_one(
+            await self.db.rss[str(TgClient.ID)].replace_one(
                 {"_id": user_id},
                 rss_dict[user_id],
                 upsert=True,
@@ -267,7 +269,7 @@ class DbManager:
     async def rss_update(self, user_id):
         if self._return:
             return
-        await self.db.rss[TgClient.ID].replace_one(
+        await self.db.rss[str(TgClient.ID)].replace_one(
             {"_id": user_id},
             rss_dict[user_id],
             upsert=True,
@@ -276,31 +278,31 @@ class DbManager:
     async def rss_delete(self, user_id):
         if self._return:
             return
-        await self.db.rss[TgClient.ID].delete_one({"_id": user_id})
+        await self.db.rss[str(TgClient.ID)].delete_one({"_id": user_id})
 
     async def add_incomplete_task(self, cid, link, tag):
         if self._return:
             return
-        await self.db.tasks[TgClient.ID].insert_one(
+        await self.db.tasks[str(TgClient.ID)].insert_one(
             {"_id": link, "cid": cid, "tag": tag},
         )
 
     async def get_pm_uids(self):
         if self._return:
             return None
-        return [doc["_id"] async for doc in self.db.pm_users[TgClient.ID].find({})]
+        return [doc["_id"] async for doc in self.db.pm_users[str(TgClient.ID)].find({})]
 
     async def update_pm_users(self, user_id):
         if self._return:
             return
-        if not bool(await self.db.pm_users[TgClient.ID].find_one({"_id": user_id})):
-            await self.db.pm_users[TgClient.ID].insert_one({"_id": user_id})
+        if not bool(await self.db.pm_users[str(TgClient.ID)].find_one({"_id": user_id})):
+            await self.db.pm_users[str(TgClient.ID)].insert_one({"_id": user_id})
             LOGGER.info(f"New PM User Added : {user_id}")
 
     async def rm_pm_user(self, user_id):
         if self._return:
             return
-        await self.db.pm_users[TgClient.ID].delete_one({"_id": user_id})
+        await self.db.pm_users[str(TgClient.ID)].delete_one({"_id": user_id})
 
     async def update_user_tdata(self, user_id, token, expiry_time):
         if self._return:
@@ -349,14 +351,14 @@ class DbManager:
     async def rm_complete_task(self, link):
         if self._return:
             return
-        await self.db.tasks[TgClient.ID].delete_one({"_id": link})
+        await self.db.tasks[str(TgClient.ID)].delete_one({"_id": link})
 
     async def get_incomplete_tasks(self):
         notifier_dict = {}
         if self._return:
             return notifier_dict
-        if await self.db.tasks[TgClient.ID].find_one():
-            rows = self.db.tasks[TgClient.ID].find({})
+        if await self.db.tasks[str(TgClient.ID)].find_one():
+            rows = self.db.tasks[str(TgClient.ID)].find({})
             async for row in rows:
                 if row["cid"] in list(notifier_dict.keys()):
                     if row["tag"] in list(notifier_dict[row["cid"]]):
@@ -365,13 +367,13 @@ class DbManager:
                         notifier_dict[row["cid"]][row["tag"]] = [row["_id"]]
                 else:
                     notifier_dict[row["cid"]] = {row["tag"]: [row["_id"]]}
-        await self.db.tasks[TgClient.ID].drop()
+        await self.db.tasks[str(TgClient.ID)].drop()
         return notifier_dict
 
     async def trunc_table(self, name):
         if self._return:
             return
-        await self.db[name][TgClient.ID].drop()
+        await self.db[name][str(TgClient.ID)].drop()
 
     async def store_scheduled_deletion(
         self,
