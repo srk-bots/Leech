@@ -3579,9 +3579,9 @@ async def edit_variable(_, message, pre_message, key):
             LOGGER.info("Web server is disabled (BASE_URL_PORT = 0)")
             # Double-check to make sure no web server is running
             try:
-                # Use ps to check if any gunicorn processes are still running
+                # Use pgrep to check if any gunicorn processes are still running
                 process = await create_subprocess_exec(
-                    "ps", "-ef", "|", "grep", "gunicorn", "|", "grep", "-v", "grep",
+                    "pgrep", "-f", "gunicorn",
                     stdout=-1
                 )
                 stdout, _ = await process.communicate()
@@ -5401,9 +5401,9 @@ async def edit_bot_settings(client, query):
                 LOGGER.info("Web server is disabled (BASE_URL_PORT = 0)")
                 # Double-check to make sure no web server is running
                 try:
-                    # Use ps to check if any gunicorn processes are still running
+                    # Use pgrep to check if any gunicorn processes are still running
                     process = await create_subprocess_exec(
-                        "ps", "-ef", "|", "grep", "gunicorn", "|", "grep", "-v", "grep",
+                        "pgrep", "-f", "gunicorn",
                         stdout=-1
                     )
                     stdout, _ = await process.communicate()
