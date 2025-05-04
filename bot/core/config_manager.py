@@ -427,6 +427,22 @@ class Config:
     TASK_MONITOR_MEMORY_HIGH: int = 75  # percentage
     TASK_MONITOR_MEMORY_LOW: int = 60  # percentage
 
+    # Limits Settings
+    STORAGE_THRESHOLD: float = 0  # GB
+    TORRENT_LIMIT: float = 0  # GB
+    DIRECT_LIMIT: float = 0  # GB
+    YTDLP_LIMIT: float = 0  # GB
+    GDRIVE_LIMIT: float = 0  # GB
+    CLONE_LIMIT: float = 0  # GB
+    MEGA_LIMIT: float = 0  # GB
+    LEECH_LIMIT: float = 0  # GB
+    PLAYLIST_LIMIT: int = 0  # Number of videos
+    DAILY_TASK_LIMIT: int = 0  # Number of tasks per day
+    DAILY_MIRROR_LIMIT: float = 0  # GB per day
+    DAILY_LEECH_LIMIT: float = 0  # GB per day
+    USER_MAX_TASKS: int = 0  # Maximum concurrent tasks per user
+    USER_TIME_INTERVAL: int = 0  # Seconds between tasks
+
     # Truecaller API Settings
     TRUECALLER_API_URL: str = ""
 
@@ -574,11 +590,6 @@ class SystemEnv:
                 return original_value
 
         if isinstance(original_value, list):
-            # For LEECH_DUMP_CHAT and LOG_CHAT_ID, use parse_chat_ids
-            if key in ["LEECH_DUMP_CHAT", "LOG_CHAT_ID"]:
-                from bot.helper.ext_utils.bot_utils import parse_chat_ids
-
-                return parse_chat_ids(value)
             return value.split(",")
 
         if isinstance(original_value, dict):

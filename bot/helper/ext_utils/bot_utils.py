@@ -8,6 +8,7 @@ from asyncio import (
 from asyncio.subprocess import PIPE
 from base64 import urlsafe_b64decode, urlsafe_b64encode
 from concurrent.futures import ThreadPoolExecutor
+from datetime import datetime
 from functools import partial, wraps
 from typing import Any
 
@@ -676,6 +677,108 @@ def parse_chat_ids(chat_ids_str: str | int | list[str | int]) -> list:
 
     # For any other type, return empty list
     return []
+
+
+async def getdailytasks(
+    user_id,
+    increase_task=False,
+    upleech=0,
+    upmirror=0,
+    check_mirror=False,
+    check_leech=False,
+):
+    """Track and manage daily task limits for users.
+
+    Args:
+        user_id: User ID to track
+        increase_task: Whether to increment the task count
+        upleech: Size to add to leech total (in bytes)
+        upmirror: Size to add to mirror total (in bytes)
+        check_mirror: Whether to return mirror size
+        check_leech: Whether to return leech size
+
+    Returns:
+        int or float: Task count, leech size, or mirror size based on parameters
+    """
+    from bot.helper.ext_utils.db_handler import DbManager
+
+    task, lsize, msize = 0, 0, 0
+    if user_id in user_data and user_data[user_id].get("dly_tasks"):
+        userdate, task, lsize, msize = user_data[user_id]["dly_tasks"]
+        nowdate = datetime.now()
+        # Reset counters if it's a new day
+        if (
+            userdate.year <= nowdate.year
+            and userdate.month <= nowdate.month
+            and userdate.day < nowdate.day
+        ):
+            task, lsize, msize = 0, 0, 0
+            if increase_task:
+                task = 1
+            elif upleech != 0:
+                lsize += upleech
+            elif upmirror != 0:
+                msize += upmirror
+        # Otherwise update existing counters
+        elif increase_task:
+            task += 1
+        elif upleech != 0:
+            lsize += upleech
+        elif upmirror != 0:
+            msize += upmirror
+    # Initialize counters if they don't exist
+    elif increase_task:
+        task += 1
+    elif upleech != 0:
+        lsize += upleech
+    elif upmirror != 0:
+        msize += upmirror
+
+    # Update user data
+    update_user_ldata(user_id, "dly_tasks", [datetime.now(), task, lsize, msize])
+
+    # Update database if available
+    if hasattr(Config, "DATABASE_URL") and Config.DATABASE_URL:
+        database = DbManager()
+        await database.connect()
+        await database.update_user_data(user_id)
+        await database.disconnect()
+
+    # Return appropriate value based on parameters
+    if check_leech:
+        return lsize
+    elif check_mirror:
+        return msize
+    return task
+
+
+async def timeval_check(user_id):
+    """Check if user is within time interval limit.
+
+    Args:
+        user_id: User ID to check
+
+    Returns:
+        float or None: Time remaining until next allowed task, or None if no limit
+    """
+    from time import time
+
+    # Skip check if interval is not set
+    if not Config.USER_TIME_INTERVAL:
+        return None
+
+    # Initialize time_interval in user_data if not present
+    user_data.setdefault(user_id, {})
+    user_data[user_id].setdefault("time_interval", 0)
+
+    # Check if user is within time interval
+    last_time = user_data[user_id]["time_interval"]
+    if last_time and (time() - last_time) < Config.USER_TIME_INTERVAL:
+        return Config.USER_TIME_INTERVAL - (time() - last_time)
+
+    # Update last time
+    user_data[user_id]["time_interval"] = time()
+    return None
 
 
 def is_flag_enabled(flag_name):
