@@ -29,9 +29,17 @@ class TgClient:
             workdir="/usr/src/app",
             parse_mode=enums.ParseMode.HTML,
             max_concurrent_transmissions=10,
+            no_updates=False,  # Ensure updates are enabled
         )
-        await cls.bot.start()
-        cls.NAME = cls.bot.me.username
+        try:
+            await cls.bot.start()
+            cls.NAME = cls.bot.me.username
+        except KeyError as e:
+            if str(e) == 'None':
+                LOGGER.error("Failed to connect to Telegram: DataCenter ID is None. This might be due to network issues or API configuration.")
+                LOGGER.error("Please check your internet connection and TELEGRAM_API/TELEGRAM_HASH configuration.")
+                raise Exception("Failed to connect to Telegram servers. Check your internet connection and API configuration.") from e
+            raise
 
     @classmethod
     async def start_user(cls):
@@ -57,6 +65,14 @@ class TgClient:
                 cls.IS_PREMIUM_USER = cls.user.me.is_premium
                 if cls.IS_PREMIUM_USER:
                     cls.MAX_SPLIT_SIZE = 4194304000
+            except KeyError as e:
+                if str(e) == 'None':
+                    LOGGER.error("Failed to connect to Telegram: DataCenter ID is None. This might be due to network issues or API configuration.")
+                    LOGGER.error("Please check your internet connection and TELEGRAM_API/TELEGRAM_HASH configuration.")
+                    cls.IS_PREMIUM_USER = False
+                    cls.user = None
+                else:
+                    raise
             except Exception as e:
                 LOGGER.error(f"Failed to start client from USER_SESSION_STRING. {e}")
                 cls.IS_PREMIUM_USER = False

@@ -391,6 +391,12 @@ async def load_configurations():
     # Check if web server should be started (BASE_URL_PORT = 0 means disabled)
     if Config.BASE_URL_PORT == 0:
         LOGGER.info("Web server is disabled (BASE_URL_PORT = 0)")
+        # Kill any running web server to ensure it's stopped
+        try:
+            await (await create_subprocess_exec("pkill", "-9", "-f", "gunicorn")).wait()
+            LOGGER.info("Killed any running web server processes")
+        except Exception as e:
+            LOGGER.error(f"Error killing web server processes: {e}")
     else:
         # Use Config.BASE_URL_PORT instead of environment variable
         PORT = environ.get("PORT") or str(Config.BASE_URL_PORT) or "80"
