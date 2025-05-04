@@ -238,7 +238,9 @@ class Mirror(TaskListener):
         )
 
         # Parse up_dest as a list of chat IDs, similar to USER_DUMP
-        if raw_up_dest:
+        if (
+            raw_up_dest and raw_up_dest.strip()
+        ):  # Check if it's not empty or just whitespace
             from bot.helper.ext_utils.bot_utils import parse_chat_ids
 
             self.up_dest = parse_chat_ids(raw_up_dest)
@@ -246,7 +248,8 @@ class Mirror(TaskListener):
                 f"DEBUG: parsed up_dest value: {self.up_dest}, type: {type(self.up_dest)}"
             )
         else:
-            self.up_dest = raw_up_dest
+            self.up_dest = None  # Set to None instead of empty string
+            LOGGER.info(f"DEBUG: up_dest set to None because raw value was empty")
         self.rc_flags = args["-rcf"]
         self.link = args["link"]
         self.compress = args["-z"]
