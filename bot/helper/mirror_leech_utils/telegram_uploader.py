@@ -444,6 +444,9 @@ class TelegramUploader:
             else ""
         )
         self._user_dump = self._listener.user_dict.get("USER_DUMP")
+        # Ensure user_dump is a string if it exists
+        if self._user_dump and not isinstance(self._user_dump, str):
+            self._user_dump = str(self._user_dump)
         self._lcaption = self._listener.user_dict.get("LEECH_FILENAME_CAPTION") or (
             Config.LEECH_FILENAME_CAPTION
             if "LEECH_FILENAME_CAPTION" not in self._listener.user_dict
