@@ -3371,6 +3371,19 @@ class TaskConfig:
             and isinstance(self.ffmpeg_cmds[0], str)
         ):
             # This is a direct command, keep it as is
+            # Check if the command is wrapped in quotes and remove them if needed
+            if (
+                self.ffmpeg_cmds[0].startswith('"')
+                and self.ffmpeg_cmds[0].endswith('"')
+            ) or (
+                self.ffmpeg_cmds[0].startswith("'")
+                and self.ffmpeg_cmds[0].endswith("'")
+            ):
+                # Remove the quotes
+                self.ffmpeg_cmds[0] = self.ffmpeg_cmds[0][1:-1]
+                LOGGER.info(
+                    f"Removed quotes from FFmpeg command: {self.ffmpeg_cmds}"
+                )
             LOGGER.info(f"Using direct FFmpeg command: {self.ffmpeg_cmds}")
 
         LOGGER.info(f"FFmpeg commands after lookup: {self.ffmpeg_cmds}")
@@ -3455,9 +3468,23 @@ class TaskConfig:
         LOGGER.info(f"Processed FFmpeg commands: {cmds}")
 
         # Check if any command is empty or missing input parameter
+        valid_cmds = []
         for cmd in cmds:
-            if not cmd or "-i" not in cmd:
-                LOGGER.warning(f"Skipping invalid FFmpeg command: {cmd}")
+            if not cmd:
+                LOGGER.warning(f"Skipping empty FFmpeg command: {cmd}")
+                continue
+
+            # Check if the command contains -i parameter
+            if "-i" not in cmd:
+                LOGGER.info(
+                    f"Command missing -i parameter, will add it later: {cmd}"
+                )
+
+            # Add the command to the valid commands list
+            valid_cmds.append(cmd)
+
+        # Replace the original commands list with the valid commands
+        cmds = valid_cmds
 
         # Skip processing if all commands are empty
         if not cmds:
