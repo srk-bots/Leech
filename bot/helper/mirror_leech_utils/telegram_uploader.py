@@ -459,14 +459,7 @@ class TelegramUploader:
         if Config.LEECH_DUMP_CHAT:
             msg = self._listener.message.text.lstrip("/")
             # Send command message to all owner's dump chat IDs
-            # Ensure LEECH_DUMP_CHAT is treated as a list
-            dump_chat_ids = Config.LEECH_DUMP_CHAT
-            if not isinstance(dump_chat_ids, list):
-                from bot.helper.ext_utils.bot_utils import parse_chat_ids
-
-                dump_chat_ids = parse_chat_ids(dump_chat_ids)
-
-            for chat_id in dump_chat_ids:
+            for chat_id in Config.LEECH_DUMP_CHAT:
                 try:
                     # Send command message to owner's dump
                     owner_dump_msg = await self._listener.client.send_message(
@@ -1618,14 +1611,7 @@ class TelegramUploader:
                 # Send to owner leech dump and bot PM
                 if Config.LEECH_DUMP_CHAT:
                     # Add all dump chat IDs that are not the current chat
-                    # Ensure LEECH_DUMP_CHAT is treated as a list
-                    dump_chat_ids = Config.LEECH_DUMP_CHAT
-                    if not isinstance(dump_chat_ids, list):
-                        from bot.helper.ext_utils.bot_utils import parse_chat_ids
-
-                        dump_chat_ids = parse_chat_ids(dump_chat_ids)
-
-                    for chat_id in dump_chat_ids:
+                    for chat_id in Config.LEECH_DUMP_CHAT:
                         if source_chat_id != chat_id:
                             destinations.append(chat_id)
 
@@ -1641,14 +1627,7 @@ class TelegramUploader:
 
                 if Config.LEECH_DUMP_CHAT:
                     # Add all dump chat IDs that are not the current chat
-                    # Ensure LEECH_DUMP_CHAT is treated as a list
-                    dump_chat_ids = Config.LEECH_DUMP_CHAT
-                    if not isinstance(dump_chat_ids, list):
-                        from bot.helper.ext_utils.bot_utils import parse_chat_ids
-
-                        dump_chat_ids = parse_chat_ids(dump_chat_ids)
-
-                    for chat_id in dump_chat_ids:
+                    for chat_id in Config.LEECH_DUMP_CHAT:
                         if source_chat_id != chat_id:
                             destinations.append(chat_id)
 
@@ -1661,14 +1640,7 @@ class TelegramUploader:
                 # By default, send to owner leech dump and bot PM
                 if Config.LEECH_DUMP_CHAT:
                     # Add all dump chat IDs that are not the current chat
-                    # Ensure LEECH_DUMP_CHAT is treated as a list
-                    dump_chat_ids = Config.LEECH_DUMP_CHAT
-                    if not isinstance(dump_chat_ids, list):
-                        from bot.helper.ext_utils.bot_utils import parse_chat_ids
-
-                        dump_chat_ids = parse_chat_ids(dump_chat_ids)
-
-                    for chat_id in dump_chat_ids:
+                    for chat_id in Config.LEECH_DUMP_CHAT:
                         if source_chat_id != chat_id:
                             destinations.append(chat_id)
 
@@ -1781,14 +1753,7 @@ class TelegramUploader:
                 # Send to owner leech dump and bot PM
                 if Config.LEECH_DUMP_CHAT:
                     # Add all dump chat IDs that are not the current chat
-                    # Ensure LEECH_DUMP_CHAT is treated as a list
-                    dump_chat_ids = Config.LEECH_DUMP_CHAT
-                    if not isinstance(dump_chat_ids, list):
-                        from bot.helper.ext_utils.bot_utils import parse_chat_ids
-
-                        dump_chat_ids = parse_chat_ids(dump_chat_ids)
-
-                    for chat_id in dump_chat_ids:
+                    for chat_id in Config.LEECH_DUMP_CHAT:
                         if self._sent_msg.chat.id != chat_id:
                             destinations.append(chat_id)
 
@@ -1804,14 +1769,7 @@ class TelegramUploader:
 
                 if Config.LEECH_DUMP_CHAT:
                     # Add all dump chat IDs that are not the current chat
-                    # Ensure LEECH_DUMP_CHAT is treated as a list
-                    dump_chat_ids = Config.LEECH_DUMP_CHAT
-                    if not isinstance(dump_chat_ids, list):
-                        from bot.helper.ext_utils.bot_utils import parse_chat_ids
-
-                        dump_chat_ids = parse_chat_ids(dump_chat_ids)
-
-                    for chat_id in dump_chat_ids:
+                    for chat_id in Config.LEECH_DUMP_CHAT:
                         if self._sent_msg.chat.id != chat_id:
                             destinations.append(chat_id)
 
@@ -1824,14 +1782,7 @@ class TelegramUploader:
                 # By default, send to owner leech dump and bot PM
                 if Config.LEECH_DUMP_CHAT:
                     # Add all dump chat IDs that are not the current chat
-                    # Ensure LEECH_DUMP_CHAT is treated as a list
-                    dump_chat_ids = Config.LEECH_DUMP_CHAT
-                    if not isinstance(dump_chat_ids, list):
-                        from bot.helper.ext_utils.bot_utils import parse_chat_ids
-
-                        dump_chat_ids = parse_chat_ids(dump_chat_ids)
-
-                    for chat_id in dump_chat_ids:
+                    for chat_id in Config.LEECH_DUMP_CHAT:
                         if self._sent_msg.chat.id != chat_id:
                             destinations.append(chat_id)
 
