@@ -8,7 +8,6 @@ from asyncio import (
 from asyncio.subprocess import PIPE
 from base64 import urlsafe_b64decode, urlsafe_b64encode
 from concurrent.futures import ThreadPoolExecutor
-from datetime import datetime
 from functools import partial, wraps
 
 from httpx import AsyncClient
@@ -453,6 +452,42 @@ async def getdailytasks(
     return user_data[user_id]["daily_tasks"]
 
 
+async def timeval_check(user_id):
+    """Check if user needs to wait before starting a new task.
+
+    Args:
+        user_id: User ID to check
+
+    Returns:
+        float: Time to wait in seconds, or 0 if no wait needed
+    """
+    from time import time
+
+    user_data.setdefault(user_id, {})
+    user_data[user_id].setdefault("last_task_time", 0)
+
+    # Get time interval setting
+    from bot.core.config_manager import Config
+
+    if not (interval := Config.USER_TIME_INTERVAL):
+        # No time interval restriction
+        user_data[user_id]["last_task_time"] = time()
+        return 0
+
+    # Check if enough time has passed since last task
+    current_time = time()
+    last_time = user_data[user_id]["last_task_time"]
+    elapsed = current_time - last_time
+
+    if elapsed < interval:
+        # User needs to wait
+        return interval - elapsed
+
+    # No wait needed, update last task time
+    user_data[user_id]["last_task_time"] = current_time
+    return 0
+
+
 def encode_slink(string):
     return (urlsafe_b64encode(string.encode("ascii")).decode("ascii")).strip("=")
 
@@ -713,3 +748,33 @@ def is_flag_enabled(flag_name):
 
     # Check if the tool is enabled
     return is_media_tool_enabled(tool_name)
+
+
+def check_storage_threshold(size, threshold, arch=False):
+    """Check if there's enough storage space available.
+
+    Args:
+        size: Size of the file/folder to be downloaded
+        threshold: Minimum free space to maintain
+        arch: Whether the download will be archived/extracted
+
+    Returns:
+        bool: True if there's enough space, False otherwise
+    """
+    if not size:
+        return True
+
+    # Get free space in bytes
+    from bot import DOWNLOAD_DIR
+    import shutil
+
+    free = shutil.disk_usage(DOWNLOAD_DIR).free
+
+    # If it's an archive, we need to consider extraction space
+    if arch:
+        # For archives, we need approximately 2x the space
+        # (1x for the archive, 1x for extraction)
+        size *= 2
+
+    # Check if there's enough space
+    return (free - size) >= threshold

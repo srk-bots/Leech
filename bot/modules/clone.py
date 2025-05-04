@@ -395,4 +395,11 @@ class Clone(TaskListener):
 
 
 async def clone_node(client, message):
-    bot_loop.create_task(Clone(client, message).new_event())
+    """Clone a file/folder from Google Drive or Rclone path.
+
+    This function creates a task to handle the clone operation.
+    It's designed to be called from a command handler.
+    """
+    # Use create_task to avoid blocking the event loop
+    # We wrap this in a function to avoid running asyncio code during import
+    return bot_loop.create_task(Clone(client, message).new_event())
