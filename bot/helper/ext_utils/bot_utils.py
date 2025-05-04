@@ -432,7 +432,6 @@ async def getdailytasks(
         int or float: Task count, mirror usage, or leech usage depending on parameters
     """
     from datetime import datetime
-    from bot import LOGGER
 
     try:
         # Initialize user data if not exists
@@ -449,7 +448,6 @@ async def getdailytasks(
             user_dict["daily_mirror"] = 0
             user_dict["daily_leech"] = 0
             user_dict["last_reset_date"] = current_date
-            LOGGER.info(f"Reset daily stats for user {user_id} (new day: {current_date})")
         else:
             # Initialize stats if they don't exist
             user_dict.setdefault("daily_tasks", 0)
@@ -485,8 +483,7 @@ async def getdailytasks(
 
         return user_dict["daily_tasks"]
 
-    except Exception as e:
-        LOGGER.error(f"Error in getdailytasks: {e}")
+    except Exception:
         # Return safe defaults in case of error
         if check_mirror or check_leech:
             return 0
@@ -502,7 +499,6 @@ async def _save_user_data():
     import json
     import os
     import aiofiles
-    from bot import LOGGER
 
     try:
         # Create data directory if it doesn't exist
@@ -522,8 +518,8 @@ async def _save_user_data():
             import gc
             gc.collect()
 
-    except Exception as e:
-        LOGGER.error(f"Error saving user data: {e}")
+    except Exception:
+        pass
 
 
 async def _load_user_data():
@@ -534,7 +530,6 @@ async def _load_user_data():
     import json
     import os
     import aiofiles
-    from bot import LOGGER
 
     global user_data
 
@@ -570,7 +565,7 @@ async def _load_user_data():
                                 import gc
                                 gc.collect()
 
-                    LOGGER.info(f"Loaded user data for {len(user_data)} users")
+                    # Data loaded successfully
 
                     # Clear the loaded_data variable to free memory
                     del loaded_data
@@ -582,9 +577,9 @@ async def _load_user_data():
                     except ImportError:
                         import gc
                         gc.collect()
-    except Exception as e:
-        LOGGER.error(f"Error loading user data: {e}")
+    except Exception:
         # Keep using the empty user_data dictionary
+        pass
 
 
 async def timeval_check(user_id):
@@ -600,7 +595,6 @@ async def timeval_check(user_id):
         float: Time to wait in seconds, or 0 if no wait needed
     """
     from time import time
-    from bot import LOGGER
     from bot.core.config_manager import Config
 
     # Initialize user data if not exists
@@ -623,9 +617,6 @@ async def timeval_check(user_id):
     # If not enough time has passed, user needs to wait
     if elapsed < interval:
         wait_time = interval - elapsed
-        LOGGER.info(
-            f"User {user_id} needs to wait {wait_time:.1f}s before starting a new task"
-        )
         return wait_time
 
     # No wait needed, update last task time and save data

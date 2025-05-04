@@ -1,7 +1,5 @@
 import gc
 from asyncio import create_task
-
-from bot import LOGGER
 from bot.core.config_manager import Config
 from bot.helper.ext_utils.bot_utils import (
     check_storage_threshold,
@@ -52,15 +50,12 @@ def log_memory_usage():
         system_memory = psutil.virtual_memory()
         system_memory_percent = system_memory.percent
 
-        # Log memory usage
-        LOGGER.info(f"Memory usage: {rss_mb:.1f} MB (RSS), {system_memory_percent:.1f}% of system memory")
-
+        # Return memory info without logging
         return {
             "rss_mb": rss_mb,
             "system_percent": system_memory_percent,
         }
-    except Exception as e:
-        LOGGER.error(f"Error logging memory usage: {e}")
+    except Exception:
         return None
 
 
@@ -124,7 +119,6 @@ async def limit_checker(
         Use the get_limit_message() helper function to extract just the error message
         from the return value if needed.
     """
-    LOGGER.info("Checking Size Limit of link/file/folder/tasks...")
 
     # Skip processing if size is 0 or negative
     if size <= 0:
@@ -314,9 +308,6 @@ async def check_daily_mirror_limit(limit, listener, size):
     is_clone = getattr(listener, "isClone", False)
     if not is_clone:
         await getdailytasks(user_id, upmirror=size)
-        LOGGER.info(
-            f"User: {user_id} | Daily Mirror Size: {get_readable_file_size(current_usage + size)}"
-        )
 
         # Run memory optimization after updating stats
         optimize_memory(aggressive=False)
@@ -352,9 +343,6 @@ async def check_daily_leech_limit(limit, listener, size):
 
     # Update leech usage
     await getdailytasks(user_id, upleech=size)
-    LOGGER.info(
-        f"User: {user_id} | Daily Leech Size: {get_readable_file_size(current_usage + size)}"
-    )
 
     # Run memory optimization after updating stats
     optimize_memory(aggressive=False)
@@ -384,8 +372,7 @@ async def check_daily_task_limit(limit, listener):
         return True
 
     # Increment task count
-    new_count = await getdailytasks(user_id, increase_task=True)
-    LOGGER.info(f"User: {user_id} | Daily Tasks: {new_count}")
+    await getdailytasks(user_id, increase_task=True)
 
     # Run memory optimization after updating stats
     optimize_memory(aggressive=False)
