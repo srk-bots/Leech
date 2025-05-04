@@ -408,6 +408,51 @@ def update_user_ldata(id_, key, value):
     user_data[id_][key] = value
 
 
+async def getdailytasks(
+    user_id,
+    increase_task=False,
+    upmirror=0,
+    upleech=0,
+    check_mirror=False,
+    check_leech=False,
+):
+    """Get or update daily task statistics for a user.
+
+    Args:
+        user_id: User ID to check or update
+        increase_task: Whether to increase the task count
+        upmirror: Size to add to mirror usage
+        upleech: Size to add to leech usage
+        check_mirror: Whether to return mirror usage
+        check_leech: Whether to return leech usage
+
+    Returns:
+        int or float: Task count, mirror usage, or leech usage depending on parameters
+    """
+    user_data.setdefault(user_id, {})
+    user_data[user_id].setdefault("daily_tasks", 0)
+    user_data[user_id].setdefault("daily_mirror", 0)
+    user_data[user_id].setdefault("daily_leech", 0)
+
+    if increase_task:
+        user_data[user_id]["daily_tasks"] += 1
+        return user_data[user_id]["daily_tasks"]
+
+    if upmirror > 0:
+        user_data[user_id]["daily_mirror"] += upmirror
+
+    if upleech > 0:
+        user_data[user_id]["daily_leech"] += upleech
+
+    if check_mirror:
+        return user_data[user_id]["daily_mirror"]
+
+    if check_leech:
+        return user_data[user_id]["daily_leech"]
+
+    return user_data[user_id]["daily_tasks"]
+
+
 def encode_slink(string):
     return (urlsafe_b64encode(string.encode("ascii")).decode("ascii")).strip("=")
 
