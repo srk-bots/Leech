@@ -102,7 +102,7 @@ async def get_telegraph_list(telegraph_content):
 
 def arg_parser(items, arg_base):
     if not items:
-        return arg_base
+        return
 
     arg_start = -1
     i = 0
@@ -247,8 +247,6 @@ def arg_parser(items, arg_base):
         link_items = items[:arg_start] if arg_start != -1 else items
         if link_items:
             arg_base["link"] = " ".join(link_items)
-
-    return arg_base
 
 
 def get_size_bytes(size):
