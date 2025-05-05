@@ -74,9 +74,12 @@ async def get_media_tools_settings(from_user, stype="main", page_no=0):
 
         # Check if watermark is enabled for the user
         user_watermark_enabled = user_dict.get("WATERMARK_ENABLED", False)
-        # Check if watermark is enabled globally using is_media_tool_enabled
+        # Check if watermark is enabled globally - need both conditions:
+        # 1. The tool is included in MEDIA_TOOLS_ENABLED
+        # 2. The tool's individual ENABLED flag is set
         from bot.helper.ext_utils.bot_utils import is_media_tool_enabled
-        owner_watermark_enabled = is_media_tool_enabled("watermark")
+        owner_watermark_available = is_media_tool_enabled("watermark")
+        owner_watermark_enabled = owner_watermark_available and Config.WATERMARK_ENABLED
 
         if user_watermark_enabled:
             watermark_status = "✅ Enabled (User)"
@@ -100,7 +103,9 @@ async def get_media_tools_settings(from_user, stype="main", page_no=0):
 
         # Check if merge is enabled for the user
         user_merge_enabled = user_dict.get("MERGE_ENABLED", False)
-        owner_merge_enabled = is_media_tool_enabled("merge")
+        # Check both if merge is available and enabled globally
+        owner_merge_available = is_media_tool_enabled("merge")
+        owner_merge_enabled = owner_merge_available and Config.MERGE_ENABLED
 
         if user_merge_enabled:
             merge_status = "✅ Enabled (User)"
@@ -111,7 +116,9 @@ async def get_media_tools_settings(from_user, stype="main", page_no=0):
 
         # Check if convert is enabled for the user
         user_convert_enabled = user_dict.get("CONVERT_ENABLED", False)
-        owner_convert_enabled = is_media_tool_enabled("convert")
+        # Check both if convert is available and enabled globally
+        owner_convert_available = is_media_tool_enabled("convert")
+        owner_convert_enabled = owner_convert_available and Config.CONVERT_ENABLED
 
         if user_convert_enabled:
             convert_status = "✅ Enabled (User)"
@@ -154,7 +161,9 @@ async def get_media_tools_settings(from_user, stype="main", page_no=0):
 
         # Check if compression is enabled for the user
         user_compression_enabled = user_dict.get("COMPRESSION_ENABLED", False)
-        owner_compression_enabled = is_media_tool_enabled("compression")
+        # Check both if compression is available and enabled globally
+        owner_compression_available = is_media_tool_enabled("compression")
+        owner_compression_enabled = owner_compression_available and Config.COMPRESSION_ENABLED
 
         if user_compression_enabled:
             compression_status = "✅ Enabled (User)"
@@ -199,7 +208,9 @@ async def get_media_tools_settings(from_user, stype="main", page_no=0):
 
         # Check if trim is enabled for the user
         user_trim_enabled = user_dict.get("TRIM_ENABLED", False)
-        owner_trim_enabled = is_media_tool_enabled("trim")
+        # Check both if trim is available and enabled globally
+        owner_trim_available = is_media_tool_enabled("trim")
+        owner_trim_enabled = owner_trim_available and Config.TRIM_ENABLED
 
         if user_trim_enabled:
             trim_status = "✅ Enabled (User)"
@@ -242,7 +253,9 @@ async def get_media_tools_settings(from_user, stype="main", page_no=0):
 
         # Get extract status
         extract_enabled = user_dict.get("EXTRACT_ENABLED", False)
-        owner_extract_enabled = is_media_tool_enabled("extract")
+        # Check both if extract is available and enabled globally
+        owner_extract_available = is_media_tool_enabled("extract")
+        owner_extract_enabled = owner_extract_available and Config.EXTRACT_ENABLED
 
         if extract_enabled:
             extract_status = "✅ Enabled (User)"
