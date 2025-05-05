@@ -3505,10 +3505,14 @@ async def edit_variable(_, message, pre_message, key):
         return_menu = "mediatools_convert"
     elif key.startswith("COMPRESSION_"):
         return_menu = "mediatools_compression"
-    elif key.startswith("MISTRAL_"):
-        return_menu = "ai"
+    elif key.startswith("TRIM_"):
+        return_menu = "mediatools_trim"
+    elif key.startswith("EXTRACT_"):
+        return_menu = "mediatools_extract"
     elif key.startswith("TASK_MONITOR_"):
         return_menu = "taskmonitor"
+    elif key == "DEFAULT_AI_PROVIDER" or key.startswith(("MISTRAL_", "DEEPSEEK_", "CHATGPT_", "GEMINI_")):
+        return_menu = "ai"
     elif key.startswith("MERGE_") or key in [
         "CONCAT_DEMUXER_ENABLED",
         "FILTER_COMPLEX_ENABLED",
@@ -3839,7 +3843,13 @@ async def edit_bot_settings(client, query):
         await delete_message(message)
     elif data[1] == "back":
         await query.answer()
+        # Get the current state before making changes
+        current_state = globals()["state"]
+
         globals()["start"] = 0
+
+        # Set the state back to what it was
+        globals()["state"] = current_state
         await update_buttons(message, None)
     elif data[1] == "syncjd":
         if not Config.JD_EMAIL or not Config.JD_PASS:
@@ -3848,15 +3858,24 @@ async def edit_bot_settings(client, query):
                 show_alert=True,
             )
             return
+        # Get the current state before making changes
+        current_state = globals()["state"]
+
         await query.answer(
             "Syncronization Started. JDownloader will get restarted. It takes up to 10 sec!",
             show_alert=True,
         )
         await sync_jdownloader()
+
+        # Set the state back to what it was
+        globals()["state"] = current_state
     elif data[1] == "mediatools":
         from bot.helper.ext_utils.bot_utils import is_media_tool_enabled
 
         await query.answer()
+        # Get the current state before making changes
+        current_state = globals()["state"]
+
         # Check if media tools are enabled
         if not is_media_tool_enabled("mediatools"):
             await query.answer(
@@ -3864,11 +3883,16 @@ async def edit_bot_settings(client, query):
             )
             return
 
+        # Set the state back to what it was
+        globals()["state"] = current_state
         await update_buttons(message, "mediatools")
     elif data[1] == "mediatools_watermark":
         from bot.helper.ext_utils.bot_utils import is_media_tool_enabled
 
         await query.answer()
+        # Get the current state before making changes
+        current_state = globals()["state"]
+
         # Check if watermark is enabled
         if not is_media_tool_enabled("watermark"):
             await query.answer(
@@ -3876,11 +3900,16 @@ async def edit_bot_settings(client, query):
             )
             return
 
+        # Set the state back to what it was
+        globals()["state"] = current_state
         await update_buttons(message, "mediatools_watermark")
     elif data[1] == "mediatools_merge":
         from bot.helper.ext_utils.bot_utils import is_media_tool_enabled
 
         await query.answer()
+        # Get the current state before making changes
+        current_state = globals()["state"]
+
         # Check if merge is enabled
         if not is_media_tool_enabled("merge"):
             await query.answer(
@@ -3888,12 +3917,17 @@ async def edit_bot_settings(client, query):
             )
             return
 
+        # Set the state back to what it was
+        globals()["state"] = current_state
         # Always start at page 0 when first entering merge settings
         await update_buttons(message, "mediatools_merge", page=0)
     elif data[1] == "mediatools_merge_config":
         from bot.helper.ext_utils.bot_utils import is_media_tool_enabled
 
         await query.answer()
+        # Get the current state before making changes
+        current_state = globals()["state"]
+
         # Check if merge is enabled
         if not is_media_tool_enabled("merge"):
             await query.answer(
@@ -3901,60 +3935,96 @@ async def edit_bot_settings(client, query):
             )
             return
 
+        # Set the state back to what it was
+        globals()["state"] = current_state
         # Always start at page 0 when first entering merge config settings
         await update_buttons(message, "mediatools_merge_config", page=0)
     elif data[1] == "mediatools_metadata":
         await query.answer()
+        # Get the current state before making changes
+        current_state = globals()["state"]
+
+        # Set the state back to what it was
+        globals()["state"] = current_state
         await update_buttons(message, "mediatools_metadata")
     elif data[1] == "mediatools_convert":
         from bot.helper.ext_utils.bot_utils import is_media_tool_enabled
 
         await query.answer()
+        # Get the current state before making changes
+        current_state = globals()["state"]
+
         # Check if convert is enabled
         if not is_media_tool_enabled("convert"):
             await query.answer(
                 "Convert tool is disabled by the bot owner.", show_alert=True
             )
             return
+
+        # Set the state back to what it was
+        globals()["state"] = current_state
         await update_buttons(message, "mediatools_convert")
     elif data[1] == "mediatools_trim":
         from bot.helper.ext_utils.bot_utils import is_media_tool_enabled
 
         await query.answer()
+        # Get the current state before making changes
+        current_state = globals()["state"]
+
         # Check if trim is enabled
         if not is_media_tool_enabled("trim"):
             await query.answer(
                 "Trim tool is disabled by the bot owner.", show_alert=True
             )
             return
+
+        # Set the state back to what it was
+        globals()["state"] = current_state
         await update_buttons(message, "mediatools_trim")
 
     elif data[1] == "mediatools_extract":
         from bot.helper.ext_utils.bot_utils import is_media_tool_enabled
 
         await query.answer()
+        # Get the current state before making changes
+        current_state = globals()["state"]
+
         # Check if extract is enabled
         if not is_media_tool_enabled("extract"):
             await query.answer(
                 "Extract tool is disabled by the bot owner.", show_alert=True
             )
             return
+
+        # Set the state back to what it was
+        globals()["state"] = current_state
         await update_buttons(message, "mediatools_extract")
 
     elif data[1] == "mediatools_compression":
         from bot.helper.ext_utils.bot_utils import is_media_tool_enabled
 
         await query.answer()
+        # Get the current state before making changes
+        current_state = globals()["state"]
+
         # Check if compression is enabled
         if not is_media_tool_enabled("compression"):
             await query.answer(
                 "Compression tool is disabled by the bot owner.", show_alert=True
             )
             return
+
+        # Set the state back to what it was
+        globals()["state"] = current_state
         await update_buttons(message, "mediatools_compression")
 
     elif data[1] == "ai":
         await query.answer()
+        # Get the current state before making changes
+        current_state = globals()["state"]
+
+        # Set the state back to what it was
+        globals()["state"] = current_state
         await update_buttons(message, "ai")
 
     elif data[1] == "default_watermark":
@@ -4008,6 +4078,11 @@ async def edit_bot_settings(client, query):
                 "SUBTITLE_WATERMARK_STYLE": "normal",
             }
         )
+        # Update the UI - maintain the current state (edit/view)
+        # Get the current state before updating the UI
+        current_state = globals()["state"]
+        # Set the state back to what it was
+        globals()["state"] = current_state
         await update_buttons(message, "mediatools_watermark")
 
     elif data[1] == "default_compression":
@@ -4168,7 +4243,11 @@ async def edit_bot_settings(client, query):
                 ],
             }
         )
-        # Update the UI - pass the current state to maintain edit/view mode
+        # Update the UI - maintain the current state (edit/view)
+        # Get the current state before updating the UI
+        current_state = globals()["state"]
+        # Set the state back to what it was
+        globals()["state"] = current_state
         await update_buttons(message, "mediatools_compression")
 
     elif data[1] == "default_extract":
@@ -4308,7 +4387,11 @@ async def edit_bot_settings(client, query):
                 ],
             }
         )
-        # Update the UI - pass the current state to maintain edit/view mode
+        # Update the UI - maintain the current state (edit/view)
+        # Get the current state before updating the UI
+        current_state = globals()["state"]
+        # Set the state back to what it was
+        globals()["state"] = current_state
         await update_buttons(message, "mediatools_extract")
 
     elif data[1] == "default_trim":
@@ -4389,7 +4472,11 @@ async def edit_bot_settings(client, query):
                 "TRIM_ARCHIVE_FORMAT": DEFAULT_VALUES["TRIM_ARCHIVE_FORMAT"],
             }
         )
-        # Update the UI - pass the current state to maintain edit/view mode
+        # Update the UI - maintain the current state (edit/view)
+        # Get the current state before updating the UI
+        current_state = globals()["state"]
+        # Set the state back to what it was
+        globals()["state"] = current_state
         await update_buttons(message, "mediatools_trim")
 
     elif data[1] == "default_convert":
@@ -4531,7 +4618,11 @@ async def edit_bot_settings(client, query):
                 ],
             }
         )
-        # Update the UI - pass the current state to maintain edit/view mode
+        # Update the UI - maintain the current state (edit/view)
+        # Get the current state before updating the UI
+        current_state = globals()["state"]
+        # Set the state back to what it was
+        globals()["state"] = current_state
         await update_buttons(message, "mediatools_convert")
 
     elif data[1] == "default_metadata":
@@ -4577,7 +4668,11 @@ async def edit_bot_settings(client, query):
                 "METADATA_SUBTITLE_COMMENT": "",
             }
         )
-        # Update the UI - pass the current state to maintain edit/view mode
+        # Update the UI - maintain the current state (edit/view)
+        # Get the current state before updating the UI
+        current_state = globals()["state"]
+        # Set the state back to what it was
+        globals()["state"] = current_state
         await update_buttons(message, "mediatools_metadata")
     elif data[1] == "default_ai":
         await query.answer("Resetting all AI settings to default...")
@@ -4606,7 +4701,11 @@ async def edit_bot_settings(client, query):
                 "GEMINI_API_URL": "",
             }
         )
-        # Update the UI
+        # Update the UI - maintain the current state (edit/view)
+        # Get the current state before updating the UI
+        current_state = globals()["state"]
+        # Set the state back to what it was
+        globals()["state"] = current_state
         await update_buttons(message, "ai")
 
     elif data[1] == "default_taskmonitor":
@@ -4663,7 +4762,11 @@ async def edit_bot_settings(client, query):
                 "TASK_MONITOR_MEMORY_LOW": DEFAULT_VALUES["TASK_MONITOR_MEMORY_LOW"],
             }
         )
-        # Update the UI - pass the current state to maintain edit/view mode
+        # Update the UI - maintain the current state (edit/view)
+        # Get the current state before updating the UI
+        current_state = globals()["state"]
+        # Set the state back to what it was
+        globals()["state"] = current_state
         await update_buttons(message, "taskmonitor")
     elif data[1] == "default_merge":
         await query.answer("Resetting all merge settings to default...")
@@ -4775,7 +4878,11 @@ async def edit_bot_settings(client, query):
                 "MERGE_REMOVE_ORIGINAL": True,
             }
         )
-        # Keep the current page
+        # Keep the current page and state
+        # Get the current state before updating the UI
+        current_state = globals()["state"]
+        # Set the state back to what it was
+        globals()["state"] = current_state
         await update_buttons(message, "mediatools_merge")
     # This is a duplicate handler, removed to avoid confusion
     elif data[1] == "edit" and data[2] in [
@@ -4916,7 +5023,12 @@ async def edit_bot_settings(client, query):
             or data[2].startswith("DEEPSEEK_")
             or data[2].startswith("CHATGPT_")
             or data[2].startswith("GEMINI_")
+            or data[2] == "DEFAULT_AI_PROVIDER"
         ):
+            # Get the current state before updating
+            current_state = globals()["state"]
+            # Set the state back to what it was
+            globals()["state"] = current_state
             rfunc = partial(update_buttons, message, "ai")
         elif data[2].startswith("MERGE_") or data[2] in [
             "CONCAT_DEMUXER_ENABLED",
@@ -4956,63 +5068,7 @@ async def edit_bot_settings(client, query):
             rfunc = partial(update_buttons, message, "var")
 
         await event_handler(client, query, pfunc, rfunc)
-    elif data[1] == "default_taskmonitor":
-        await query.answer("Resetting all task monitoring settings to default...")
-        # Reset all task monitoring settings to default
-        Config.TASK_MONITOR_ENABLED = DEFAULT_VALUES["TASK_MONITOR_ENABLED"]
-        Config.TASK_MONITOR_INTERVAL = DEFAULT_VALUES["TASK_MONITOR_INTERVAL"]
-        Config.TASK_MONITOR_CONSECUTIVE_CHECKS = DEFAULT_VALUES[
-            "TASK_MONITOR_CONSECUTIVE_CHECKS"
-        ]
-        Config.TASK_MONITOR_SPEED_THRESHOLD = DEFAULT_VALUES[
-            "TASK_MONITOR_SPEED_THRESHOLD"
-        ]
-        Config.TASK_MONITOR_ELAPSED_THRESHOLD = DEFAULT_VALUES[
-            "TASK_MONITOR_ELAPSED_THRESHOLD"
-        ]
-        Config.TASK_MONITOR_ETA_THRESHOLD = DEFAULT_VALUES[
-            "TASK_MONITOR_ETA_THRESHOLD"
-        ]
-        Config.TASK_MONITOR_WAIT_TIME = DEFAULT_VALUES["TASK_MONITOR_WAIT_TIME"]
-        Config.TASK_MONITOR_COMPLETION_THRESHOLD = DEFAULT_VALUES[
-            "TASK_MONITOR_COMPLETION_THRESHOLD"
-        ]
-        Config.TASK_MONITOR_CPU_HIGH = DEFAULT_VALUES["TASK_MONITOR_CPU_HIGH"]
-        Config.TASK_MONITOR_CPU_LOW = DEFAULT_VALUES["TASK_MONITOR_CPU_LOW"]
-        Config.TASK_MONITOR_MEMORY_HIGH = DEFAULT_VALUES["TASK_MONITOR_MEMORY_HIGH"]
-        Config.TASK_MONITOR_MEMORY_LOW = DEFAULT_VALUES["TASK_MONITOR_MEMORY_LOW"]
-
-        # Update the database
-        await database.update_config(
-            {
-                "TASK_MONITOR_ENABLED": DEFAULT_VALUES["TASK_MONITOR_ENABLED"],
-                "TASK_MONITOR_INTERVAL": DEFAULT_VALUES["TASK_MONITOR_INTERVAL"],
-                "TASK_MONITOR_CONSECUTIVE_CHECKS": DEFAULT_VALUES[
-                    "TASK_MONITOR_CONSECUTIVE_CHECKS"
-                ],
-                "TASK_MONITOR_SPEED_THRESHOLD": DEFAULT_VALUES[
-                    "TASK_MONITOR_SPEED_THRESHOLD"
-                ],
-                "TASK_MONITOR_ELAPSED_THRESHOLD": DEFAULT_VALUES[
-                    "TASK_MONITOR_ELAPSED_THRESHOLD"
-                ],
-                "TASK_MONITOR_ETA_THRESHOLD": DEFAULT_VALUES[
-                    "TASK_MONITOR_ETA_THRESHOLD"
-                ],
-                "TASK_MONITOR_WAIT_TIME": DEFAULT_VALUES["TASK_MONITOR_WAIT_TIME"],
-                "TASK_MONITOR_COMPLETION_THRESHOLD": DEFAULT_VALUES[
-                    "TASK_MONITOR_COMPLETION_THRESHOLD"
-                ],
-                "TASK_MONITOR_CPU_HIGH": DEFAULT_VALUES["TASK_MONITOR_CPU_HIGH"],
-                "TASK_MONITOR_CPU_LOW": DEFAULT_VALUES["TASK_MONITOR_CPU_LOW"],
-                "TASK_MONITOR_MEMORY_HIGH": DEFAULT_VALUES[
-                    "TASK_MONITOR_MEMORY_HIGH"
-                ],
-                "TASK_MONITOR_MEMORY_LOW": DEFAULT_VALUES["TASK_MONITOR_MEMORY_LOW"],
-            }
-        )
-        # Keep the current page
-        await update_buttons(message, "taskmonitor")
+    # The default_taskmonitor handler is defined elsewhere in the file
 
     elif data[1] == "default_merge_config":
         await query.answer("Resetting all merge config settings to default...")
@@ -5111,7 +5167,11 @@ async def edit_bot_settings(client, query):
                 "MERGE_METADATA_COMMENT": "none",
             }
         )
-        # Keep the current page
+        # Keep the current page and state
+        # Get the current state before updating the UI
+        current_state = globals()["state"]
+        # Set the state back to what it was
+        globals()["state"] = current_state
         await update_buttons(message, "mediatools_merge_config")
     elif data[1] in [
         "var",
@@ -5158,6 +5218,9 @@ async def edit_bot_settings(client, query):
         await update_buttons(message, data[1])
     elif data[1] == "resetvar":
         await query.answer()
+        # Get the current state before making changes
+        current_state = globals()["state"]
+
         value = ""
         if data[2] in DEFAULT_VALUES:
             value = DEFAULT_VALUES[data[2]]
@@ -5232,7 +5295,11 @@ async def edit_bot_settings(client, query):
         elif data[2] == "SUDO_USERS":
             sudo_users.clear()
         Config.set(data[2], value)
+
+        # Set the state back to what it was
+        globals()["state"] = current_state
         await update_buttons(message, "var")
+
         if data[2] == "DATABASE_URL":
             await database.disconnect()
         await database.update_config({data[2]: value})
@@ -5247,36 +5314,71 @@ async def edit_bot_settings(client, query):
             await rclone_serve_booter()
     elif data[1] == "syncaria":
         await query.answer()
+        # Get the current state before making changes
+        current_state = globals()["state"]
+
         aria2_options.clear()
         await update_aria2_options()
+
+        # Set the state back to what it was
+        globals()["state"] = current_state
         await update_buttons(message, "aria")
     elif data[1] == "syncqbit":
         await query.answer()
+        # Get the current state before making changes
+        current_state = globals()["state"]
+
         qbit_options.clear()
         await update_qb_options()
+
+        # Set the state back to what it was
+        globals()["state"] = current_state
         await database.save_qbit_settings()
     elif data[1] == "resetnzb":
         await query.answer()
+        # Get the current state before making changes
+        current_state = globals()["state"]
+
         res = await sabnzbd_client.set_config_default(data[2])
         nzb_options[data[2]] = res["config"]["misc"][data[2]]
+
+        # Set the state back to what it was
+        globals()["state"] = current_state
         await update_buttons(message, "nzb")
+
         await database.update_nzb_config()
     elif data[1] == "syncnzb":
         await query.answer(
             "Syncronization Started. It takes up to 2 sec!",
             show_alert=True,
         )
+        # Get the current state before making changes
+        current_state = globals()["state"]
+
         nzb_options.clear()
         await update_nzb_options()
+
+        # Set the state back to what it was
+        globals()["state"] = current_state
         await database.update_nzb_config()
     elif data[1] == "emptyaria":
         await query.answer()
+        # Get the current state before making changes
+        current_state = globals()["state"]
+
         aria2_options[data[2]] = ""
+
+        # Set the state back to what it was
+        globals()["state"] = current_state
         await update_buttons(message, "aria")
+
         await TorrentManager.change_aria2_option(data[2], "")
         await database.update_aria2(data[2], "")
     elif data[1] == "emptyqbit":
         await query.answer()
+        # Get the current state before making changes
+        current_state = globals()["state"]
+
         value = ""
         if isinstance(qbit_options[data[2]], bool):
             value = False
@@ -5286,15 +5388,29 @@ async def edit_bot_settings(client, query):
             value = 0.0
         await TorrentManager.qbittorrent.app.set_preferences({data[2]: value})
         qbit_options[data[2]] = value
+
+        # Set the state back to what it was
+        globals()["state"] = current_state
         await update_buttons(message, "qbit")
+
         await database.update_qbittorrent(data[2], value)
     elif data[1] == "emptynzb":
         await query.answer()
+        # Get the current state before making changes
+        current_state = globals()["state"]
+
         res = await sabnzbd_client.set_config("misc", data[2], "")
         nzb_options[data[2]] = res["config"]["misc"][data[2]]
+
+        # Set the state back to what it was
+        globals()["state"] = current_state
         await update_buttons(message, "nzb")
+
         await database.update_nzb_config()
     elif data[1] == "remser":
+        # Get the current state before making changes
+        current_state = globals()["state"]
+
         index = int(data[2])
         # Check if index is valid before accessing Config.USENET_SERVERS
         if 0 <= index < len(Config.USENET_SERVERS):
@@ -5311,10 +5427,18 @@ async def edit_bot_settings(client, query):
                 show_alert=True,
             )
         # Always update the UI
+        # Set the state back to what it was
+        globals()["state"] = current_state
         await update_buttons(message, "nzbserver")
     elif data[1] == "private":
         await query.answer()
+        # Get the current state before making changes
+        current_state = globals()["state"]
+
+        # Set the state back to what it was
+        globals()["state"] = current_state
         await update_buttons(message, data[1])
+
         pfunc = partial(update_private_file, pre_message=message)
         rfunc = partial(update_buttons, message)
         await event_handler(client, query, pfunc, rfunc, True)
@@ -5544,6 +5668,9 @@ async def edit_bot_settings(client, query):
         await query.answer(f"{value}", show_alert=True)
     elif data[1] == "emptyserkey":
         await query.answer()
+        # Get the current state before making changes
+        current_state = globals()["state"]
+
         index = int(data[2])
         # Check if index is valid before accessing Config.USENET_SERVERS
         if 0 <= index < len(Config.USENET_SERVERS):
@@ -5554,6 +5681,9 @@ async def edit_bot_settings(client, query):
                 data[3]
             ]
             await database.update_config({"USENET_SERVERS": Config.USENET_SERVERS})
+
+            # Set the state back to what it was
+            globals()["state"] = current_state
             await update_buttons(message, f"nzbser{data[2]}")
         else:
             # Handle invalid index
@@ -5561,6 +5691,9 @@ async def edit_bot_settings(client, query):
                 "Invalid server index. Please go back and try again.",
                 show_alert=True,
             )
+
+            # Set the state back to what it was
+            globals()["state"] = current_state
             await update_buttons(message, "nzbserver")
     elif data[1].startswith("nzbsevar") and (state == "edit" or data[2] == "newser"):
         index = 0 if data[2] == "newser" else int(data[1].replace("nzbsevar", ""))
@@ -5609,6 +5742,9 @@ async def edit_bot_settings(client, query):
         await query.answer()
         key = data[2]  # MEDIA_TOOLS_ENABLED
         tool = data[3]  # The tool to toggle
+
+        # Get the current state before making changes
+        current_state = globals()["state"]
 
         # Get current value
         current_value = Config.get(key)
@@ -5788,6 +5924,9 @@ async def edit_bot_settings(client, query):
         # Add done button
         buttons.data_button("Done", "botset var")
 
+        # Set the state back to what it was
+        globals()["state"] = current_state
+
         # Show the number of enabled tools in the message
         await edit_message(
             message,
@@ -5798,6 +5937,9 @@ async def edit_bot_settings(client, query):
     elif data[1] == "enable_all_tools":
         await query.answer("Enabling all media tools")
         key = data[2]  # MEDIA_TOOLS_ENABLED
+
+        # Get the current state before making changes
+        current_state = globals()["state"]
 
         # List of all available tools
         all_tools = [
@@ -5858,6 +6000,9 @@ async def edit_bot_settings(client, query):
         # Add done button
         buttons.data_button("Done", "botset var")
 
+        # Set the state back to what it was
+        globals()["state"] = current_state
+
         await edit_message(
             message,
             f"<b>Configure Media Tools</b>\n\nSelect which media tools to enable ({len(all_tools)}/{len(all_tools)} enabled):",
@@ -5867,6 +6012,9 @@ async def edit_bot_settings(client, query):
     elif data[1] == "disable_all_tools":
         await query.answer("Disabling all media tools")
         key = data[2]  # MEDIA_TOOLS_ENABLED
+
+        # Get the current state before making changes
+        current_state = globals()["state"]
 
         # List of all available tools
         all_tools = [
@@ -5931,6 +6079,9 @@ async def edit_bot_settings(client, query):
         # Add done button
         buttons.data_button("Done", "botset var")
 
+        # Set the state back to what it was
+        globals()["state"] = current_state
+
         await edit_message(
             message,
             f"<b>Configure Media Tools</b>\n\nSelect which media tools to enable (0/{len(all_tools)} enabled):",
@@ -5943,14 +6094,24 @@ async def edit_bot_settings(client, query):
         Config.DEFAULT_AI_PROVIDER = data[2]
         # Update the database
         await database.update_config({"DEFAULT_AI_PROVIDER": data[2]})
-        # Update the UI
+        # Update the UI - maintain the current state (edit/view)
+        # Get the current state before updating the UI
+        current_state = globals()["state"]
+        # Set the state back to what it was
+        globals()["state"] = current_state
         await update_buttons(message, "ai")
     elif data[1] == "cancel":
         await query.answer()
+        # Get the current state before updating the UI
+        current_state = globals()["state"]
         # Check if we're in the AI settings menu
         if message.text and "Select Default AI Provider" in message.text:
+            # Return to AI settings menu - maintain the current state (edit/view)
+            globals()["state"] = current_state
             await update_buttons(message, "ai")
         else:
+            # Return to Config menu - maintain the current state (edit/view)
+            globals()["state"] = current_state
             await update_buttons(message, "var")
     elif data[1] == "edit":
         await query.answer()
@@ -6062,10 +6223,15 @@ async def edit_bot_settings(client, query):
             return_menu = "mediatools_trim"
         elif key.startswith("EXTRACT_"):
             return_menu = "mediatools_extract"
+        elif key.startswith("TASK_MONITOR_"):
+            return_menu = "taskmonitor"
         elif key in {"ENABLE_EXTRA_MODULES", "MEDIA_TOOLS_ENABLED"}:
             return_menu = "var"
-        elif key.startswith(("MISTRAL_", "DEEPSEEK_", "CHATGPT_", "GEMINI_")):
+        elif key == "DEFAULT_AI_PROVIDER" or key.startswith(("MISTRAL_", "DEEPSEEK_", "CHATGPT_", "GEMINI_")):
             return_menu = "ai"
+
+        # Get the current state before updating the database
+        current_state = globals()["state"]
         # Update the database
         await database.update_config({key: value})
 
@@ -6088,7 +6254,8 @@ async def edit_bot_settings(client, query):
         except Exception as e:
             LOGGER.error(f"Error refreshing {key} from database: {e}")
 
-        # Update the UI
+        # Update the UI - restore the state
+        globals()["state"] = current_state
         await update_buttons(message, return_menu)
     # Handle redirects for mediatools callbacks
     elif data[0] == "mediatools" and len(data) >= 3 and data[2] == "merge_config":
