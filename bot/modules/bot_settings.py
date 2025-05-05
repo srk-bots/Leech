@@ -290,9 +290,17 @@ async def get_buttons(key=None, edit_type=None, page=0, user_id=None):
                     "MERGE_",
                     "METADATA_",
                     "TASK_MONITOR_",
+                    "CONVERT_",
+                    "COMPRESSION_",
+                    "TRIM_",
+                    "EXTRACT_",
+                    "MISTRAL_",
+                    "DEEPSEEK_",
+                    "CHATGPT_",
+                    "GEMINI_",
                 )
             )
-            or key in ["CONCAT_DEMUXER_ENABLED", "FILTER_COMPLEX_ENABLED"]
+            or key in ["CONCAT_DEMUXER_ENABLED", "FILTER_COMPLEX_ENABLED", "DEFAULT_AI_PROVIDER"]
         ):
             msg = ""
             if key.startswith(
@@ -307,11 +315,26 @@ async def get_buttons(key=None, edit_type=None, page=0, user_id=None):
                 buttons.data_button("Back", "botset mediatools_compression")
             elif key.startswith("CONVERT_"):
                 buttons.data_button("Back", "botset mediatools_convert")
+            elif key.startswith("EXTRACT_"):
+                buttons.data_button("Back", "botset mediatools_extract")
             elif key.startswith("TASK_MONITOR_"):
                 buttons.data_button("Back", "botset taskmonitor")
-            elif key.startswith("MISTRAL_"):
+            elif key == "DEFAULT_AI_PROVIDER" or key.startswith(
+                ("MISTRAL_", "DEEPSEEK_", "CHATGPT_", "GEMINI_")
+            ):
                 buttons.data_button("Back", "botset ai")
-            elif key.startswith("MERGE_") and "MERGE_OUTPUT_FORMAT" in key:
+            elif key.startswith("MERGE_") and any(
+                x in key
+                for x in [
+                    "OUTPUT_FORMAT",
+                    "VIDEO_",
+                    "AUDIO_",
+                    "IMAGE_",
+                    "SUBTITLE_",
+                    "DOCUMENT_",
+                    "METADATA_",
+                ]
+            ):
                 # If it's a format setting, it's likely from the merge_config menu
                 buttons.data_button("Back", "botset mediatools_merge_config")
             else:
@@ -938,7 +961,11 @@ Timeout: 60 sec"""
         if hasattr(Config, "MEDIA_TOOLS_ENABLED"):
             try:
                 # Check if database is connected and db attribute exists
-                if database.db is not None and hasattr(database, "db") and hasattr(database.db, "settings"):
+                if (
+                    database.db is not None
+                    and hasattr(database, "db")
+                    and hasattr(database.db, "settings")
+                ):
                     db_config = await database.db.settings.config.find_one(
                         {"_id": TgClient.ID},
                         {"MEDIA_TOOLS_ENABLED": 1, "_id": 0},
@@ -952,7 +979,9 @@ Timeout: 60 sec"""
                             )
                             Config.MEDIA_TOOLS_ENABLED = db_value
                 else:
-                    LOGGER.debug("Database not connected or settings collection not available, skipping MEDIA_TOOLS_ENABLED refresh")
+                    LOGGER.debug(
+                        "Database not connected or settings collection not available, skipping MEDIA_TOOLS_ENABLED refresh"
+                    )
             except Exception as e:
                 LOGGER.error(
                     f"Error refreshing MEDIA_TOOLS_ENABLED from database: {e}"
@@ -3515,7 +3544,9 @@ async def edit_variable(_, message, pre_message, key):
         return_menu = "mediatools_extract"
     elif key.startswith("TASK_MONITOR_"):
         return_menu = "taskmonitor"
-    elif key == "DEFAULT_AI_PROVIDER" or key.startswith(("MISTRAL_", "DEEPSEEK_", "CHATGPT_", "GEMINI_")):
+    elif key == "DEFAULT_AI_PROVIDER" or key.startswith(
+        ("MISTRAL_", "DEEPSEEK_", "CHATGPT_", "GEMINI_")
+    ):
         return_menu = "ai"
     elif key.startswith("MERGE_") or key in [
         "CONCAT_DEMUXER_ENABLED",
@@ -3571,7 +3602,11 @@ async def edit_variable(_, message, pre_message, key):
     # Handle special cases for pages
     if return_menu == "mediatools_merge" and "merge_page" in globals():
         await update_buttons(pre_message, return_menu, page=globals()["merge_page"])
-    elif return_menu == "mediatools_merge_config" and pre_message.text and "Page:" in pre_message.text:
+    elif (
+        return_menu == "mediatools_merge_config"
+        and pre_message.text
+        and "Page:" in pre_message.text
+    ):
         try:
             page_info = pre_message.text.split("Page:")[1].strip().split("/")[0]
             page_no = int(page_info) - 1
@@ -3590,7 +3625,9 @@ async def edit_variable(_, message, pre_message, key):
         # Kill any running web server
         try:
             LOGGER.info("Killing any existing web server processes...")
-            await (await create_subprocess_exec("pkill", "-9", "-f", "gunicorn")).wait()
+            await (
+                await create_subprocess_exec("pkill", "-9", "-f", "gunicorn")
+            ).wait()
         except Exception as e:
             LOGGER.error(f"Error killing web server processes: {e}")
 
@@ -3606,13 +3643,16 @@ async def edit_variable(_, message, pre_message, key):
             try:
                 # Use pgrep to check if any gunicorn processes are still running
                 process = await create_subprocess_exec(
-                    "pgrep", "-f", "gunicorn",
-                    stdout=-1
+                    "pgrep", "-f", "gunicorn", stdout=-1
                 )
                 stdout, _ = await process.communicate()
                 if stdout:
-                    LOGGER.warning("Gunicorn processes still detected, attempting to kill again...")
-                    await (await create_subprocess_exec("pkill", "-9", "-f", "gunicorn")).wait()
+                    LOGGER.warning(
+                        "Gunicorn processes still detected, attempting to kill again..."
+                    )
+                    await (
+                        await create_subprocess_exec("pkill", "-9", "-f", "gunicorn")
+                    ).wait()
             except Exception as e:
                 LOGGER.error(f"Error checking for gunicorn processes: {e}")
     elif key in [
@@ -5048,13 +5088,58 @@ async def edit_bot_settings(client, query):
         # Handle edit mode for all settings
         await query.answer()
         # Make sure we're in edit mode
-        if state != "edit":
-            globals()["state"] = "edit"
+        globals()["state"] = "edit"
+
+        # Special handling for DEFAULT_AI_PROVIDER
+        if data[2] == "DEFAULT_AI_PROVIDER":
+            buttons = ButtonMaker()
+            buttons.data_button("Mistral", "botset setprovider mistral")
+            buttons.data_button("DeepSeek", "botset setprovider deepseek")
+            buttons.data_button("ChatGPT", "botset setprovider chatgpt")
+            buttons.data_button("Gemini", "botset setprovider gemini")
+            buttons.data_button("Cancel", "botset cancel")
+
+            # Get the current state before updating the UI
+            current_state = globals()["state"]
+            # Set the state back to what it was
+            globals()["state"] = current_state
+
+            await edit_message(
+                message,
+                "<b>Select Default AI Provider</b>\n\nChoose which AI provider to use with the /ask command:",
+                buttons.build_menu(2),
+            )
+            return
+
+        # For settings that have their own menu, we need to use editvar as edit_type
+        if data[2].startswith(
+            (
+                "WATERMARK_",
+                "AUDIO_WATERMARK_",
+                "SUBTITLE_WATERMARK_",
+                "MERGE_",
+                "METADATA_",
+                "TASK_MONITOR_",
+                "CONVERT_",
+                "COMPRESSION_",
+                "TRIM_",
+                "EXTRACT_",
+                "MISTRAL_",
+                "DEEPSEEK_",
+                "CHATGPT_",
+                "GEMINI_",
+                "DEFAULT_AI_",
+            )
+        ) or data[2] in ["CONCAT_DEMUXER_ENABLED", "FILTER_COMPLEX_ENABLED"]:
+            await update_buttons(message, data[2], "editvar")
+        else:
             await update_buttons(message, data[2], data[1])
 
         # Determine which menu to return to based on the key
         return_menu = "var"  # Default return menu
-        if data[2].startswith(("WATERMARK_", "AUDIO_WATERMARK_", "SUBTITLE_WATERMARK_")):
+        if data[2].startswith(
+            ("WATERMARK_", "AUDIO_WATERMARK_", "SUBTITLE_WATERMARK_")
+        ):
             return_menu = "mediatools_watermark"
         elif data[2].startswith("METADATA_"):
             return_menu = "mediatools_metadata"
@@ -5068,9 +5153,14 @@ async def edit_bot_settings(client, query):
             return_menu = "mediatools_extract"
         elif data[2].startswith("TASK_MONITOR_"):
             return_menu = "taskmonitor"
-        elif data[2] == "DEFAULT_AI_PROVIDER" or data[2].startswith(("MISTRAL_", "DEEPSEEK_", "CHATGPT_", "GEMINI_")):
+        elif data[2] == "DEFAULT_AI_PROVIDER" or data[2].startswith(
+            ("MISTRAL_", "DEEPSEEK_", "CHATGPT_", "GEMINI_", "DEFAULT_AI_")
+        ):
             return_menu = "ai"
-        elif data[2].startswith("MERGE_") or data[2] in ["CONCAT_DEMUXER_ENABLED", "FILTER_COMPLEX_ENABLED"]:
+        elif data[2].startswith("MERGE_") or data[2] in [
+            "CONCAT_DEMUXER_ENABLED",
+            "FILTER_COMPLEX_ENABLED",
+        ]:
             # Check if we're in the merge_config menu
             if (message.text and "Merge Configuration" in message.text) or (
                 data[2].startswith("MERGE_")
@@ -5091,21 +5181,7 @@ async def edit_bot_settings(client, query):
             else:
                 return_menu = "mediatools_merge"
 
-        # Special handling for DEFAULT_AI_PROVIDER
-        if data[2] == "DEFAULT_AI_PROVIDER":
-            buttons = ButtonMaker()
-            buttons.data_button("Mistral", "botset setprovider mistral")
-            buttons.data_button("DeepSeek", "botset setprovider deepseek")
-            buttons.data_button("ChatGPT", "botset setprovider chatgpt")
-            buttons.data_button("Gemini", "botset setprovider gemini")
-            buttons.data_button("Cancel", "botset cancel")
-
-            await edit_message(
-                message,
-                "<b>Select Default AI Provider</b>\n\nChoose which AI provider to use with the /ask command:",
-                buttons.build_menu(2),
-            )
-            return
+        # Special handling for DEFAULT_AI_PROVIDER is now done earlier in the function
 
         # For all other settings, proceed with normal edit flow
         pfunc = partial(edit_variable, pre_message=message, key=data[2])
@@ -5114,51 +5190,21 @@ async def edit_bot_settings(client, query):
         current_state = globals()["state"]
 
         # Set up the return function based on the return menu
-        if return_menu == "mediatools_watermark":
-            globals()["state"] = current_state
-            rfunc = partial(update_buttons, message, "mediatools_watermark")
-        elif return_menu == "mediatools_metadata":
-            globals()["state"] = current_state
-            rfunc = partial(update_buttons, message, "mediatools_metadata")
-        elif return_menu == "mediatools_convert":
-            globals()["state"] = current_state
-            rfunc = partial(update_buttons, message, "mediatools_convert")
-        elif return_menu == "mediatools_compression":
-            globals()["state"] = current_state
-            rfunc = partial(update_buttons, message, "mediatools_compression")
-        elif return_menu == "mediatools_trim":
-            globals()["state"] = current_state
-            rfunc = partial(update_buttons, message, "mediatools_trim")
-        elif return_menu == "mediatools_extract":
-            globals()["state"] = current_state
-            rfunc = partial(update_buttons, message, "mediatools_extract")
-        elif return_menu == "taskmonitor":
-            globals()["state"] = current_state
-            rfunc = partial(update_buttons, message, "taskmonitor")
-        elif return_menu == "ai":
-            globals()["state"] = current_state
-            rfunc = partial(update_buttons, message, "ai")
-        elif return_menu == "mediatools_merge_config":
-            globals()["state"] = current_state
-            rfunc = partial(update_buttons, message, "mediatools_merge_config")
-        elif return_menu == "mediatools_merge":
-            globals()["state"] = current_state
-            # Check if we need to return to a specific page in mediatools_merge
-            if message.text and "Page:" in message.text:
-                try:
-                    page_info = message.text.split("Page:")[1].strip().split("/")[0]
-                    page_no = int(page_info) - 1
-                    # Set the global merge_page variable to ensure we return to the correct page
-                    globals()["merge_page"] = page_no
-                    rfunc = partial(update_buttons, message, "mediatools_merge")
-                except (ValueError, IndexError):
-                    rfunc = partial(update_buttons, message, "mediatools_merge")
-            else:
-                # Use the global merge_page variable
-                rfunc = partial(update_buttons, message, "mediatools_merge")
-        else:
-            globals()["state"] = current_state
-            rfunc = partial(update_buttons, message, "var")
+        # Always preserve the current state
+        globals()["state"] = current_state
+
+        # Handle special case for mediatools_merge with pagination
+        if return_menu == "mediatools_merge" and message.text and "Page:" in message.text:
+            try:
+                page_info = message.text.split("Page:")[1].strip().split("/")[0]
+                page_no = int(page_info) - 1
+                # Set the global merge_page variable to ensure we return to the correct page
+                globals()["merge_page"] = page_no
+            except (ValueError, IndexError):
+                pass
+
+        # Create the return function with the appropriate menu
+        rfunc = partial(update_buttons, message, return_menu)
 
         await event_handler(client, query, pfunc, rfunc)
     # The default_taskmonitor handler is defined elsewhere in the file
@@ -5334,7 +5380,9 @@ async def edit_bot_settings(client, query):
             # Kill any running web server
             try:
                 LOGGER.info("Killing any existing web server processes...")
-                await (await create_subprocess_exec("pkill", "-9", "-f", "gunicorn")).wait()
+                await (
+                    await create_subprocess_exec("pkill", "-9", "-f", "gunicorn")
+                ).wait()
             except Exception as e:
                 LOGGER.error(f"Error killing web server processes: {e}")
 
@@ -5353,13 +5401,18 @@ async def edit_bot_settings(client, query):
                 try:
                     # Use pgrep to check if any gunicorn processes are still running
                     process = await create_subprocess_exec(
-                        "pgrep", "-f", "gunicorn",
-                        stdout=-1
+                        "pgrep", "-f", "gunicorn", stdout=-1
                     )
                     stdout, _ = await process.communicate()
                     if stdout:
-                        LOGGER.warning("Gunicorn processes still detected, attempting to kill again...")
-                        await (await create_subprocess_exec("pkill", "-9", "-f", "gunicorn")).wait()
+                        LOGGER.warning(
+                            "Gunicorn processes still detected, attempting to kill again..."
+                        )
+                        await (
+                            await create_subprocess_exec(
+                                "pkill", "-9", "-f", "gunicorn"
+                            )
+                        ).wait()
                 except Exception as e:
                     LOGGER.error(f"Error checking for gunicorn processes: {e}")
         elif data[2] == "RCLONE_SERVE_PORT":
@@ -5544,7 +5597,11 @@ async def edit_bot_settings(client, query):
             # Force refresh Config.MEDIA_TOOLS_ENABLED from database to ensure accurate status
             try:
                 # Check if database is connected and db attribute exists
-                if database.db is not None and hasattr(database, "db") and hasattr(database.db, "settings"):
+                if (
+                    database.db is not None
+                    and hasattr(database, "db")
+                    and hasattr(database.db, "settings")
+                ):
                     db_config = await database.db.settings.config.find_one(
                         {"_id": TgClient.ID},
                         {"MEDIA_TOOLS_ENABLED": 1, "_id": 0},
@@ -5558,7 +5615,9 @@ async def edit_bot_settings(client, query):
                             )
                             Config.MEDIA_TOOLS_ENABLED = db_value
                 else:
-                    LOGGER.debug("Database not connected or settings collection not available, skipping MEDIA_TOOLS_ENABLED refresh")
+                    LOGGER.debug(
+                        "Database not connected or settings collection not available, skipping MEDIA_TOOLS_ENABLED refresh"
+                    )
             except Exception as e:
                 LOGGER.error(
                     f"Error refreshing MEDIA_TOOLS_ENABLED from database: {e}"
@@ -5666,6 +5725,9 @@ async def edit_bot_settings(client, query):
         globals()["state"] = current_state
         await update_buttons(message, data[2], data[1])
 
+        # Default return menu to "var" - will be overridden if needed
+        return_menu = "var"
+
         pfunc = partial(edit_variable, pre_message=message, key=data[2])
 
         # Special case for DEFAULT_AI_PROVIDER - create a special menu for selecting the AI provider
@@ -5688,7 +5750,11 @@ async def edit_bot_settings(client, query):
             return
 
         # For merge settings, check if we need to return to a specific page
-        if return_menu == "mediatools_merge" and message.text and "Page:" in message.text:
+        if (
+            return_menu == "mediatools_merge"
+            and message.text
+            and "Page:" in message.text
+        ):
             try:
                 page_info = message.text.split("Page:")[1].strip().split("/")[0]
                 page_no = int(page_info) - 1
@@ -5986,7 +6052,11 @@ async def edit_bot_settings(client, query):
         # Force reload the current value after database update to ensure consistency
         try:
             # Check if database is connected and db attribute exists
-            if database.db is not None and hasattr(database, "db") and hasattr(database.db, "settings"):
+            if (
+                database.db is not None
+                and hasattr(database, "db")
+                and hasattr(database.db, "settings")
+            ):
                 db_config = await database.db.settings.config.find_one(
                     {"_id": TgClient.ID},
                     {key: 1, "_id": 0},
@@ -6003,7 +6073,9 @@ async def edit_bot_settings(client, query):
                 else:
                     current_value = Config.get(key)
             else:
-                LOGGER.debug(f"Database not connected or settings collection not available, skipping {key} refresh")
+                LOGGER.debug(
+                    f"Database not connected or settings collection not available, skipping {key} refresh"
+                )
                 current_value = Config.get(key)
         except Exception as e:
             LOGGER.error(f"Error refreshing {key} from database: {e}")
@@ -6114,7 +6186,11 @@ async def edit_bot_settings(client, query):
         # Force reload the current value after database update to ensure consistency
         try:
             # Check if database is connected and db attribute exists
-            if database.db is not None and hasattr(database, "db") and hasattr(database.db, "settings"):
+            if (
+                database.db is not None
+                and hasattr(database, "db")
+                and hasattr(database.db, "settings")
+            ):
                 db_config = await database.db.settings.config.find_one(
                     {"_id": TgClient.ID},
                     {key: 1, "_id": 0},
@@ -6128,7 +6204,9 @@ async def edit_bot_settings(client, query):
                         )
                         Config.set(key, db_value)
             else:
-                LOGGER.debug(f"Database not connected or settings collection not available, skipping {key} refresh")
+                LOGGER.debug(
+                    f"Database not connected or settings collection not available, skipping {key} refresh"
+                )
         except Exception as e:
             LOGGER.error(f"Error refreshing {key} from database: {e}")
 
@@ -6193,7 +6271,11 @@ async def edit_bot_settings(client, query):
         # Force reload the current value after database update to ensure consistency
         try:
             # Check if database is connected and db attribute exists
-            if database.db is not None and hasattr(database, "db") and hasattr(database.db, "settings"):
+            if (
+                database.db is not None
+                and hasattr(database, "db")
+                and hasattr(database.db, "settings")
+            ):
                 db_config = await database.db.settings.config.find_one(
                     {"_id": TgClient.ID},
                     {key: 1, "_id": 0},
@@ -6207,7 +6289,9 @@ async def edit_bot_settings(client, query):
                         )
                         Config.set(key, db_value)
             else:
-                LOGGER.debug(f"Database not connected or settings collection not available, skipping {key} refresh")
+                LOGGER.debug(
+                    f"Database not connected or settings collection not available, skipping {key} refresh"
+                )
         except Exception as e:
             LOGGER.error(f"Error refreshing {key} from database: {e}")
 
@@ -6415,9 +6499,14 @@ async def edit_bot_settings(client, query):
             return_menu = "taskmonitor"
         elif key in {"ENABLE_EXTRA_MODULES", "MEDIA_TOOLS_ENABLED"}:
             return_menu = "var"
-        elif key == "DEFAULT_AI_PROVIDER" or key.startswith(("MISTRAL_", "DEEPSEEK_", "CHATGPT_", "GEMINI_")):
+        elif key == "DEFAULT_AI_PROVIDER" or key.startswith(
+            ("MISTRAL_", "DEEPSEEK_", "CHATGPT_", "GEMINI_")
+        ):
             return_menu = "ai"
-        elif key.startswith("MERGE_") or key in ["CONCAT_DEMUXER_ENABLED", "FILTER_COMPLEX_ENABLED"]:
+        elif key.startswith("MERGE_") or key in [
+            "CONCAT_DEMUXER_ENABLED",
+            "FILTER_COMPLEX_ENABLED",
+        ]:
             # Check if we're in the merge_config menu
             if (message.text and "Merge Configuration" in message.text) or (
                 key.startswith("MERGE_")
@@ -6457,7 +6546,11 @@ async def edit_bot_settings(client, query):
         # Force reload the current value after database update to ensure consistency
         try:
             # Check if database is connected and db attribute exists
-            if database.db is not None and hasattr(database, "db") and hasattr(database.db, "settings"):
+            if (
+                database.db is not None
+                and hasattr(database, "db")
+                and hasattr(database.db, "settings")
+            ):
                 db_config = await database.db.settings.config.find_one(
                     {"_id": TgClient.ID},
                     {key: 1, "_id": 0},
@@ -6469,7 +6562,9 @@ async def edit_bot_settings(client, query):
                         LOGGER.debug(f"Updating {key} from {value} to {db_value}")
                         Config.set(key, db_value)
             else:
-                LOGGER.debug(f"Database not connected or settings collection not available, skipping {key} refresh")
+                LOGGER.debug(
+                    f"Database not connected or settings collection not available, skipping {key} refresh"
+                )
         except Exception as e:
             LOGGER.error(f"Error refreshing {key} from database: {e}")
 
@@ -6538,13 +6633,25 @@ async def load_config():
         try:
             # Use ps to check if any gunicorn processes are still running
             process = await create_subprocess_exec(
-                "ps", "-ef", "|", "grep", "gunicorn", "|", "grep", "-v", "grep",
-                stdout=-1
+                "ps",
+                "-ef",
+                "|",
+                "grep",
+                "gunicorn",
+                "|",
+                "grep",
+                "-v",
+                "grep",
+                stdout=-1,
             )
             stdout, _ = await process.communicate()
             if stdout:
-                LOGGER.warning("Gunicorn processes still detected, attempting to kill again...")
-                await (await create_subprocess_exec("pkill", "-9", "-f", "gunicorn")).wait()
+                LOGGER.warning(
+                    "Gunicorn processes still detected, attempting to kill again..."
+                )
+                await (
+                    await create_subprocess_exec("pkill", "-9", "-f", "gunicorn")
+                ).wait()
         except Exception as e:
             LOGGER.error(f"Error checking for gunicorn processes: {e}")
     else:
