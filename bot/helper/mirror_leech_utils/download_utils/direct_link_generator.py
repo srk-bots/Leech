@@ -544,27 +544,13 @@ def onedrive(link):
 
 
 def pixeldrain(url):
-    """Based on https://github.com/yash-dk/TorToolkit-Telegram"""
-    url = url.strip("/ ")
-    file_id = url.split("/")[-1]
-    if url.split("/")[-2] == "l":
-        info_link = f"https://pixeldrain.com/api/list/{file_id}"
-        dl_link = f"https://pixeldrain.com/api/list/{file_id}/zip?download"
-    else:
-        info_link = f"https://pixeldrain.com/api/file/{file_id}/info"
-        dl_link = f"https://pixeldrain.com/api/file/{file_id}?download"
-    with create_scraper() as session:
-        try:
-            resp = session.get(info_link).json()
-        except Exception as e:
-            raise DirectDownloadLinkException(
-                f"ERROR: {e.__class__.__name__}",
-            ) from e
-    if resp["success"]:
-        return dl_link
-    raise DirectDownloadLinkException(
-        f"ERROR: Cant't download due {resp['message']}.",
-    )
+    try:
+        url = url.rstrip('/')
+        code = url.split('/')[-1].split('?', 1)[0]
+        response = get("https://pd.cybar.xyz/", allow_redirects=True)
+        return response.url + code
+    except Exception as e:
+        raise DirectDownloadLinkException("ERROR: Direct link not found")
 
 
 def streamtape(url):
