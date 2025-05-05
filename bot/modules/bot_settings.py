@@ -3279,6 +3279,10 @@ Configure advanced merge settings that will be used when user settings are not a
 async def update_buttons(message, key=None, edit_type=None, page=0):
     user_id = message.chat.id
 
+    # If edit_type is provided, update the state
+    if edit_type:
+        globals()["state"] = edit_type
+
     msg, button = await get_buttons(key, edit_type, page, user_id)
     await edit_message(message, msg, button)
 
@@ -3563,6 +3567,10 @@ async def edit_variable(_, message, pre_message, key):
     else:
         return_menu = "var"
 
+    # Get the current state before updating the UI
+    current_state = globals()["state"]
+    # Set the state back to what it was
+    globals()["state"] = current_state
     await update_buttons(pre_message, return_menu)
     await delete_message(message)
     await database.update_config({key: value})
@@ -3625,7 +3633,13 @@ async def edit_aria(_, message, pre_message, key):
     elif value.lower() == "false":
         value = "false"
     await TorrentManager.change_aria2_option(key, value)
+
+    # Get the current state before updating the UI
+    current_state = globals()["state"]
+    # Set the state back to what it was
+    globals()["state"] = current_state
     await update_buttons(pre_message, "aria")
+
     await delete_message(message)
     await database.update_aria2(key, value)
 
@@ -3644,7 +3658,13 @@ async def edit_qbit(_, message, pre_message, key):
         value = int(value)
     await TorrentManager.qbittorrent.app.set_preferences({key: value})
     qbit_options[key] = value
+
+    # Get the current state before updating the UI
+    current_state = globals()["state"]
+    # Set the state back to what it was
+    globals()["state"] = current_state
     await update_buttons(pre_message, "qbit")
+
     await delete_message(message)
     await database.update_qbittorrent(key, value)
 
@@ -3660,11 +3680,23 @@ async def edit_nzb(_, message, pre_message, key):
             value = ",".join(eval(value))
         except Exception as e:
             LOGGER.error(e)
+
+            # Get the current state before updating the UI
+            current_state = globals()["state"]
+            # Set the state back to what it was
+            globals()["state"] = current_state
             await update_buttons(pre_message, "nzb")
+
             return
     res = await sabnzbd_client.set_config("misc", key, value)
     nzb_options[key] = res["config"]["misc"][key]
+
+    # Get the current state before updating the UI
+    current_state = globals()["state"]
+    # Set the state back to what it was
+    globals()["state"] = current_state
     await update_buttons(pre_message, "nzb")
+
     await delete_message(message)
     await database.update_nzb_config()
 
@@ -3673,24 +3705,43 @@ async def edit_nzb(_, message, pre_message, key):
 async def edit_nzb_server(_, message, pre_message, key, index=0):
     handler_dict[message.chat.id] = False
     value = message.text
+
+    # Get the current state before making changes
+    current_state = globals()["state"]
+
     if key == "newser":
         if value.startswith("{") and value.endswith("}"):
             try:
                 value = eval(value)
             except Exception:
                 await send_message(message, "Invalid dict format!")
+
+                # Set the state back to what it was
+                globals()["state"] = current_state
                 await update_buttons(pre_message, "nzbserver")
+
                 return
             res = await sabnzbd_client.add_server(value)
             if not res["config"]["servers"][0]["host"]:
                 await send_message(message, "Invalid server!")
+
+                # Set the state back to what it was
+                globals()["state"] = current_state
                 await update_buttons(pre_message, "nzbserver")
+
                 return
             Config.USENET_SERVERS.append(value)
+
+            # Set the state back to what it was
+            globals()["state"] = current_state
             await update_buttons(pre_message, "nzbserver")
         else:
             await send_message(message, "Invalid dict format!")
+
+            # Set the state back to what it was
+            globals()["state"] = current_state
             await update_buttons(pre_message, "nzbserver")
+
             return
     else:
         if value.isdigit():
@@ -3702,7 +3753,11 @@ async def edit_nzb_server(_, message, pre_message, key, index=0):
             await send_message(message, "Invalid value")
             return
         Config.USENET_SERVERS[index][key] = value
+
+        # Set the state back to what it was
+        globals()["state"] = current_state
         await update_buttons(pre_message, f"nzbser{index}")
+
     await delete_message(message)
     await database.update_config({"USENET_SERVERS": Config.USENET_SERVERS})
 
@@ -3795,7 +3850,13 @@ async def update_private_file(_, message, pre_message):
         await delete_message(message)
     if file_name == "rclone.conf":
         await rclone_serve_booter()
+
+    # Get the current state before updating the UI
+    current_state = globals()["state"]
+    # Set the state back to what it was
+    globals()["state"] = current_state
     await update_buttons(pre_message)
+
     await database.update_private_file(file_name)
 
 
@@ -4983,24 +5044,41 @@ async def edit_bot_settings(client, query):
             await update_buttons(message, data[2], data[1])
         pfunc = partial(edit_variable, pre_message=message, key=data[2])
 
+        # Get the current state before making changes
+        current_state = globals()["state"]
+
         # Determine which menu to return to based on the key
         if (
             data[2].startswith("WATERMARK_")
             or data[2].startswith("AUDIO_WATERMARK_")
             or data[2].startswith("SUBTITLE_WATERMARK_")
         ):
+            # Set the state back to what it was
+            globals()["state"] = current_state
             rfunc = partial(update_buttons, message, "mediatools_watermark")
         elif data[2].startswith("METADATA_"):
+            # Set the state back to what it was
+            globals()["state"] = current_state
             rfunc = partial(update_buttons, message, "mediatools_metadata")
         elif data[2].startswith("CONVERT_"):
+            # Set the state back to what it was
+            globals()["state"] = current_state
             rfunc = partial(update_buttons, message, "mediatools_convert")
         elif data[2].startswith("COMPRESSION_"):
+            # Set the state back to what it was
+            globals()["state"] = current_state
             rfunc = partial(update_buttons, message, "mediatools_compression")
         elif data[2].startswith("TRIM_"):
+            # Set the state back to what it was
+            globals()["state"] = current_state
             rfunc = partial(update_buttons, message, "mediatools_trim")
         elif data[2].startswith("EXTRACT_"):
+            # Set the state back to what it was
+            globals()["state"] = current_state
             rfunc = partial(update_buttons, message, "mediatools_extract")
         elif data[2].startswith("TASK_MONITOR_"):
+            # Set the state back to what it was
+            globals()["state"] = current_state
             rfunc = partial(update_buttons, message, "taskmonitor")
         elif (
             data[2] == "DEFAULT_AI_PROVIDER"
@@ -5565,24 +5643,44 @@ async def edit_bot_settings(client, query):
             )
             return
 
+        # Get the current state before making changes
+        current_state = globals()["state"]
+
         # For other settings, proceed with normal botvar handling
+        # Set the state back to what it was
+        globals()["state"] = current_state
         await update_buttons(message, data[2], data[1])
+
         pfunc = partial(edit_variable, pre_message=message, key=data[2])
 
         # Determine which menu to return to based on the key
         if data[2].startswith("METADATA_"):
+            # Set the state back to what it was
+            globals()["state"] = current_state
             rfunc = partial(update_buttons, message, "mediatools_metadata")
         elif data[2].startswith("CONVERT_"):
+            # Set the state back to what it was
+            globals()["state"] = current_state
             rfunc = partial(update_buttons, message, "mediatools_convert")
+        elif data[2].startswith("TASK_MONITOR_"):
+            # Set the state back to what it was
+            globals()["state"] = current_state
+            rfunc = partial(update_buttons, message, "taskmonitor")
         elif (
             data[2] == "DEFAULT_AI_PROVIDER"
         ):  # Create a special menu for selecting the AI provider
+            # Get the current state before making changes
+            current_state = globals()["state"]
+
             buttons = ButtonMaker()
             buttons.data_button("Mistral", "botset setprovider mistral")
             buttons.data_button("DeepSeek", "botset setprovider deepseek")
             buttons.data_button("ChatGPT", "botset setprovider chatgpt")
             buttons.data_button("Gemini", "botset setprovider gemini")
             buttons.data_button("Cancel", "botset cancel")
+
+            # Set the state back to what it was
+            globals()["state"] = current_state
 
             await edit_message(
                 message,
@@ -5596,8 +5694,12 @@ async def edit_bot_settings(client, query):
             or data[2].startswith("CHATGPT_")
             or data[2].startswith("GEMINI_")
         ):
+            # Set the state back to what it was
+            globals()["state"] = current_state
             rfunc = partial(update_buttons, message, "ai")
         else:
+            # Set the state back to what it was
+            globals()["state"] = current_state
             rfunc = partial(update_buttons, message, "var")
 
         await event_handler(client, query, pfunc, rfunc)
@@ -5617,9 +5719,19 @@ async def edit_bot_settings(client, query):
         await query.answer(f"{value}", show_alert=True)
     elif data[1] == "ariavar" and (state == "edit" or data[2] == "newkey"):
         await query.answer()
+        # Get the current state before making changes
+        current_state = globals()["state"]
+
+        # Set the state back to what it was
+        globals()["state"] = current_state
         await update_buttons(message, data[2], data[1])
+
         pfunc = partial(edit_aria, pre_message=message, key=data[2])
+
+        # Set the state back to what it was
+        globals()["state"] = current_state
         rfunc = partial(update_buttons, message, "aria")
+
         await event_handler(client, query, pfunc, rfunc)
     elif data[1] == "ariavar" and state == "view":
         value = f"{aria2_options[data[2]]}"
@@ -5634,9 +5746,19 @@ async def edit_bot_settings(client, query):
         await query.answer(f"{value}", show_alert=True)
     elif data[1] == "qbitvar" and state == "edit":
         await query.answer()
+        # Get the current state before making changes
+        current_state = globals()["state"]
+
+        # Set the state back to what it was
+        globals()["state"] = current_state
         await update_buttons(message, data[2], data[1])
+
         pfunc = partial(edit_qbit, pre_message=message, key=data[2])
+
+        # Set the state back to what it was
+        globals()["state"] = current_state
         rfunc = partial(update_buttons, message, "qbit")
+
         await event_handler(client, query, pfunc, rfunc)
     elif data[1] == "qbitvar" and state == "view":
         value = f"{qbit_options[data[2]]}"
@@ -5651,9 +5773,19 @@ async def edit_bot_settings(client, query):
         await query.answer(f"{value}", show_alert=True)
     elif data[1] == "nzbvar" and state == "edit":
         await query.answer()
+        # Get the current state before making changes
+        current_state = globals()["state"]
+
+        # Set the state back to what it was
+        globals()["state"] = current_state
         await update_buttons(message, data[2], data[1])
+
         pfunc = partial(edit_nzb, pre_message=message, key=data[2])
+
+        # Set the state back to what it was
+        globals()["state"] = current_state
         rfunc = partial(update_buttons, message, "nzb")
+
         await event_handler(client, query, pfunc, rfunc)
     elif data[1] == "nzbvar" and state == "view":
         value = f"{nzb_options[data[2]]}"
@@ -5698,17 +5830,26 @@ async def edit_bot_settings(client, query):
     elif data[1].startswith("nzbsevar") and (state == "edit" or data[2] == "newser"):
         index = 0 if data[2] == "newser" else int(data[1].replace("nzbsevar", ""))
         await query.answer()
+        # Get the current state before making changes
+        current_state = globals()["state"]
 
         # Check if index is valid before proceeding (except for newser which creates a new server)
         if data[2] == "newser" or (0 <= index < len(Config.USENET_SERVERS)):
+            # Set the state back to what it was
+            globals()["state"] = current_state
             await update_buttons(message, data[2], data[1])
+
             pfunc = partial(
                 edit_nzb_server,
                 pre_message=message,
                 key=data[2],
                 index=index,
             )
+
+            # Set the state back to what it was
+            globals()["state"] = current_state
             rfunc = partial(update_buttons, message, data[1])
+
             await event_handler(client, query, pfunc, rfunc)
         else:
             # Handle invalid index
@@ -5716,9 +5857,15 @@ async def edit_bot_settings(client, query):
                 "Invalid server index. Please go back and try again.",
                 show_alert=True,
             )
+
+            # Set the state back to what it was
+            globals()["state"] = current_state
             await update_buttons(message, "nzbserver")
     elif data[1].startswith("nzbsevar") and state == "view":
         index = int(data[1].replace("nzbsevar", ""))
+        # Get the current state before making changes
+        current_state = globals()["state"]
+
         # Check if index is valid before accessing Config.USENET_SERVERS
         if 0 <= index < len(Config.USENET_SERVERS):
             value = f"{Config.USENET_SERVERS[index][data[2]]}"
@@ -5737,6 +5884,9 @@ async def edit_bot_settings(client, query):
                 "Invalid server index. Please go back and try again.",
                 show_alert=True,
             )
+
+            # Set the state back to what it was
+            globals()["state"] = current_state
             await update_buttons(message, "nzbserver")
     elif data[1] == "toggle_tool":
         await query.answer()
@@ -6123,52 +6273,89 @@ async def edit_bot_settings(client, query):
         await update_buttons(message, data[2])
     elif data[1] == "start":
         await query.answer()
+        # Get the current state before making changes
+        current_state = globals()["state"]
+
         if start != int(data[3]):
             globals()["start"] = int(data[3])
+
+            # Set the state back to what it was
+            globals()["state"] = current_state
             await update_buttons(message, data[2])
     elif data[1] == "start_merge":
         await query.answer()
+        # Get the current state before making changes
+        current_state = globals()["state"]
+
         try:
             if len(data) > 2:
                 # Update the global merge_page variable
                 globals()["merge_page"] = int(data[2])
+
+                # Set the state back to what it was
+                globals()["state"] = current_state
                 await update_buttons(
                     message, "mediatools_merge", page=globals()["merge_page"]
                 )
             else:
                 # If no page number is provided, stay on the current page
+                # Set the state back to what it was
+                globals()["state"] = current_state
                 await update_buttons(
                     message, "mediatools_merge", page=globals()["merge_page"]
                 )
         except (ValueError, IndexError) as e:
             # In case of any error, stay on the current page
             LOGGER.error(f"Error in start_merge handler: {e}")
+
+            # Set the state back to what it was
+            globals()["state"] = current_state
             await update_buttons(
                 message, "mediatools_merge", page=globals()["merge_page"]
             )
     elif data[1] == "start_merge_config":
         await query.answer()
+        # Get the current state before making changes
+        current_state = globals()["state"]
+
         try:
             if len(data) > 2:
                 page = int(data[2])
+
+                # Set the state back to what it was
+                globals()["state"] = current_state
                 await update_buttons(message, "mediatools_merge_config", page=page)
             else:
                 # If no page number is provided, stay on the current page
+                # Set the state back to what it was
+                globals()["state"] = current_state
                 await update_buttons(message, "mediatools_merge_config")
         except (ValueError, IndexError):
             # In case of any error, stay on the current page
+            # Set the state back to what it was
+            globals()["state"] = current_state
             await update_buttons(message, "mediatools_merge_config")
     elif data[1] == "start_convert":
         await query.answer()
+        # Get the current state before making changes
+        current_state = globals()["state"]
+
         try:
             if len(data) > 2:
                 page = int(data[2])
+
+                # Set the state back to what it was
+                globals()["state"] = current_state
                 await update_buttons(message, "mediatools_convert", page=page)
             else:
                 # If no page number is provided, stay on the current page
+                # Set the state back to what it was
+                globals()["state"] = current_state
                 await update_buttons(message, "mediatools_convert")
         except (ValueError, IndexError):
             # In case of any error, stay on the current page
+            # Set the state back to what it was
+            globals()["state"] = current_state
             await update_buttons(message, "mediatools_convert")
     elif data[1] == "toggle":
         await query.answer()
