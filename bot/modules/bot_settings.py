@@ -3538,23 +3538,19 @@ async def edit_variable(_, message, pre_message, key):
             )
         ):
             return_menu = "mediatools_merge_config"
-        # Check if we need to return to a specific page in mediatools_merge or mediatools_merge_config
+        # Check if we need to return to a specific page in mediatools_merge
         elif pre_message.text and "Page:" in pre_message.text:
             try:
                 page_info = pre_message.text.split("Page:")[1].strip().split("/")[0]
                 page_no = int(page_info) - 1
+                # Set the global merge_page variable to ensure we return to the correct page
+                globals()["merge_page"] = page_no
 
                 # Determine which menu to return to based on the message content
                 if "Merge Configuration" in pre_message.text:
                     return_menu = "mediatools_merge_config"
                 else:
                     return_menu = "mediatools_merge"
-
-                # Return to the correct page
-                await update_buttons(pre_message, return_menu, page=page_no)
-                await delete_message(message)
-                await database.update_config({key: value})
-                return
             except (ValueError, IndexError):
                 if "Merge Configuration" in pre_message.text:
                     return_menu = "mediatools_merge_config"
@@ -3571,7 +3567,20 @@ async def edit_variable(_, message, pre_message, key):
     current_state = globals()["state"]
     # Set the state back to what it was
     globals()["state"] = current_state
-    await update_buttons(pre_message, return_menu)
+
+    # Handle special cases for pages
+    if return_menu == "mediatools_merge" and "merge_page" in globals():
+        await update_buttons(pre_message, return_menu, page=globals()["merge_page"])
+    elif return_menu == "mediatools_merge_config" and pre_message.text and "Page:" in pre_message.text:
+        try:
+            page_info = pre_message.text.split("Page:")[1].strip().split("/")[0]
+            page_no = int(page_info) - 1
+            await update_buttons(pre_message, return_menu, page=page_no)
+        except (ValueError, IndexError):
+            await update_buttons(pre_message, return_menu)
+    else:
+        await update_buttons(pre_message, return_menu)
+
     await delete_message(message)
     await database.update_config({key: value})
 
@@ -5042,76 +5051,26 @@ async def edit_bot_settings(client, query):
         if state != "edit":
             globals()["state"] = "edit"
             await update_buttons(message, data[2], data[1])
-        pfunc = partial(edit_variable, pre_message=message, key=data[2])
-
-        # Get the current state before making changes
-        current_state = globals()["state"]
 
         # Determine which menu to return to based on the key
-        if (
-            data[2].startswith("WATERMARK_")
-            or data[2].startswith("AUDIO_WATERMARK_")
-            or data[2].startswith("SUBTITLE_WATERMARK_")
-        ):
-            # Set the state back to what it was
-            globals()["state"] = current_state
-            rfunc = partial(update_buttons, message, "mediatools_watermark")
+        return_menu = "var"  # Default return menu
+        if data[2].startswith(("WATERMARK_", "AUDIO_WATERMARK_", "SUBTITLE_WATERMARK_")):
+            return_menu = "mediatools_watermark"
         elif data[2].startswith("METADATA_"):
-            # Set the state back to what it was
-            globals()["state"] = current_state
-            rfunc = partial(update_buttons, message, "mediatools_metadata")
+            return_menu = "mediatools_metadata"
         elif data[2].startswith("CONVERT_"):
-            # Set the state back to what it was
-            globals()["state"] = current_state
-            rfunc = partial(update_buttons, message, "mediatools_convert")
+            return_menu = "mediatools_convert"
         elif data[2].startswith("COMPRESSION_"):
-            # Set the state back to what it was
-            globals()["state"] = current_state
-            rfunc = partial(update_buttons, message, "mediatools_compression")
+            return_menu = "mediatools_compression"
         elif data[2].startswith("TRIM_"):
-            # Set the state back to what it was
-            globals()["state"] = current_state
-            rfunc = partial(update_buttons, message, "mediatools_trim")
+            return_menu = "mediatools_trim"
         elif data[2].startswith("EXTRACT_"):
-            # Set the state back to what it was
-            globals()["state"] = current_state
-            rfunc = partial(update_buttons, message, "mediatools_extract")
+            return_menu = "mediatools_extract"
         elif data[2].startswith("TASK_MONITOR_"):
-            # Set the state back to what it was
-            globals()["state"] = current_state
-            rfunc = partial(update_buttons, message, "taskmonitor")
-        elif (
-            data[2] == "DEFAULT_AI_PROVIDER"
-        ):  # Create a special menu for selecting the AI provider
-            buttons = ButtonMaker()
-            buttons.data_button("Mistral", "botset setprovider mistral")
-            buttons.data_button("DeepSeek", "botset setprovider deepseek")
-            buttons.data_button("ChatGPT", "botset setprovider chatgpt")
-            buttons.data_button("Gemini", "botset setprovider gemini")
-            buttons.data_button("Cancel", "botset cancel")
-
-            await edit_message(
-                message,
-                "<b>Select Default AI Provider</b>\n\nChoose which AI provider to use with the /ask command:",
-                buttons.build_menu(2),
-            )
-            return
-        elif (
-            data[2].startswith("MISTRAL_")
-            or data[2].startswith("DEEPSEEK_")
-            or data[2].startswith("CHATGPT_")
-            or data[2].startswith("GEMINI_")
-            or data[2] == "DEFAULT_AI_PROVIDER"
-        ):
-            # Get the current state before updating
-            current_state = globals()["state"]
-            # Set the state back to what it was
-            globals()["state"] = current_state
-            rfunc = partial(update_buttons, message, "ai")
-        elif data[2].startswith("MERGE_") or data[2] in [
-            "CONCAT_DEMUXER_ENABLED",
-            "FILTER_COMPLEX_ENABLED",
-        ]:
+            return_menu = "taskmonitor"
+        elif data[2] == "DEFAULT_AI_PROVIDER" or data[2].startswith(("MISTRAL_", "DEEPSEEK_", "CHATGPT_", "GEMINI_")):
+            return_menu = "ai"
+        elif data[2].startswith("MERGE_") or data[2] in ["CONCAT_DEMUXER_ENABLED", "FILTER_COMPLEX_ENABLED"]:
             # Check if we're in the merge_config menu
             if (message.text and "Merge Configuration" in message.text) or (
                 data[2].startswith("MERGE_")
@@ -5128,9 +5087,64 @@ async def edit_bot_settings(client, query):
                     ]
                 )
             ):
-                rfunc = partial(update_buttons, message, "mediatools_merge_config")
+                return_menu = "mediatools_merge_config"
+            else:
+                return_menu = "mediatools_merge"
+
+        # Special handling for DEFAULT_AI_PROVIDER
+        if data[2] == "DEFAULT_AI_PROVIDER":
+            buttons = ButtonMaker()
+            buttons.data_button("Mistral", "botset setprovider mistral")
+            buttons.data_button("DeepSeek", "botset setprovider deepseek")
+            buttons.data_button("ChatGPT", "botset setprovider chatgpt")
+            buttons.data_button("Gemini", "botset setprovider gemini")
+            buttons.data_button("Cancel", "botset cancel")
+
+            await edit_message(
+                message,
+                "<b>Select Default AI Provider</b>\n\nChoose which AI provider to use with the /ask command:",
+                buttons.build_menu(2),
+            )
+            return
+
+        # For all other settings, proceed with normal edit flow
+        pfunc = partial(edit_variable, pre_message=message, key=data[2])
+
+        # Get the current state before making changes
+        current_state = globals()["state"]
+
+        # Set up the return function based on the return menu
+        if return_menu == "mediatools_watermark":
+            globals()["state"] = current_state
+            rfunc = partial(update_buttons, message, "mediatools_watermark")
+        elif return_menu == "mediatools_metadata":
+            globals()["state"] = current_state
+            rfunc = partial(update_buttons, message, "mediatools_metadata")
+        elif return_menu == "mediatools_convert":
+            globals()["state"] = current_state
+            rfunc = partial(update_buttons, message, "mediatools_convert")
+        elif return_menu == "mediatools_compression":
+            globals()["state"] = current_state
+            rfunc = partial(update_buttons, message, "mediatools_compression")
+        elif return_menu == "mediatools_trim":
+            globals()["state"] = current_state
+            rfunc = partial(update_buttons, message, "mediatools_trim")
+        elif return_menu == "mediatools_extract":
+            globals()["state"] = current_state
+            rfunc = partial(update_buttons, message, "mediatools_extract")
+        elif return_menu == "taskmonitor":
+            globals()["state"] = current_state
+            rfunc = partial(update_buttons, message, "taskmonitor")
+        elif return_menu == "ai":
+            globals()["state"] = current_state
+            rfunc = partial(update_buttons, message, "ai")
+        elif return_menu == "mediatools_merge_config":
+            globals()["state"] = current_state
+            rfunc = partial(update_buttons, message, "mediatools_merge_config")
+        elif return_menu == "mediatools_merge":
+            globals()["state"] = current_state
             # Check if we need to return to a specific page in mediatools_merge
-            elif message.text and "Page:" in message.text:
+            if message.text and "Page:" in message.text:
                 try:
                     page_info = message.text.split("Page:")[1].strip().split("/")[0]
                     page_no = int(page_info) - 1
@@ -5143,6 +5157,7 @@ async def edit_bot_settings(client, query):
                 # Use the global merge_page variable
                 rfunc = partial(update_buttons, message, "mediatools_merge")
         else:
+            globals()["state"] = current_state
             rfunc = partial(update_buttons, message, "var")
 
         await event_handler(client, query, pfunc, rfunc)
@@ -5653,25 +5668,8 @@ async def edit_bot_settings(client, query):
 
         pfunc = partial(edit_variable, pre_message=message, key=data[2])
 
-        # Determine which menu to return to based on the key
-        if data[2].startswith("METADATA_"):
-            # Set the state back to what it was
-            globals()["state"] = current_state
-            rfunc = partial(update_buttons, message, "mediatools_metadata")
-        elif data[2].startswith("CONVERT_"):
-            # Set the state back to what it was
-            globals()["state"] = current_state
-            rfunc = partial(update_buttons, message, "mediatools_convert")
-        elif data[2].startswith("TASK_MONITOR_"):
-            # Set the state back to what it was
-            globals()["state"] = current_state
-            rfunc = partial(update_buttons, message, "taskmonitor")
-        elif (
-            data[2] == "DEFAULT_AI_PROVIDER"
-        ):  # Create a special menu for selecting the AI provider
-            # Get the current state before making changes
-            current_state = globals()["state"]
-
+        # Special case for DEFAULT_AI_PROVIDER - create a special menu for selecting the AI provider
+        if data[2] == "DEFAULT_AI_PROVIDER":
             buttons = ButtonMaker()
             buttons.data_button("Mistral", "botset setprovider mistral")
             buttons.data_button("DeepSeek", "botset setprovider deepseek")
@@ -5688,19 +5686,20 @@ async def edit_bot_settings(client, query):
                 buttons.build_menu(2),
             )
             return
-        elif (
-            data[2].startswith("MISTRAL_")
-            or data[2].startswith("DEEPSEEK_")
-            or data[2].startswith("CHATGPT_")
-            or data[2].startswith("GEMINI_")
-        ):
-            # Set the state back to what it was
-            globals()["state"] = current_state
-            rfunc = partial(update_buttons, message, "ai")
-        else:
-            # Set the state back to what it was
-            globals()["state"] = current_state
-            rfunc = partial(update_buttons, message, "var")
+
+        # For merge settings, check if we need to return to a specific page
+        if return_menu == "mediatools_merge" and message.text and "Page:" in message.text:
+            try:
+                page_info = message.text.split("Page:")[1].strip().split("/")[0]
+                page_no = int(page_info) - 1
+                # Set the global merge_page variable to ensure we return to the correct page
+                globals()["merge_page"] = page_no
+            except (ValueError, IndexError):
+                pass
+
+        # Set the state back to what it was
+        globals()["state"] = current_state
+        rfunc = partial(update_buttons, message, return_menu)
 
         await event_handler(client, query, pfunc, rfunc)
     elif data[1] == "botvar" and state == "view":
@@ -6402,6 +6401,8 @@ async def edit_bot_settings(client, query):
         return_menu = "mediatools"
         if key.startswith(("WATERMARK_", "AUDIO_WATERMARK_", "SUBTITLE_WATERMARK_")):
             return_menu = "mediatools_watermark"
+        elif key.startswith("METADATA_"):
+            return_menu = "mediatools_metadata"
         elif key.startswith("CONVERT_"):
             return_menu = "mediatools_convert"
         elif key.startswith("COMPRESSION_"):
@@ -6416,6 +6417,37 @@ async def edit_bot_settings(client, query):
             return_menu = "var"
         elif key == "DEFAULT_AI_PROVIDER" or key.startswith(("MISTRAL_", "DEEPSEEK_", "CHATGPT_", "GEMINI_")):
             return_menu = "ai"
+        elif key.startswith("MERGE_") or key in ["CONCAT_DEMUXER_ENABLED", "FILTER_COMPLEX_ENABLED"]:
+            # Check if we're in the merge_config menu
+            if (message.text and "Merge Configuration" in message.text) or (
+                key.startswith("MERGE_")
+                and any(
+                    x in key
+                    for x in [
+                        "OUTPUT_FORMAT",
+                        "VIDEO_",
+                        "AUDIO_",
+                        "IMAGE_",
+                        "SUBTITLE_",
+                        "DOCUMENT_",
+                        "METADATA_",
+                    ]
+                )
+            ):
+                return_menu = "mediatools_merge_config"
+            # Check if we need to return to a specific page in mediatools_merge
+            elif message.text and "Page:" in message.text:
+                try:
+                    page_info = message.text.split("Page:")[1].strip().split("/")[0]
+                    page_no = int(page_info) - 1
+                    # Set the global merge_page variable to ensure we return to the correct page
+                    globals()["merge_page"] = page_no
+                    return_menu = "mediatools_merge"
+                except (ValueError, IndexError):
+                    return_menu = "mediatools_merge"
+            else:
+                # Use the global merge_page variable
+                return_menu = "mediatools_merge"
 
         # Get the current state before updating the database
         current_state = globals()["state"]
