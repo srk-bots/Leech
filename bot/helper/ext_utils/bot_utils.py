@@ -843,6 +843,12 @@ def is_media_tool_enabled(tool_name):
         LOGGER.debug(f"'mediatools' check result: {result}")
         return result
 
+    # Check if the specific tool is in the enabled list
+    # If MEDIA_TOOLS_ENABLED is False or empty, no tools are enabled
+    if not enabled_tools:
+        LOGGER.debug(f"No tools enabled, '{tool_name}' is disabled")
+        return False
+
     # Otherwise, check if the specific tool is in the enabled list
     result = tool_name.lower() in enabled_tools
     LOGGER.debug(f"Tool '{tool_name}' enabled: {result}")

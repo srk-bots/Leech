@@ -985,46 +985,27 @@ user_settings_text = {
     "USER_SESSION": "Send your pyrogram user session string for download from private telegram chat. Timeout: 60 sec",
     "USER_DUMP": "Send your channel or group id where you want to store your leeched files. Bot must have permission to send message in your chat. Timeout: 60 sec",
     "USER_COOKIES": "Send your cookies.txt file for YouTube and other yt-dlp downloads. This will be used instead of the owner's cookies file. Create it using browser extensions like 'Get cookies.txt' or 'EditThisCookie'. Timeout: 60 sec",
-    "LEECH_FILENAME_CAPTION": """Send leech caption template. This will be used as the caption for all your leech files.
+    "LEECH_FILENAME_CAPTION": """Send caption template for all your leech files.
 
 <b>Basic Variables:</b>
-• <code>{filename}</code> - Original filename without extension
-• <code>{ext}</code> - File extension (e.g., mkv, mp4)
-• <code>{size}</code> - File size (e.g., 1.5GB)
-• <code>{duration}</code> - Media duration (e.g., 01:30:45)
-• <code>{quality}</code> - Video quality (e.g., 1080p, 720p)
-• <code>{audios}</code> - Audio languages in the file
-• <code>{audio_codecs}</code> - Audio codec information
-• <code>{subtitles}</code> - Subtitle languages in the file
-• <code>{md5_hash}</code> - MD5 hash of the file
+• <code>{filename}</code> - Filename without extension
+• <code>{ext}</code> - File extension
+• <code>{size}</code> - File size
+• <code>{quality}</code> - Video quality
+• <code>{duration}</code> - Media duration
+• <code>{season}</code>, <code>{episode}</code> - TV show info
 
-<b>TV Show Variables:</b>
-• <code>{season}</code> - Season number extracted from filename
-• <code>{episode}</code> - Episode number extracted from filename
-• <code>{year}</code> - Release year extracted from filename
-
-<b>Media Information:</b>
-• <code>{NumVideos}</code> - Number of video tracks
-• <code>{NumAudios}</code> - Number of audio tracks
-• <code>{NumSubtitles}</code> - Number of subtitle tracks
-• <code>{formate}</code> - File extension in uppercase
-• <code>{format}</code> - Media container format
-• <code>{id}</code> - Unique ID of the file
-• <code>{framerate}</code> - Video framerate
-• <code>{codec}</code> - Video codec information
-
-<b>Styling Options:</b>
-• HTML formatting: <code>{{filename}bold}</code>, <code>{{size}italic}</code>
-• Google Fonts: <code>{{filename}Roboto}</code>, <code>{{size}OpenSans}</code>
-• Unicode styles: <code>{{filename}serif_b}</code>, <code>{{size}mono}</code>
-• Emoji decoration: <code>{{filename}🔥}</code>
+<b>Styling:</b>
+• HTML: <code>{{filename}bold}</code>
+• Google Fonts: <code>{{filename}Roboto}</code>
+• Unicode: <code>{{filename}serif_b}</code>
+• Emoji: <code>{{filename}🔥}</code>
 
 <b>Examples:</b>
-• <code>📁 {{filename}bold} | 💾 {size} | ⏱️ {duration}</code>
-• <code>🎬 {{filename}Roboto:700} [{quality}] [{codec}]</code>
-• <code>📺 S{season}E{episode} | {{quality}serif_i} | {audios}</code>
+• <code>📁 {{filename}bold} | 💾 {size}</code>
+• <code>🎬 {{filename}Roboto:700} [{quality}]</code>
 
-Use /fontstyles for more styling options and examples.
+Use /fontstyles for more options.
 
 Timeout: 60 sec""",
     "LEECH_SPLIT_SIZE": f"Send Leech split size in bytes or use gb or mb. Example: 40000000 or 2.5gb or 1000mb. IS_PREMIUM_USER: {TgClient.IS_PREMIUM_USER}. Timeout: 60 sec",

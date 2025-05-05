@@ -7,6 +7,7 @@ from pyrogram.filters import create
 from pyrogram.handlers import CallbackQueryHandler, MessageHandler
 
 from bot import user_data
+from bot.core.aeon_client import TgClient
 from bot.core.config_manager import Config
 from bot.helper.ext_utils.bot_utils import new_task
 from bot.helper.ext_utils.db_handler import database
@@ -27,12 +28,21 @@ merge_config_page = 0  # Global variable to track merge_config page
 
 async def get_media_tools_settings(from_user, stype="main", page_no=0):
     """Get media tools settings for a user."""
+    from bot.helper.ext_utils.bot_utils import is_media_tool_enabled
+
     user_id = from_user.id
     user_name = from_user.mention(style="html")
     buttons = ButtonMaker()
     user_dict = user_data.get(user_id, {})
     text = ""  # Initialize text variable to avoid UnboundLocalError
     btns = None  # Initialize btns variable to avoid UnboundLocalError
+
+    # Check if media tools are enabled
+    if not is_media_tool_enabled("mediatools") and stype == "main":
+        buttons.data_button("Close", f"mediatools {user_id} close", "footer")
+        btns = buttons.build_menu(2)
+        text = "<b>Media Tools are disabled</b>\n\nMedia Tools have been disabled by the bot owner."
+        return text, btns
 
     if stype == "main":
         # Main Media Tools menu - only show enabled tools
@@ -6082,8 +6092,28 @@ async def event_handler(client, query, pfunc, rfunc, photo=False, document=False
 async def media_tools_settings(_, message):
     """Show media tools settings."""
     from bot.helper.ext_utils.bot_utils import is_media_tool_enabled
+    from bot.core.config_manager import Config
 
-    # Check if media tools are enabled
+    # Force refresh Config.MEDIA_TOOLS_ENABLED from database to ensure accurate status
+    try:
+        # Check if database is connected and db attribute exists
+        if (
+            database.db is not None
+            and hasattr(database, "db")
+            and hasattr(database.db, "settings")
+        ):
+            db_config = await database.db.settings.config.find_one(
+                {"_id": TgClient.ID},
+                {"MEDIA_TOOLS_ENABLED": 1, "_id": 0},
+            )
+            if db_config and "MEDIA_TOOLS_ENABLED" in db_config:
+                # Update Config with the latest value from database
+                Config.MEDIA_TOOLS_ENABLED = db_config["MEDIA_TOOLS_ENABLED"]
+                LOGGER.info(f"Refreshed MEDIA_TOOLS_ENABLED from database: {Config.MEDIA_TOOLS_ENABLED}")
+    except Exception as e:
+        LOGGER.error(f"Error refreshing MEDIA_TOOLS_ENABLED from database: {e}")
+
+    # Check if media tools are enabled after refreshing from database
     if not is_media_tool_enabled("mediatools"):
         error_msg = await send_message(
             message,
