@@ -3,8 +3,8 @@ from functools import partial
 from html import escape
 from io import BytesIO
 from os import getcwd
-from time import time
 from re import findall
+from time import time
 
 from aiofiles.os import makedirs, remove
 from aiofiles.os import path as aiopath
@@ -439,7 +439,7 @@ async def get_menu(option, message, user_id):
             ffc = Config.FFMPEG_CMDS
         if ffc:
             buttons.data_button("FFMPEG VARIABLES", f"userset {user_id} ffvar")
-    elif option in user_dict and user_dict[option]:
+    elif user_dict.get(option):
         if option == "THUMBNAIL":
             buttons.data_button("View", f"userset {user_id} view {option}")
         elif option in ["YT_DLP_OPTIONS", "UPLOAD_PATHS"]:
@@ -470,8 +470,8 @@ async def set_ffmpeg_variable(_, message, key, value, index):
     ffvar_data[value] = txt
     await delete_message(message)
     await database.update_user_data(user_id)
- 
- 
+
+
 async def ffmpeg_variables(
     client, query, message, user_id, key=None, value=None, index=None
 ):

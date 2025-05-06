@@ -1,9 +1,10 @@
 import contextlib
 import os
 from asyncio import gather, sleep
+from collections import Counter
 from os import path as ospath
 from os import walk
-from re import IGNORECASE, sub, findall
+from re import IGNORECASE, findall, sub
 from secrets import token_hex
 from shlex import split
 
@@ -11,7 +12,6 @@ from aiofiles.os import listdir, makedirs, remove
 from aiofiles.os import path as aiopath
 from aioshutil import move, rmtree
 from pyrogram.enums import ChatAction
-from collections import Counter
 
 from bot import (
     DOWNLOAD_DIR,
@@ -255,7 +255,7 @@ class TaskConfig:
                 for key in list(self.ffmpeg_cmds):
                     if isinstance(key, list):
                         cmds.extend(key)
-                    elif key in ffmpeg_dict.keys():
+                    elif key in ffmpeg_dict:
                         for ind, vl in enumerate(ffmpeg_dict[key]):
                             if variables := set(findall(r"\{(.*?)\}", vl)):
                                 ff_values = (

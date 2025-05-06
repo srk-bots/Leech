@@ -149,7 +149,7 @@ def direct_link_generator(link):
             "freeterabox.com",
             "1024terabox.com",
             "teraboxshare.com",
-            "terafileshare.com"
+            "terafileshare.com",
         ]
     ):
         return terabox(link)
@@ -545,8 +545,8 @@ def onedrive(link):
 
 def pixeldrain(url):
     try:
-        url = url.rstrip('/')
-        code = url.split('/')[-1].split('?', 1)[0]
+        url = url.rstrip("/")
+        code = url.split("/")[-1].split("?", 1)[0]
         response = get("https://pd.cybar.xyz/", allow_redirects=True)
         return response.url + code
     except Exception as e:
@@ -723,12 +723,14 @@ def uploadee(url):
 
 
 def terabox(url):
-     try:
-         encoded_url = quote(url)
-         final_url = f"https://teradlrobot.cheemsbackup.workers.dev/?url={encoded_url}"
-         return final_url
-     except Exception as e:
-         raise DirectDownloadLinkException("ERROR: Failed to bypass Terabox URL")
+    try:
+        encoded_url = quote(url)
+        final_url = (
+            f"https://teradlrobot.cheemsbackup.workers.dev/?url={encoded_url}"
+        )
+        return final_url
+    except Exception as e:
+        raise DirectDownloadLinkException("ERROR: Failed to bypass Terabox URL")
 
 
 def filepress(url):
