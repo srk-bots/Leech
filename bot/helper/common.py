@@ -269,7 +269,7 @@ class TaskConfig:
                                     cmds.append(vl.format(**ff_values))
                             else:
                                 cmds.append(vl)
-                 self.ffmpeg_cmds = cmds
+                self.ffmpeg_cmds = cmds
         if not self.is_leech:
             self.stop_duplicate = self.user_dict.get("STOP_DUPLICATE") or (
                 "STOP_DUPLICATE" not in self.user_dict and Config.STOP_DUPLICATE
