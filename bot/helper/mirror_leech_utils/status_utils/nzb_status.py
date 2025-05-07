@@ -76,7 +76,7 @@ class SabnzbdStatus:
             return 0
         try:
             return int(float(self._info["mbleft"]) * 1048576) / self.eta_raw()
-        except:
+        except Exception:
             return 0
 
     def speed(self):

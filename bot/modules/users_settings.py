@@ -487,8 +487,8 @@ async def ffmpeg_variables(
             msg = "Choose which key you want to fill/edit varibales in it:"
             for k, v in list(ffc.items()):
                 add = False
-                for l in v:
-                    if variables := findall(r"\{(.*?)\}", l):
+                for i in v:
+                    if variables := findall(r"\{(.*?)\}", i):
                         add = True
                 if add:
                     buttons.data_button(k, f"userset {user_id} ffvar {k}")
