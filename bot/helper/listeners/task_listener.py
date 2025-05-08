@@ -422,7 +422,17 @@ class TaskListener(TaskConfig):
                 buttons.url_button("Go to Inbox", f"https://t.me/{Config.BOT_USERNAME.lstrip("@").strip()}")
                 button = buttons.build_menu(1)
 
-                await send_message(self.message, done_msg, button) if Config.BOT_USERNAME != '' else await send_message(self.message, done_msg + "\n\n<spoiler>Add bot username in botsettings to get an inbox button</spoiler>")
+                if not Config.BOT_USERNAME:
+                    await send_message(
+                        self.message,
+                        done_msg + "\n\n<spoiler>Add bot username in botsettings to get an inbox button</spoiler>"
+                    )
+                else:
+                    await send_message(
+                        self.message,
+                        done_msg,
+                        button
+                    )
         else:
             msg += f"\n\n<b>Type: </b>{mime_type}"
             if mime_type == "Folder":
