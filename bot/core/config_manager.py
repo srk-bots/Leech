@@ -22,7 +22,7 @@ class Config:
     JD_EMAIL: str = ""
     JD_PASS: str = ""
     IS_TEAM_DRIVE: bool = False
-    LEECH_DUMP_CHAT: str = ""
+    LEECH_DUMP_CHAT: ClassVar[list[str]] = []
     LEECH_FILENAME_PREFIX: str = ""
     LEECH_SPLIT_SIZE: int = 2097152000
     MEDIA_GROUP: bool = False

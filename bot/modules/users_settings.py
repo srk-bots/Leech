@@ -36,7 +36,6 @@ no_thumb = "https://graph.org/file/73ae908d18c6b38038071.jpg"
 leech_options = [
     "THUMBNAIL",
     "LEECH_SPLIT_SIZE",
-    # "LEECH_DUMP_CHAT",
     "LEECH_FILENAME_PREFIX",
     "LEECH_FILENAME_CAPTION",
     "THUMBNAIL_LAYOUT",
