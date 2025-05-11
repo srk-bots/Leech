@@ -345,10 +345,7 @@ class TaskConfig:
                 ) != self.get_config_path(self.up_dest):
                     raise ValueError("You must use the same config to clone!")
         else:
-            self.up_dest = (
-                self.up_dest
-                or Config.LEECH_DUMP_CHAT[0]
-            )
+            self.up_dest = self.up_dest or Config.LEECH_DUMP_CHAT[0]
             self.hybrid_leech = TgClient.IS_PREMIUM_USER and (
                 self.user_dict.get("HYBRID_LEECH")
                 or (Config.HYBRID_LEECH and "HYBRID_LEECH" not in self.user_dict)
