@@ -34,7 +34,7 @@ select = [
 
 # Ignored rules (with justifications)
 ignore = [
-    # "E501",     # line too long (handled by formatter like Black)
+    "E501",     # line too long (handled by formatter like Black)
     "F403",     # 'from module import *' used; sometimes intentional
     "N806",     # variable in function should be lowercase
     "N818",     # exception class names should end in 'Error'
@@ -62,6 +62,7 @@ max-complexity = 100
 
 [tool.ty]
 respect-ignore-files = false
+
 [tool.ty.rules]
 possibly-unresolved-reference = "warn"
 division-by-zero = "ignore"
