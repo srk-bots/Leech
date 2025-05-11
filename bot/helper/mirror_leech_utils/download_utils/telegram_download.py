@@ -1,18 +1,38 @@
-from asyncio import Lock, sleep
+from asyncio import Lock, create_task, sleep
 from secrets import token_hex
 from time import time
 
-from pyrogram.errors import FloodPremiumWait, FloodWait
+# Import errors from pyrogram/electrogram
+try:
+    from electrogram.errors import FloodPremiumWait, FloodWait, StopTransmissionError
+except ImportError:
+    try:
+        from pyrogram.errors import (
+            FloodPremiumWait,
+            FloodWait,
+            StopTransmissionError,
+        )
+    except ImportError:
+        from pyrogram.errors import FloodPremiumWait, FloodWait
+
+        StopTransmissionError = None
 
 from bot import LOGGER, task_dict, task_dict_lock
 from bot.core.aeon_client import TgClient
+from bot.core.config_manager import Config
+from bot.helper.ext_utils.hyperdl_utils import HyperTGDownload
+from bot.helper.ext_utils.limit_checker import limit_checker
 from bot.helper.ext_utils.task_manager import (
     check_running_tasks,
     stop_duplicate_check,
 )
 from bot.helper.mirror_leech_utils.status_utils.queue_status import QueueStatus
 from bot.helper.mirror_leech_utils.status_utils.telegram_status import TelegramStatus
-from bot.helper.telegram_helper.message_utils import send_status_message
+from bot.helper.telegram_helper.message_utils import (
+    auto_delete_message,
+    send_message,
+    send_status_message,
+)
 
 global_lock = Lock()
 GLOBAL_GID = set()
@@ -25,6 +45,9 @@ class TelegramDownloadHelper:
         self._listener = listener
         self._id = ""
         self.session = ""
+        self._hyper_dl = (
+            TgClient.are_helper_bots_available() and Config.LEECH_DUMP_CHAT
+        )
 
     @property
     def speed(self):
@@ -39,10 +62,12 @@ class TelegramDownloadHelper:
             GLOBAL_GID.add(file_id)
         self._id = file_id
         async with task_dict_lock:
+            # Convert file_id to string before slicing
+            file_id_str = str(file_id)
             task_dict[self._listener.mid] = TelegramStatus(
                 self._listener,
                 self,
-                file_id[:12],
+                file_id_str[:12],
                 "dl",
             )
         if not from_queue:
@@ -55,32 +80,96 @@ class TelegramDownloadHelper:
                 f"Start Queued Download from Telegram: {self._listener.name}",
             )
 
-    async def _on_download_progress(self, current, _):
+    async def _on_download_progress(self, current, total=None):
         if self._listener.is_cancelled:
-            self.session.stop_transmission()
+            # Handle different client implementations
+            if hasattr(self.session, "stop_transmission"):
+                self.session.stop_transmission()
+            elif hasattr(self.session, "cancel"):
+                self.session.cancel()
         self._processed_bytes = current
 
     async def _on_download_error(self, error):
         async with global_lock:
             if self._id in GLOBAL_GID:
                 GLOBAL_GID.remove(self._id)
-        await self._listener.on_download_error(error)
+        try:
+            await self._listener.on_download_error(error)
+        except Exception as e:
+            LOGGER.error(f"Failed to handle error through listener: {e!s}")
+            # Fallback error handling
+            error_msg = await send_message(
+                self._listener.message,
+                f"{self._listener.tag} {error}",
+            )
+            create_task(auto_delete_message(error_msg, time=300))  # noqa: RUF006
 
     async def _on_download_complete(self):
         await self._listener.on_download_complete()
         async with global_lock:
-            GLOBAL_GID.remove(self._id)
+            # Safely remove ID from GLOBAL_GID if it exists
+            if self._id in GLOBAL_GID:
+                GLOBAL_GID.remove(self._id)
+            else:
+                pass
 
     async def _download(self, message, path):
         try:
-            download = await message.download(
-                file_name=path,
-                progress=self._on_download_progress,
-            )
+            if self._hyper_dl:
+                try:
+                    # First check if the message has downloadable media
+                    media = (
+                        message.document
+                        or message.photo
+                        or message.video
+                        or message.audio
+                        or message.voice
+                        or message.video_note
+                        or message.sticker
+                        or message.animation
+                        or None
+                    )
+
+                    if not media:
+                        raise ValueError(
+                            "Message doesn't contain any downloadable media"
+                        )
+
+                    LOGGER.info(f"Using hyper download for {self._listener.name}")
+                    download = await HyperTGDownload().download_media(
+                        message,
+                        file_name=path,
+                        progress=self._on_download_progress,
+                        dump_chat=Config.LEECH_DUMP_CHAT,
+                    )
+                except ValueError as e:
+                    # This is a configuration or media error, log it as a warning
+                    LOGGER.warning(
+                        f"Hyper download error: {e!s}, falling back to normal download"
+                    )
+                    self._hyper_dl = False
+                    download = await message.download(
+                        file_name=path,
+                        progress=self._on_download_progress,
+                    )
+                except Exception as e:
+                    # This is an unexpected error
+                    LOGGER.warning(
+                        f"Hyper download failed: {e!s}, falling back to normal download"
+                    )
+                    download = await message.download(
+                        file_name=path,
+                        progress=self._on_download_progress,
+                    )
+            else:
+                download = await message.download(
+                    file_name=path,
+                    progress=self._on_download_progress,
+                )
+
             if self._listener.is_cancelled:
                 return
         except (FloodWait, FloodPremiumWait) as f:
-            LOGGER.warning(str(f))
             await sleep(f.value)
             await self._download(message, path)
             return
@@ -96,11 +185,57 @@ class TelegramDownloadHelper:
 
     async def add_download(self, message, path, session):
         self.session = session
-        if self.session != TgClient.bot:
-            message = await self.session.get_messages(
-                chat_id=message.chat.id,
-                message_ids=message.id,
-            )
+        if not self.session:
+            if self._hyper_dl:
+                self.session = "hbots"
+                LOGGER.info(f"Using helper bots for download: {self._listener.name}")
+            elif (
+                self._listener.user_transmission
+                and hasattr(self._listener, "is_super_chat")
+                and self._listener.is_super_chat
+            ):
+                self.session = TgClient.user
+                try:
+                    # Get the message by its ID with Electrogram compatibility
+                    try:
+                        message = await self.session.get_messages(
+                            chat_id=message.chat.id,
+                            message_ids=message.id,
+                        )
+                    except TypeError as e:
+                        # Handle case where get_messages has different parameters in Electrogram
+                        if "unexpected keyword argument" in str(e):
+                            # Try alternative approach for Electrogram
+                            message = await self.session.get_messages(
+                                message.chat.id,  # chat_id as positional argument
+                                message.id,  # message_ids as positional argument
+                            )
+                        else:
+                            raise
+                except Exception as e:
+                    LOGGER.warning(
+                        f"User session error: {e!s}, falling back to bot session"
+                    )
+                    self.session = TgClient.bot
+            else:
+                self.session = TgClient.bot
+        elif self.session != TgClient.bot:
+            # Get the message by its ID with Electrogram compatibility
+            try:
+                message = await self.session.get_messages(
+                    chat_id=message.chat.id,
+                    message_ids=message.id,
+                )
+            except TypeError as e:
+                # Handle case where get_messages has different parameters in Electrogram
+                if "unexpected keyword argument" in str(e):
+                    # Try alternative approach for Electrogram
+                    message = await self.session.get_messages(
+                        message.chat.id,  # chat_id as positional argument
+                        message.id,  # message_ids as positional argument
+                    )
+                else:
+                    raise
 
         media = (
             message.document
@@ -133,6 +268,20 @@ class TelegramDownloadHelper:
                 self._listener.size = media.file_size
                 gid = token_hex(4)
 
+                # Check size limits
+                if self._listener.size > 0:
+                    limit_msg = await limit_checker(
+                        self._listener.size,
+                        self._listener,
+                        isTorrent=False,
+                        isMega=False,
+                        isDriveLink=False,
+                        isYtdlp=False,
+                    )
+                    if limit_msg:
+                        await self._listener.on_download_error(limit_msg)
+                        return
+
                 msg, button = await stop_duplicate_check(self._listener)
                 if msg:
                     await self._listener.on_download_error(msg, button)
@@ -153,12 +302,29 @@ class TelegramDownloadHelper:
                     await event.wait()
                     if self._listener.is_cancelled:
                         async with global_lock:
+                            # Safely remove ID from GLOBAL_GID if it exists
                             if self._id in GLOBAL_GID:
                                 GLOBAL_GID.remove(self._id)
-                        return
+                            elif self._id:  # Only log if _id is not empty
+                                pass
+                            return
 
                 self._start_time = time()
                 await self._on_download_start(gid, add_to_queue)
+
+                # Check if helper bots are available and LEECH_DUMP_CHAT is set before starting download
+                if self._hyper_dl:
+                    if not TgClient.are_helper_bots_available():
+                        LOGGER.warning(
+                            "Helper bots not available, falling back to normal download"
+                        )
+                        self._hyper_dl = False
+                    elif not Config.LEECH_DUMP_CHAT:
+                        LOGGER.warning(
+                            "LEECH_DUMP_CHAT not set, falling back to normal download"
+                        )
+                        self._hyper_dl = False
+
                 await self._download(message, path)
             else:
                 await self._on_download_error("File already being downloaded!")

@@ -1,19 +1,46 @@
 from pyrogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 
+from bot import LOGGER
+from bot.helper.ext_utils.links_utils import is_url
+
 
 class ButtonMaker:
     def __init__(self):
         self._button = []
         self._header_button = []
         self._footer_button = []
+        self._page_button = []
 
     def url_button(self, key, link, position=None):
+        # Validate URL before creating button
+        if not link or not isinstance(link, str):
+            LOGGER.error(f"Invalid URL button: '{link}' is empty or not a string")
+            return self
+
+        # Ensure URL has a protocol (http:// or https://)
+        if not link.startswith(("http://", "https://", "tg://")):
+            if link.startswith("t.me/"):
+                link = "https://" + link
+            else:
+                LOGGER.error(
+                    f"Invalid URL button: '{link}' missing protocol (http:// or https://)"
+                )
+                return self
+
+        # Validate URL format
+        if not is_url(link) and not link.startswith("tg://"):
+            LOGGER.error(f"Invalid URL button: '{link}' has invalid format")
+            return self
+
+        # Create button with validated URL
         if not position:
             self._button.append(InlineKeyboardButton(text=key, url=link))
         elif position == "header":
             self._header_button.append(InlineKeyboardButton(text=key, url=link))
         elif position == "footer":
             self._footer_button.append(InlineKeyboardButton(text=key, url=link))
+
+        return self
 
     def data_button(self, key, data, position=None):
         if not position:
@@ -26,8 +53,13 @@ class ButtonMaker:
             self._footer_button.append(
                 InlineKeyboardButton(text=key, callback_data=data),
             )
+        elif position == "page":
+            self._page_button.append(
+                InlineKeyboardButton(text=key, callback_data=data),
+            )
+        return self
 
-    def build_menu(self, b_cols=1, h_cols=8, f_cols=8):
+    def build_menu(self, b_cols=1, h_cols=8, f_cols=8, p_cols=8):
         menu = [
             self._button[i : i + b_cols] for i in range(0, len(self._button), b_cols)
         ]
@@ -41,6 +73,15 @@ class ButtonMaker:
                 menu = header_buttons + menu
             else:
                 menu.insert(0, self._header_button)
+        if self._page_button:
+            if len(self._page_button) > p_cols:
+                page_buttons = [
+                    self._page_button[i : i + p_cols]
+                    for i in range(0, len(self._page_button), p_cols)
+                ]
+                menu.extend(page_buttons)
+            else:
+                menu.append(self._page_button)
         if self._footer_button:
             if len(self._footer_button) > f_cols:
                 [
@@ -55,3 +96,5 @@ class ButtonMaker:
         self._button = []
         self._header_button = []
         self._footer_button = []
+        self._page_button = []
+        return self

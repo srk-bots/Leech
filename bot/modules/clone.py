@@ -1,4 +1,4 @@
-from asyncio import gather
+from asyncio import create_task, gather
 from json import loads
 from secrets import token_hex
 
@@ -13,6 +13,7 @@ from bot.helper.ext_utils.bot_utils import (
     sync_to_async,
 )
 from bot.helper.ext_utils.exceptions import DirectDownloadLinkException
+from bot.helper.ext_utils.limit_checker import limit_checker
 from bot.helper.ext_utils.links_utils import (
     is_gdrive_id,
     is_gdrive_link,
@@ -72,7 +73,7 @@ class Clone(TaskListener):
         if error_msg:
             await delete_links(self.message)
             error = await send_message(self.message, error_msg, error_button)
-            return await auto_delete_message(error, time=300)
+            return create_task(auto_delete_message(error, time=300))
         args = {
             "link": "",
             "-i": 0,
@@ -119,12 +120,21 @@ class Clone(TaskListener):
         await self.run_multi(input_list, Clone)
 
         if len(self.link) == 0:
-            await send_message(
+            # When no valid link is provided, show usage menu and auto-delete after 5 minutes
+            usage_msg = await send_message(
                 self.message,
                 COMMAND_USAGE["clone"][0],
                 COMMAND_USAGE["clone"][1],
             )
+            create_task(auto_delete_message(usage_msg, time=300))  # noqa: RUF006
+            create_task(auto_delete_message(self.message, time=300))  # noqa: RUF006
+            if reply_to := self.message.reply_to_message:
+                create_task(auto_delete_message(reply_to, time=300))  # noqa: RUF006
             return None
+
+        # If we get here, it means we have a valid link, so delete command messages immediately
+        await delete_links(self.message)
+
         LOGGER.info(self.link)
         try:
             await self.before_start()
@@ -153,6 +163,23 @@ class Clone(TaskListener):
             if mime_type is None:
                 await send_message(self.message, self.name)
                 return
+
+            # Check size limits
+            if self.size > 0:
+                self.isClone = True  # Set isClone attribute for limit_checker
+                limit_msg = await limit_checker(
+                    self.size,
+                    self,
+                    isTorrent=False,
+                    isMega=False,
+                    isDriveLink=True,
+                    isYtdlp=False,
+                )
+                if limit_msg:
+                    # limit_msg is already a tuple with (message_object, error_message)
+                    # and the message has already been sent with the tag
+                    return
+
             msg, button = await stop_duplicate_check(self)
             if msg:
                 await send_message(self.message, msg, button)
@@ -237,6 +264,44 @@ class Clone(TaskListener):
                     if not self.name:
                         self.name = src_path.rsplit("/", 1)[-1]
                     mime_type = rstat["MimeType"]
+
+            # Get size for rclone path
+            cmd_size = [
+                "xone",
+                "size",
+                "--fast-list",
+                "--json",
+                "--config",
+                config_path,
+                f"{remote}:{src_path}",
+                "-v",
+                "--log-systemd",
+            ]
+            res_size = await cmd_exec(cmd_size)
+            if res_size[2] == 0:
+                try:
+                    rsize = loads(res_size[0])
+                    self.size = rsize["bytes"]
+
+                    # Check size limits
+                    if self.size > 0:
+                        self.isClone = (
+                            True  # Set isClone attribute for limit_checker
+                        )
+                        limit_msg = await limit_checker(
+                            self.size,
+                            self,
+                            isTorrent=False,
+                            isMega=False,
+                            isDriveLink=False,
+                            isYtdlp=False,
+                        )
+                        if limit_msg:
+                            # limit_msg is already a tuple with (message_object, error_message)
+                            # and the message has already been sent with the tag
+                            return
+                except Exception as e:
+                    LOGGER.error(f"Error parsing rclone size: {e}")
 
             await self.on_download_start()
 
@@ -332,4 +397,11 @@ class Clone(TaskListener):
 
 
 async def clone_node(client, message):
-    bot_loop.create_task(Clone(client, message).new_event())
+    """Clone a file/folder from Google Drive or Rclone path.
+
+    This function creates a task to handle the clone operation.
+    It's designed to be called from a command handler.
+    """
+    # Use create_task to avoid blocking the event loop
+    # We wrap this in a function to avoid running asyncio code during import
+    return bot_loop.create_task(Clone(client, message).new_event())

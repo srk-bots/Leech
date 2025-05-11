@@ -10,14 +10,25 @@ RcloneServe = []
 
 
 async def rclone_serve_booter():
-    if not Config.RCLONE_SERVE_URL or not await aiopath.exists("rclone.conf"):
-        if RcloneServe:
-            try:
-                RcloneServe[0].kill()
-                RcloneServe.clear()
-            except Exception:
-                pass
+    # First, kill any existing rclone serve processes
+    if RcloneServe:
+        try:
+            RcloneServe[0].kill()
+            RcloneServe.clear()
+        except Exception:
+            pass
+
+    # Check if rclone serve is disabled (RCLONE_SERVE_PORT = 0)
+    if Config.RCLONE_SERVE_PORT == 0:
+        from bot import LOGGER
+
+        LOGGER.info("Rclone HTTP server is disabled (RCLONE_SERVE_PORT = 0)")
         return
+
+    # Check if required configuration is available
+    if not Config.RCLONE_SERVE_URL or not await aiopath.exists("rclone.conf"):
+        return
+
     config = RawConfigParser()
     async with aiopen("rclone.conf") as f:
         contents = await f.read()
@@ -29,12 +40,11 @@ async def rclone_serve_booter():
         config.set("combine", "upstreams", upstreams)
         async with aiopen("rclone.conf", "w") as f:
             config.write(f, space_around_delimiters=False)
-    if RcloneServe:
-        try:
-            RcloneServe[0].kill()
-            RcloneServe.clear()
-        except Exception:
-            pass
+
+    # Start rclone serve
+    from bot import LOGGER
+
+    LOGGER.info(f"Starting rclone HTTP server on port {Config.RCLONE_SERVE_PORT}")
     cmd = [
         "xone",
         "serve",

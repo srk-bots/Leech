@@ -17,17 +17,26 @@ class Config:
     FFMPEG_CMDS: ClassVar[dict[str, list[str]]] = {}
     FILELION_API: str = ""
     GDRIVE_ID: str = ""
+    HELPER_TOKENS: str = ""
+    HYPER_THREADS: int = 0
     INCOMPLETE_TASK_NOTIFIER: bool = False
     INDEX_URL: str = ""
+    IMDB_TEMPLATE: str = ""
     JD_EMAIL: str = ""
     JD_PASS: str = ""
     IS_TEAM_DRIVE: bool = False
     LEECH_DUMP_CHAT: ClassVar[list[str]] = []
     LEECH_FILENAME_PREFIX: str = ""
+    LEECH_SUFFIX: str = ""
+    LEECH_FONT: str = ""
+    LEECH_FILENAME: str = ""
     LEECH_SPLIT_SIZE: int = 2097152000
+    EQUAL_SPLITS: bool = False
+    LOGIN_PASS: str = ""
     MEDIA_GROUP: bool = False
     HYBRID_LEECH: bool = False
-    NAME_SUBSTITUTE: str = ""
+    MUSIC_SEARCH_CHATS: ClassVar[list] = []
+    NAME_SUBSTITUTE: str = r""
     OWNER_ID: int = 0
     QUEUE_ALL: int = 0
     QUEUE_DOWNLOAD: int = 0
@@ -60,8 +69,27 @@ class Config:
     YT_DLP_OPTIONS: ClassVar[dict[str, Any]] = {}
 
     # INKYPINKY
-    METADATA_KEY: str = ""
-    WATERMARK_KEY: str = ""
+    # Global metadata settings
+    METADATA_KEY: str = ""  # Legacy metadata key
+    METADATA_ALL: str = ""  # Global metadata for all fields
+    METADATA_TITLE: str = ""  # Global title metadata
+    METADATA_AUTHOR: str = ""  # Global author metadata
+    METADATA_COMMENT: str = ""  # Global comment metadata
+
+    # Video track metadata
+    METADATA_VIDEO_TITLE: str = ""  # Video track title metadata
+    METADATA_VIDEO_AUTHOR: str = ""  # Video track author metadata
+    METADATA_VIDEO_COMMENT: str = ""  # Video track comment metadata
+
+    # Audio track metadata
+    METADATA_AUDIO_TITLE: str = ""  # Audio track title metadata
+    METADATA_AUDIO_AUTHOR: str = ""  # Audio track author metadata
+    METADATA_AUDIO_COMMENT: str = ""  # Audio track comment metadata
+
+    # Subtitle track metadata
+    METADATA_SUBTITLE_TITLE: str = ""  # Subtitle track title metadata
+    METADATA_SUBTITLE_AUTHOR: str = ""  # Subtitle track author metadata
+    METADATA_SUBTITLE_COMMENT: str = ""  # Subtitle track comment metadata
     SET_COMMANDS: bool = True
     TOKEN_TIMEOUT: int = 0
     PAID_CHANNEL_ID: int = 0
@@ -73,6 +101,427 @@ class Config:
     HYDRA_IP: str = ""
     HYDRA_API_KEY: str = ""
     INSTADL_API: str = ""
+    MEDIA_STORE: bool = False
+
+    # Media Tools Settings
+    MEDIA_TOOLS_ENABLED: bool = True
+    MEDIAINFO_ENABLED: bool = False
+
+    # Compression Settings
+    COMPRESSION_ENABLED: bool = False
+    COMPRESSION_PRIORITY: int = 4
+    COMPRESSION_DELETE_ORIGINAL: bool = True
+
+    # Video Compression Settings
+    COMPRESSION_VIDEO_ENABLED: bool = False
+    COMPRESSION_VIDEO_PRESET: str = "none"  # none, fast, medium, slow
+    COMPRESSION_VIDEO_CRF: str = "none"
+    COMPRESSION_VIDEO_CODEC: str = "none"
+    COMPRESSION_VIDEO_TUNE: str = "none"
+    COMPRESSION_VIDEO_PIXEL_FORMAT: str = "none"
+    COMPRESSION_VIDEO_BITDEPTH: str = "none"
+    COMPRESSION_VIDEO_BITRATE: str = "none"
+    COMPRESSION_VIDEO_RESOLUTION: str = "none"
+    COMPRESSION_VIDEO_FORMAT: str = (
+        "none"  # Output format for video compression (e.g., mp4, mkv)
+    )
+
+    # Audio Compression Settings
+    COMPRESSION_AUDIO_ENABLED: bool = False
+    COMPRESSION_AUDIO_PRESET: str = "none"  # none, fast, medium, slow
+    COMPRESSION_AUDIO_CODEC: str = "none"
+    COMPRESSION_AUDIO_BITRATE: str = "none"
+    COMPRESSION_AUDIO_CHANNELS: str = "none"
+    COMPRESSION_AUDIO_BITDEPTH: str = "none"
+    COMPRESSION_AUDIO_FORMAT: str = (
+        "none"  # Output format for audio compression (e.g., mp3, aac)
+    )
+
+    # Image Compression Settings
+    COMPRESSION_IMAGE_ENABLED: bool = False
+    COMPRESSION_IMAGE_PRESET: str = "none"  # none, fast, medium, slow
+    COMPRESSION_IMAGE_QUALITY: str = "none"
+    COMPRESSION_IMAGE_RESIZE: str = "none"
+    COMPRESSION_IMAGE_FORMAT: str = (
+        "none"  # Output format for image compression (e.g., jpg, png)
+    )
+
+    # Document Compression Settings
+    COMPRESSION_DOCUMENT_ENABLED: bool = False
+    COMPRESSION_DOCUMENT_PRESET: str = "none"  # none, fast, medium, slow
+    COMPRESSION_DOCUMENT_DPI: str = "none"
+    COMPRESSION_DOCUMENT_FORMAT: str = (
+        "none"  # Output format for document compression (e.g., pdf)
+    )
+
+    # Subtitle Compression Settings
+    COMPRESSION_SUBTITLE_ENABLED: bool = False
+    COMPRESSION_SUBTITLE_PRESET: str = "none"  # none, fast, medium, slow
+    COMPRESSION_SUBTITLE_ENCODING: str = "none"
+    COMPRESSION_SUBTITLE_FORMAT: str = (
+        "none"  # Output format for subtitle compression (e.g., srt)
+    )
+
+    # Archive Compression Settings
+    COMPRESSION_ARCHIVE_ENABLED: bool = False
+    COMPRESSION_ARCHIVE_PRESET: str = "none"  # none, fast, medium, slow
+    COMPRESSION_ARCHIVE_LEVEL: str = "none"
+    COMPRESSION_ARCHIVE_METHOD: str = "none"
+    COMPRESSION_ARCHIVE_FORMAT: str = (
+        "none"  # Output format for archive compression (e.g., zip, 7z)
+    )
+
+    # Trim Settings
+    TRIM_ENABLED: bool = False
+    TRIM_PRIORITY: int = 5
+    TRIM_START_TIME: str = "00:00:00"
+    TRIM_END_TIME: str = ""
+    TRIM_DELETE_ORIGINAL: bool = False
+
+    # Video Trim Settings
+    TRIM_VIDEO_ENABLED: bool = False
+    TRIM_VIDEO_CODEC: str = "none"  # none, copy, libx264, etc.
+    TRIM_VIDEO_PRESET: str = "none"  # none, fast, medium, slow
+    TRIM_VIDEO_FORMAT: str = (
+        "none"  # Output format for video trimming (e.g., mp4, mkv)
+    )
+
+    # Audio Trim Settings
+    TRIM_AUDIO_ENABLED: bool = False
+    TRIM_AUDIO_CODEC: str = "none"  # none, copy, aac, etc.
+    TRIM_AUDIO_PRESET: str = "none"  # none, fast, medium, slow
+    TRIM_AUDIO_FORMAT: str = (
+        "none"  # Output format for audio trimming (e.g., mp3, aac)
+    )
+
+    # Image Trim Settings
+    TRIM_IMAGE_ENABLED: bool = False
+    TRIM_IMAGE_QUALITY: int = 90
+    TRIM_IMAGE_FORMAT: str = (
+        "none"  # Output format for image trimming (e.g., jpg, png)
+    )
+
+    # Document Trim Settings
+    TRIM_DOCUMENT_ENABLED: bool = False
+    TRIM_DOCUMENT_QUALITY: int = 90
+    TRIM_DOCUMENT_FORMAT: str = (
+        "none"  # Output format for document trimming (e.g., pdf)
+    )
+
+    # Subtitle Trim Settings
+    TRIM_SUBTITLE_ENABLED: bool = False
+    TRIM_SUBTITLE_ENCODING: str = "none"
+    TRIM_SUBTITLE_FORMAT: str = (
+        "none"  # Output format for subtitle trimming (e.g., srt)
+    )
+
+    # Archive Trim Settings
+    TRIM_ARCHIVE_ENABLED: bool = False
+    TRIM_ARCHIVE_FORMAT: str = (
+        "none"  # Output format for archive trimming (e.g., zip, 7z)
+    )
+
+    # Extract Settings
+    EXTRACT_ENABLED: bool = False
+    EXTRACT_PRIORITY: int = 6
+    EXTRACT_DELETE_ORIGINAL: bool = True
+
+    # Video Extract Settings
+    EXTRACT_VIDEO_ENABLED: bool = False
+    EXTRACT_VIDEO_CODEC: str = "none"
+    EXTRACT_VIDEO_FORMAT: str = (
+        "none"  # Output format for video extraction (e.g., mp4, mkv)
+    )
+    EXTRACT_VIDEO_INDEX: int | None = None
+    EXTRACT_VIDEO_QUALITY: str = (
+        "none"  # Quality setting for video extraction (e.g., crf value)
+    )
+    EXTRACT_VIDEO_PRESET: str = (
+        "none"  # Preset for video encoding (e.g., medium, slow)
+    )
+    EXTRACT_VIDEO_BITRATE: str = "none"  # Bitrate for video encoding (e.g., 5M)
+    EXTRACT_VIDEO_RESOLUTION: str = (
+        "none"  # Resolution for video extraction (e.g., 1920x1080)
+    )
+    EXTRACT_VIDEO_FPS: str = "none"  # Frame rate for video extraction (e.g., 30)
+
+    # Audio Extract Settings
+    EXTRACT_AUDIO_ENABLED: bool = False
+    EXTRACT_AUDIO_CODEC: str = "none"
+    EXTRACT_AUDIO_FORMAT: str = (
+        "none"  # Output format for audio extraction (e.g., mp3, aac)
+    )
+    EXTRACT_AUDIO_INDEX: int | None = None
+    EXTRACT_AUDIO_BITRATE: str = "none"  # Bitrate for audio encoding (e.g., 320k)
+    EXTRACT_AUDIO_CHANNELS: str = "none"  # Number of audio channels (e.g., 2)
+    EXTRACT_AUDIO_SAMPLING: str = "none"  # Sampling rate for audio (e.g., 48000)
+    EXTRACT_AUDIO_VOLUME: str = "none"  # Volume adjustment for audio (e.g., 1.5)
+
+    # Subtitle Extract Settings
+    EXTRACT_SUBTITLE_ENABLED: bool = False
+    EXTRACT_SUBTITLE_CODEC: str = "none"
+    EXTRACT_SUBTITLE_FORMAT: str = (
+        "none"  # Output format for subtitle extraction (e.g., srt, ass)
+    )
+    EXTRACT_SUBTITLE_INDEX: int | None = None
+    EXTRACT_SUBTITLE_LANGUAGE: str = (
+        "none"  # Language code for subtitle extraction (e.g., eng)
+    )
+    EXTRACT_SUBTITLE_ENCODING: str = (
+        "none"  # Character encoding for subtitles (e.g., UTF-8)
+    )
+    EXTRACT_SUBTITLE_FONT: str = (
+        "none"  # Font for subtitles (for formats that support it)
+    )
+    EXTRACT_SUBTITLE_FONT_SIZE: str = "none"  # Font size for subtitles
+
+    # Attachment Extract Settings
+    EXTRACT_ATTACHMENT_ENABLED: bool = False
+    EXTRACT_ATTACHMENT_FORMAT: str = (
+        "none"  # Output format for attachment extraction (e.g., png, jpg)
+    )
+    EXTRACT_ATTACHMENT_INDEX: int | None = None
+    EXTRACT_ATTACHMENT_FILTER: str = (
+        "none"  # Filter for attachment extraction (e.g., *.ttf)
+    )
+
+    # Extract Quality Settings
+    EXTRACT_MAINTAIN_QUALITY: bool = True
+
+    # Add Settings
+    ADD_ENABLED: bool = False
+    ADD_PRIORITY: int = 7
+    ADD_DELETE_ORIGINAL: bool = True
+    ADD_PRESERVE_TRACKS: bool = False
+    ADD_REPLACE_TRACKS: bool = False
+
+    # Video Add Settings
+    ADD_VIDEO_ENABLED: bool = False
+    ADD_VIDEO_CODEC: str = "copy"
+    ADD_VIDEO_INDEX: int | None = None
+    ADD_VIDEO_QUALITY: str = "none"
+    ADD_VIDEO_PRESET: str = "none"
+    ADD_VIDEO_BITRATE: str = "none"
+    ADD_VIDEO_RESOLUTION: str = "none"
+    ADD_VIDEO_FPS: str = "none"
+
+    # Audio Add Settings
+    ADD_AUDIO_ENABLED: bool = False
+    ADD_AUDIO_CODEC: str = "copy"
+    ADD_AUDIO_INDEX: int | None = None
+    ADD_AUDIO_BITRATE: str = "none"
+    ADD_AUDIO_CHANNELS: str = "none"
+    ADD_AUDIO_SAMPLING: str = "none"
+    ADD_AUDIO_VOLUME: str = "none"
+
+    # Subtitle Add Settings
+    ADD_SUBTITLE_ENABLED: bool = False
+    ADD_SUBTITLE_CODEC: str = "copy"
+    ADD_SUBTITLE_INDEX: int | None = None
+    ADD_SUBTITLE_LANGUAGE: str = "none"
+    ADD_SUBTITLE_ENCODING: str = "none"
+    ADD_SUBTITLE_FONT: str = "none"
+    ADD_SUBTITLE_FONT_SIZE: str = "none"
+
+    # Attachment Add Settings
+    ADD_ATTACHMENT_ENABLED: bool = False
+    ADD_ATTACHMENT_INDEX: int | None = None
+    ADD_ATTACHMENT_MIMETYPE: str = "none"
+
+    # Convert Settings
+    CONVERT_ENABLED: bool = False
+    CONVERT_PRIORITY: int = 3
+    CONVERT_DELETE_ORIGINAL: bool = True
+
+    # Video Convert Settings
+    CONVERT_VIDEO_ENABLED: bool = False
+    CONVERT_VIDEO_FORMAT: str = "none"
+    CONVERT_VIDEO_CODEC: str = "none"
+    CONVERT_VIDEO_QUALITY: str = "none"
+    CONVERT_VIDEO_CRF: int = 0
+    CONVERT_VIDEO_PRESET: str = "none"
+    CONVERT_VIDEO_MAINTAIN_QUALITY: bool = True
+    CONVERT_VIDEO_RESOLUTION: str = "none"
+    CONVERT_VIDEO_FPS: str = "none"
+
+    # Audio Convert Settings
+    CONVERT_AUDIO_ENABLED: bool = False
+    CONVERT_AUDIO_FORMAT: str = "none"
+    CONVERT_AUDIO_CODEC: str = "none"
+    CONVERT_AUDIO_BITRATE: str = "none"
+    CONVERT_AUDIO_CHANNELS: int = 0
+    CONVERT_AUDIO_SAMPLING: int = 0
+    CONVERT_AUDIO_VOLUME: float = 0.0
+
+    # Subtitle Convert Settings
+    CONVERT_SUBTITLE_ENABLED: bool = False
+    CONVERT_SUBTITLE_FORMAT: str = "none"
+    CONVERT_SUBTITLE_ENCODING: str = "none"
+    CONVERT_SUBTITLE_LANGUAGE: str = "none"
+
+    # Document Convert Settings
+    CONVERT_DOCUMENT_ENABLED: bool = False
+    CONVERT_DOCUMENT_FORMAT: str = "none"
+    CONVERT_DOCUMENT_QUALITY: int = 0
+    CONVERT_DOCUMENT_DPI: int = 0
+
+    # Archive Convert Settings
+    CONVERT_ARCHIVE_ENABLED: bool = False
+    CONVERT_ARCHIVE_FORMAT: str = "none"
+    CONVERT_ARCHIVE_LEVEL: int = 0
+    CONVERT_ARCHIVE_METHOD: str = "none"
+
+    # Watermark Settings
+    WATERMARK_ENABLED: bool = False
+    WATERMARK_KEY: str = ""
+    WATERMARK_POSITION: str = "none"
+    WATERMARK_SIZE: int = 0
+    WATERMARK_COLOR: str = "none"
+    WATERMARK_FONT: str = "none"
+    WATERMARK_PRIORITY: int = 2
+    WATERMARK_THREADING: bool = True
+    WATERMARK_THREAD_NUMBER: int = 4
+    WATERMARK_QUALITY: str = "none"
+    WATERMARK_SPEED: str = "none"
+    WATERMARK_OPACITY: float = 0.0
+    WATERMARK_REMOVE_ORIGINAL: bool = True
+
+    # Audio Watermark Settings
+    AUDIO_WATERMARK_VOLUME: float = 0.0
+    AUDIO_WATERMARK_INTERVAL: int = 0
+
+    # Subtitle Watermark Settings
+    SUBTITLE_WATERMARK_STYLE: str = "none"
+    SUBTITLE_WATERMARK_INTERVAL: int = 0
+
+    # Image Watermark Settings
+    IMAGE_WATERMARK_ENABLED: bool = False
+    IMAGE_WATERMARK_PATH: str = ""
+    IMAGE_WATERMARK_SCALE: int = 10
+    IMAGE_WATERMARK_OPACITY: float = 1.0
+    IMAGE_WATERMARK_POSITION: str = "bottom_right"
+
+    # Merge Settings
+    MERGE_ENABLED: bool = False
+    MERGE_PRIORITY: int = 1
+    MERGE_THREADING: bool = True
+    MERGE_THREAD_NUMBER: int = 4
+    CONCAT_DEMUXER_ENABLED: bool = True
+    FILTER_COMPLEX_ENABLED: bool = False
+
+    # Output formats
+    MERGE_OUTPUT_FORMAT_VIDEO: str = "none"
+    MERGE_OUTPUT_FORMAT_AUDIO: str = "none"
+    MERGE_OUTPUT_FORMAT_IMAGE: str = "none"
+    MERGE_OUTPUT_FORMAT_DOCUMENT: str = "none"
+    MERGE_OUTPUT_FORMAT_SUBTITLE: str = "none"
+
+    # Video settings
+    MERGE_VIDEO_CODEC: str = "none"
+    MERGE_VIDEO_QUALITY: str = "none"
+    MERGE_VIDEO_PRESET: str = "none"
+    MERGE_VIDEO_CRF: str = "none"
+    MERGE_VIDEO_PIXEL_FORMAT: str = "none"
+    MERGE_VIDEO_TUNE: str = "none"
+    MERGE_VIDEO_FASTSTART: bool = False
+
+    # Audio settings
+    MERGE_AUDIO_CODEC: str = "none"
+    MERGE_AUDIO_BITRATE: str = "none"
+    MERGE_AUDIO_CHANNELS: str = "none"
+    MERGE_AUDIO_SAMPLING: str = "none"
+    MERGE_AUDIO_VOLUME: str = "none"
+
+    # Image settings
+    MERGE_IMAGE_MODE: str = "none"
+    MERGE_IMAGE_COLUMNS: str = "none"
+    MERGE_IMAGE_QUALITY: int = 0
+    MERGE_IMAGE_DPI: str = "none"
+    MERGE_IMAGE_RESIZE: str = "none"
+    MERGE_IMAGE_BACKGROUND: str = "none"
+
+    # Subtitle settings
+    MERGE_SUBTITLE_ENCODING: str = "none"
+    MERGE_SUBTITLE_FONT: str = "none"
+    MERGE_SUBTITLE_FONT_SIZE: str = "none"
+    MERGE_SUBTITLE_FONT_COLOR: str = "none"
+    MERGE_SUBTITLE_BACKGROUND: str = "none"
+
+    # Document settings
+    MERGE_DOCUMENT_PAPER_SIZE: str = "none"
+    MERGE_DOCUMENT_ORIENTATION: str = "none"
+    MERGE_DOCUMENT_MARGIN: str = "none"
+
+    # General settings
+    MERGE_REMOVE_ORIGINAL: bool = True
+    MERGE_METADATA_TITLE: str = "none"
+    MERGE_METADATA_AUTHOR: str = "none"
+    MERGE_METADATA_COMMENT: str = "none"
+
+    # Resource Management Settings
+    PIL_MEMORY_LIMIT: int = 2048
+
+    # Auto Restart Settings
+    AUTO_RESTART_ENABLED: bool = False
+    AUTO_RESTART_INTERVAL: int = 24  # in hours
+
+    # Task Monitoring Settings
+    TASK_MONITOR_ENABLED: bool = True
+    TASK_MONITOR_INTERVAL: int = 60  # in seconds
+    TASK_MONITOR_CONSECUTIVE_CHECKS: int = 3
+    TASK_MONITOR_SPEED_THRESHOLD: int = 50  # in KB/s
+    TASK_MONITOR_ELAPSED_THRESHOLD: int = 3600  # in seconds (1 hour)
+    TASK_MONITOR_ETA_THRESHOLD: int = 86400  # in seconds (24 hours)
+    TASK_MONITOR_WAIT_TIME: int = 600  # in seconds (10 minutes)
+    TASK_MONITOR_COMPLETION_THRESHOLD: int = 14400  # in seconds (4 hours)
+    TASK_MONITOR_CPU_HIGH: int = 90  # percentage
+    TASK_MONITOR_CPU_LOW: int = 40  # percentage
+    TASK_MONITOR_MEMORY_HIGH: int = 75  # percentage
+    TASK_MONITOR_MEMORY_LOW: int = 60  # percentage
+
+    # Limits Settings
+    STORAGE_THRESHOLD: float = 0  # GB
+    TORRENT_LIMIT: float = 0  # GB
+    DIRECT_LIMIT: float = 0  # GB
+    YTDLP_LIMIT: float = 0  # GB
+    GDRIVE_LIMIT: float = 0  # GB
+    CLONE_LIMIT: float = 0  # GB
+    MEGA_LIMIT: float = 0  # GB
+    LEECH_LIMIT: float = 0  # GB
+    JD_LIMIT: float = 0  # GB
+    NZB_LIMIT: float = 0  # GB
+    PLAYLIST_LIMIT: int = 0  # Number of videos
+    DAILY_TASK_LIMIT: int = 0  # Number of tasks per day
+    DAILY_MIRROR_LIMIT: float = 0  # GB per day
+    DAILY_LEECH_LIMIT: float = 0  # GB per day
+    USER_MAX_TASKS: int = 0  # Maximum concurrent tasks per user
+    USER_TIME_INTERVAL: int = 0  # Seconds between tasks
+    BOT_MAX_TASKS: int = (
+        0  # Maximum number of concurrent tasks the bot can handle (0 = unlimited)
+    )
+    STATUS_LIMIT: int = 10  # Number of tasks to display in status message
+    SEARCH_LIMIT: int = (
+        0  # Maximum number of search results to display (0 = unlimited)
+    )
+    SHOW_CLOUD_LINK: bool = True  # Show cloud links in upload completion message
+
+    # Truecaller API Settings
+    TRUECALLER_API_URL: str = ""
+
+    # Extra Modules Settings
+    ENABLE_EXTRA_MODULES: bool = True
+
+    # AI Settings
+    # Default AI Provider (mistral, deepseek)
+    DEFAULT_AI_PROVIDER: str = "mistral"
+
+    # Mistral AI Settings
+    MISTRAL_API_KEY: str = ""
+    MISTRAL_API_URL: str = ""
+
+    # DeepSeek AI Settings
+    DEEPSEEK_API_KEY: str = ""
+    DEEPSEEK_API_URL: str = ""
 
     @classmethod
     def get(cls, key):
@@ -103,7 +552,15 @@ class Config:
             for attr in dir(settings):
                 if hasattr(cls, attr):
                     value = getattr(settings, attr)
-                    if not value:
+                    if value is None:  # Skip None values
+                        continue
+                    # Special handling for BASE_URL_PORT and RCLONE_SERVE_PORT
+                    # to ensure 0 values are properly processed
+                    if attr in ["BASE_URL_PORT", "RCLONE_SERVE_PORT"] and value == 0:
+                        setattr(cls, attr, 0)
+                        continue
+                    # Skip other falsy values
+                    if not value and not isinstance(value, int | float | bool):
                         continue
                     if isinstance(value, str):
                         value = value.strip()
@@ -125,6 +582,14 @@ class Config:
                                 continue
                         except Exception:
                             continue
+                    # Convert integer limit values to float
+                    elif (
+                        attr.endswith("_LIMIT")
+                        and not attr.startswith("PLAYLIST")
+                        and not attr.startswith("DAILY_TASK")
+                        and isinstance(value, int)
+                    ):
+                        value = float(value)
                     setattr(cls, attr, value)
 
     @classmethod
@@ -149,6 +614,14 @@ class Config:
                             value = []
                     except Exception:
                         value = []
+                # Convert integer limit values to float
+                elif (
+                    key.endswith("_LIMIT")
+                    and not key.startswith("PLAYLIST")
+                    and not key.startswith("DAILY_TASK")
+                    and isinstance(value, int)
+                ):
+                    value = float(value)
                 setattr(cls, key, value)
 
 
@@ -171,6 +644,17 @@ class SystemEnv:
 
         if isinstance(original_value, bool):
             return value.lower() in ("true", "1", "yes")
+
+        # Special handling for limit values - convert to float
+        if (
+            key.endswith("_LIMIT")
+            and not key.startswith("PLAYLIST")
+            and not key.startswith("DAILY_TASK")
+        ):
+            try:
+                return float(value)
+            except ValueError:
+                return original_value
 
         if isinstance(original_value, int):
             try:

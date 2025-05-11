@@ -87,7 +87,9 @@ async def select(_, message):
         await send_message(message, "This is not a bittorrent or sabnzbd task!")
         return
 
-    SBUTTONS = bt_selection_buttons(id_)
+    # Ensure id_ is a string before passing to bt_selection_buttons
+    id_str = str(id_)
+    SBUTTONS = bt_selection_buttons(id_str)
     msg = "Your download paused. Choose files then press Done Selecting button to resume downloading."
     await send_message(message, msg, SBUTTONS)
 

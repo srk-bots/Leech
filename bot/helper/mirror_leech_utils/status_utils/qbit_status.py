@@ -86,7 +86,9 @@ class QbittorrentStatus:
         return self
 
     def gid(self):
-        return self.hash()[:12]
+        # Convert hash to string before slicing
+        hash_str = str(self.hash())
+        return hash_str[:12]
 
     def hash(self):
         return self._info.hash

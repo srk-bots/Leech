@@ -6,6 +6,7 @@ from aiofiles.os import remove
 
 from bot import LOGGER, task_dict, task_dict_lock
 from bot.helper.ext_utils.bot_utils import cmd_exec
+from bot.helper.ext_utils.limit_checker import limit_checker
 from bot.helper.ext_utils.task_manager import (
     check_running_tasks,
     stop_duplicate_check,
@@ -96,6 +97,20 @@ async def add_rclone_download(listener, path):
             listener.name = listener.link.rsplit("/", 1)[-1]
     listener.size = rsize["bytes"]
     gid = token_hex(4)
+
+    # Check size limits
+    if listener.size > 0:
+        limit_msg = await limit_checker(
+            listener.size,
+            listener,
+            isTorrent=False,
+            isMega=False,
+            isDriveLink=False,
+            isYtdlp=False,
+        )
+        if limit_msg:
+            await listener.on_download_error(limit_msg)
+            return
 
     if not rclone_select:
         msg, button = await stop_duplicate_check(listener)

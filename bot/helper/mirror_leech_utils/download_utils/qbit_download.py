@@ -1,16 +1,19 @@
+import re
 from asyncio import sleep
+from asyncio.exceptions import TimeoutError
 
 from aiofiles import open as aiopen
 from aiofiles.os import path as aiopath
 from aiofiles.os import remove
 from aiohttp.client_exceptions import ClientError
-from aioqbt.api import AddFormBuilder
+from aioqbt.api import AddFormBuilder  # type: ignore
 from aioqbt.exc import AQError
 
 from bot import LOGGER, qb_torrents, task_dict, task_dict_lock
 from bot.core.config_manager import Config
 from bot.core.torrent_manager import TorrentManager
 from bot.helper.ext_utils.bot_utils import bt_selection_buttons
+from bot.helper.ext_utils.limit_checker import limit_checker
 from bot.helper.ext_utils.task_manager import check_running_tasks
 from bot.helper.listeners.qbit_listener import on_download_start
 from bot.helper.mirror_leech_utils.status_utils.qbit_status import QbittorrentStatus
@@ -39,14 +42,45 @@ async def add_qb_torrent(listener, path, ratio, seed_time):
         if seed_time:
             form = form.seeding_time_limit(int(seed_time))
         try:
+            # First check if the torrent is already added
+            if listener.link.startswith("magnet:"):
+                # Extract hash from magnet link
+                magnet_hash = None
+                if match := re.search(r"xt=urn:btih:([^&]+)&", listener.link + "&"):
+                    magnet_hash = match.group(1).lower()
+
+                if magnet_hash:
+                    # Check if torrent with this hash already exists
+                    existing_torrents = (
+                        await TorrentManager.qbittorrent.torrents.info()
+                    )
+                    for torrent in existing_torrents:
+                        if torrent.hash.lower() == magnet_hash:
+                            await listener.on_download_error(
+                                f"This torrent is already being processed! Hash: {magnet_hash}",
+                            )
+                            return
+
+            # Add the torrent if it doesn't exist
             await TorrentManager.qbittorrent.torrents.add(form.build())
         except (ClientError, TimeoutError, Exception, AQError) as e:
+            error_msg = str(e)
+            if "Fails" in error_msg:
+                error_msg = "Already added torrent or unsupported link/file type!"
             LOGGER.error(
-                f"{e}. {listener.mid}. Already added torrent or unsupported link/file type!",
+                f"AddTorrentError (ClientError): {error_msg}. {listener.mid}",
             )
-            await listener.on_download_error(
-                f"{e}. {listener.mid}. Already added torrent or unsupported link/file type!",
-            )
+            await listener.on_download_error(f"{error_msg}. {listener.mid}")
+            return
+        except TimeoutError as e:
+            error_msg = "Connection timed out while adding torrent"
+            LOGGER.error(f"AddTorrentError (TimeoutError): {e}. {listener.mid}")
+            await listener.on_download_error(f"{error_msg}. {listener.mid}")
+            return
+        except Exception as e:
+            error_msg = str(e)
+            LOGGER.error(f"AddTorrentError (Exception): {error_msg}. {listener.mid}")
+            await listener.on_download_error(f"{error_msg}. {listener.mid}")
             return
         tor_info = await TorrentManager.qbittorrent.torrents.info(
             tag=f"{listener.mid}",
@@ -64,6 +98,22 @@ async def add_qb_torrent(listener, path, ratio, seed_time):
         tor_info = tor_info[0]
         listener.name = tor_info.name
         ext_hash = tor_info.hash
+
+        # Check size limits
+        size = tor_info.size
+        if size > 0:
+            limit_msg = await limit_checker(
+                size,
+                listener,
+                isTorrent=True,
+                isMega=False,
+                isDriveLink=False,
+                isYtdlp=False,
+            )
+            if limit_msg:
+                await TorrentManager.qbittorrent.torrents.delete([ext_hash], True)
+                await listener.on_download_error(limit_msg)
+                return
 
         async with task_dict_lock:
             task_dict[listener.mid] = QbittorrentStatus(
@@ -129,7 +179,18 @@ async def add_qb_torrent(listener, path, ratio, seed_time):
     except (ClientError, TimeoutError, Exception, AQError) as e:
         if f"{listener.mid}" in qb_torrents:
             del qb_torrents[f"{listener.mid}"]
-        await listener.on_download_error(f"{e}")
+        LOGGER.error(f"QBit ClientError: {e}. {listener.mid}")
+        await listener.on_download_error(f"Connection error: {e}")
+    except TimeoutError as e:
+        if f"{listener.mid}" in qb_torrents:
+            del qb_torrents[f"{listener.mid}"]
+        LOGGER.error(f"QBit TimeoutError: {e}. {listener.mid}")
+        await listener.on_download_error("Connection timed out")
+    except Exception as e:
+        if f"{listener.mid}" in qb_torrents:
+            del qb_torrents[f"{listener.mid}"]
+        LOGGER.error(f"QBit Exception: {e}. {listener.mid}")
+        await listener.on_download_error(f"Error: {e}")
     finally:
         if await aiopath.exists(listener.link):
             await remove(listener.link)

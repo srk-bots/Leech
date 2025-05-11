@@ -14,6 +14,9 @@ class FFmpegStatus:
         self._obj = obj
         self._gid = gid
         self._cstatus = status
+        # Set the cstatus attribute on the listener for progress calculation
+        if hasattr(listener, "cstatus"):
+            listener.cstatus = status
         self.tool = "ffmpeg"
 
     def speed(self):
@@ -50,6 +53,16 @@ class FFmpegStatus:
             return MirrorStatus.STATUS_WATERMARK
         if self._cstatus == "E_thumb":
             return MirrorStatus.STATUS_ETHUMB
+        if self._cstatus == "Merge":
+            return MirrorStatus.STATUS_MERGE
+        if self._cstatus == "Compress":
+            return MirrorStatus.STATUS_COMPRESS
+        if self._cstatus == "Trim":
+            return MirrorStatus.STATUS_TRIM
+        if self._cstatus == "Extract":
+            return MirrorStatus.STATUS_EXTRACT
+        if self._cstatus == "Add":
+            return MirrorStatus.STATUS_ADD
         return MirrorStatus.STATUS_FFMPEG
 
     def task(self):
@@ -65,3 +78,28 @@ class FFmpegStatus:
             with contextlib.suppress(Exception):
                 self.listener.subproc.kill()
         await self.listener.on_upload_error(f"{self._cstatus} stopped by user!")
+
+    def refresh(self):
+        # Get current status
+        if (
+            self.listener.subproc is not None
+            and self.listener.subproc.returncode is None
+        ):
+            self.message = self.message.rsplit("\n", 1)[0]
+            self.message += f"\n{self.progress()}"
+
+            # Add ETA and speed information if available
+            if hasattr(self._obj, "eta_raw") and self._obj.eta_raw:
+                self.message += f" | ETA: {self.eta()}"
+            if hasattr(self._obj, "speed_raw") and self._obj.speed_raw:
+                self.message += f" | Speed: {self.speed()}"
+
+            # Add file size information if available
+            if hasattr(self.listener, "size") and self.listener.size:
+                self.message += f" | Size: {self.size()}"
+
+            # Add codec information if available
+            if hasattr(self._obj, "codec") and self._obj.codec:
+                self.message += f" | Codec: {self._obj.codec}"
+
+            return

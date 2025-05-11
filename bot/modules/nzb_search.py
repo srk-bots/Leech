@@ -23,7 +23,7 @@ async def hydra_search(_, message):
         return
 
     query = " ".join(key[1:]).strip()
-    message = await send_message(message, f"🔍 Searching for '{query}'...")
+    message = await send_message(message, f"Searching for '{query}'...")
 
     try:
         items = await search_nzbhydra(query)

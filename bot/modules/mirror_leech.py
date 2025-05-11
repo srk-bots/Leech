@@ -7,6 +7,7 @@ from aiofiles.os import path as aiopath
 
 from bot import DOWNLOAD_DIR, LOGGER, bot_loop, task_dict_lock
 from bot.core.aeon_client import TgClient
+from bot.core.config_manager import Config
 from bot.helper.aeon_utils.access_check import error_check
 from bot.helper.ext_utils.bot_utils import (
     COMMAND_USAGE,
@@ -15,10 +16,12 @@ from bot.helper.ext_utils.bot_utils import (
     sync_to_async,
 )
 from bot.helper.ext_utils.exceptions import DirectDownloadLinkException
+from bot.helper.ext_utils.limit_checker import limit_checker
 from bot.helper.ext_utils.links_utils import (
     is_gdrive_id,
     is_gdrive_link,
     is_magnet,
+    is_mega_link,
     is_rclone_path,
     is_telegram_link,
     is_url,
@@ -49,6 +52,7 @@ from bot.helper.telegram_helper.message_utils import (
     get_tg_link_message,
     send_message,
 )
+from bot.modules.media_tools import show_media_tools_for_task
 
 
 class Mirror(TaskListener):
@@ -82,6 +86,19 @@ class Mirror(TaskListener):
         self.is_nzb = is_nzb
 
     async def new_event(self):
+        # Check if message text exists before trying to split it
+        if (
+            not self.message
+            or not hasattr(self.message, "text")
+            or self.message.text is None
+        ):
+            LOGGER.error(
+                "Message text is None or message doesn't have text attribute"
+            )
+            error_msg = "Invalid message format. Please make sure your message contains text."
+            error = await send_message(self.message, error_msg)
+            return await auto_delete_message(error, time=300)
+
         text = self.message.text.split("\n")
         input_list = text[0].split(" ")
         error_msg, error_button = await error_check(self.message)
@@ -107,11 +124,20 @@ class Mirror(TaskListener):
             "-hl": False,
             "-bt": False,
             "-ut": False,
+            "-mt": False,
+            "-merge-video": False,
+            "-merge-audio": False,
+            "-merge-subtitle": False,
+            "-merge-all": False,
+            "-merge-image": False,
+            "-merge-pdf": False,
             "-i": 0,
             "-sp": 0,
             "link": "",
             "-n": "",
             "-m": "",
+            "-watermark": "",
+            "-iwm": "",
             "-up": "",
             "-rcf": "",
             "-au": "",
@@ -122,11 +148,93 @@ class Mirror(TaskListener):
             "-cv": "",
             "-ns": "",
             "-md": "",
+            "-metadata-title": "",
+            "-metadata-author": "",
+            "-metadata-comment": "",
+            "-metadata-all": "",
+            "-metadata-video-title": "",
+            "-metadata-video-author": "",
+            "-metadata-video-comment": "",
+            "-metadata-audio-title": "",
+            "-metadata-audio-author": "",
+            "-metadata-audio-comment": "",
+            "-metadata-subtitle-title": "",
+            "-metadata-subtitle-author": "",
+            "-metadata-subtitle-comment": "",
             "-tl": "",
             "-ff": set(),
+            "-compress": False,
+            "-comp-video": False,
+            "-comp-audio": False,
+            "-comp-image": False,
+            "-comp-document": False,
+            "-comp-subtitle": False,
+            "-comp-archive": False,
+            "-video-fast": False,
+            "-video-medium": False,
+            "-video-slow": False,
+            "-audio-fast": False,
+            "-audio-medium": False,
+            "-audio-slow": False,
+            "-image-fast": False,
+            "-image-medium": False,
+            "-image-slow": False,
+            "-document-fast": False,
+            "-document-medium": False,
+            "-document-slow": False,
+            "-subtitle-fast": False,
+            "-subtitle-medium": False,
+            "-subtitle-slow": False,
+            "-archive-fast": False,
+            "-archive-medium": False,
+            "-archive-slow": False,
+            "-trim": "",
+            "-extract": False,
+            "-extract-video": False,
+            "-extract-audio": False,
+            "-extract-subtitle": False,
+            "-extract-attachment": False,
+            "-extract-video-index": "",
+            "-extract-audio-index": "",
+            "-extract-subtitle-index": "",
+            "-extract-attachment-index": "",
+            "-extract-video-codec": "",
+            "-extract-audio-codec": "",
+            "-extract-subtitle-codec": "",
+            "-extract-maintain-quality": "",
+            "-extract-priority": "",
+            "-add": False,
+            "-add-video": False,
+            "-add-audio": False,
+            "-add-subtitle": False,
+            "-add-attachment": False,
+            "-del": "",
+            "-preserve": False,
+            "-replace": False,
+            # Shorter index flags
+            "-vi": "",
+            "-ai": "",
+            "-si": "",
+            "-ati": "",
         }
 
+        # Parse arguments from the command
         arg_parser(input_list[1:], args)
+
+        # Check if media tools flags are enabled
+        from bot.helper.ext_utils.bot_utils import is_flag_enabled
+
+        # Disable flags that depend on disabled media tools
+        for flag in list(args.keys()):
+            if flag.startswith("-") and not is_flag_enabled(flag):
+                if isinstance(args[flag], bool):
+                    args[flag] = False
+                elif isinstance(args[flag], set):
+                    args[flag] = set()
+                elif isinstance(args[flag], str):
+                    args[flag] = ""
+                elif isinstance(args[flag], int):
+                    args[flag] = 0
 
         self.select = args["-s"]
         self.seed = args["-d"]
@@ -136,6 +244,15 @@ class Mirror(TaskListener):
         self.link = args["link"]
         self.compress = args["-z"]
         self.extract = args["-e"]
+
+        # Add settings
+        self.add_enabled = args["-add"]
+        self.add_video_enabled = args["-add-video"]
+        self.add_audio_enabled = args["-add-audio"]
+        self.add_subtitle_enabled = args["-add-subtitle"]
+        self.add_attachment_enabled = args["-add-attachment"]
+        self.preserve_flag = args["-preserve"]
+        self.replace_flag = args["-replace"]
         self.join = args["-j"]
         self.thumb = args["-t"]
         self.split_size = args["-sp"]
@@ -151,13 +268,105 @@ class Mirror(TaskListener):
         self.thumbnail_layout = args["-tl"]
         self.as_doc = args["-doc"]
         self.as_med = args["-med"]
+        self.media_tools = args["-mt"]
         self.metadata = args["-md"]
+        self.metadata_title = args["-metadata-title"]
+        self.metadata_author = args["-metadata-author"]
+        self.metadata_comment = args["-metadata-comment"]
+        self.metadata_all = args["-metadata-all"]
+        self.metadata_video_title = args["-metadata-video-title"]
+        self.metadata_video_author = args["-metadata-video-author"]
+        self.metadata_video_comment = args["-metadata-video-comment"]
+        self.metadata_audio_title = args["-metadata-audio-title"]
+        self.metadata_audio_author = args["-metadata-audio-author"]
+        self.metadata_audio_comment = args["-metadata-audio-comment"]
+        self.metadata_subtitle_title = args["-metadata-subtitle-title"]
+        self.metadata_subtitle_author = args["-metadata-subtitle-author"]
+        self.metadata_subtitle_comment = args["-metadata-subtitle-comment"]
         self.folder_name = (
             f"/{args['-m']}".rstrip("/") if len(args["-m"]) > 0 else ""
         )
         self.bot_trans = args["-bt"]
         self.user_trans = args["-ut"]
+        self.merge_video = args["-merge-video"]
+        self.merge_audio = args["-merge-audio"]
+        self.merge_subtitle = args["-merge-subtitle"]
+        self.merge_all = args["-merge-all"]
+        self.merge_image = args["-merge-image"]
+        self.merge_pdf = args["-merge-pdf"]
+        self.watermark_text = args["-watermark"]
+        self.watermark_image = args["-iwm"]
+        self.trim = args["-trim"]
         self.ffmpeg_cmds = args["-ff"]
+
+        # Compression flags
+        self.compression_enabled = args["-compress"]
+        self.compress_video = args["-comp-video"]
+        self.compress_audio = args["-comp-audio"]
+        self.compress_image = args["-comp-image"]
+        self.compress_document = args["-comp-document"]
+        self.compress_subtitle = args["-comp-subtitle"]
+        self.compress_archive = args["-comp-archive"]
+
+        # Enable compression if any specific compression flag is set
+        if (
+            self.compress_video
+            or self.compress_audio
+            or self.compress_image
+            or self.compress_document
+            or self.compress_subtitle
+            or self.compress_archive
+        ):
+            self.compression_enabled = True
+
+        # Compression presets
+        self.video_preset = None
+        if args["-video-fast"]:
+            self.video_preset = "fast"
+        elif args["-video-medium"]:
+            self.video_preset = "medium"
+        elif args["-video-slow"]:
+            self.video_preset = "slow"
+
+        self.audio_preset = None
+        if args["-audio-fast"]:
+            self.audio_preset = "fast"
+        elif args["-audio-medium"]:
+            self.audio_preset = "medium"
+        elif args["-audio-slow"]:
+            self.audio_preset = "slow"
+
+        self.image_preset = None
+        if args["-image-fast"]:
+            self.image_preset = "fast"
+        elif args["-image-medium"]:
+            self.image_preset = "medium"
+        elif args["-image-slow"]:
+            self.image_preset = "slow"
+
+        self.document_preset = None
+        if args["-document-fast"]:
+            self.document_preset = "fast"
+        elif args["-document-medium"]:
+            self.document_preset = "medium"
+        elif args["-document-slow"]:
+            self.document_preset = "slow"
+
+        self.subtitle_preset = None
+        if args["-subtitle-fast"]:
+            self.subtitle_preset = "fast"
+        elif args["-subtitle-medium"]:
+            self.subtitle_preset = "medium"
+        elif args["-subtitle-slow"]:
+            self.subtitle_preset = "slow"
+
+        self.archive_preset = None
+        if args["-archive-fast"]:
+            self.archive_preset = "fast"
+        elif args["-archive-medium"]:
+            self.archive_preset = "medium"
+        elif args["-archive-slow"]:
+            self.archive_preset = "slow"
 
         headers = args["-h"]
         is_bulk = args["-b"]
@@ -175,6 +384,53 @@ class Mirror(TaskListener):
         except Exception:
             self.multi = 0
 
+        try:
+            if args["-ff"]:
+                if isinstance(args["-ff"], str):
+                    # Check if it's a key in the FFmpeg commands dictionary
+                    if (
+                        Config.FFMPEG_CMDS and args["-ff"] in Config.FFMPEG_CMDS
+                    ) or (
+                        self.user_dict.get("FFMPEG_CMDS")
+                        and args["-ff"] in self.user_dict["FFMPEG_CMDS"]
+                    ):
+                        # If it's a key in the config, get the command from the config
+                        if Config.FFMPEG_CMDS and args["-ff"] in Config.FFMPEG_CMDS:
+                            self.ffmpeg_cmds = Config.FFMPEG_CMDS[args["-ff"]]
+                            LOGGER.info(
+                                f"Using FFmpeg command key from owner config: {self.ffmpeg_cmds}"
+                            )
+                        elif (
+                            self.user_dict.get("FFMPEG_CMDS")
+                            and args["-ff"] in self.user_dict["FFMPEG_CMDS"]
+                        ):
+                            self.ffmpeg_cmds = self.user_dict["FFMPEG_CMDS"][
+                                args["-ff"]
+                            ]
+                            LOGGER.info(
+                                f"Using FFmpeg command key from user config: {self.ffmpeg_cmds}"
+                            )
+                        else:
+                            # If it's not a key, treat it as a direct command
+                            import shlex
+
+                            self.ffmpeg_cmds = shlex.split(args["-ff"])
+                            LOGGER.info(
+                                f"Using direct FFmpeg command: {self.ffmpeg_cmds}"
+                            )
+                elif isinstance(args["-ff"], set):
+                    # If it's already a set, use it as is
+                    self.ffmpeg_cmds = args["-ff"]
+                    LOGGER.info(f"Using FFmpeg command keys: {self.ffmpeg_cmds}")
+                else:
+                    # For any other type, try to evaluate it
+                    self.ffmpeg_cmds = eval(args["-ff"])
+                    LOGGER.info(
+                        f"Using evaluated FFmpeg commands: {self.ffmpeg_cmds}"
+                    )
+        except Exception as e:
+            self.ffmpeg_cmds = None
+            LOGGER.error(f"Error processing FFmpeg command: {e}")
         if not isinstance(self.seed, bool):
             dargs = self.seed.split(":")
             ratio = dargs[0] or None
@@ -320,6 +576,7 @@ class Mirror(TaskListener):
                 and not is_rclone_path(self.link)
                 and not is_gdrive_id(self.link)
                 and not is_gdrive_link(self.link)
+                and not is_mega_link(self.link)
             )
         ):
             x = await send_message(
@@ -332,7 +589,26 @@ class Mirror(TaskListener):
             return await auto_delete_message(x, time=300)
 
         if len(self.link) > 0:
-            LOGGER.info(self.link)
+            # Check if it's a Mega link but not using jdleech or jdmirror command
+            if is_mega_link(self.link) and not self.is_jd:
+                error_msg = "⚠️ For Mega links, please use /jdleech or /jdmirror command instead."
+                x = await send_message(self.message, error_msg)
+                await self.remove_from_same_dir()
+                await delete_links(self.message)
+                return await auto_delete_message(x, time=300)
+
+        # Check if media tools flag is set
+        if self.media_tools:
+            # Show media tools settings and wait for user to click Done or timeout
+            proceed = await show_media_tools_for_task(
+                self.client, self.message, self
+            )
+            if not proceed:
+                # User cancelled or timeout occurred
+                await self.remove_from_same_dir()
+                # Delete the command message
+                await delete_links(self.message)
+                return None
 
         try:
             await self.before_start()
@@ -341,6 +617,30 @@ class Mirror(TaskListener):
             await self.remove_from_same_dir()
             await delete_links(self.message)
             return await auto_delete_message(x, time=300)
+
+        # Get file size for limit checking
+        size = 0
+        if file_:
+            size = file_.file_size
+
+        # Check limits before proceeding
+        if size > 0:
+            limit_msg = await limit_checker(
+                size,
+                self,
+                isTorrent=self.is_qbit
+                or is_magnet(self.link)
+                or (self.link and self.link.endswith(".torrent")),
+                isMega=is_mega_link(self.link),
+                isDriveLink=is_gdrive_link(self.link) or is_gdrive_id(self.link),
+                isYtdlp=False,
+            )
+            if limit_msg:
+                # limit_msg is already a tuple with (message_object, error_message)
+                # and the message has already been sent with the tag
+                await self.remove_from_same_dir()
+                await delete_links(self.message)
+                return None
 
         if (
             not self.is_jd
@@ -352,6 +652,7 @@ class Mirror(TaskListener):
             and not self.link.endswith(".torrent")
             and file_ is None
             and not is_gdrive_id(self.link)
+            and not is_mega_link(self.link)
         ):
             content_type = await get_content_type(self.link)
             if content_type is None or re_match(

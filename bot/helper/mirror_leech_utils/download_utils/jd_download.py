@@ -4,6 +4,7 @@ from functools import partial
 from secrets import token_hex
 from time import time
 
+import psutil
 from aiofiles import open as aiopen
 from aiofiles.os import path as aiopath
 from aiofiles.os import remove
@@ -13,6 +14,7 @@ from pyrogram.handlers import CallbackQueryHandler
 from bot import LOGGER, jd_downloads, jd_listener_lock, task_dict, task_dict_lock
 from bot.core.jdownloader_booter import jdownloader
 from bot.helper.ext_utils.bot_utils import new_task
+from bot.helper.ext_utils.limit_checker import limit_checker
 from bot.helper.ext_utils.task_manager import (
     check_running_tasks,
     stop_duplicate_check,
@@ -120,6 +122,13 @@ async def get_jd_download_directory():
 
 async def add_jd_download(listener, path):
     try:
+        # Add memory check before starting download
+        memory_percent = psutil.virtual_memory().percent
+        if memory_percent > 85:
+            raise MYJDException(
+                "System memory usage too high (>85%). Try again later.",
+            )
+
         async with jd_listener_lock:
             gid = token_hex(4)
             if not jdownloader.is_connected:
@@ -195,10 +204,29 @@ async def add_jd_download(listener, path):
                     )
                     raise MYJDException(error)
 
+                # Common web elements that should be ignored
+                web_elements = [
+                    "oydisk",
+                    "filepreviewer",
+                    "js",
+                    "translations",
+                    "non_account_download_all_as_zip",
+                    "html5shiv",
+                    "respond.min",
+                    "css",
+                    "img",
+                    "fonts",
+                    "assets",
+                ]
+
                 for pack in queued_downloads:
                     if pack.get("onlineCount", 1) == 0:
-                        error = f"{pack.get('name', '')}"
-                        LOGGER.error(error)
+                        pack_name = pack.get("name", "")
+                        # Only log at debug level for common web elements
+                        if any(element == pack_name for element in web_elements):
+                            pass
+                        else:
+                            LOGGER.error(f"Package has no online links: {pack_name}")
                         corrupted_packages.append(pack["uuid"])
                         continue
                     save_to = pack["saveTo"]
@@ -271,6 +299,26 @@ async def add_jd_download(listener, path):
                 )
 
         listener.name = listener.name or name
+
+        # Check size limits
+        if listener.size > 0:
+            limit_msg = await limit_checker(
+                listener.size,
+                listener,
+                isTorrent=False,
+                isMega=False,
+                isDriveLink=False,
+                isYtdlp=False,
+                is_jd=True,
+            )
+            if limit_msg:
+                await jdownloader.device.linkgrabber.remove_links(
+                    package_ids=online_packages,
+                )
+                await listener.on_download_error(limit_msg)
+                async with jd_listener_lock:
+                    del jd_downloads[gid]
+                return
 
         msg, button = await stop_duplicate_check(listener)
         if msg:
