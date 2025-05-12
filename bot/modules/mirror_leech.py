@@ -243,7 +243,13 @@ class Mirror(TaskListener):
         self.rc_flags = args["-rcf"]
         self.link = args["link"]
         self.compress = args["-z"]
+        # Enable compression if -z flag is set
+        if self.compress:
+            self.compression_enabled = True
         self.extract = args["-e"]
+        # Enable extract_enabled if -e flag is set
+        if self.extract:
+            self.extract_enabled = True
 
         # Add settings
         self.add_enabled = args["-add"]

@@ -3627,6 +3627,24 @@ class TaskConfig:
                 else:
                     self.split_size = self.max_split_size
 
+            # Ensure split size never exceeds Telegram's limit (based on premium status)
+            # Add a safety margin to ensure we never exceed Telegram's limit
+            safety_margin = 50 * 1024 * 1024  # 50 MiB
+
+            # For non-premium accounts, use a more conservative limit
+            if not TgClient.IS_PREMIUM_USER:
+                # Use 2000 MiB (slightly less than 2 GiB) for non-premium accounts
+                telegram_limit = 2000 * 1024 * 1024
+            else:
+                # Use 4000 MiB (slightly less than 4 GiB) for premium accounts
+                telegram_limit = 4000 * 1024 * 1024
+
+            safe_telegram_limit = telegram_limit - safety_margin
+
+            if self.split_size > safe_telegram_limit:
+
+                self.split_size = safe_telegram_limit
+
             # Ensure split size doesn't exceed maximum allowed
             self.split_size = min(self.split_size, self.max_split_size)
 
@@ -3891,22 +3909,32 @@ class TaskConfig:
 
     async def proceed_extract(self, dl_path, gid):
         # This is the archive extraction method
+        LOGGER.info(f"proceed_extract called with dl_path: {dl_path}")
+        LOGGER.info(f"extract flag: {self.extract}, extract_enabled: {self.extract_enabled}")
+        LOGGER.info(f"is_file: {self.is_file}, is_archive check: {is_archive(dl_path) if self.is_file else False}")
+
         pswd = self.extract if isinstance(self.extract, str) else ""
         self.files_to_proceed = []
         if self.is_file and is_archive(dl_path):
+            LOGGER.info(f"Adding single archive file to extraction list: {dl_path}")
             self.files_to_proceed.append(dl_path)
         else:
+            LOGGER.info(f"Scanning directory for archives: {dl_path}")
             for dirpath, _, files in await sync_to_async(
                 walk,
                 dl_path,
                 topdown=False,
             ):
                 for file_ in files:
-                    if is_first_archive_split(file_) or (
-                        is_archive(file_)
-                        and not file_.strip().lower().endswith(".rar")
-                    ):
+                    is_first_split = is_first_archive_split(file_)
+                    is_arch = is_archive(file_)
+                    is_rar = file_.strip().lower().endswith(".rar")
+
+                    LOGGER.info(f"Checking file: {file_}, is_first_split: {is_first_split}, is_archive: {is_arch}, is_rar: {is_rar}")
+
+                    if is_first_split or (is_arch and not is_rar):
                         f_path = ospath.join(dirpath, file_)
+                        LOGGER.info(f"Adding archive to extraction list: {f_path}")
                         self.files_to_proceed.append(f_path)
 
         if not self.files_to_proceed:
@@ -8205,6 +8233,7 @@ class TaskConfig:
                     elif self.args.get("-es") == "f":
                         equal_splits = False
 
+                # Equal Splits will get priority over leech split size
                 # Use get_user_split_size to determine split size and whether to skip splitting
                 if equal_splits:
                     # Set a flag to indicate equal splits is enabled for this task

@@ -1,4 +1,3 @@
-import contextlib
 import re
 from asyncio import sleep
 from logging import getLogger
@@ -48,384 +47,8 @@ from bot.helper.ext_utils.media_utils import (
     get_multiple_frames_thumbnail,
     get_video_thumbnail,
 )
+from bot.helper.ext_utils.template_processor import extract_metadata_from_filename
 from bot.helper.telegram_helper.message_utils import delete_message
-
-
-# Helper function to extract metadata from filenames
-async def extract_metadata_from_filename(name):
-    """
-    Extract metadata like season, episode, and quality from a filename.
-
-    Args:
-        name (str): The filename to extract metadata from
-
-    Returns:
-        dict: A dictionary containing the extracted metadata
-    """
-    import re
-
-    # Special case for One Piece Episode 1015 (hardcoded fix)
-    if "[Anime Time] One Piece - Episode 1015" in name:
-        return {
-            "season": "",
-            "episode": "1015",
-            "quality": "1080p WebRip 10bit",
-        }
-
-    # Skip extraction for UUIDs, hashes, and other non-media filenames
-    if re.search(r"^[a-f0-9]{32}", name, re.IGNORECASE) or re.search(
-        r"^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}",
-        name,
-        re.IGNORECASE,
-    ):
-        return {
-            "season": "",
-            "episode": "",
-            "quality": "",
-        }
-
-    # Skip extraction for course/tutorial files with numeric prefixes
-    # Common in educational content like "001 - Introduction to Python.mp4"
-    if re.match(r"^\d{2,3}\s+", name):
-        # Check if the file has educational keywords or patterns
-        educational_keywords = [
-            "course",
-            "tutorial",
-            "lecture",
-            "lesson",
-            "class",
-            "introduction",
-            "how to",
-            "hacking",
-            "programming",
-            "learning",
-            "guide",
-        ]
-        if any(keyword in name.lower() for keyword in educational_keywords):
-            return {
-                "season": "",
-                "episode": "",
-                "quality": "",
-            }
-
-    # Also skip files that are likely educational content based on patterns
-    if re.match(
-        r"^\d{2,3}[\s\-_]+[A-Z]", name
-    ):  # Like "001 - Introduction" or "012 Quick Hacking-I"
-        return {
-            "season": "",
-            "episode": "",
-            "quality": "",
-        }
-
-    # Extract potential season info from filename with various formats
-    season_patterns = [
-        r"S(\d{1,3})",  # Standard format: S01, S1, S001
-        r"Season\s*(\d{1,2})",  # Full word: Season 1, Season01
-        r"(?<![a-zA-Z0-9])(?:s|season)\.?(\d{1,2})(?![a-zA-Z0-9])",  # s.1, season.1
-        r"(?<![a-zA-Z0-9])(?:s|season)\s+(\d{1,2})(?![a-zA-Z0-9])",  # s 1, season 1
-        r"(?<![a-zA-Z0-9])(\d{1,2})x\d{1,3}(?![a-zA-Z0-9])",  # 1x01, 01x01 format
-        r"(?:^|\W)(?:season|s)[-_. ]?(\d{1,2})(?:\W|$)",  # season1, s1, s-1, s.1, s_1
-        r"(?:^|\W)(?:saison|temporada|staffel)[-_. ]?(\d{1,2})(?:\W|$)",  # International: saison1, temporada1, staffel1
-    ]
-
-    # Extract potential episode info from filename with various formats
-    episode_patterns = [
-        r"E(\d{1,3})",  # Standard format: E01, E1, E001
-        r"Episode\s*(\d{1,3})",  # Full word: Episode 1, Episode01
-        r"(?<![a-zA-Z0-9])(?:e|episode|ep)\.?(\d{1,3})(?![a-zA-Z0-9])",  # e.1, episode.1, ep.1
-        r"(?<![a-zA-Z0-9])(?:e|episode|ep)\s+(\d{1,3})(?![a-zA-Z0-9])",  # e 1, episode 1, ep 1
-        r"(?<![a-zA-Z0-9])(?:part|pt)\.?\s*(\d{1,2})(?![a-zA-Z0-9])",  # part 1, pt.1, pt 1
-        r"\d{1,2}x(\d{1,3})(?![a-zA-Z0-9])",  # 1x01, 01x01 format
-        r"(?:^|\W)(?:episode|ep|e)[-_. ]?(\d{1,3})(?:\W|$)",  # episode1, ep1, e1, e-1, e.1, e_1
-        r"(?:^|\W)(?:episodio|épisode|folge)[-_. ]?(\d{1,3})(?:\W|$)",  # International: episodio1, épisode1, folge1
-        r"(?<![a-zA-Z0-9])(?:chapter|ch)\.?\s*(\d{1,3})(?![a-zA-Z0-9])",  # chapter 1, ch.1
-    ]
-
-    # Enhanced quality detection with more formats
-    quality_patterns = [
-        # Resolution patterns (most specific)
-        r"(\d{3,4}x\d{3,4})",  # 1280x720, 1920x1080
-        r"(\d{3,4}p)",  # 720p, 1080p, 2160p
-        # Source patterns
-        r"(WEB-?DL|WEB-?RIP|HDTV|BluRay|BRRip|DVDRip|WebRip|BDRip)",
-        # Streaming service indicators
-        r"(AMZN|NETFLIX|HULU|DISNEY\+|APPLE|HBO|HMAX|DSNP|NF)",
-        # Codec and quality indicators
-        r"(10bit|8bit|HDR\d*|HEVC|H\.?264|H\.?265|x264|x265|XviD|AVC|REMUX)",
-        # General quality terms
-        r"(\d+k|4K|8K|HD|FHD|UHD)",
-        # Audio quality
-        r"(AAC\d*|AC3|DTS|DDP\d*|Atmos|TrueHD|FLAC|MA\.?\d*\.\d*)",
-        # Additional quality indicators
-        r"(IMAX|HDR10\+?|Dolby\s*Vision|DV|DoVi)",
-        # Release group indicators (in brackets)
-        r"\[(.*?)\]",  # [Group] format
-        r"\((.*?)\)",  # (Group) format
-    ]
-
-    # Initialize variables
-    season = ""
-    episode = ""
-    quality = ""
-
-    # Try to find season
-    for pattern in season_patterns:
-        season_match = re.search(pattern, name, re.IGNORECASE)
-        if season_match:
-            season = season_match.group(1)
-            # Remove leading zeros
-            season = str(int(season))
-            break
-
-    # Special case for anime titles with season information in the description
-    if not season:
-        # Look for common anime season indicators
-        anime_season_patterns = [
-            # Match "2nd Season", "3rd Season", etc.
-            r"(\d+)(?:st|nd|rd|th)\s+[Ss]eason",
-            # Match "Season 2", "Season II", etc.
-            r"[Ss]eason\s+(?:([IVX]+)|(\d+))",
-            # Match specific season names in anime
-            r"(?:Part|Cour|Phase)\s+(\d+)",
-        ]
-
-        for pattern in anime_season_patterns:
-            match = re.search(pattern, name, re.IGNORECASE)
-            if match:
-                # Get the first non-None group
-                groups = [g for g in match.groups() if g is not None]
-                if groups:
-                    # Convert Roman numerals if needed
-                    if match.re.pattern == anime_season_patterns[1] and re.match(
-                        r"^[IVX]+$", groups[0], re.IGNORECASE
-                    ):
-                        roman_map = {"i": 1, "v": 5, "x": 10}
-                        roman = groups[0].lower()
-                        season_num = 0
-                        for i in range(len(roman)):
-                            if (
-                                i > 0
-                                and roman_map[roman[i]] > roman_map[roman[i - 1]]
-                            ):
-                                season_num += (
-                                    roman_map[roman[i]] - 2 * roman_map[roman[i - 1]]
-                                )
-                            else:
-                                season_num += roman_map[roman[i]]
-                        season = str(season_num)
-                    else:
-                        season = groups[0]
-                    break
-
-    # Try to find episode
-    for pattern in episode_patterns:
-        episode_match = re.search(pattern, name, re.IGNORECASE)
-        if episode_match:
-            episode = episode_match.group(1)
-            # Remove leading zeros
-            episode = str(int(episode))
-            break
-
-    # Special case for standalone numbers that might be episodes
-    # Only apply if we haven't found an episode yet and the filename isn't a UUID/hash
-    if not episode and not re.search(r"[a-f0-9]{32}", name, re.IGNORECASE):
-        # Look for standalone numbers that might be episodes
-        # But only if they appear after certain keywords or patterns
-        after_keywords = ["episode", "ep", "part", "pt", "-", "_", "#", "№"]
-        for keyword in after_keywords:
-            pattern = f"{re.escape(keyword)}\\s*(\\d{{1,4}})(?![a-zA-Z0-9])"
-            match = re.search(pattern, name, re.IGNORECASE)
-            if match:
-                episode = match.group(1)
-                # Remove leading zeros
-                episode = str(int(episode))
-                break
-
-        # Special case for anime with high episode numbers (like One Piece)
-        # Only if we still haven't found an episode
-        if not episode:
-            # Initialize a flag to track if we should skip further detection
-            skip_further_detection = False
-
-            # Special case for One Piece and other anime with 1000+ episodes
-            if "one piece" in name.lower():
-                # Try different patterns specifically for One Piece
-                one_piece_patterns = [
-                    r"One\s+Piece\s*-\s*Episode\s+(\d{4})",  # One Piece - Episode 1015
-                    r"One\s+Piece.*?Episode\s+(\d{4})",  # One Piece anything Episode 1015
-                    r"Episode\s+(\d{4})",  # Episode 1015 (if "one piece" is in the name)
-                ]
-
-                for pattern in one_piece_patterns:
-                    one_piece_match = re.search(pattern, name, re.IGNORECASE)
-                    if one_piece_match:
-                        episode = one_piece_match.group(1)
-                        # Skip the rest of the episode detection since we found a match
-                        skip_further_detection = True
-                        break
-
-                # Special case for the specific One Piece test file
-                if not skip_further_detection:
-                    # Check for specific One Piece episode patterns
-                    if (
-                        "one piece" in name.lower()
-                        and "episode 1015" in name.lower()
-                    ):
-                        episode = "1015"
-                        skip_further_detection = True
-                    # Check for any One Piece episode with 4 digits
-                    elif "one piece" in name.lower() and re.search(
-                        r"episode\s+(\d{4})", name.lower()
-                    ):
-                        match = re.search(r"episode\s+(\d{4})", name.lower())
-                        episode = match.group(1)
-                        skip_further_detection = True
-
-            # Only proceed with other patterns if we didn't find a One Piece episode
-            if not skip_further_detection:
-                # Check for explicit anime episode patterns with full episode number
-                anime_explicit_patterns = [
-                    r"Episode\s+(\d{3,4})(?![a-zA-Z0-9])",  # Episode 1015
-                    r"Ep(?:isode)?\s*(\d{3,4})(?![a-zA-Z0-9])",  # Ep1015, Ep 1015
-                    r"#(\d{3,4})(?![a-zA-Z0-9])",  # #1015
-                    r"E(\d{3,4})(?![a-zA-Z0-9])",  # E1015
-                ]
-
-                for pattern in anime_explicit_patterns:
-                    match = re.search(pattern, name, re.IGNORECASE)
-                    if match:
-                        episode = match.group(1)
-                        # Don't remove leading zeros for high episode numbers
-                        # This preserves the full episode number
-                        break
-
-                # If still no match, look for standalone 3-4 digit numbers that might be anime episodes
-                # But avoid matching years (1900-2099)
-                if not episode:
-                    # First try to find full episode numbers in anime titles
-                    full_ep_pattern = r"(?:Episode|Ep)\s*(\d{3,4})(?![a-zA-Z0-9])"
-                    full_ep_match = re.search(full_ep_pattern, name, re.IGNORECASE)
-                    if full_ep_match:
-                        episode = full_ep_match.group(1)
-                    else:
-                        # Then try standalone numbers
-                        anime_ep_pattern = r"(?<![a-zA-Z0-9])(?!(?:19|20)\d{2})(\d{3,4})(?![a-zA-Z0-9\.])"
-                        anime_matches = re.finditer(
-                            anime_ep_pattern, name, re.IGNORECASE
-                        )
-                        for match in anime_matches:
-                            potential_ep = match.group(1)
-                            # Only consider it an episode if it's a reasonable number (under 2000)
-                            if int(potential_ep) < 2000:
-                                episode = potential_ep
-                                break
-
-    # Special case for titles with numbers that might be mistaken for episodes
-    # Check if the extracted episode is actually part of a year
-    if episode:
-        year_pattern = r"(19|20)\d{2}"
-        year_matches = re.finditer(year_pattern, name)
-        for year_match in year_matches:
-            year = year_match.group(0)
-            # Check if the episode number is contained within the year
-            if episode in year and len(episode) < len(year):
-                # This is likely a year, not an episode number
-                episode = ""
-                break
-
-        # Check for false positives in filenames with version numbers or other numeric identifiers
-        if episode:
-            # Avoid mistaking version numbers for episodes
-            version_patterns = [
-                r"v\d+[.-]"
-                + re.escape(episode)
-                + r"(?![a-zA-Z0-9])",  # v1.01, v2-03
-                r"version[.-]?"
-                + re.escape(episode)
-                + r"(?![a-zA-Z0-9])",  # version.01, version-02
-                r"r\d+[.-]"
-                + re.escape(episode)
-                + r"(?![a-zA-Z0-9])",  # r1.01, r2-03
-                r"rev[.-]?"
-                + re.escape(episode)
-                + r"(?![a-zA-Z0-9])",  # rev.01, rev-02
-            ]
-            for pattern in version_patterns:
-                if re.search(pattern, name, re.IGNORECASE):
-                    episode = ""
-                    break
-
-    # Try to find quality
-    quality_matches = []
-    for pattern in quality_patterns:
-        matches = re.finditer(pattern, name, re.IGNORECASE)
-        for match in matches:
-            quality_match = match.group(1)
-            # Avoid duplicates
-            if quality_match.lower() not in [q.lower() for q in quality_matches]:
-                quality_matches.append(quality_match)
-
-    # Join all quality indicators
-    if quality_matches:
-        quality = " ".join(quality_matches)
-
-    # Extract year from filename
-    year = ""
-    year_pattern = r"(?<![a-zA-Z0-9])(?:19|20)(\d{2})(?![a-zA-Z0-9])"
-    year_matches = re.finditer(year_pattern, name, re.IGNORECASE)
-    for year_match in year_matches:
-        year = year_match.group(0)
-        # Avoid mistaking episode numbers for years
-        if not (episode and year.endswith(episode)):
-            break
-
-    # Extract codec information
-    codec = ""
-    codec_patterns = [
-        r"(H\.?264|H\.?265|HEVC|AVC|XviD|DivX|VP9|AV1|MPEG-?[24])",
-        r"(x264|x265)",
-        r"(10bit|8bit|10-bit|8-bit)",
-        r"(HDR10\+?|Dolby\s*Vision|DV|DoVi)",
-    ]
-
-    codec_matches = []
-    for pattern in codec_patterns:
-        matches = re.finditer(pattern, name, re.IGNORECASE)
-        for match in matches:
-            codec_match = match.group(1)
-            # Avoid duplicates
-            if codec_match.lower() not in [c.lower() for c in codec_matches]:
-                codec_matches.append(codec_match)
-
-    # Join all codec indicators
-    if codec_matches:
-        codec = " ".join(codec_matches)
-
-    # Extract framerate if present
-    framerate = ""
-    fps_patterns = [
-        r"(?<![0-9])(\d{2,3}(?:\.\d+)?)\s*fps(?![0-9])",  # Explicit fps mention
-        r"(?<![0-9])(\d{2,3}(?:\.\d+)?)\s*hz(?![0-9])",  # Explicit hz mention
-        # Removed the pattern that was causing false positives with resolution
-    ]
-
-    for pattern in fps_patterns:
-        fps_match = re.search(pattern, name, re.IGNORECASE)
-        if fps_match:
-            framerate = f"{fps_match.group(1)} fps"
-            break
-
-    # Return the enhanced metadata
-    return {
-        "season": season,
-        "episode": episode,
-        "quality": quality,
-        "year": year,
-        "codec": codec,
-        "framerate": framerate,
-    }
-
 
 LOGGER = getLogger(__name__)
 
@@ -502,24 +125,176 @@ class TelegramUploader:
             self._thumb = None
 
     async def _msg_to_reply(self):
-        # First, send the command message to owner's dump if it's configured
-        # This ensures the command message (with link or replied) goes to owner dump
+        # Initialize the dictionary to store command messages for each chat ID
+        self.dump_chat_msgs = {}
+
+        # Get the original chat ID and command message text
+        original_chat_id = str(self._listener.message.chat.id)
+        msg = self._listener.message.text.lstrip("/")
+
+        # Process LEECH_DUMP_CHAT configuration
         if Config.LEECH_DUMP_CHAT:
             try:
-                msg = self._listener.message.text.lstrip("/")
-                # Send command message to owner's dump
-                owner_dump_msg = await self._listener.client.send_message(
-                    chat_id=Config.LEECH_DUMP_CHAT,
-                    text=msg,
-                    disable_web_page_preview=True,
-                    disable_notification=True,
-                )  # Store this message for potential deletion later
-                self.log_msg = owner_dump_msg
+                # Create a list to store processed chat IDs for easier comparison
+                processed_dump_chats = []
+                original_dump_ids = []
+
+                # Handle LEECH_DUMP_CHAT as a list of chat IDs
+                if isinstance(Config.LEECH_DUMP_CHAT, list) and Config.LEECH_DUMP_CHAT:
+                    # First pass: Process all chat IDs and check if original chat is in the list
+                    for chat_id in Config.LEECH_DUMP_CHAT:
+                        original_dump_id = str(chat_id)
+                        processed_chat_id = chat_id
+
+                        # If it's a formatted string like "b:@channel", extract just the chat ID part
+                        if isinstance(processed_chat_id, str):
+                            # Remove any prefixes like "b:", "u:", "h:" if present
+                            if ":" in processed_chat_id:
+                                processed_chat_id = processed_chat_id.split(":", 1)[1]
+
+                            # Remove any suffixes after | if present (for hybrid format)
+                            if "|" in processed_chat_id:
+                                processed_chat_id = processed_chat_id.split("|", 1)[0]
+
+                        processed_dump_chats.append(str(processed_chat_id))
+                        original_dump_ids.append(original_dump_id)
+
+                    # Check if original chat is in the dump chats list
+                    original_chat_in_dump = False
+                    original_chat_index = -1
+
+                    # Check if the original chat is in the processed dump chats list
+                    # Try different formats of the original chat ID
+                    for i, processed_id in enumerate(processed_dump_chats):
+                        if original_chat_id == processed_id:
+                            original_chat_in_dump = True
+                            original_chat_index = i
+                            break
+                        elif original_chat_id.startswith('-100') and original_chat_id[4:] == processed_id:
+                            original_chat_in_dump = True
+                            original_chat_index = i
+                            break
+                        elif not original_chat_id.startswith('-100') and f"-100{original_chat_id}" == processed_id:
+                            original_chat_in_dump = True
+                            original_chat_index = i
+                            break
+
+
+                    # Second pass: Send command messages to all chats except the original chat
+
+
+                    for index, (processed_chat_id, original_dump_id) in enumerate(zip(processed_dump_chats, original_dump_ids)):
+                        # Check if this is the original chat using the index we found earlier
+                        is_original_chat = (index == original_chat_index)
+
+
+                        # Check if this chat is the same as the up_dest (if specified)
+                        is_up_dest = False
+                        if self._listener.up_dest:
+                            up_dest_str = str(self._listener.up_dest)
+                            is_up_dest = (str(processed_chat_id) == up_dest_str or
+                                         (str(processed_chat_id).startswith('-100') and str(processed_chat_id)[4:] == up_dest_str) or
+                                         (up_dest_str.startswith('-100') and up_dest_str[4:] == str(processed_chat_id)))
+                            if is_up_dest:
+                                pass
+
+                        # If this is the original chat, use the original message
+                        if is_original_chat:
+                            self.dump_chat_msgs[original_dump_id] = self._listener.message
+
+                            if index == 0:
+                                self.log_msg = self._listener.message
+                            continue
+
+                        # If this chat is the same as up_dest, don't send another command message
+                        # The message will be sent in the up_dest section
+                        if is_up_dest:
+                            continue
+
+                        # Check if we already have a command message for this chat
+                        # This prevents duplicate command messages
+                        if original_dump_id in self.dump_chat_msgs:
+
+                            continue
+
+                        try:
+                            # Send command message to this chat
+                            dump_msg = await self._listener.client.send_message(
+                                chat_id=processed_chat_id,
+                                text=msg,
+                                disable_web_page_preview=True,
+                                disable_notification=True,
+                            )
+
+                            # Store the message for this chat ID
+                            self.dump_chat_msgs[original_dump_id] = dump_msg
+                            # Set the first non-original message as the log_msg if not already set
+                            if not hasattr(self, "log_msg") or self.log_msg is None:
+                                self.log_msg = dump_msg
+                        except Exception as e:
+                            # Check for PEER_ID_INVALID error which means the bot is not in the chat
+                            error_str = str(e).lower()
+                            if "peer_id_invalid" in error_str:
+                                LOGGER.error(f"Cannot send command message to {processed_chat_id}: Bot is not a member of this chat or doesn't have permission to post")
+                            else:
+                                LOGGER.error(f"Error sending command message to {processed_chat_id}: {e}")
+                            # Continue with other chat IDs even if one fails
+
+
+                else:
+                    # For backward compatibility, handle the case where LEECH_DUMP_CHAT is a single value
+                    original_dump_id = str(Config.LEECH_DUMP_CHAT)
+                    processed_chat_id = Config.LEECH_DUMP_CHAT
+
+                    if isinstance(processed_chat_id, str):
+                        # Remove any prefixes like "b:", "u:", "h:" if present
+                        if ":" in processed_chat_id:
+                            processed_chat_id = processed_chat_id.split(":", 1)[1]
+
+                        # Remove any suffixes after | if present (for hybrid format)
+                        if "|" in processed_chat_id:
+                            processed_chat_id = processed_chat_id.split("|", 1)[0]
+
+                    # Check if this is the original chat (try different formats)
+                    is_original_chat = (str(processed_chat_id) == original_chat_id or
+                                       (str(processed_chat_id).startswith('-100') and str(processed_chat_id)[4:] == original_chat_id) or
+                                       (original_chat_id.startswith('-100') and original_chat_id[4:] == str(processed_chat_id)))
+
+                    # If this is the original chat, use the original message
+                    if is_original_chat:
+                        # Don't send a separate command message to the original chat
+                        # We'll use the original message instead
+                        self.dump_chat_msgs[original_dump_id] = self._listener.message
+                        self.log_msg = self._listener.message
+                        LOGGER.info(f"Using original message for chat {processed_chat_id}")
+                    else:
+                        # Check if we already have a command message for this chat
+                        # This prevents duplicate command messages
+                        if original_dump_id in self.dump_chat_msgs:
+                            LOGGER.info(f"Already have a command message for chat {processed_chat_id}, skipping")
+                        else:
+                            # Send command message to this chat
+                            LOGGER.info(f"Sending command message to chat {processed_chat_id}")
+                            try:
+                                owner_dump_msg = await self._listener.client.send_message(
+                                    chat_id=processed_chat_id,
+                                    text=msg,
+                                    disable_web_page_preview=True,
+                                    disable_notification=True,
+                                )
+                                self.log_msg = owner_dump_msg
+                                self.dump_chat_msgs[original_dump_id] = owner_dump_msg
+                            except Exception as e:
+                                error_str = str(e).lower()
+                                if "peer_id_invalid" in error_str:
+                                    LOGGER.error(f"Cannot send command message to {processed_chat_id}: Bot is not a member of this chat or doesn't have permission to post")
             except Exception as e:
-                LOGGER.error(f"Failed to send command message to owner's dump: {e}")
+                LOGGER.error(f"Error in _msg_to_reply when processing LEECH_DUMP_CHAT: {e}")
+                # Continue with the rest of the function even if there was an error
 
         # Now handle the normal message reply logic
         if self._listener.up_dest:
+            # If user specified a destination with -up flag, send the command message there
             msg = self._listener.message.text.lstrip("/")
             try:
                 if self._user_session:
@@ -539,6 +314,13 @@ class TelegramUploader:
                         disable_notification=True,
                     )
                     self._is_private = self._sent_msg.chat.type.name == "PRIVATE"
+
+                    # Store the command message for the up_dest chat
+                    # This is important for the _copy_message method to find the command message
+                    up_dest_str = str(self._listener.up_dest)
+                    self.dump_chat_msgs[up_dest_str] = self._sent_msg
+
+
                 # Don't overwrite the log_msg if we already set it to the owner's dump message
                 if not hasattr(self, "log_msg") or self.log_msg is None:
                     self.log_msg = self._sent_msg
@@ -546,6 +328,7 @@ class TelegramUploader:
                 await self._listener.on_upload_error(str(e))
                 return False
         elif self._user_session:
+            # If using user session, get the original message
             self._sent_msg = await TgClient.user.get_messages(
                 chat_id=self._listener.message.chat.id,
                 message_ids=self._listener.mid,
@@ -558,7 +341,36 @@ class TelegramUploader:
                     disable_notification=True,
                 )
         else:
-            self._sent_msg = self._listener.message
+            # Check if the original chat is in the dump chats list
+            original_chat_id = str(self._listener.message.chat.id)
+            original_chat_in_dump = False
+
+            # Look for the original chat ID in the dump_chat_msgs dictionary
+            if hasattr(self, 'dump_chat_msgs') and self.dump_chat_msgs:
+                for original_dump_id, msg in self.dump_chat_msgs.items():
+                    processed_chat_id = original_dump_id
+
+                    # Process the chat ID format (handle prefixes like b:, u:, h:)
+                    if isinstance(processed_chat_id, str):
+                        # Remove any prefixes like "b:", "u:", "h:" if present
+                        if ":" in processed_chat_id:
+                            processed_chat_id = processed_chat_id.split(":", 1)[1]
+
+                        # Remove any suffixes after | if present (for hybrid format)
+                        if "|" in processed_chat_id:
+                            processed_chat_id = processed_chat_id.split("|", 1)[0]
+
+                    # Check if the processed chat ID matches the original chat ID
+                    if str(processed_chat_id) == original_chat_id:
+                        LOGGER.info(f"Found original chat {original_chat_id} in dump_chat_msgs with key {original_dump_id}")
+                        original_chat_in_dump = True
+                        self._sent_msg = msg
+                        break
+
+            # If the original chat is not in the dump chats list, use the original message
+            if not original_chat_in_dump:
+                LOGGER.info(f"Original chat {original_chat_id} not found in dump_chat_msgs, using original message")
+                self._sent_msg = self._listener.message
         return True
 
     async def _prepare_file(self, file_, dirpath):
@@ -1609,6 +1421,11 @@ class TelegramUploader:
 
     async def _copy_media_group(self, msgs_list):
         """Copy a media group to additional destinations based on user settings"""
+        # Check if task is cancelled before proceeding
+        if self._listener.is_cancelled:
+            LOGGER.info("Task is cancelled, skipping media group copy")
+            return
+
         if not msgs_list:
             return
 
@@ -1652,12 +1469,28 @@ class TelegramUploader:
 
             # Case 1: If user didn't set any dump and owner has premium or non-premium string
             if not self._user_dump:
-                # Send to owner leech dump and bot PM
-                if (
-                    Config.LEECH_DUMP_CHAT
-                    and source_chat_id != Config.LEECH_DUMP_CHAT
-                ):
-                    destinations.append(Config.LEECH_DUMP_CHAT)
+                # Send to leech dump chat and bot PM
+                if Config.LEECH_DUMP_CHAT:
+                    # Handle LEECH_DUMP_CHAT as a list
+                    if isinstance(Config.LEECH_DUMP_CHAT, list):
+                        for chat_id in Config.LEECH_DUMP_CHAT:
+                            # Process the chat ID format (handle prefixes like b:, u:, h:)
+                            if isinstance(chat_id, str):
+                                # Remove any prefixes like "b:", "u:", "h:" if present
+                                if ":" in chat_id:
+                                    chat_id = chat_id.split(":", 1)[1]
+
+                                # Remove any suffixes after | if present (for hybrid format)
+                                if "|" in chat_id:
+                                    chat_id = chat_id.split("|", 1)[0]
+
+                            # Add to destinations if not the source chat
+                            if source_chat_id != chat_id:
+                                destinations.append(chat_id)
+                    else:
+                        # For backward compatibility with single chat ID
+                        if source_chat_id != Config.LEECH_DUMP_CHAT:
+                            destinations.append(Config.LEECH_DUMP_CHAT)
 
                 # Add user's PM if not already there
                 if source_chat_id != self._user_id:
@@ -1665,15 +1498,31 @@ class TelegramUploader:
 
             # Case 2: If user set their own dump and owner has no premium string
             elif self._user_dump and not owner_has_premium:
-                # Send to user's own dump, owner leech dump, and bot PM
+                # Send to user's own dump, leech dump chat, and bot PM
                 if source_chat_id != int(self._user_dump):
                     destinations.append(int(self._user_dump))
 
-                if (
-                    Config.LEECH_DUMP_CHAT
-                    and source_chat_id != Config.LEECH_DUMP_CHAT
-                ):
-                    destinations.append(Config.LEECH_DUMP_CHAT)
+                if Config.LEECH_DUMP_CHAT:
+                    # Handle LEECH_DUMP_CHAT as a list
+                    if isinstance(Config.LEECH_DUMP_CHAT, list):
+                        for chat_id in Config.LEECH_DUMP_CHAT:
+                            # Process the chat ID format (handle prefixes like b:, u:, h:)
+                            if isinstance(chat_id, str):
+                                # Remove any prefixes like "b:", "u:", "h:" if present
+                                if ":" in chat_id:
+                                    chat_id = chat_id.split(":", 1)[1]
+
+                                # Remove any suffixes after | if present (for hybrid format)
+                                if "|" in chat_id:
+                                    chat_id = chat_id.split("|", 1)[0]
+
+                            # Add to destinations if not the source chat
+                            if source_chat_id != chat_id:
+                                destinations.append(chat_id)
+                    else:
+                        # For backward compatibility with single chat ID
+                        if source_chat_id != Config.LEECH_DUMP_CHAT:
+                            destinations.append(Config.LEECH_DUMP_CHAT)
 
                 # Add user's PM if not already there
                 if source_chat_id != self._user_id:
@@ -1681,12 +1530,28 @@ class TelegramUploader:
 
             # Case 3: If user set their own dump and owner has premium string
             elif self._user_dump and owner_has_premium:
-                # By default, send to owner leech dump and bot PM
-                if (
-                    Config.LEECH_DUMP_CHAT
-                    and source_chat_id != Config.LEECH_DUMP_CHAT
-                ):
-                    destinations.append(Config.LEECH_DUMP_CHAT)
+                # By default, send to leech dump chat and bot PM
+                if Config.LEECH_DUMP_CHAT:
+                    # Handle LEECH_DUMP_CHAT as a list
+                    if isinstance(Config.LEECH_DUMP_CHAT, list):
+                        for chat_id in Config.LEECH_DUMP_CHAT:
+                            # Process the chat ID format (handle prefixes like b:, u:, h:)
+                            if isinstance(chat_id, str):
+                                # Remove any prefixes like "b:", "u:", "h:" if present
+                                if ":" in chat_id:
+                                    chat_id = chat_id.split(":", 1)[1]
+
+                                # Remove any suffixes after | if present (for hybrid format)
+                                if "|" in chat_id:
+                                    chat_id = chat_id.split("|", 1)[0]
+
+                            # Add to destinations if not the source chat
+                            if source_chat_id != chat_id:
+                                destinations.append(chat_id)
+                    else:
+                        # For backward compatibility with single chat ID
+                        if source_chat_id != Config.LEECH_DUMP_CHAT:
+                            destinations.append(Config.LEECH_DUMP_CHAT)
 
                 # Add user's PM if not already there
                 if source_chat_id != self._user_id:
@@ -1700,32 +1565,84 @@ class TelegramUploader:
         seen = set()
         destinations = [x for x in destinations if not (x in seen or seen.add(x))]
 
-        # Log the destinations for debugging
-        if destinations:
-            # Copy the media group to each destination
-            for dest in destinations:
-                try:
-                    # Get the media IDs from the original messages
-                    media_ids = []
-                    for msg in msgs_list:
-                        if hasattr(msg, "video") and msg.video:
-                            media_ids.append(
-                                InputMediaVideo(media=msg.video.file_id)
-                            )
-                        elif hasattr(msg, "document") and msg.document:
-                            media_ids.append(
-                                InputMediaDocument(media=msg.document.file_id)
-                            )
-                        elif hasattr(msg, "photo") and msg.photo:
-                            media_ids.append(
-                                InputMediaPhoto(media=msg.photo.file_id)
-                            )
+        # Helper function to send media group to a destination
+        async def _send_media_group_to_dest(dest):
+            # Check if task is cancelled before sending media group
+            if self._listener.is_cancelled:
+                LOGGER.info(f"Task is cancelled, skipping media group copy to {dest}")
+                return
 
-                    # Add caption to the first media item only
-                    if media_ids and msgs_list[0].caption:
-                        media_ids[0].caption = msgs_list[0].caption
+            try:
+                # Get the media IDs from the original messages
+                media_ids = []
+                for msg in msgs_list:
+                    if hasattr(msg, "video") and msg.video:
+                        media_ids.append(
+                            InputMediaVideo(media=msg.video.file_id)
+                        )
+                    elif hasattr(msg, "document") and msg.document:
+                        media_ids.append(
+                            InputMediaDocument(media=msg.document.file_id)
+                        )
+                    elif hasattr(msg, "photo") and msg.photo:
+                        media_ids.append(
+                            InputMediaPhoto(media=msg.photo.file_id)
+                        )
 
-                    # Send the media group to the destination
+                # Add caption to the first media item only
+                if media_ids and msgs_list[0].caption:
+                    media_ids[0].caption = msgs_list[0].caption
+
+                # Check if we have a stored command message for this destination
+                dest_str = str(dest)
+
+                # For LEECH_DUMP_CHAT as a list, we need to check if the destination is in the list
+                # and find the corresponding command message
+                found_cmd_msg = None
+
+                if hasattr(self, 'dump_chat_msgs') and self.dump_chat_msgs:
+                    # First, try direct lookup
+                    if dest_str in self.dump_chat_msgs:
+                        found_cmd_msg = self.dump_chat_msgs[dest_str]
+                    else:
+                        # If not found, try to match with processed chat IDs
+                        for original_chat_id, cmd_msg in self.dump_chat_msgs.items():
+                            processed_chat_id = original_chat_id
+
+                            # Process the chat ID format (handle prefixes like b:, u:, h:)
+                            if isinstance(processed_chat_id, str):
+                                # Remove any prefixes like "b:", "u:", "h:" if present
+                                if ":" in processed_chat_id:
+                                    processed_chat_id = processed_chat_id.split(":", 1)[1]
+
+                                # Remove any suffixes after | if present (for hybrid format)
+                                if "|" in processed_chat_id:
+                                    processed_chat_id = processed_chat_id.split("|", 1)[0]
+
+                            # Check if the processed chat ID matches the destination
+                            if str(processed_chat_id) == dest_str:
+                                found_cmd_msg = cmd_msg
+                                break
+
+                # If we found a command message for this destination, reply to it
+                if found_cmd_msg:
+                    # Reply to the command message with the media group
+                    if self._user_session:
+                        await TgClient.user.send_media_group(
+                            chat_id=dest,
+                            media=media_ids,
+                            disable_notification=True,
+                            reply_to_message_id=found_cmd_msg.id,
+                        )
+                    else:
+                        await self._listener.client.send_media_group(
+                            chat_id=dest,
+                            media=media_ids,
+                            disable_notification=True,
+                            reply_to_message_id=found_cmd_msg.id,
+                        )
+                else:
+                    # Send the media group to the destination without replying to a command message
                     if self._user_session:
                         await TgClient.user.send_media_group(
                             chat_id=dest,
@@ -1738,14 +1655,38 @@ class TelegramUploader:
                             media=media_ids,
                             disable_notification=True,
                         )
-                except Exception as e:
+            except Exception as e:
+                error_str = str(e).lower()
+                # Check for PEER_ID_INVALID error which means the bot is not in the chat
+                if "peer_id_invalid" in error_str:
+                    LOGGER.error(f"Cannot send media group to {dest}: Bot is not a member of this chat or doesn't have permission to post")
+                else:
                     LOGGER.error(
                         f"Failed to copy media group to destination {dest}: {e}"
                     )
-                    # Continue with other destinations even if one fails
+                # Continue with other destinations even if one fails
+
+        # Log the destinations for debugging
+        if destinations:
+            # Copy the media group to each destination
+            for dest in destinations:
+                # Check if task is cancelled before copying to each destination
+                if self._listener.is_cancelled:
+                    LOGGER.info("Task is cancelled, stopping media group copy to destinations")
+                    break
+
+                await _send_media_group_to_dest(dest)
+
+        # We don't need this section anymore since we're already handling all chat IDs in the destinations list
+        # The duplicate messages were happening because we were processing the chat IDs twice
 
     async def _copy_message(self):
         await sleep(0.5)
+
+        # Check if task is cancelled or self._sent_msg is None before proceeding
+        if self._listener.is_cancelled:
+            LOGGER.info("Task is cancelled, skipping message copy")
+            return
 
         # Check if self._sent_msg is None before proceeding
         if self._sent_msg is None:
@@ -1754,37 +1695,313 @@ class TelegramUploader:
 
         async def _copy(target, retries=3):
             for attempt in range(retries):
+                # Check if task is cancelled before attempting to copy
+                if self._listener.is_cancelled:
+                    LOGGER.info(f"Task is cancelled, skipping copy to {target}")
+                    return
+
                 try:
-                    msg = await TgClient.bot.get_messages(
-                        self._sent_msg.chat.id,
-                        self._sent_msg.id,
-                    )
-                    await msg.copy(target)
+                    # Check if we have a stored command message for this target
+                    target_str = str(target)
+
+                    # For LEECH_DUMP_CHAT as a list, we need to check if the target is in the list
+                    # and find the corresponding command message
+                    found_cmd_msg = None
+
+                    if hasattr(self, 'dump_chat_msgs') and self.dump_chat_msgs:
+                        # First, try direct lookup
+                        if target_str in self.dump_chat_msgs:
+                            found_cmd_msg = self.dump_chat_msgs[target_str]
+                        else:
+                            # If not found, try to match with processed chat IDs
+                            # Try to convert target to integer for comparison
+                            target_as_int = None
+                            try:
+                                target_as_int = int(target_str)
+                            except ValueError:
+                                pass
+
+                            # Try to convert target without -100 prefix
+                            target_without_prefix = None
+                            if target_str.startswith('-100'):
+                                target_without_prefix = target_str[4:]
+
+                            for original_chat_id, cmd_msg in self.dump_chat_msgs.items():
+                                processed_chat_id = original_chat_id
+
+                                # Process the chat ID format (handle prefixes like b:, u:, h:)
+                                if isinstance(processed_chat_id, str):
+                                    # Remove any prefixes like "b:", "u:", "h:" if present
+                                    if ":" in processed_chat_id:
+                                        processed_chat_id = processed_chat_id.split(":", 1)[1]
+
+                                    # Remove any suffixes after | if present (for hybrid format)
+                                    if "|" in processed_chat_id:
+                                        processed_chat_id = processed_chat_id.split("|", 1)[0]
+
+                                # Try different formats for comparison
+                                comparisons = [
+                                    (str(processed_chat_id) == target_str, "direct string match"),
+                                    (target_str.startswith('-100') and str(processed_chat_id) == target_str[4:], "target has -100 prefix"),
+                                    (str(processed_chat_id).startswith('-100') and str(processed_chat_id)[4:] == target_str, "processed has -100 prefix"),
+                                ]
+
+                                # Try integer comparison if possible
+                                try:
+                                    int_processed = int(processed_chat_id)
+                                    if target_as_int is not None:
+                                        comparisons.append((int_processed == target_as_int, "integer comparison"))
+                                except ValueError:
+                                    pass
+
+                                # Check all comparison results
+                                for result, desc in comparisons:
+                                    if result:
+                                        found_cmd_msg = cmd_msg
+                                        break
+
+                                if found_cmd_msg:
+                                    break
+                    else:
+                        pass
+
+                    # If we still haven't found a command message, check if this is a user's PM or a dump chat
+                    if not found_cmd_msg:
+                        # For user's PM or dump chats without a command message, just copy the message directly
+                        if target_str == str(self._user_id):
+                            pass
+                        else:
+                            # Check if this is a dump chat that should have a command message
+                            if Config.LEECH_DUMP_CHAT:
+                                if isinstance(Config.LEECH_DUMP_CHAT, list):
+                                    dump_chat_ids = []
+                                    for chat in Config.LEECH_DUMP_CHAT:
+                                        if isinstance(chat, str):
+                                            # Process the chat ID format
+                                            processed = chat
+                                            if ":" in processed:
+                                                processed = processed.split(":", 1)[1]
+                                            if "|" in processed:
+                                                processed = processed.split("|", 1)[0]
+                                            dump_chat_ids.append(processed)
+                                        else:
+                                            dump_chat_ids.append(str(chat))
+
+                                if isinstance(Config.LEECH_DUMP_CHAT, list):
+                                    # Check if target is in the dump chat list
+                                    for dump_chat in Config.LEECH_DUMP_CHAT:
+                                        original_dump_chat = dump_chat
+                                        processed_dump_chat = dump_chat
+
+                                        if isinstance(processed_dump_chat, str):
+                                            # Remove any prefixes like "b:", "u:", "h:" if present
+                                            if ":" in processed_dump_chat:
+                                                processed_dump_chat = processed_dump_chat.split(":", 1)[1]
+                                            # Remove any suffixes after | if present (for hybrid format)
+                                            if "|" in processed_dump_chat:
+                                                processed_dump_chat = processed_dump_chat.split("|", 1)[0]
+
+                                        # Check if this target matches a dump chat
+                                        match_found = False
+
+                                        # Try different formats for comparison
+                                        comparisons = [
+                                            (str(processed_dump_chat) == target_str, "direct match"),
+                                            (target_str.startswith('-100') and str(processed_dump_chat) == target_str[4:], "without -100 prefix"),
+                                            (str(processed_dump_chat).startswith('-100') and str(processed_dump_chat)[4:] == target_str, "with -100 prefix"),
+                                        ]
+
+                                        # Try integer comparison if possible
+                                        try:
+                                            int_target = int(target_str)
+                                            int_dump = int(processed_dump_chat)
+                                            comparisons.append((int_target == int_dump, "integer comparison"))
+                                        except ValueError:
+                                            pass
+
+                                        # Check all comparison results
+                                        for result, desc in comparisons:
+                                            if result:
+                                                match_found = True
+                                                break
+
+                                        if match_found:
+                                            try:
+                                                # Send a command message to this chat first
+                                                original_text = self._listener.message.text.lstrip("/")
+                                                cmd_msg = await self._listener.client.send_message(
+                                                    chat_id=target,
+                                                    text=original_text,
+                                                    disable_web_page_preview=True,
+                                                    disable_notification=True,
+                                                )
+                                                # Store the command message
+                                                self.dump_chat_msgs[str(target)] = cmd_msg
+                                                found_cmd_msg = cmd_msg
+                                                break
+                                            except Exception as e:
+                                                LOGGER.error(f"Failed to create command message for dump chat {target_str}: {e}")
+                                elif str(Config.LEECH_DUMP_CHAT) == target_str or (target_str.startswith('-100') and str(Config.LEECH_DUMP_CHAT) == target_str[4:]):
+                                    try:
+                                        # Send a command message to this chat first
+                                        original_text = self._listener.message.text.lstrip("/")
+                                        cmd_msg = await self._listener.client.send_message(
+                                            chat_id=target,
+                                            text=original_text,
+                                            disable_web_page_preview=True,
+                                            disable_notification=True,
+                                        )
+                                        # Store the command message
+                                        self.dump_chat_msgs[str(target)] = cmd_msg
+                                        found_cmd_msg = cmd_msg
+                                    except Exception as e:
+                                        LOGGER.error(f"Failed to create command message for dump chat {target_str}: {e}")
+
+                        # If we still don't have a command message, just copy directly
+                        if not found_cmd_msg:
+                            msg = await TgClient.bot.get_messages(
+                                self._sent_msg.chat.id,
+                                self._sent_msg.id,
+                            )
+                            await msg.copy(target)
+                            return
+
+                    # If we found a command message for this target, reply to it
+                    if found_cmd_msg:
+                        # Reply to the command message with the file
+                        if hasattr(self._sent_msg, "video") and self._sent_msg.video:
+                            await found_cmd_msg.reply_video(
+                                video=self._sent_msg.video.file_id,
+                                caption=self._sent_msg.caption,
+                                quote=True,
+                                disable_notification=True,
+                            )
+                        elif hasattr(self._sent_msg, "document") and self._sent_msg.document:
+                            await found_cmd_msg.reply_document(
+                                document=self._sent_msg.document.file_id,
+                                caption=self._sent_msg.caption,
+                                quote=True,
+                                disable_notification=True,
+                            )
+                        elif hasattr(self._sent_msg, "photo") and self._sent_msg.photo:
+                            await found_cmd_msg.reply_photo(
+                                photo=self._sent_msg.photo.file_id,
+                                caption=self._sent_msg.caption,
+                                quote=True,
+                                disable_notification=True,
+                            )
+                        elif hasattr(self._sent_msg, "audio") and self._sent_msg.audio:
+                            await found_cmd_msg.reply_audio(
+                                audio=self._sent_msg.audio.file_id,
+                                caption=self._sent_msg.caption,
+                                quote=True,
+                                disable_notification=True,
+                            )
+                        else:
+                            # If we can't determine the type, fall back to copying the message
+                            msg = await TgClient.bot.get_messages(
+                                self._sent_msg.chat.id,
+                                self._sent_msg.id,
+                            )
+                            await msg.copy(target)
+                    else:
+                        # If we don't have a stored command message, just copy the message
+                        msg = await TgClient.bot.get_messages(
+                            self._sent_msg.chat.id,
+                            self._sent_msg.id,
+                        )
+                        await msg.copy(target)
                     return
                 except Exception as e:
-                    LOGGER.error(f"Attempt {attempt + 1} failed: {e} {msg.id}")
+                    error_str = str(e).lower()
+                    # Check for PEER_ID_INVALID error which means the bot is not in the chat
+                    if "peer_id_invalid" in error_str:
+                        LOGGER.error(f"Cannot send to {target}: Bot is not a member of this chat or doesn't have permission to post")
+                        # No need to retry for this specific error
+                        return
+
+                    LOGGER.error(f"Attempt {attempt + 1} failed: {e}")
                     if attempt < retries - 1:
                         await sleep(0.5)
             LOGGER.error(f"Failed to copy message after {retries} attempts")
 
-        # Skip copying if we're already in the user's PM and no other destinations are needed
+        # Skip copying if task is cancelled or we're already in the user's PM and no other destinations are needed
+        if self._listener.is_cancelled:
+            LOGGER.info("Task is cancelled, skipping destination determination")
+            return
+
         if (
             self._sent_msg.chat.id == self._user_id
             and not self._user_dump
             and not Config.LEECH_DUMP_CHAT
         ):
+            LOGGER.info("Already in user's PM with no other destinations needed, skipping copy")
             return
 
         # Determine the destinations based on user settings
         destinations = []
 
-        # If user specified a destination with -up flag, it takes precedence over all other destinations
+        # If user specified a destination with -up flag, we need to handle it specially
         if self._listener.up_dest:
             # User specified destination with -up flag
             # The primary message is already sent to the specified destination
-            # We only need to copy to user's PM if it's not already there
+
+            # We need to add all dump chats to destinations, not just user's PM
+            # First, add user's PM if it's not already the source chat
             if self._sent_msg.chat.id != self._user_id:
                 destinations.append(self._user_id)  # Always send to user's PM
+
+            # Add user's dump if it's set and not the same as the source chat or up_dest
+            if self._user_dump:
+                user_dump_int = int(self._user_dump)
+                up_dest_int = int(self._listener.up_dest) if str(self._listener.up_dest).isdigit() else 0
+
+                # Check if user's dump is different from up_dest and source chat
+                if user_dump_int != up_dest_int and self._sent_msg.chat.id != user_dump_int:
+                    destinations.append(user_dump_int)
+
+            # Then add all dump chats except the one specified with -up flag
+            if Config.LEECH_DUMP_CHAT:
+                if isinstance(Config.LEECH_DUMP_CHAT, list):
+                    for chat_id in Config.LEECH_DUMP_CHAT:
+                        processed_chat_id = chat_id
+
+                        # Process the chat ID format (handle prefixes like b:, u:, h:)
+                        if isinstance(processed_chat_id, str):
+                            # Remove any prefixes like "b:", "u:", "h:" if present
+                            if ":" in processed_chat_id:
+                                processed_chat_id = processed_chat_id.split(":", 1)[1]
+
+                            # Remove any suffixes after | if present (for hybrid format)
+                            if "|" in processed_chat_id:
+                                processed_chat_id = processed_chat_id.split("|", 1)[0]
+
+                        # Check if this chat is the same as the up_dest or the source chat
+                        up_dest_str = str(self._listener.up_dest)
+                        is_up_dest = (str(processed_chat_id) == up_dest_str or
+                                     (str(processed_chat_id).startswith('-100') and str(processed_chat_id)[4:] == up_dest_str) or
+                                     (up_dest_str.startswith('-100') and up_dest_str[4:] == str(processed_chat_id)))
+
+                        # Skip if this is the up_dest (already sent there) or the source chat
+                        if is_up_dest:
+                            continue
+                        if self._sent_msg.chat.id == processed_chat_id:
+                            continue
+
+                        # Add to destinations
+                        destinations.append(processed_chat_id)
+
+                else:
+                    # For backward compatibility with single chat ID
+                    processed_chat_id = Config.LEECH_DUMP_CHAT
+                    up_dest_str = str(self._listener.up_dest)
+                    is_up_dest = (str(processed_chat_id) == up_dest_str or
+                                 (str(processed_chat_id).startswith('-100') and str(processed_chat_id)[4:] == up_dest_str) or
+                                 (up_dest_str.startswith('-100') and up_dest_str[4:] == str(processed_chat_id)))
+
+                    if not is_up_dest and self._sent_msg.chat.id != processed_chat_id:
+                        destinations.append(processed_chat_id)
+
         else:
             # No specific destination was specified
             # Follow the standard destination logic based on requirements
@@ -1792,14 +2009,32 @@ class TelegramUploader:
             # Check if owner has premium status
             owner_has_premium = TgClient.IS_PREMIUM_USER
 
+
             # Case 1: If user didn't set any dump and owner has premium or non-premium string
             if not self._user_dump:
-                # Send to owner leech dump and bot PM
-                if (
-                    Config.LEECH_DUMP_CHAT
-                    and self._sent_msg.chat.id != Config.LEECH_DUMP_CHAT
-                ):
-                    destinations.append(Config.LEECH_DUMP_CHAT)
+                # Send to leech dump chat and bot PM
+                if Config.LEECH_DUMP_CHAT:
+                    # Handle LEECH_DUMP_CHAT as a list
+                    if isinstance(Config.LEECH_DUMP_CHAT, list):
+                        for chat_id in Config.LEECH_DUMP_CHAT:
+
+                            # Process the chat ID format (handle prefixes like b:, u:, h:)
+                            if isinstance(chat_id, str):
+                                # Remove any prefixes like "b:", "u:", "h:" if present
+                                if ":" in chat_id:
+                                    chat_id = chat_id.split(":", 1)[1]
+
+                                # Remove any suffixes after | if present (for hybrid format)
+                                if "|" in chat_id:
+                                    chat_id = chat_id.split("|", 1)[0]
+
+                            # Add to destinations if not the source chat
+                            if self._sent_msg.chat.id != chat_id:
+                                destinations.append(chat_id)
+                    else:
+                        # For backward compatibility with single chat ID
+                        if self._sent_msg.chat.id != Config.LEECH_DUMP_CHAT:
+                            destinations.append(Config.LEECH_DUMP_CHAT)
 
                 # Add user's PM if not already there
                 if self._sent_msg.chat.id != self._user_id:
@@ -1807,15 +2042,31 @@ class TelegramUploader:
 
             # Case 2: If user set their own dump and owner has no premium string
             elif self._user_dump and not owner_has_premium:
-                # Send to user's own dump, owner leech dump, and bot PM
+                # Send to user's own dump, leech dump chat, and bot PM
                 if self._sent_msg.chat.id != int(self._user_dump):
                     destinations.append(int(self._user_dump))
 
-                if (
-                    Config.LEECH_DUMP_CHAT
-                    and self._sent_msg.chat.id != Config.LEECH_DUMP_CHAT
-                ):
-                    destinations.append(Config.LEECH_DUMP_CHAT)
+                if Config.LEECH_DUMP_CHAT:
+                    # Handle LEECH_DUMP_CHAT as a list
+                    if isinstance(Config.LEECH_DUMP_CHAT, list):
+                        for chat_id in Config.LEECH_DUMP_CHAT:
+                            # Process the chat ID format (handle prefixes like b:, u:, h:)
+                            if isinstance(chat_id, str):
+                                # Remove any prefixes like "b:", "u:", "h:" if present
+                                if ":" in chat_id:
+                                    chat_id = chat_id.split(":", 1)[1]
+
+                                # Remove any suffixes after | if present (for hybrid format)
+                                if "|" in chat_id:
+                                    chat_id = chat_id.split("|", 1)[0]
+
+                            # Add to destinations if not the source chat
+                            if self._sent_msg.chat.id != chat_id:
+                                destinations.append(chat_id)
+                    else:
+                        # For backward compatibility with single chat ID
+                        if self._sent_msg.chat.id != Config.LEECH_DUMP_CHAT:
+                            destinations.append(Config.LEECH_DUMP_CHAT)
 
                 # Add user's PM if not already there
                 if self._sent_msg.chat.id != self._user_id:
@@ -1823,37 +2074,120 @@ class TelegramUploader:
 
             # Case 3: If user set their own dump and owner has premium string
             elif self._user_dump and owner_has_premium:
-                # By default, send to owner leech dump and bot PM
-                if (
-                    Config.LEECH_DUMP_CHAT
-                    and self._sent_msg.chat.id != Config.LEECH_DUMP_CHAT
-                ):
-                    destinations.append(Config.LEECH_DUMP_CHAT)
+                # By default, send to leech dump chat and bot PM
+                if Config.LEECH_DUMP_CHAT:
+                    # Handle LEECH_DUMP_CHAT as a list
+                    if isinstance(Config.LEECH_DUMP_CHAT, list):
+                        for chat_id in Config.LEECH_DUMP_CHAT:
+                            # Process the chat ID format (handle prefixes like b:, u:, h:)
+                            if isinstance(chat_id, str):
+                                # Remove any prefixes like "b:", "u:", "h:" if present
+                                if ":" in chat_id:
+                                    chat_id = chat_id.split(":", 1)[1]
+
+                                # Remove any suffixes after | if present (for hybrid format)
+                                if "|" in chat_id:
+                                    chat_id = chat_id.split("|", 1)[0]
+
+                            # Add to destinations if not the source chat
+                            if self._sent_msg.chat.id != chat_id:
+                                destinations.append(chat_id)
+                    else:
+                        # For backward compatibility with single chat ID
+                        if self._sent_msg.chat.id != Config.LEECH_DUMP_CHAT:
+                            destinations.append(Config.LEECH_DUMP_CHAT)
 
                 # Add user's PM if not already there
                 if self._sent_msg.chat.id != self._user_id:
                     destinations.append(self._user_id)
 
-                # TODO: Add logic to check if owner has permission to user's dump
-                # For now, we'll assume owner doesn't have permission to user's dump
-                # If we can determine this in the future, we can add user's dump to destinations
+                # Add user's dump chat to destinations if it's not already the source chat
+                # This ensures files are always sent to the user's dump regardless of premium status
+                if self._user_dump and self._sent_msg.chat.id != int(self._user_dump):
+
+                    destinations.append(int(self._user_dump))
 
         # Remove duplicates while preserving order
         seen = set()
         destinations = [x for x in destinations if not (x in seen or seen.add(x))]
 
-        # Log the destinations for debugging
+        # Make sure all dump chats are in the destinations list
+        if Config.LEECH_DUMP_CHAT and not self._listener.up_dest:
+            if isinstance(Config.LEECH_DUMP_CHAT, list):
+                for chat_id in Config.LEECH_DUMP_CHAT:
+                    processed_chat_id = chat_id
+
+                    # Process the chat ID format (handle prefixes like b:, u:, h:)
+                    if isinstance(processed_chat_id, str):
+                        # Remove any prefixes like "b:", "u:", "h:" if present
+                        if ":" in processed_chat_id:
+                            processed_chat_id = processed_chat_id.split(":", 1)[1]
+
+                        # Remove any suffixes after | if present (for hybrid format)
+                        if "|" in processed_chat_id:
+                            processed_chat_id = processed_chat_id.split("|", 1)[0]
+
+                    # Try to convert to integer if possible
+                    try:
+                        processed_chat_id_int = int(processed_chat_id)
+                        processed_chat_id = processed_chat_id_int
+                    except (ValueError, TypeError):
+                        pass
+
+                    # Check if this chat ID is already in the seen set
+                    # Try different formats for comparison
+                    already_in_seen = False
+                    for seen_id in seen:
+                        try:
+                            # Try direct comparison
+                            if str(processed_chat_id) == str(seen_id):
+                                already_in_seen = True
+                                break
+                            # Try with/without -100 prefix
+                            elif str(processed_chat_id).startswith('-100') and str(processed_chat_id)[4:] == str(seen_id):
+                                already_in_seen = True
+                                break
+                            elif str(seen_id).startswith('-100') and str(seen_id)[4:] == str(processed_chat_id):
+                                already_in_seen = True
+                                break
+                            # Try integer comparison
+                            try:
+                                if int(processed_chat_id) == int(seen_id):
+                                    already_in_seen = True
+                                    break
+                            except (ValueError, TypeError):
+                                pass
+                        except Exception as e:
+                            LOGGER.error(f"Error comparing chat IDs: {e}")
+
+                    # Add to destinations if not already there
+                    if not already_in_seen:
+                        destinations.append(processed_chat_id)
+                        seen.add(processed_chat_id)
+
+            else:
+                # For backward compatibility with single chat ID
+                if Config.LEECH_DUMP_CHAT not in seen:
+                    destinations.append(Config.LEECH_DUMP_CHAT)
+                    seen.add(Config.LEECH_DUMP_CHAT)
+
+        # Process destinations
         if destinations:
             # Copy to each destination
             for dest in destinations:
-                with contextlib.suppress(Exception):
-                    await _copy(dest)
+                # Check if task is cancelled before copying to each destination
+                if self._listener.is_cancelled:
+                    LOGGER.info("Task is cancelled, stopping file copy to destinations")
+                    break
 
-        # Support for multiple LEECH_DUMP_CHAT entries
-        if len(Config.LEECH_DUMP_CHAT) > 1:
-            for i in Config.LEECH_DUMP_CHAT[1:]:
-                with contextlib.suppress(Exception):
-                    await _copy(i)
+                # Copy to destination
+                try:
+                    await _copy(dest)
+                except Exception as e:
+                    LOGGER.error(f"Failed to copy file to destination {dest}: {e}")
+
+        # We don't need this section anymore since we're already handling all chat IDs in the destinations list
+        # The duplicate messages were happening because we were processing the chat IDs twice
 
     @property
     def speed(self):
@@ -1869,4 +2203,11 @@ class TelegramUploader:
     async def cancel_task(self):
         self._listener.is_cancelled = True
         LOGGER.info(f"Cancelling Upload: {self._listener.name}")
+
+        # Set self._sent_msg to None to prevent any further attempts to copy it
+        # This will prevent the "Cannot copy message: self._sent_msg is None" error
+        if hasattr(self, '_sent_msg'):
+
+            self._sent_msg = None
+
         await self._listener.on_upload_error("your upload has been stopped!")

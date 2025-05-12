@@ -113,7 +113,7 @@ LEECH_SUFFIX = ""  # Suffix to add to leeched files
 LEECH_FONT = ""  # Font to use for leech captions
 LEECH_FILENAME = ""  # Custom filename template for leeched files
 LEECH_FILENAME_CAPTION = ""  # Caption template for leeched files
-LEECH_DUMP_CHAT = []  # Chat ID where leeched files will be sent
+LEECH_DUMP_CHAT = []  # Chat IDs ["-100123456789", "b:@mychannel", "u:-100987654321", "h:@mygroup|123456"] where leeched files will be sent
 THUMBNAIL_LAYOUT = ""  # Layout for thumbnails: empty, top, bottom, or custom
 EQUAL_SPLITS = False  # Create equal-sized parts when splitting files
 

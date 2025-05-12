@@ -792,6 +792,26 @@ async def set_option(_, message, option):
                 and Config.USER_SESSION_STRING
                 else 2097152000
             )
+
+            # Ensure split size never exceeds Telegram's limit (based on premium status)
+            # Add a safety margin to ensure we never exceed Telegram's limit
+            safety_margin = 50 * 1024 * 1024  # 50 MiB
+
+            # For non-premium accounts, use a more conservative limit
+            if not TgClient.IS_PREMIUM_USER:
+                # Use 2000 MiB (slightly less than 2 GiB) for non-premium accounts
+                telegram_limit = 2000 * 1024 * 1024
+            else:
+                # Use 4000 MiB (slightly less than 4 GiB) for premium accounts
+                telegram_limit = 4000 * 1024 * 1024
+
+            safe_telegram_limit = telegram_limit - safety_margin
+
+            # Ensure the value doesn't exceed the safe telegram limit
+            if value > safe_telegram_limit:
+                value = safe_telegram_limit
+
+            # Also ensure it doesn't exceed the maximum allowed split size
             value = min(int(value), max_split_size)
         except (ValueError, TypeError):
             # If conversion fails, set to default max split size

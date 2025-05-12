@@ -324,9 +324,25 @@ async def generate_caption(filename, directory, caption_template):
             if "Duration" in general_track:
                 try:
                     duration_str = general_track["Duration"]
-                    # Convert duration to seconds
-                    hours, minutes, seconds = map(float, duration_str.split(":"))
-                    video_duration = int(hours * 3600 + minutes * 60 + seconds)
+                    # Check if duration is in HH:MM:SS format
+                    if ":" in duration_str:
+                        # Split by colon and handle different formats
+                        parts = duration_str.split(":")
+                        if len(parts) == 3:
+                            # HH:MM:SS format
+                            hours, minutes, seconds = map(float, parts)
+                            video_duration = int(hours * 3600 + minutes * 60 + seconds)
+                        elif len(parts) == 2:
+                            # MM:SS format
+                            minutes, seconds = map(float, parts)
+                            video_duration = int(minutes * 60 + seconds)
+                        elif len(parts) == 1:
+                            # SS format
+                            seconds = float(parts[0])
+                            video_duration = int(seconds)
+                    else:
+                        # Try to parse as a float directly (seconds)
+                        video_duration = int(float(duration_str))
                 except Exception as e:
                     LOGGER.error(f"Error parsing duration: {e}")
 
@@ -466,9 +482,7 @@ async def generate_caption(filename, directory, caption_template):
             readable_size = "Unknown"
 
         # Extract metadata from filename
-        from bot.helper.mirror_leech_utils.telegram_uploader import (
-            extract_metadata_from_filename,
-        )
+        from bot.helper.ext_utils.template_processor import extract_metadata_from_filename
 
         filename_metadata = await extract_metadata_from_filename(
             os.path.splitext(filename)[0]
@@ -499,29 +513,29 @@ async def generate_caption(filename, directory, caption_template):
         caption_data = DefaultDict(
             # Basic variables
             filename=os.path.splitext(filename)[0],  # Filename without extension
-            ext=os.path.splitext(filename)[1][1:],  # Extension without dot
             size=readable_size,
             duration=get_readable_time(video_duration, True),
             quality=video_quality or filename_metadata.get("quality", ""),
-            # Media information
-            codec=video_codec or filename_metadata.get("codec", ""),
-            format=video_format,
-            framerate=video_framerate or filename_metadata.get("framerate", ""),
             audios=audio_languages_str,
             audio_codecs=audio_codecs_str,
             subtitles=subtitle_languages_str,
             md5_hash=file_md5_hash,
+            ext=os.path.splitext(filename)[1][1:],  # Extension without dot
+
             # TV Show variables
             season=filename_metadata.get("season", ""),
             episode=filename_metadata.get("episode", ""),
             year=filename_metadata.get("year", ""),
-            # Track counts
+
+            # Media Information
             NumVideos=num_videos_str,
             NumAudios=num_audios_str,
             NumSubtitles=num_subtitles_str,
-            # Additional variables
-            id=file_id,
             formate=format_upper,  # Intentional spelling to match documentation
+            format=video_format,
+            id=file_id,
+            framerate=video_framerate or filename_metadata.get("framerate", ""),
+            codec=video_codec or filename_metadata.get("codec", ""),
         )
 
         # Create a cleaned version of the caption data for template processing

@@ -20,17 +20,20 @@ FONT_STYLES = {
     "italic": lambda text: f"<i>{text}</i>",
     "underline": lambda text: f"<u>{text}</u>",
     "strike": lambda text: f"<s>{text}</s>",
-    # Using Electrogram's spoiler tag
+    # Spoiler tag (supported by Telegram)
     "spoiler": lambda text: f"<spoiler>{text}</spoiler>",
     "code": lambda text: f"<code>{text}</code>",
     "quote": lambda text: f"<blockquote>{text}</blockquote>",
-    # Combined HTML Styles
+    # Combined HTML Styles (properly nested according to Telegram docs)
+    # These combinations are valid in Telegram
     "bold_italic": lambda text: f"<b><i>{text}</i></b>",
     "underline_italic": lambda text: f"<u><i>{text}</i></u>",
     "underline_bold": lambda text: f"<u><b>{text}</b></u>",
     "underline_bold_italic": lambda text: f"<u><b><i>{text}</i></b></u>",
-    "quote_expandable": lambda text: f"<blockquote expandable>{text}</blockquote>",
-    "bold_quote": lambda text: f"<b><blockquote>{text}</blockquote></b>",
+    # Expandable blockquote (supported by Electrogram)
+    "quote_expandable": lambda text: f"<blockquote expandable>{text}\n</blockquote>",
+    # Bold text in a blockquote
+    "bold_quote": lambda text: f"<blockquote><b>{text}</b></blockquote>",
     # Google Unicode Font Styles - Mathematical Variants
     "serif": lambda text: "".join([_map_to_serif(c) for c in text]),
     "sans": lambda text: "".join([_map_to_sans(c) for c in text]),
@@ -50,16 +53,13 @@ FONT_STYLES = {
     "subscript": lambda text: "".join([_map_to_subscript(c) for c in text]),
     "wide": lambda text: "".join([_map_to_wide(c) for c in text]),
     "cursive": lambda text: "".join([_map_to_cursive(c) for c in text]),
-    # Combined HTML styles
-    "bold_code": lambda text: f"<b><code>{text}</code></b>",
-    "italic_code": lambda text: f"<i><code>{text}</code></i>",
-    "underline_code": lambda text: f"<u><code>{text}</code></u>",
-    "bold_spoiler": lambda text: f"<b><spoiler>{text}</spoiler></b>",
-    "italic_spoiler": lambda text: f"<i><spoiler>{text}</spoiler></i>",
-    "bold_monospace": lambda text: f"<b><pre>{text}</pre></b>",
-    "italic_monospace": lambda text: f"<i><pre>{text}</pre></i>",
-    "bold_quote_expandable": lambda text: f"<b><blockquote expandable>{text}</blockquote></b>",
-    "italic_quote_expandable": lambda text: f"<i><blockquote expandable>{text}</blockquote></i>",
+    # Note: Removed combined HTML styles that cannot be nested according to Telegram docs
+    # The following tags cannot contain other formatting tags in Telegram: code, pre
+    # The following combinations are valid according to Telegram docs:
+    "bold_spoiler": lambda text: f"<spoiler><b>{text}</b></spoiler>",
+    "italic_spoiler": lambda text: f"<spoiler><i>{text}</i></spoiler>",
+    "bold_quote_expandable": lambda text: f"<blockquote expandable><b>{text}</b></blockquote>",
+    "italic_quote_expandable": lambda text: f"<blockquote expandable><i>{text}</i></blockquote>",
 }
 
 # Unicode character mappings for different font styles
@@ -671,16 +671,16 @@ async def is_google_font(font_name):
 
 async def apply_google_font_style(text, font_name):
     """
-    Apply a Google Font style to the given text using HTML formatting.
-    Since Telegram doesn't support actual font files in messages,
-    this function wraps the text in a span with a font-family style.
+    Apply a Google Font style to the given text.
+    Since Telegram doesn't support custom fonts or the span tag,
+    this function uses code tags with a prefix to indicate the font.
 
     Args:
         text (str): The text to style
         font_name (str): The Google Font name to apply (can include weight, e.g., "Roboto:700")
 
     Returns:
-        str: The styled text with HTML font-family attribute
+        str: The styled text using Telegram-supported tags
     """
     # Parse font name and weight if provided (e.g., "Roboto:700")
     font_weight = ""
@@ -692,11 +692,14 @@ async def apply_google_font_style(text, font_name):
     if not font_exists:
         return f"<code>{text}</code>"
 
-    # Apply the font using HTML (this is just for visual indication in the caption)
-    # Note: Telegram doesn't actually render custom fonts, but this shows the user what font was applied
+    # Since Telegram doesn't support custom fonts, we'll use code tags
+    # and add a prefix to indicate the font that would be applied
+    font_indicator = f"{font_name}"
     if font_weight:
-        return f"<span style='font-family: \"{font_name}\"; font-weight: {font_weight};'>{text}</span>"
-    return f"<span style='font-family: \"{font_name}\";'>{text}</span>"
+        font_indicator += f":{font_weight}"
+
+    # Use monospace formatting with a font indicator
+    return f"<code>[{font_indicator}] {text}</code>"
 
 
 def get_available_fonts():

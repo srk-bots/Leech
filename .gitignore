@@ -19,3 +19,4 @@ cookies/*
 downloads/*
 *.session
 __pycache__/
+venv/

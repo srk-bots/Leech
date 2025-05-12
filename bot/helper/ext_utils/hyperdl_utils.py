@@ -137,12 +137,15 @@ class HyperTGDownload:
         retries = 0
         last_error = None
 
+        # Handle case where dump_chat is a list - use the first item
+        chat_id = self.dump_chat[0] if isinstance(self.dump_chat, list) else self.dump_chat
+
         while retries < max_retries:
             try:
                 # Adapt for electrogram API
                 try:
                     media = await client.get_messages(
-                        chat_id=self.dump_chat,
+                        chat_id=chat_id,
                         message_ids=mid,
                     )
                 except TypeError as e:
@@ -150,7 +153,7 @@ class HyperTGDownload:
                     if "unexpected keyword argument" in str(e):
                         # Try alternative approach for Electrogram
                         media = await client.get_messages(
-                            self.dump_chat,  # chat_id as positional argument
+                            chat_id,  # chat_id as positional argument
                             mid,  # message_ids as positional argument
                         )
                     else:
@@ -165,7 +168,7 @@ class HyperTGDownload:
                 await sleep(1 * retries)
 
         LOGGER.error(
-            f"Failed to get message {mid} from {self.dump_chat} with Client {client.me.username}"
+            f"Failed to get message {mid} from {chat_id} with Client {client.me.username}"
         )
         raise ValueError(
             f"Bot needs Admin access in Chat or message may be deleted. Error: {last_error}"
@@ -588,8 +591,11 @@ class HyperTGDownload:
                     # For media messages, we need to forward them instead of copying
                     # as copy_message might not preserve all media attributes
                     try:
+                        # Handle case where dump_chat is a list - use the first item
+                        chat_id = dump_chat[0] if isinstance(dump_chat, list) else dump_chat
+
                         forwarded_msg = await TgClient.bot.forward_messages(
-                            chat_id=dump_chat,
+                            chat_id=chat_id,
                             from_chat_id=message.chat.id,
                             message_ids=message.id,
                             disable_notification=True,
@@ -608,8 +614,11 @@ class HyperTGDownload:
                             f"Forwarding failed: {e}, trying copy_message instead"
                         )
                         # If forwarding fails, try copying
+                        # Handle case where dump_chat is a list - use the first item
+                        chat_id = dump_chat[0] if isinstance(dump_chat, list) else dump_chat
+
                         self.message = await TgClient.bot.copy_message(
-                            chat_id=dump_chat,
+                            chat_id=chat_id,
                             from_chat_id=message.chat.id,
                             message_id=message.id,
                             disable_notification=True,
@@ -639,7 +648,11 @@ class HyperTGDownload:
             else:
                 self.message = message
 
-            self.dump_chat = dump_chat or message.chat.id
+            # Handle case where dump_chat is a list
+            if dump_chat:
+                self.dump_chat = dump_chat
+            else:
+                self.dump_chat = message.chat.id
             media = await self.get_media_type(self.message)
 
             file_id_str = media if isinstance(media, str) else media.file_id
