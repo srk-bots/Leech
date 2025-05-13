@@ -212,7 +212,7 @@ async def get_readable_message(sid, is_user, page_no=1, status="All", page_step=
         else:
             tstatus = task.status()
         if task.listener.is_super_chat:
-            msg += f"<blockquote expandable> <b>{index + start_position}. <a href='{task.listener.message.link}'>{tstatus}</a>: </b>"
+            msg += f"<blockquote> <b>{index + start_position}. <a href='{task.listener.message.link}'>{tstatus}</a>: </b>"
         else:
             msg += f"<b>{index + start_position}. {tstatus}: </b>"
         msg += f"<b>{escape(f'{task.name()}')}</b>"
