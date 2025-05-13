@@ -95,8 +95,7 @@ class Config:
                 evaluated = literal_eval(value)
                 if isinstance(evaluated, expected_type):
                     return evaluated
-                else:
-                    raise TypeError
+                raise TypeError
             except (ValueError, SyntaxError, TypeError) as e:
                 raise TypeError(
                     f"{key} should be {expected_type.__name__}, got invalid string: {value}"

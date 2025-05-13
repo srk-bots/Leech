@@ -2,12 +2,12 @@ import contextlib
 import os
 from asyncio import gather, sleep
 from collections import Counter
+from copy import deepcopy
 from os import path as ospath
 from os import walk
 from re import IGNORECASE, findall, sub
 from secrets import token_hex
 from shlex import split
-from copy import deepcopy
 
 from aiofiles.os import listdir, makedirs, remove
 from aiofiles.os import path as aiopath
