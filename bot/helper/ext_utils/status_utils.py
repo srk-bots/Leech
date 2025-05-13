@@ -212,13 +212,13 @@ async def get_readable_message(sid, is_user, page_no=1, status="All", page_step=
         else:
             tstatus = task.status()
         if task.listener.is_super_chat:
-            msg += f"<b>{index + start_position}. <a href='{task.listener.message.link}'>{tstatus}</a>: </b>"
+            msg += f"<blockquote expandable> <b>{index + start_position}. <a href='{task.listener.message.link}'>{tstatus}</a>: </b>"
         else:
             msg += f"<b>{index + start_position}. {tstatus}: </b>"
-        msg += f"<code>{escape(f'{task.name()}')}</code>"
+        msg += f"<b>{escape(f'{task.name()}')}</b>"
         if task.listener.subname:
             msg += f"\n<i>{task.listener.subname}</i>"
-        msg += f"\nby: {source(task.listener)}"
+        msg += f"\n<b>by: {source(task.listener)}</b>"
         if (
             tstatus not in [MirrorStatus.STATUS_SEED, MirrorStatus.STATUS_QUEUEUP]
             and task.listener.progress
@@ -254,7 +254,7 @@ async def get_readable_message(sid, is_user, page_no=1, status="All", page_step=
         msg += f"\n<b>Tool:</b> {task.tool}"
         task_gid = task.gid()
         short_gid = task_gid[-8:] if task_gid.startswith("SABnzbd") else task_gid[:8]
-        msg += f"\n/stop_{short_gid}\n\n"
+        msg += f"\n/stop_{short_gid}</blockquote>\n\n"
 
     if len(msg) == 0:
         if status == "All":
@@ -275,6 +275,6 @@ async def get_readable_message(sid, is_user, page_no=1, status="All", page_step=
             if status_value != status:
                 buttons.data_button(label, f"status {sid} st {status_value}")
     button = buttons.build_menu(8)
-    msg += f"<b>CPU:</b> {cpu_percent()}% | <b>FREE:</b> {get_readable_file_size(disk_usage(DOWNLOAD_DIR).free)}"
-    msg += f"\n<b>RAM:</b> {virtual_memory().percent}% | <b>UPTIME:</b> {get_readable_time(time() - bot_start_time)}"
+    msg += f"<blockquote expandable><b>CPU:</b> {cpu_percent()}% | <b>FREE:</b> {get_readable_file_size(disk_usage(DOWNLOAD_DIR).free)}"
+    msg += f"\n<b>RAM:</b> {virtual_memory().percent}% | <b>UPTIME:</b> {get_readable_time(time() - bot_start_time)}</blockquote>\n"
     return msg, button
