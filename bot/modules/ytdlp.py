@@ -728,6 +728,28 @@ class YtDlp(TaskListener):
             "-merge-audio": False,
             "-merge-subtitle": False,
             "-merge-all": False,
+            "-merge-image": False,
+            "-merge-pdf": False,
+            "-watermark": False,
+            "-iwm": False,
+            "-extract": False,
+            "-extract-video": False,
+            "-extract-audio": False,
+            "-extract-subtitle": False,
+            "-extract-attachment": False,
+            "-add": False,
+            "-add-video": False,
+            "-add-audio": False,
+            "-add-subtitle": False,
+            "-add-attachment": False,
+            "-trim": False,
+            "-compress": False,
+            "-comp-video": False,
+            "-comp-audio": False,
+            "-comp-image": False,
+            "-comp-document": False,
+            "-comp-subtitle": False,
+            "-comp-archive": False,
             "-i": 0,
             "-sp": 0,
             "link": "",
@@ -739,6 +761,9 @@ class YtDlp(TaskListener):
             "-t": "",
             "-ca": "",
             "-cv": "",
+            "-cs": "",
+            "-cd": "",
+            "-cr": "",
             "-ns": "",
             "-md": "",
             "-metadata-title": "",
@@ -842,6 +867,9 @@ class YtDlp(TaskListener):
         self.force_upload = args["-fu"]
         self.convert_audio = args["-ca"]
         self.convert_video = args["-cv"]
+        self.convert_subtitle = args["-cs"]
+        self.convert_document = args["-cd"]
+        self.convert_archive = args["-cr"]
         self.name_sub = args["-ns"]
         self.hybrid_leech = args["-hl"]
         self.thumbnail_layout = args["-tl"]
@@ -870,6 +898,28 @@ class YtDlp(TaskListener):
         self.merge_audio = args["-merge-audio"]
         self.merge_subtitle = args["-merge-subtitle"]
         self.merge_all = args["-merge-all"]
+        self.merge_image = args["-merge-image"]
+        self.merge_pdf = args["-merge-pdf"]
+        self.watermark = args["-watermark"]
+        self.image_watermark = args["-iwm"]
+        self.extract = args["-extract"]
+        self.extract_video = args["-extract-video"]
+        self.extract_audio = args["-extract-audio"]
+        self.extract_subtitle = args["-extract-subtitle"]
+        self.extract_attachment = args["-extract-attachment"]
+        self.add = args["-add"]
+        self.add_video = args["-add-video"]
+        self.add_audio = args["-add-audio"]
+        self.add_subtitle = args["-add-subtitle"]
+        self.add_attachment = args["-add-attachment"]
+        self.trim = args["-trim"]
+        self.compression = args["-compress"]
+        self.comp_video = args["-comp-video"]
+        self.comp_audio = args["-comp-audio"]
+        self.comp_image = args["-comp-image"]
+        self.comp_document = args["-comp-document"]
+        self.comp_subtitle = args["-comp-subtitle"]
+        self.comp_archive = args["-comp-archive"]
 
         is_bulk = args["-b"]
 

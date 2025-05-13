@@ -1,3 +1,5 @@
+import html
+import time
 from contextlib import redirect_stdout, suppress
 from io import BytesIO, StringIO
 from os import chdir, getcwd
@@ -34,24 +36,52 @@ def log_input(message):
     )
 
 
-async def send(msg, message):
-    if len(str(msg)) > 2000:
-        with BytesIO(str.encode(msg)) as out_file:
+async def send(msg, message, input_code="", execution_time=0):
+    # Format the message with input, output and time taken - escape HTML special characters
+    safe_input = html.escape(input_code)
+    safe_output = html.escape(str(msg))
+
+    formatted_input = f"<b>Input</b> -\n<pre>{safe_input}</pre>\n\n"
+    formatted_output = f"<b>Output</b> -\n<pre>{safe_output}</pre>"
+    time_taken = f"<b>Time</b>: {execution_time:.2f}s"
+
+    formatted_msg = f"{formatted_input}{formatted_output}\n\n{time_taken}"
+
+    if len(formatted_msg) > 3000:
+        with BytesIO(str.encode(formatted_msg)) as out_file:
             out_file.name = "output.txt"
             await send_file(message, out_file)
     else:
         LOGGER.info(f"OUT: '{msg}'")
-        await send_message(message, f"<code>{msg}</code>")
+        await send_message(message, formatted_msg)
 
 
 @new_task
 async def aioexecute(_, message):
-    await send(await do("aexec", message), message)
+    content = (
+        message.text.split(maxsplit=1)[-1]
+        if len(message.text.split(maxsplit=1)) > 1
+        else ""
+    )
+    input_code = cleanup_code(content)
+    start_time = time.time()
+    result = await do("aexec", message)
+    execution_time = time.time() - start_time
+    await send(result, message, input_code, execution_time)
 
 
 @new_task
 async def execute(_, message):
-    await send(await do("exec", message), message)
+    content = (
+        message.text.split(maxsplit=1)[-1]
+        if len(message.text.split(maxsplit=1)) > 1
+        else ""
+    )
+    input_code = cleanup_code(content)
+    start_time = time.time()
+    result = await do("exec", message)
+    execution_time = time.time() - start_time
+    await send(result, message, input_code, execution_time)
 
 
 def cleanup_code(code):

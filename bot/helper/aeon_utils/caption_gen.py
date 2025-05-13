@@ -331,7 +331,9 @@ async def generate_caption(filename, directory, caption_template):
                         if len(parts) == 3:
                             # HH:MM:SS format
                             hours, minutes, seconds = map(float, parts)
-                            video_duration = int(hours * 3600 + minutes * 60 + seconds)
+                            video_duration = int(
+                                hours * 3600 + minutes * 60 + seconds
+                            )
                         elif len(parts) == 2:
                             # MM:SS format
                             minutes, seconds = map(float, parts)
@@ -482,7 +484,9 @@ async def generate_caption(filename, directory, caption_template):
             readable_size = "Unknown"
 
         # Extract metadata from filename
-        from bot.helper.ext_utils.template_processor import extract_metadata_from_filename
+        from bot.helper.ext_utils.template_processor import (
+            extract_metadata_from_filename,
+        )
 
         filename_metadata = await extract_metadata_from_filename(
             os.path.splitext(filename)[0]
@@ -521,12 +525,10 @@ async def generate_caption(filename, directory, caption_template):
             subtitles=subtitle_languages_str,
             md5_hash=file_md5_hash,
             ext=os.path.splitext(filename)[1][1:],  # Extension without dot
-
             # TV Show variables
             season=filename_metadata.get("season", ""),
             episode=filename_metadata.get("episode", ""),
             year=filename_metadata.get("year", ""),
-
             # Media Information
             NumVideos=num_videos_str,
             NumAudios=num_audios_str,

@@ -406,8 +406,7 @@ def get_user_split_size(user_id, args, file_size, equal_splits=False):
 
     safe_telegram_limit = telegram_limit - safety_margin
 
-    if split_size > safe_telegram_limit:
-        split_size = safe_telegram_limit
+    split_size = min(split_size, safe_telegram_limit)
 
     # Ensure split size doesn't exceed maximum allowed
     split_size = min(split_size, max_split_size)

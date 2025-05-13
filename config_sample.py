@@ -21,7 +21,7 @@ SUDO_USERS = (
     ""  # List of sudo user IDs who can use admin commands, separated by space
 )
 DEFAULT_UPLOAD = (
-    "rc"  # Default upload destination: 'rc' for rclone or 'gd' for Google Drive
+    "gd"  # Default upload destination: 'rc' for rclone or 'gd' for Google Drive
 )
 FILELION_API = ""  # FileLion API key for direct links
 STREAMWISH_API = ""  # StreamWish API key for direct links
@@ -29,9 +29,9 @@ EXCLUDED_EXTENSIONS = (
     ""  # File extensions to exclude from processing, separated by space
 )
 INCOMPLETE_TASK_NOTIFIER = False  # Notify about incomplete tasks on bot restart
-YT_DLP_OPTIONS = ""  # Additional yt-dlp options as a JSON string
+YT_DLP_OPTIONS = {}  # Additional yt-dlp options as a JSON string
 USER_COOKIES = ""  # Path to cookies file for yt-dlp and other downloaders
-NAME_SUBSTITUTE = ""  # Regex pattern to substitute in filenames
+NAME_SUBSTITUTE = r""  # Regex pattern to substitute in filenames
 FFMPEG_CMDS = {}  # Custom FFmpeg commands for different file types
 UPLOAD_PATHS = {}  # Custom upload paths for different file types
 MEDIA_STORE = False  # Enable media store for faster thumbnail generation
@@ -100,7 +100,7 @@ USENET_SERVERS = [  # List of Usenet servers for NZB downloads
 
 # Update
 UPSTREAM_REPO = "https://github.com/AeonOrg/Aeon-MLTB"  # Repository URL for updates
-UPSTREAM_BRANCH = "main"  # Branch to use for updates
+UPSTREAM_BRANCH = "extended"  # Branch to use for updates
 
 # Leech
 LEECH_SPLIT_SIZE = 0  # Size of split files in bytes, 0 means no split
@@ -168,6 +168,24 @@ BOT_MAX_TASKS = (
 USER_TIME_INTERVAL = 0  # Minimum time between user tasks in seconds (0 = no delay)
 STATUS_LIMIT = 10  # Number of tasks to display in status message
 SEARCH_LIMIT = 0  # Maximum number of search results to display (0 = unlimited)
+
+# Task Monitoring Settings
+TASK_MONITOR_ENABLED = True  # Master switch to enable/disable task monitoring
+TASK_MONITOR_INTERVAL = 60  # Interval between task monitoring checks in seconds
+TASK_MONITOR_CONSECUTIVE_CHECKS = 200  # Number of consecutive checks for monitoring
+TASK_MONITOR_SPEED_THRESHOLD = 50  # Speed threshold in KB/s
+TASK_MONITOR_ELAPSED_THRESHOLD = 3600  # Elapsed time threshold in seconds (1 hour)
+TASK_MONITOR_ETA_THRESHOLD = 86400  # ETA threshold in seconds (24 hours)
+TASK_MONITOR_WAIT_TIME = (
+    600  # Wait time before canceling a task in seconds (10 minutes)
+)
+TASK_MONITOR_COMPLETION_THRESHOLD = (
+    86400  # Completion threshold in seconds (24 hours)
+)
+TASK_MONITOR_CPU_HIGH = 90  # High CPU usage threshold percentage
+TASK_MONITOR_CPU_LOW = 60  # Low CPU usage threshold percentage
+TASK_MONITOR_MEMORY_HIGH = 75  # High memory usage threshold percentage
+TASK_MONITOR_MEMORY_LOW = 60  # Low memory usage threshold percentage
 
 # Extra Modules Settings
 ENABLE_EXTRA_MODULES = True  # Enable additional modules and features

@@ -808,8 +808,7 @@ async def set_option(_, message, option):
             safe_telegram_limit = telegram_limit - safety_margin
 
             # Ensure the value doesn't exceed the safe telegram limit
-            if value > safe_telegram_limit:
-                value = safe_telegram_limit
+            value = min(value, safe_telegram_limit)
 
             # Also ensure it doesn't exceed the maximum allowed split size
             value = min(int(value), max_split_size)

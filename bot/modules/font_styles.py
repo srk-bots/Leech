@@ -306,10 +306,6 @@ async def font_styles_cmd(_, message):
     """
     Display available font styles for leech with pagination
     """
-    # Debug message
-    LOGGER.info(
-        f"Font styles command called by {message.from_user.id if message.from_user else 'Unknown user'}",
-    )
 
     # Delete the command message immediately
     await delete_message(message)

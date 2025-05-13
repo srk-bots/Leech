@@ -66,3 +66,5 @@ respect-ignore-files = false
 [tool.ty.rules]
 possibly-unresolved-reference = "warn"
 division-by-zero = "ignore"
+
+# lint:possibly-unbound-attribute

@@ -152,7 +152,9 @@ async def extract_metadata_from_filename(name):
             # Remove leading zeros but keep at least 2 digits for formatting
             season_num = int(season)
             if season_num < 10:
-                season = f"0{season_num}"  # Pad single digit seasons with a leading zero
+                season = (
+                    f"0{season_num}"  # Pad single digit seasons with a leading zero
+                )
             else:
                 season = str(season_num)
             break
@@ -234,7 +236,6 @@ async def extract_metadata_from_filename(name):
         keyword in name.lower()
         for keyword in ["sub", "dub", "raw", "bd", "tv", "dvd", "ova", "ona"]
     ):
-
         # Special case for One Piece and other anime with 1000+ episodes
         if "one piece" in name.lower():
             # Try different patterns specifically for One Piece

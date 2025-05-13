@@ -1162,45 +1162,19 @@ def get_usage_examples_page_2():
 
 
 def get_mt_flag_guide_page():
+    # Use the same text as in help_messages.py for consistency
+    from bot.helper.ext_utils.help_messages import media_tools_flag
+
+    # Add the page title at the beginning
     msg = "<b>Media Tools Flag Guide (25/25)</b>\n\n"
-    msg += "<b>-mt Flag Feature</b>\n"
-    msg += "The <code>-mt</code> flag allows you to customize media tools settings before starting a task.\n\n"
 
-    msg += "<b>How It Works</b>:\n"
-    msg += "1. Add the <code>-mt</code> flag to any download command\n"
-    msg += "2. The bot will show the media tools settings menu\n"
-    msg += "3. Customize your settings as needed\n"
-    msg += "4. Click <b>Done</b> to start the task with your settings\n"
-    msg += "5. Click <b>Cancel</b> to abort the task\n"
-    msg += (
-        "6. If no action is taken within 60 seconds, the task will be cancelled\n\n"
-    )
+    # Use the content from media_tools_flag but skip the first line (the title)
+    content_lines = media_tools_flag.split("\n")
+    content = "\n".join(
+        content_lines[2:]
+    )  # Skip the first two lines (title and blank line)
 
-    msg += "<b>Key Features</b>:\n"
-    msg += "• Pause task execution to allow customization\n"
-    msg += "• All command and cancellation messages are auto-deleted\n"
-    msg += "• 60-second timeout for user interaction\n"
-    msg += "• <b>Done</b> button to start the task when ready\n"
-    msg += "• <b>Cancel</b> button to abort the task\n\n"
-
-    msg += '<blockquote expandable="expandable"><b>Usage Examples</b>:\n'
-    msg += "• <code>/mirror https://example.com/video.mp4 -mt</code>\n"
-    msg += "  Shows media tools settings before starting the mirror task\n\n"
-    msg += "• <code>/leech https://example.com/files.zip -z -mt</code>\n"
-    msg += "  Shows media tools settings before starting the leech task with zip extraction\n\n"
-    msg += "• <code>/ytdl https://youtube.com/watch?v=example -mt</code>\n"
-    msg += "  Shows media tools settings before starting the YouTube download\n\n"
-    msg += "• <code>/mirror https://example.com/videos.zip -merge-video -mt</code>\n"
-    msg += "  Shows media tools settings before starting a task with video merging</blockquote>\n\n"
-
-    msg += "<b>Benefits</b>:\n"
-    msg += "• Configure media tools settings on-the-fly for specific tasks\n"
-    msg += "• No need to use separate commands to change settings\n"
-    msg += "• Preview and adjust settings before processing large files\n"
-    msg += "• Easily cancel tasks if settings aren't right\n"
-    msg += "• Works with all download commands and other flags\n\n"
-
-    msg += "<b>Note</b>: All messages related to the <code>-mt</code> flag interaction are automatically deleted after 5 minutes for a cleaner chat experience.\n\n"
+    msg += content
 
     return msg
 

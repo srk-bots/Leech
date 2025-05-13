@@ -39,7 +39,6 @@ async def restart_bot(_, message):
 @new_task
 async def restart_sessions(_, message):
     await delete_message(message)  # Delete command message immediately
-    await delete_message(message)  # Delete command message immediately
     buttons = button_build.ButtonMaker()
     buttons.data_button("Yes!", "sessionrestart confirm")
     buttons.data_button("Cancel", "sessionrestart cancel")

@@ -1079,6 +1079,29 @@ Send one of the following position options:
                 msg += "Set the API URL for Truecaller phone number lookup.\n\n"
                 msg += "<b>Example:</b> <code>https://api.example.com/truecaller</code>\n\n"
                 msg += "<b>Note:</b> No default URL is provided. You must set your own API endpoint. The Truecaller module will not work until this is configured.\n\n"
+            elif key == "MEDIA_TOOLS_ENABLED":
+                msg += "<b>Media Tools Configuration</b>\n\n"
+                msg += "Control which media processing tools are enabled in the bot.\n\n"
+                msg += "<b>Options:</b>\n"
+                msg += "• <code>true</code> - Enable all media tools\n"
+                msg += "• <code>false</code> - Disable all media tools\n"
+                msg += "• Comma-separated list - Enable only specific tools\n\n"
+                msg += "<b>Available tools:</b>\n"
+                msg += "• <code>watermark</code> - Add text or image watermarks to media\n"
+                msg += "• <code>merge</code> - Combine multiple files into one\n"
+                msg += "• <code>convert</code> - Change file formats\n"
+                msg += "• <code>compression</code> - Reduce file sizes\n"
+                msg += "• <code>trim</code> - Cut sections from media files\n"
+                msg += "• <code>extract</code> - Extract components from media\n"
+                msg += "• <code>add</code> - Add elements to media files\n"
+                msg += "• <code>metadata</code> - Modify file metadata\n"
+                msg += "• <code>ffmpeg</code> - Use custom FFmpeg commands\n"
+                msg += "• <code>sample</code> - Create sample clips\n\n"
+                msg += "<b>Examples:</b>\n"
+                msg += "• <code>true</code> - Enable all tools\n"
+                msg += "• <code>watermark,merge,convert</code> - Enable only these three tools\n"
+                msg += "• <code>false</code> - Disable all media tools\n\n"
+                msg += "<b>Note:</b> After enabling tools here, users can access them through the Media Tools menu.\n\n"
 
             msg += f"Send a valid value for <code>{key}</code>.\n\n<b>Current value:</b> <code>{Config.get(key)}</code>\n\n<i>Timeout: 60 seconds</i>"
         elif edit_type == "ariavar":
@@ -1103,13 +1126,14 @@ Send one of the following position options:
             msg = f"Send a valid value for <code>{key}</code>.\n\n<b>Current value:</b> <code>{nzb_options[key]}</code>\n\nIf the value is a list, separate items by space or comma.\n\n<b>Examples:</b> <code>.exe,info</code> or <code>.exe .info</code>\n\n<i>Timeout: 60 seconds</i>"
         elif edit_type.startswith("nzbsevar"):
             index = 0 if key == "newser" else int(edit_type.replace("nzbsevar", ""))
-            buttons.data_button("⬅️ Back", f"botset nzbser{index}", "footer")
-            if key != "newser":
-                buttons.data_button("🗑️ Empty", f"botset emptyserkey {index} {key}")
-            buttons.data_button("❌ Close", "botset close", "footer")
             if key == "newser":
+                buttons.data_button("⬅️ Back", "botset nzbserver", "footer")
+                buttons.data_button("❌ Close", "botset close", "footer")
                 msg = "Send one server as dictionary {}, like in config.py without [].\n\n<b>Example:</b> <code>{'name': 'MyServer', 'host': 'news.example.com', 'port': 119, 'username': 'user', 'password': 'pass'}</code>\n\n<i>Timeout: 60 seconds</i>"
             else:
+                buttons.data_button("⬅️ Back", f"botset nzbser{index}", "footer")
+                buttons.data_button("🗑️ Empty", f"botset emptyserkey {index} {key}")
+                buttons.data_button("❌ Close", "botset close", "footer")
                 msg = f"Send a valid value for <code>{key}</code> in server <b>{Config.USENET_SERVERS[index]['name']}</b>.\n\n<b>Current value:</b> <code>{Config.USENET_SERVERS[index][key]}</code>\n\n<i>Timeout: 60 seconds</i>"
     elif key == "var":
         conf_dict = Config.get_all()
@@ -1168,7 +1192,7 @@ Send one of the following position options:
         # Add descriptions for module settings
         module_descriptions = {
             "ENABLE_EXTRA_MODULES": "Enable Extra Modules (AI, Truecaller, IMDB)",
-            "MEDIA_TOOLS_ENABLED": "Enable Media Tools",
+            "MEDIA_TOOLS_ENABLED": "Enable Media Tools - Set to 'true' to enable all tools, 'false' to disable all, or use a comma-separated list (e.g., 'watermark,merge,convert') to enable specific tools. Available tools: watermark, merge, convert, compression, trim, extract, add, metadata, ffmpeg, sample.",
         }
 
         # Ensure resource keys are in the filtered keys list
@@ -1495,6 +1519,13 @@ Send only the file name as text message.
 Configure global settings for media processing tools.
 
 <b>Enabled Tools:</b> {enabled_count}/{total_count}
+
+<b>How to Enable/Disable Tools:</b>
+• Go to <b>⚙️ Config</b> menu
+• Select <b>🧩 Enable Media Tools</b>
+• Set to <code>true</code> to enable all tools
+• Set to <code>false</code> to disable all tools
+• Or use a comma-separated list (e.g., <code>watermark,merge,convert</code>) to enable specific tools
 
 <b>Available Categories:</b>
 • <b>Watermark</b> - Add text or image watermarks to media files
@@ -8512,9 +8543,12 @@ async def edit_bot_settings(client, query):
                 index=index,
             )
 
-            # Set the state back to what it was
-            globals()["state"] = current_state
-            rfunc = partial(update_buttons, message, data[1])
+            # Use the improved return function from the incoming change
+            rfunc = partial(
+                update_buttons,
+                message,
+                f"nzbser{index}" if data[2] != "newser" else "nzbserver",
+            )
 
             await event_handler(client, query, pfunc, rfunc)
         else:

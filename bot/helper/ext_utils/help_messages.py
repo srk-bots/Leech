@@ -2,182 +2,113 @@ from bot.core.aeon_client import TgClient
 from bot.helper.telegram_helper.bot_commands import BotCommands
 
 # FFmpeg help message with concise and visual format
-ffmpeg_help = """<b>FFmpeg Commands</b>: -ff
-
-<blockquote>Need help? Follow this <a href='https://t.me/aimupdate/218'>guide</a></blockquote>
+ffmpeg_help = """<b>Custom FFmpeg Commands</b>: -ff
 
 <blockquote>
 <b>Basic Usage:</b>
-• Start directly with FFmpeg arguments (don't write "ffmpeg")
-• Add <code>-del</code> to delete original files after processing
-• Use <code>-ff subtitle</code> to execute pre-added command lists
+• <code>/cmd link -ff "-i mltb.video -c:v libx264 mltb.mp4"</code> - Direct command
+• <code>/cmd link -ff "preset_name"</code> - Use saved preset
+• <code>/cmd link -ff "-i mltb.video -c:v libx264 -del mltb.mp4"</code> - Delete original
+</blockquote>
+
+<blockquote expandable="expandable">
+<b>Input Placeholders:</b>
+• <code>mltb</code> or <code>input.mp4</code> - Generic input file
+• <code>mltb.video</code> - Video files only
+• <code>mltb.audio</code> - Audio files only
+• <code>mltb.image</code> - Image files only
+• <code>mltb.subtitle</code> - Subtitle files only
+• <code>mltb.document</code> - Document files only
+• <code>mltb.archive</code> - Archive files only
+
+These placeholders are automatically replaced with the actual file path.
+</blockquote>
+
+<blockquote expandable="expandable">
+<b>Multiple Input Support:</b>
+• <code>-i mltb.video -i mltb.audio</code> - Use multiple input files
+• <code>-i mltb.video -i mltb.audio -map 0:v:0 -map 1:a:0 output.mp4</code> - Video from first, audio from second
+• <code>-i mltb.video -i mltb.image -filter_complex "[0:v][1:v]overlay=10:10" output.mp4</code> - Add watermark
+• <code>-i mltb.video -i mltb.audio -i mltb.subtitle -map 0:v -map 1:a -map 2:s output.mkv</code> - Combine all
 </blockquote>
 
 <blockquote expandable="expandable">
 <b>Dynamic Output Naming:</b>
+• <code>mltb.mp4</code> - Simple output (adds ffmpeg prefix)
+• <code>output.mp4</code> - Custom named output
+• <code>mltb-%d.mp4</code> → video-1.mp4, video-2.mp4, etc.
+• <code>mltb-%03d.mp4</code> → video-001.mp4, video-002.mp4, etc.
 
-<code>mltb-%d</code> → filename-1.mp4, filename-2.mp4
-<code>mltb-%3d</code> → filename-  1.mp4, filename-  2.mp4
-<code>mltb-%03d</code> → filename-001.mp4, filename-002.mp4
-
-Perfect for extracting multiple streams with <code>-map</code> commands!
+<b>Dynamic Output Examples:</b>
+• <code>-i mltb.video -map 0:v -c:v libx264 video-%d.mp4</code> - Extract all video streams
+• <code>-i mltb.video -map 0:a -c:a aac audio-%03d.m4a</code> - Extract all audio tracks
+• <code>-i mltb.mkv -f segment -segment_time 600 part-%03d.mkv</code> - Split into segments
 </blockquote>
 
 <blockquote expandable="expandable">
-<b>Examples:</b>
+<b>Common Tasks:</b>
 
-<code>-i mltb.video -map 0:v -c:v copy mltb-%d.mp4</code>
-↳ Creates video-1.mp4, video-2.mp4 for each video stream
+<b>Convert Video Format:</b>
+<code>-i mltb.video -c:v libx264 -c:a aac mltb.mp4</code>
 
-<code>-i mltb.mkv -map 0:a:0 -c:a copy mltb-%03d.mka -map 0:a:1 -c:a copy mltb-%03d.mka</code>
-↳ Creates video-001.mka, video-002.mka with different audio tracks
+<b>Extract Audio:</b>
+<code>-i mltb.video -vn -c:a copy mltb.m4a</code>
 
-<code>-i mltb.mkv -map 0:v -c:v copy -map 0:a -c:a copy -map 0:s -c:s copy mltb-%d.mkv</code>
-↳ Creates video-1.mkv, video-2.mkv, video-3.mkv with different streams
+<b>Extract Subtitles:</b>
+<code>-i mltb.video -map 0:s -c:s srt mltb-%d.srt</code>
+
+<b>Compress Video:</b>
+<code>-i mltb.video -c:v libx264 -crf 23 -preset medium -c:a aac -b:a 128k mltb.mp4</code>
+
+<b>Trim Video:</b>
+<code>-i mltb.video -ss 00:01:00 -to 00:02:00 -c:v copy -c:a copy mltb.mp4</code>
+
+<b>Create GIF:</b>
+<code>-i mltb.video -vf "fps=10,scale=320:-1:flags=lanczos" -c:v gif mltb.gif</code>
 </blockquote>
 
 <blockquote expandable="expandable">
-<b>Special Cases:</b>
+<b>Advanced Examples:</b>
 
-• <b>🖼️ Image Sequences:</b> With <code>-vf fps=1</code>, format specifier is preserved
-  <code>mltb-%03d.jpg</code> → <code>video-%03d.jpg</code>
+<b>Extract All Streams Separately:</b>
+<code>-i mltb.mkv -map 0:v -c:v copy mltb-%d_video.mp4 -map 0:a -c:a copy mltb-%d_audio.m4a -map 0:s -c:s srt mltb-%d_sub.srt</code>
 
-• <b>📝 Subtitle Extraction:</b> Each subtitle stream goes to a separate file
-  <code>-map 0:s -c:s srt mltb-%d_sub.srt</code> → video-1_sub.srt, video-2_sub.srt
+<b>Add Watermark:</b>
+<code>-i mltb.video -vf "drawtext=text='@YourChannel':fontcolor=white:fontsize=24:x=10:y=10" -c:a copy mltb.mp4</code>
 
-• <b>🔄 Multiple Inputs:</b> Use the closest <code>-map</code> statement to determine which input file to use for naming
-  <code>-i video1.mp4 -i video2.mp4 -map 0:v mltb-%d_v1.mp4 -map 1:v mltb-%d_v2.mp4</code>
+<b>Speed Up/Slow Down:</b>
+<code>-i mltb.video -filter_complex "[0:v]setpts=0.5*PTS[v];[0:a]atempo=2.0[a]" -map "[v]" -map "[a]" mltb.mp4</code>
+
+<b>Merge Video and Audio:</b>
+<code>-i mltb.video -i mltb.audio -c:v copy -c:a aac -map 0:v:0 -map 1:a:0 mltb.mp4</code>
 </blockquote>
 
 <blockquote expandable="expandable">
-<b>Bulk & Multi-link Processing:</b>
+<b>Preset Management:</b>
 
-• Each file processed with the same command
-• Input automatically replaced with each downloaded file
-• Use placeholders like mltb.video, mltb.audio for multiple inputs
-• Dynamic output maintains the same order as provided in bulk/multi commands
+<b>Using Presets:</b>
+• Presets are stored in user settings or bot config
+• Use <code>/cmd link -ff "preset_name"</code> to apply a preset
+• Configure presets in User Settings > FFMPEG_CMDS
+
+<b>Creating Presets:</b>
+• In User Settings, add a dictionary with preset names as keys
+• Each preset can contain multiple commands as a list
+• Example: <code>{"compress": ["-i mltb.video -c:v libx264 -crf 23 mltb.mp4"]}</code>
+
+<b>Variables in Presets:</b>
+• Use <code>{variable}</code> in presets for customizable values
+• Set variable values in User Settings > Variables
+</blockquote>
+
+<blockquote expandable="expandable">
+<b>Tips & Tricks:</b>
+
+• Use <code>-c:v copy -c:a copy</code> for fastest processing (no re-encoding)
+• Add <code>-del</code> to delete original files after processing
+• For bulk downloads, commands apply to each file individually
+• For complex commands, test on small files first
 </blockquote>"""
-
-# Media tools text dictionary
-media_tools_text = {
-    "WATERMARK_KEY": "Set the watermark text to be applied to media files.\n\nExample: @username\nExample: Telegram Channel",
-    "WATERMARK_POSITION": "Set the position of the watermark on the media.\n\nValid options: top_left, top_right, bottom_left, bottom_right, center, top_center, bottom_center, left_center, right_center",
-    "WATERMARK_SIZE": "Set the size of the watermark text (font size).\n\nExample: 20 - medium size\nExample: 30 - larger size",
-    "WATERMARK_COLOR": "Set the color of the watermark text.\n\nExample: white\nExample: black\nExample: red\nExample: #FF0000 (hex color code)",
-    "WATERMARK_FONT": "Set the font file to use for the watermark text.\n\nOptions:\n- Default font: default.otf\n- Local font file: Arial.ttf, Roboto.ttf\n- Google Font name: Montserrat, Open Sans, Roboto\n\nExample: default.otf - use default font\nExample: Arial.ttf - use local font file\nExample: Montserrat - use Google Font\n\nGoogle Fonts will be automatically downloaded when used. To find Google Fonts, visit fonts.google.com and use the exact font name.",
-    "WATERMARK_PRIORITY": "Set the priority of the watermark process in the media processing pipeline.\n\nLower numbers run earlier. Default order:\n1. Merge\n2. Watermark\n3. Convert\n4. Trim\n5. Compression\n6. Extract",
-    "WATERMARK_THREADING": "Enable or disable threading for watermark processing.\n\nExample: true - process multiple files in parallel\nExample: false - process one file at a time",
-    "WATERMARK_THREAD_NUMBER": "Set the number of threads to use for watermark processing.\n\nExample: 2 - use 2 threads\nExample: 4 - use 4 threads",
-    "WATERMARK_QUALITY": "Set the quality value for watermark processing.\n\nExample: 23 - good quality (lower is better)\nExample: 18 - high quality\nExample: none - use default quality",
-    "WATERMARK_SPEED": "Set the speed value for watermark processing.\n\nExample: ultrafast - fastest processing\nExample: medium - balanced speed and quality\nExample: veryslow - best quality\nExample: none - use default speed",
-    "WATERMARK_OPACITY": "Set the opacity of the watermark text (0.0 to 1.0).\n\nExample: 1.0 - fully opaque\nExample: 0.5 - semi-transparent",
-    "WATERMARK_REMOVE_ORIGINAL": 'Enable or disable removing original files after watermarking.\n\nExample: true - delete original files after watermarking\nExample: false - keep original files\n\nYou can also use the -del flag in commands to override this setting:\n/leech file.mp4 -watermark "My Channel" -del',
-    "AUDIO_WATERMARK_INTERVAL": "Set the interval in seconds for audio watermarks.\n\nExample: 30 - add watermark every 30 seconds\nExample: 60 - add watermark every minute\nExample: 0 - disable interval (default)",
-    "AUDIO_WATERMARK_VOLUME": 'Set the volume of the audio watermark relative to the original audio.\n\nRange: 0.0 (silent) to 1.0 (full volume)\nDefault: 0.0 (disabled)\nRecommended: 0.1-0.3 for subtle watermarking\n\nExample: 0.5 - half the volume of the original\nExample: 1.0 - same volume as the original\nExample: 0.2 - subtle watermark\n\nYou can also use the -vol flag in commands:\n/leech file.mp3 -watermark "My Channel" -vol 0.2',
-    "SUBTITLE_WATERMARK_INTERVAL": "Set the interval in seconds for subtitle watermarks.\n\nExample: 30 - add watermark every 30 seconds\nExample: 60 - add watermark every minute\nExample: 0 - disable interval (default)",
-    "SUBTITLE_WATERMARK_STYLE": 'Set the style of the subtitle watermark.\n\nOptions: none, normal, bold, italic, bold_italic, underline, strikethrough\nDefault: none (uses plain text)\n\nExample: normal - standard subtitle style\nExample: bold - bold text\nExample: italic - italic text\nExample: bold_italic - bold and italic text\nExample: underline - underlined text\nExample: strikethrough - text with strikethrough\n\nYou can also use the -style flag in commands:\n/leech file.srt -watermark "My Channel" -style bold\n\nFor ASS/SSA subtitles, supports more advanced styling and Google Fonts can be used.',
-    "IMAGE_WATERMARK_ENABLED": "Enable or disable image watermark feature.\n\nExample: true - enable image watermark\nExample: false - disable image watermark\n\nWhen enabled, you can add image watermarks to videos and images using the -iwm flag or through the configured image path.",
-    "IMAGE_WATERMARK_PATH": "Set the path to the watermark image file.\n\nExample: /path/to/watermark.png\n\nThe image should preferably be a PNG with transparency for best results. The path should be accessible to the bot.",
-    "IMAGE_WATERMARK_SCALE": "Set the scale of the watermark image as a percentage of the video width.\n\nExample: 10 - watermark will be 10% of the video width\nExample: 20 - watermark will be 20% of the video width\n\nLarger values make the watermark bigger. The aspect ratio is maintained.",
-    "IMAGE_WATERMARK_OPACITY": "Set the opacity of the watermark image.\n\nRange: 0.0 (completely transparent) to 1.0 (fully opaque)\nDefault: 1.0 (fully visible)\n\nExample: 0.7 - 70% opacity\nExample: 0.5 - 50% opacity\nExample: 1.0 - 100% opacity (fully visible)",
-    "IMAGE_WATERMARK_POSITION": "Set the position of the watermark image on the media.\n\nValid options: top_left, top_right, bottom_left, bottom_right, center, top_center, bottom_center, left_center, right_center\nDefault: bottom_right\n\nExample: bottom_right - place in bottom right corner\nExample: center - place in the center of the video",
-    "CONVERT_PRIORITY": "Set the priority of the convert process in the media processing pipeline.\n\nLower numbers run earlier. Default order:\n1. Merge\n2. Watermark\n3. Convert\n4. Trim\n5. Compression\n6. Extract",
-    "EXTRACT_PRIORITY": "Set the priority of the extract process in the media processing pipeline.\n\nLower numbers run earlier. Default order:\n1. Merge\n2. Watermark\n3. Convert\n4. Trim\n5. Compression\n6. Extract",
-    "EXTRACT_DELETE_ORIGINAL": "Enable or disable deleting original files after extraction.\n\nExample: true - delete original files after extraction\nExample: false - keep original files",
-    "EXTRACT_VIDEO_CODEC": "Set the codec to use for video extraction.\n\nExample: copy - preserve original codec\nExample: h264 - convert to H.264\nExample: h265 - convert to H.265\nExample: none - don't set codec",
-    "EXTRACT_VIDEO_FORMAT": "Set the output format for video extraction.\n\nExample: mp4 - MP4 container\nExample: mkv - MKV container\nExample: avi - AVI container\nExample: none - use default format",
-    "EXTRACT_VIDEO_INDEX": "Set the video track index to extract. Leave empty to extract all video tracks.\n\nExample: 0 - extract first video track\nExample: 1 - extract second video track\nExample: 0,1 - extract first and second video tracks",
-    "EXTRACT_VIDEO_QUALITY": "Set the quality (CRF value) for video extraction. Lower values mean better quality but larger file size.\n\nExample: 18 - high quality\nExample: 23 - good quality\nExample: 28 - lower quality\nExample: none - don't set quality",
-    "EXTRACT_VIDEO_PRESET": "Set the encoding preset for video extraction. Faster presets result in larger files, slower presets in smaller files.\n\nExample: ultrafast - fastest encoding, largest files\nExample: medium - balanced speed and compression\nExample: veryslow - slowest encoding, smallest files\nExample: none - don't set preset",
-    "EXTRACT_VIDEO_BITRATE": "Set the bitrate for video extraction.\n\nExample: 5M - 5 megabits per second\nExample: 500k - 500 kilobits per second\nExample: none - don't set bitrate",
-    "EXTRACT_VIDEO_RESOLUTION": "Set the resolution for video extraction.\n\nExample: 1920x1080 - Full HD\nExample: 1280x720 - HD\nExample: none - don't set resolution",
-    "EXTRACT_VIDEO_FPS": "Set the frame rate for video extraction.\n\nExample: 30 - 30 frames per second\nExample: 60 - 60 frames per second\nExample: none - don't set FPS",
-    "EXTRACT_AUDIO_CODEC": "Set the codec to use for audio extraction.\n\nExample: copy - preserve original codec\nExample: aac - convert to AAC\nExample: mp3 - convert to MP3\nExample: none - don't set codec",
-    "EXTRACT_AUDIO_FORMAT": "Set the output format for audio extraction.\n\nExample: mp3 - MP3 format\nExample: aac - AAC format\nExample: flac - FLAC format\nExample: none - use default format",
-    "EXTRACT_AUDIO_INDEX": "Set the audio track index to extract. Leave empty to extract all audio tracks.\n\nExample: 0 - extract first audio track\nExample: 1 - extract second audio track\nExample: 0,1 - extract first and second audio tracks",
-    "EXTRACT_AUDIO_BITRATE": "Set the bitrate for audio extraction.\n\nExample: 320k - high quality\nExample: 192k - good quality\nExample: 128k - acceptable quality\nExample: none - don't set bitrate",
-    "EXTRACT_AUDIO_CHANNELS": "Set the number of audio channels for extraction.\n\nExample: 2 - stereo\nExample: 1 - mono\nExample: none - don't set channels",
-    "EXTRACT_AUDIO_SAMPLING": "Set the sampling rate for audio extraction.\n\nExample: 48000 - high quality\nExample: 44100 - CD quality\nExample: none - don't set sampling rate",
-    "EXTRACT_AUDIO_VOLUME": "Set the volume adjustment for audio extraction.\n\nExample: 1.0 - original volume\nExample: 2.0 - double volume\nExample: 0.5 - half volume\nExample: none - don't adjust volume",
-    "EXTRACT_SUBTITLE_CODEC": "Set the codec to use for subtitle extraction.\n\nExample: copy - preserve original format\nExample: srt - convert to SRT format\nExample: ass - convert to ASS format\nExample: none - don't set codec",
-    "EXTRACT_SUBTITLE_FORMAT": "Set the output format for subtitle extraction.\n\nExample: srt - SubRip format\nExample: ass - Advanced SubStation Alpha format\nExample: vtt - WebVTT format\nExample: none - use default format",
-    "EXTRACT_SUBTITLE_INDEX": "Set the subtitle track index to extract. Leave empty to extract all subtitle tracks.\n\nExample: 0 - extract first subtitle track\nExample: 1 - extract second subtitle track\nExample: 0,1 - extract first and second subtitle tracks",
-    "EXTRACT_SUBTITLE_LANGUAGE": "Set the language code for subtitle extraction.\n\nExample: eng - English\nExample: spa - Spanish\nExample: none - don't set language",
-    "EXTRACT_SUBTITLE_ENCODING": "Set the character encoding for subtitle extraction.\n\nExample: utf-8 - UTF-8 encoding\nExample: latin1 - Latin-1 encoding\nExample: none - don't set encoding",
-    "EXTRACT_SUBTITLE_FONT": "Set the font for subtitle extraction (for ASS/SSA subtitles).\n\nExample: Arial - use Arial font\nExample: DejaVu Sans - use DejaVu Sans font\nExample: none - don't set font",
-    "EXTRACT_SUBTITLE_FONT_SIZE": "Set the font size for subtitle extraction (for ASS/SSA subtitles).\n\nExample: 24 - medium size\nExample: 32 - larger size\nExample: none - don't set font size",
-    "EXTRACT_ATTACHMENT_FORMAT": "Set the output format for attachment extraction.\n\nExample: original - preserve original format\nExample: zip - compress attachments into a ZIP file\nExample: none - use default format",
-    "EXTRACT_ATTACHMENT_INDEX": "Set the attachment index to extract. Leave empty to extract all attachments.\n\nExample: 0 - extract first attachment\nExample: 1 - extract second attachment\nExample: 0,1 - extract first and second attachments",
-    "EXTRACT_ATTACHMENT_FILTER": "Set a filter pattern for attachment extraction.\n\nExample: *.ttf - extract only TTF font files\nExample: *.jpg - extract only JPG images\nExample: none - don't set filter",
-    "EXTRACT_MAINTAIN_QUALITY": "Set quality for extraction.\n\nExample: true - high quality\nExample: false - normal quality",
-    "ADD_ENABLED": "Enable or disable the add feature globally.\n\nExample: true - enable add feature\nExample: false - disable add feature\n\nWhen enabled, you can add media tracks to files using the -add flag or through the configured settings.",
-    "ADD_PRIORITY": "Set the priority of the add process in the media processing pipeline.\n\nLower numbers run earlier. Default order:\n1. Merge\n2. Watermark\n3. Convert\n4. Trim\n5. Compression\n6. Extract\n7. Add (default: 7)\n\nExample: 3 - run add before convert\nExample: 8 - run add after extract",
-    "ADD_DELETE_ORIGINAL": "Enable or disable deleting the original file after adding media.\n\nExample: true - delete original file after successful add operation\nExample: false - keep both original and modified files\n\nThis can be overridden by using the -del flag in the command.",
-    "ADD_PRESERVE_TRACKS": "Enable or disable preserving existing tracks when adding new ones.\n\nExample: true - preserve existing tracks when adding new ones\nExample: false - allow existing tracks to be pushed to other indices\n\nThis can be overridden by using the -preserve flag in the command.",
-    "ADD_REPLACE_TRACKS": "Enable or disable replacing existing tracks when adding new ones.\n\nExample: true - replace existing tracks with new ones\nExample: false - keep existing tracks and add new ones\n\nThis can be overridden by using the -replace flag in the command.",
-    "ADD_VIDEO_ENABLED": "Enable or disable adding video tracks to media files.\n\nExample: true - enable video track addition\nExample: false - disable video track addition\n\nWhen enabled, video tracks will be added according to the specified settings.",
-    "ADD_VIDEO_PATH": "Set the path to the video file to add as a track.\n\nExample: /path/to/video.mp4\nExample: none - no video file specified\n\nThe path should be accessible to the bot.",
-    "ADD_VIDEO_INDEX": "Set the video track index to add. Leave empty to add all video tracks.\n\nExample: 0 - add first video track\nExample: 1 - add second video track\nExample: none - add all video tracks",
-    "ADD_VIDEO_CODEC": "Set the codec to use for video track addition.\n\nExample: copy - preserve original codec (fastest, no quality loss)\nExample: libx264 - H.264 codec (good compatibility)\nExample: libx265 - H.265/HEVC codec (better compression)\nExample: none - use default codec",
-    "ADD_VIDEO_QUALITY": "Set the quality (CRF value) for video track addition. Lower values mean better quality but larger file size.\n\nExample: 18 - high quality\nExample: 23 - good quality\nExample: 28 - lower quality\nExample: none - don't set quality",
-    "ADD_VIDEO_PRESET": "Set the encoding preset for video track addition. Faster presets result in larger files, slower presets in smaller files.\n\nExample: ultrafast - fastest encoding, largest files\nExample: medium - balanced speed and compression\nExample: veryslow - slowest encoding, smallest files\nExample: none - don't set preset",
-    "ADD_VIDEO_BITRATE": "Set the bitrate for video track addition.\n\nExample: 5M - 5 megabits per second\nExample: 500k - 500 kilobits per second\nExample: none - don't set bitrate",
-    "ADD_VIDEO_RESOLUTION": "Set the resolution for video track addition.\n\nExample: 1920x1080 - Full HD\nExample: 1280x720 - HD\nExample: none - don't set resolution",
-    "ADD_VIDEO_FPS": "Set the frame rate for video track addition.\n\nExample: 30 - 30 frames per second\nExample: 60 - 60 frames per second\nExample: none - don't set FPS",
-    "ADD_AUDIO_ENABLED": "Enable or disable adding audio tracks to media files.\n\nExample: true - enable audio track addition\nExample: false - disable audio track addition\n\nWhen enabled, audio tracks will be added according to the specified settings.",
-    "ADD_AUDIO_PATH": "Set the path to the audio file to add as a track.\n\nExample: /path/to/audio.mp3\nExample: none - no audio file specified\n\nThe path should be accessible to the bot.",
-    "ADD_AUDIO_INDEX": "Set the audio track index to add. Leave empty to add all audio tracks.\n\nExample: 0 - add first audio track\nExample: 1 - add second audio track\nExample: none - add all audio tracks",
-    "ADD_AUDIO_CODEC": "Set the codec to use for audio track addition.\n\nExample: copy - preserve original codec (fastest, no quality loss)\nExample: aac - AAC codec (good quality, compatibility)\nExample: libmp3lame - MP3 codec (widely compatible)\nExample: flac - FLAC codec (lossless)\nExample: none - use default codec",
-    "ADD_AUDIO_BITRATE": "Set the bitrate for audio track addition.\n\nExample: 320k - high quality\nExample: 192k - good quality\nExample: 128k - acceptable quality\nExample: none - don't set bitrate",
-    "ADD_AUDIO_CHANNELS": "Set the number of audio channels for track addition.\n\nExample: 2 - stereo\nExample: 1 - mono\nExample: none - don't set channels",
-    "ADD_AUDIO_SAMPLING": "Set the sampling rate for audio track addition.\n\nExample: 48000 - high quality\nExample: 44100 - CD quality\nExample: none - don't set sampling rate",
-    "ADD_AUDIO_VOLUME": "Set the volume adjustment for audio track addition.\n\nExample: 1.0 - original volume\nExample: 2.0 - double volume\nExample: 0.5 - half volume\nExample: none - don't adjust volume",
-    "ADD_SUBTITLE_ENABLED": "Enable or disable adding subtitle tracks to media files.\n\nExample: true - enable subtitle track addition\nExample: false - disable subtitle track addition\n\nWhen enabled, subtitle tracks will be added according to the specified settings.",
-    "ADD_SUBTITLE_PATH": "Set the path to the subtitle file to add as a track.\n\nExample: /path/to/subtitle.srt\nExample: none - no subtitle file specified\n\nThe path should be accessible to the bot.",
-    "ADD_SUBTITLE_INDEX": "Set the subtitle track index to add. Leave empty to add all subtitle tracks.\n\nExample: 0 - add first subtitle track\nExample: 1 - add second subtitle track\nExample: none - add all subtitle tracks",
-    "ADD_SUBTITLE_CODEC": "Set the codec to use for subtitle track addition.\n\nExample: copy - preserve original format\nExample: srt - convert to SRT format\nExample: ass - convert to ASS format\nExample: none - use default codec",
-    "ADD_SUBTITLE_LANGUAGE": "Set the language code for subtitle track addition.\n\nExample: eng - English\nExample: spa - Spanish\nExample: none - don't set language",
-    "ADD_SUBTITLE_ENCODING": "Set the character encoding for subtitle track addition.\n\nExample: utf-8 - UTF-8 encoding\nExample: latin1 - Latin-1 encoding\nExample: none - don't set encoding",
-    "ADD_SUBTITLE_FONT": "Set the font for subtitle track addition (for ASS/SSA subtitles).\n\nExample: Arial - use Arial font\nExample: DejaVu Sans - use DejaVu Sans font\nExample: none - don't set font",
-    "ADD_SUBTITLE_FONT_SIZE": "Set the font size for subtitle track addition (for ASS/SSA subtitles).\n\nExample: 24 - medium size\nExample: 32 - larger size\nExample: none - don't set font size",
-    "ADD_ATTACHMENT_ENABLED": "Enable or disable adding attachments to media files.\n\nExample: true - enable attachment addition\nExample: false - disable attachment addition\n\nWhen enabled, attachments will be added according to the specified settings.",
-    "ADD_ATTACHMENT_PATH": "Set the path to the attachment file to add.\n\nExample: /path/to/font.ttf\nExample: none - no attachment file specified\n\nThe path should be accessible to the bot.",
-    "ADD_ATTACHMENT_INDEX": "Set the attachment index to add. Leave empty to add all attachments.\n\nExample: 0 - add first attachment\nExample: 1 - add second attachment\nExample: none - add all attachments",
-    "ADD_ATTACHMENT_MIMETYPE": "Set the MIME type for attachment addition.\n\nExample: font/ttf - TrueType font\nExample: image/png - PNG image\nExample: none - don't set MIME type",
-    "COMPRESSION_PRIORITY": "Set the priority of the compression process in the media processing pipeline.\n\nLower numbers run earlier. Default order:\n1. Merge\n2. Watermark\n3. Convert\n4. Trim\n5. Compression\n6. Extract\n7. Add",
-    "MEDIA_TOOLS_PRIORITY": "Set the order of media processing tools.\n\nFormat: comma-separated list of tool names\nExample: merge,watermark,convert,trim,compression,extract\nExample: watermark,convert,trim,compression,extract,merge",
-    # General Trim Settings
-    "TRIM_ENABLED": "Enable or disable the trim feature globally.\n\nExample: true - enable trim feature\nExample: false - disable trim feature\n\nWhen enabled, you can trim media files using the -trim flag or through the configured start/end times.\n\nExample command: /leech https://example.com/video.mp4 -trim 00:01:30-00:02:45",
-    "TRIM_PRIORITY": "Set the priority of the trim process in the media processing pipeline.\n\nLower numbers run earlier. Default order:\n1. Merge\n2. Watermark\n3. Convert\n4. Trim (default: 5)\n5. Compression\n6. Extract\n\nExample: 3 - run trim before convert\nExample: 7 - run trim after compression",
-    "TRIM_START_TIME": "Set the default start time for trimming media files.\n\nFormat: HH:MM:SS or MM:SS or SS\nExample: 00:01:30 (1 minute 30 seconds)\nExample: 5:45 (5 minutes 45 seconds)\nExample: 90 (90 seconds)\n\nThis setting will be used when trim is enabled but no specific start time is provided in the command.\n\nExample command with custom start time: /leech https://example.com/video.mp4 -trim 00:02:15-00:05:30",
-    "TRIM_END_TIME": "Set the default end time for trimming media files. Leave empty to trim to the end of the file.\n\nFormat: HH:MM:SS or MM:SS or SS\nExample: 00:02:30 (2 minutes 30 seconds)\nExample: 10:45 (10 minutes 45 seconds)\nExample: 180 (180 seconds)\n\nThis setting will be used when trim is enabled but no specific end time is provided in the command.\n\nExample command with custom end time: /leech https://example.com/video.mp4 -trim 00:00:00-00:03:45",
-    "TRIM_DELETE_ORIGINAL": "Enable or disable deleting the original file after trimming.\n\nExample: true - delete original file after successful trimming\nExample: false - keep both original and trimmed files\n\nThis can be overridden by using the -del flag in the command.\n\nExample command with delete original: /leech https://example.com/video.mp4 -trim 00:01:30-00:02:45 -del",
-    # Video Trim Settings
-    "TRIM_VIDEO_ENABLED": "Enable or disable trimming for video files.\n\nExample: true - enable video trimming\nExample: false - disable video trimming\n\nWhen enabled, video files will be trimmed according to the specified start and end times.\n\nExample command: /leech https://example.com/movie.mp4 -trim 00:10:00-00:15:00",
-    "TRIM_VIDEO_CODEC": "Set the codec to use for video trimming.\n\nExample: copy - preserve original codec (fastest, no quality loss)\nExample: libx264 - H.264 codec (good compatibility)\nExample: libx265 - H.265/HEVC codec (better compression)\nExample: none - use default codec\n\nThe 'copy' option is fastest but may not be precise at cut points. Other codecs will re-encode the video.\n\nExample command with video trimming: /mirror https://example.com/video.mkv -trim 00:05:30-00:08:45",
-    "TRIM_VIDEO_PRESET": "Set the encoding preset for video trimming.\n\nExample: ultrafast - fastest encoding, largest files\nExample: fast - quick encoding with good compression\nExample: medium - balanced speed and compression\nExample: slow - better compression, slower encoding\nExample: veryslow - best compression, slowest encoding\nExample: none - use default preset\n\nThis setting only applies when re-encoding videos (not using 'copy' codec).\n\nExample of high-quality trim: /leech https://example.com/movie.mp4 -trim 01:15:30-01:25:45",
-    "TRIM_VIDEO_FORMAT": "Set the output format for video trimming.\n\nExample: mp4 - MP4 container (best compatibility)\nExample: mkv - MKV container (supports more codecs/tracks)\nExample: webm - WebM container (good for web)\nExample: avi - AVI container (legacy format)\nExample: none - use same format as original\n\nChoosing the right format depends on your needs - MP4 for compatibility, MKV for preserving multiple tracks.\n\nExample command: /mirror https://example.com/movie.mkv -trim 00:45:10-01:15:20",
-    # Audio Trim Settings
-    "TRIM_AUDIO_ENABLED": "Enable or disable trimming for audio files.\n\nExample: true - enable audio trimming\nExample: false - disable audio trimming\n\nWhen enabled, audio files will be trimmed according to the specified start and end times.\n\nExample command: /leech https://example.com/podcast.mp3 -trim 00:05:30-00:15:45",
-    "TRIM_AUDIO_CODEC": "Set the codec to use for audio trimming.\n\nExample: copy - preserve original codec (fastest, no quality loss)\nExample: aac - AAC codec (good quality, compatibility)\nExample: libmp3lame - MP3 codec (widely compatible)\nExample: flac - FLAC codec (lossless)\nExample: none - use default codec\n\nThe 'copy' option is fastest but may not be precise at cut points. Other codecs will re-encode the audio.\n\nExample command: /mirror https://example.com/audiobook.m4a -trim 01:30:00-01:45:30",
-    "TRIM_AUDIO_PRESET": "Set the encoding preset for audio trimming.\n\nExample: fast - quick encoding\nExample: medium - balanced speed and quality\nExample: slow - better quality, slower encoding\nExample: none - use default preset\n\nThis setting only applies when re-encoding audio (not using 'copy' codec).\n\nExample command: /leech https://example.com/music.flac -trim 00:01:15-00:04:30",
-    "TRIM_AUDIO_FORMAT": "Set the output format for audio trimming.\n\nExample: mp3 - MP3 format (widely compatible)\nExample: m4a - AAC in M4A container (good quality)\nExample: flac - FLAC format (lossless)\nExample: opus - Opus format (excellent quality/size ratio)\nExample: wav - WAV format (uncompressed)\nExample: none - use same format as original\n\nExample command: /mirror https://example.com/podcast.mp3 -trim 00:10:00-00:20:00",
-    # Image Trim Settings
-    "TRIM_IMAGE_ENABLED": "Enable or disable processing for image files.\n\nExample: true - enable image processing\nExample: false - disable image processing\n\nFor static images, 'trimming' means creating a copy with the specified quality and format settings.\n\nFor animated GIFs, trimming extracts the specified frame range.\n\nExample command for GIF: /leech https://example.com/animation.gif -trim 10-30",
-    "TRIM_IMAGE_QUALITY": "Set the quality for image processing during trim operations (0-100).\n\nExample: 90 - high quality (default)\nExample: 75 - good balance of quality and size\nExample: 50 - smaller file size, reduced quality\nExample: 0 or 'none' - use original quality\n\nHigher values mean better quality but larger file size.\n\nExample command: /mirror https://example.com/photo.jpg -trim",
-    "TRIM_IMAGE_FORMAT": "Set the output format for image processing.\n\nExample: jpg - JPEG format (good for photos)\nExample: png - PNG format (lossless, good for graphics)\nExample: webp - WebP format (better compression)\nExample: gif - GIF format (for animations)\nExample: none - use same format as original\n\nExample command: /leech https://example.com/image.png -trim",
-    # Document Trim Settings
-    "TRIM_DOCUMENT_ENABLED": "Enable or disable processing for document files.\n\nExample: true - enable document processing\nExample: false - disable document processing\n\nFor PDF files, trimming extracts the specified page range.\n\nExample command for PDF: /leech https://example.com/document.pdf -trim 5-10",
-    "TRIM_DOCUMENT_QUALITY": "Set the quality for document processing during trim operations (0-100).\n\nExample: 90 - high quality (default)\nExample: 75 - good balance of quality and size\nExample: 50 - smaller file size, reduced quality\nExample: 0 or 'none' - use original quality\n\nHigher values mean better quality but larger file size.\n\nExample command: /mirror https://example.com/document.pdf -trim 1-5",
-    "TRIM_DOCUMENT_FORMAT": "Set the output format for document processing.\n\nExample: pdf - PDF format\nExample: docx - Word document format\nExample: txt - Text format\nExample: none - use same format as original\n\nExample command: /leech https://example.com/document.pdf -trim 10-20",
-    # Subtitle Trim Settings
-    "TRIM_SUBTITLE_ENABLED": "Enable or disable trimming for subtitle files.\n\nExample: true - enable subtitle trimming\nExample: false - disable subtitle trimming\n\nWhen enabled, subtitle files will be trimmed to include only entries within the specified time range.\n\nExample command: /leech https://example.com/movie.srt -trim 00:05:00-00:15:00",
-    "TRIM_SUBTITLE_ENCODING": "Set the character encoding for subtitle trimming.\n\nExample: utf-8 - UTF-8 encoding (recommended)\nExample: latin1 - Latin-1 encoding\nExample: none - use default encoding\n\nThis setting helps ensure proper character display in the trimmed subtitles.\n\nExample command: /mirror https://example.com/subtitles.srt -trim 00:10:00-00:20:00",
-    "TRIM_SUBTITLE_FORMAT": "Set the output format for subtitle trimming.\n\nExample: srt - SubRip format (widely compatible)\nExample: ass - Advanced SubStation Alpha format\nExample: vtt - WebVTT format (for web videos)\nExample: none - use same format as original\n\nExample command: /leech https://example.com/subtitles.ass -trim 00:30:00-00:45:00",
-    # Archive Trim Settings
-    "TRIM_ARCHIVE_ENABLED": "Enable or disable processing for archive files.\n\nExample: true - enable archive processing\nExample: false - disable archive processing\n\nFor archives, 'trimming' means extracting specific files based on patterns and creating a new archive.\n\nExample command: /leech https://example.com/files.zip -trim",
-    "TRIM_ARCHIVE_FORMAT": "Set the output format for archive processing.\n\nExample: zip - ZIP format\nExample: 7z - 7-Zip format (better compression)\nExample: tar - TAR format\nExample: none - use same format as original\n\nExample command: /mirror https://example.com/files.rar -trim",
-}
 
 nsfw_keywords = [
     "porn",
@@ -646,20 +577,42 @@ media_tools_flag = """<b>Media Tools Flag</b>: -mt
 
 /cmd link -mt (opens media tools settings before starting the task)
 
+<blockquote>
 When you use the -mt flag with any command:
 1. The bot will show the media tools settings menu
 2. You can customize settings as needed
 3. Click "Done" to start the task with your settings
 4. Click "Cancel" to abort the task
 5. If no action is taken within 60 seconds, the task will be cancelled
+</blockquote>
 
-All command and cancellation messages are auto-deleted after 5 minutes.
+<blockquote expandable="expandable"><b>Usage Examples</b>:
+• <code>/mirror https://example.com/video.mp4 -mt</code>
+  Shows media tools settings before starting the mirror task
 
-Examples:
-/mirror https://example.com/video.mp4 -mt
-/leech https://example.com/files.zip -z -mt
-/ytdl https://youtube.com/watch?v=example -mt
-/mirror https://example.com/videos.zip -merge-video -mt"""
+• <code>/leech https://example.com/files.zip -z -mt</code>
+  Shows media tools settings before starting the leech task with zip extraction
+
+• <code>/ytdl https://youtube.com/watch?v=example -mt</code>
+  Shows media tools settings before starting the YouTube download
+
+• <code>/mirror https://example.com/videos.zip -merge-video -mt</code>
+  Shows media tools settings before starting a task with video merging
+
+• <code>/leech https://example.com/video.mp4 -watermark "My Channel" -mt</code>
+  Configure watermark settings before applying text watermark
+
+• <code>/mirror https://example.com/audio.mp3 -ca mp3 -mt</code>
+  Configure conversion settings before converting audio to MP3</blockquote>
+
+<b>Benefits</b>:
+• Configure media tools settings on-the-fly for specific tasks
+• No need to use separate commands to change settings
+• Preview and adjust settings before processing large files
+• Easily cancel tasks if settings aren't right
+• Works with all download commands and other flags
+
+<b>Note</b>: All messages related to the <code>-mt</code> flag interaction are automatically deleted after 5 minutes for a cleaner chat experience."""
 
 gdrive = """<b>Gdrive</b>: link
 If DEFAULT_UPLOAD is `rc` then you can pass up: `gd` to upload using gdrive tools to GDRIVE_ID.
@@ -703,39 +656,6 @@ thumbnail_layout = """Thumbnail Layout: -tl
 leech_as = """<b>Leech as</b>: -doc -med
 /cmd link -doc (Leech as document)
 /cmd link -med (Leech as media)"""
-
-leech_filename = """<b>Leech Filename</b>:
-
-Set a global filename template for all your leech files. The template supports dynamic variables that are automatically extracted from filenames.
-
-<b>Basic Variables:</b>
-• <code>{filename}</code> - Original filename without extension
-• <code>{ext}</code> - File extension (e.g., mkv, mp4)
-• <code>{size}</code> - File size (e.g., 1.5GB)
-• <code>{quality}</code> - Video quality (e.g., 1080p, 720p)
-
-<b>TV Show Variables:</b>
-• <code>{season}</code> - Season number extracted from filename
-• <code>{episode}</code> - Episode number extracted from filename
-• <code>{year}</code> - Release year extracted from filename
-
-<b>Media Information:</b>
-• <code>{codec}</code> - Video codec (e.g., HEVC, AVC)
-• <code>{framerate}</code> - Video framerate
-• <code>{format}</code> - Media container format
-• <code>{formate}</code> - File extension in uppercase
-
-<b>Examples:</b>
-• <code>{filename} [{quality}]</code>
-• <code>{filename} S{season}E{episode} [{quality}]</code>
-• <code>{filename} ({year}) [{codec}]</code>
-• <code>Series S{season}E{episode} [{quality}] [{codec}]</code>
-
-You can set this in your user settings by going to /usettings > Leech Settings > Leech Filename.
-
-Use /fontstyles to see all available template variables.
-
-Note: This affects the actual filename of the files, while Leech Caption controls how they appear in Telegram messages."""
 
 font_styles = """<b>Font Styles</b>:
 Use the /fonts or /fontstyles command to see available font styles for leech.
@@ -1012,7 +932,6 @@ YT_HELP_DICT = {
     "TG-Transmission": transmission,
     "Thumb-Layout": thumbnail_layout,
     "Leech-Type": leech_as,
-    "Leech-Filename": leech_filename,
     "FFmpeg-Cmds": ffmpeg_cmds,
     "Media-Tools-Flag": media_tools_flag,
 }
@@ -1048,7 +967,6 @@ MIRROR_HELP_DICT = {
     "TG-Transmission": transmission,
     "Thumb-Layout": thumbnail_layout,
     "Leech-Type": leech_as,
-    "Leech-Filename": leech_filename,
     "FFmpeg-Cmds": ffmpeg_cmds,
     "Media-Tools-Flag": media_tools_flag,
     "AI-Chatbot": ai_help,
@@ -1105,20 +1023,21 @@ user_settings_text = {
     "MISTRAL_API_URL": "Send your custom Mistral AI API URL. This will be used as a fallback if the API key is not provided or fails. Leave empty to use the bot owner's API URL. Timeout: 60 sec",
     "DEEPSEEK_API_KEY": "Send your DeepSeek AI API key. This will be used to access the DeepSeek AI API directly. Leave empty to use the bot owner's API key. Timeout: 60 sec",
     "DEEPSEEK_API_URL": "Send your custom DeepSeek AI API URL. This will be used as a fallback if the API key is not provided or fails. Leave empty to use the bot owner's API URL. Timeout: 60 sec",
-    "METADATA_KEY": "Send your text for change mkv medias metadata (title only). This is a legacy option, consider using the specific metadata options instead. Timeout: 60 sec",
-    "METADATA_ALL": "Send metadata text to be used for all metadata fields (title, author, comment) for all track types. This takes priority over all other metadata settings. Timeout: 60 sec",
-    "METADATA_TITLE": "Send metadata text to be used for the global title field. Timeout: 60 sec",
-    "METADATA_AUTHOR": "Send metadata text to be used for the global author field. Timeout: 60 sec",
-    "METADATA_COMMENT": "Send metadata text to be used for the global comment field. Timeout: 60 sec",
-    "METADATA_VIDEO_TITLE": "Send metadata text to be used specifically for video track titles. Timeout: 60 sec",
-    "METADATA_VIDEO_AUTHOR": "Send metadata text to be used specifically for video track authors. Timeout: 60 sec",
-    "METADATA_VIDEO_COMMENT": "Send metadata text to be used specifically for video track comments. Timeout: 60 sec",
-    "METADATA_AUDIO_TITLE": "Send metadata text to be used specifically for audio track titles. Timeout: 60 sec",
-    "METADATA_AUDIO_AUTHOR": "Send metadata text to be used specifically for audio track authors. Timeout: 60 sec",
-    "METADATA_AUDIO_COMMENT": "Send metadata text to be used specifically for audio track comments. Timeout: 60 sec",
-    "METADATA_SUBTITLE_TITLE": "Send metadata text to be used specifically for subtitle track titles. Timeout: 60 sec",
-    "METADATA_SUBTITLE_AUTHOR": "Send metadata text to be used specifically for subtitle track authors. Timeout: 60 sec",
-    "METADATA_SUBTITLE_COMMENT": "Send metadata text to be used specifically for subtitle track comments. Timeout: 60 sec",
+    # Metadata Settings
+    "METADATA_KEY": "Set legacy metadata key for backward compatibility.\n\nExample: title=My Video,author=John Doe - set title and author\nExample: none - don't use legacy metadata\n\nThis is a legacy option, consider using the specific metadata options instead.\n\nTimeout: 60 sec",
+    "METADATA_ALL": "Set metadata text to be used for all metadata fields (title, author, comment) for all track types.\n\nExample: My Project - apply to all metadata fields\nExample: none - don't set global metadata\n\nThis takes priority over all other metadata settings.\n\nTimeout: 60 sec",
+    "METADATA_TITLE": "Set metadata text to be used for the global title field.\n\nExample: My Video - set title to 'My Video'\nExample: none - don't set global title\n\nTimeout: 60 sec",
+    "METADATA_AUTHOR": "Set metadata text to be used for the global author field.\n\nExample: John Doe - set author to 'John Doe'\nExample: none - don't set global author\n\nTimeout: 60 sec",
+    "METADATA_COMMENT": "Set metadata text to be used for the global comment field.\n\nExample: Created with Telegram Bot - add a comment\nExample: none - don't set global comment\n\nTimeout: 60 sec",
+    "METADATA_VIDEO_TITLE": "Set metadata text to be used specifically for video track titles.\n\nExample: Episode 1 - set video track title\nExample: none - don't set video track title\n\nTimeout: 60 sec",
+    "METADATA_VIDEO_AUTHOR": "Set metadata text to be used specifically for video track authors.\n\nExample: Director Name - set video track author\nExample: none - don't set video track author\n\nTimeout: 60 sec",
+    "METADATA_VIDEO_COMMENT": "Set metadata text to be used specifically for video track comments.\n\nExample: 4K HDR Version - add video track comment\nExample: none - don't set video track comment\n\nTimeout: 60 sec",
+    "METADATA_AUDIO_TITLE": "Set metadata text to be used specifically for audio track titles.\n\nExample: Song Name - set audio track title\nExample: none - don't set audio track title\n\nTimeout: 60 sec",
+    "METADATA_AUDIO_AUTHOR": "Set metadata text to be used specifically for audio track authors.\n\nExample: Artist Name - set audio track author\nExample: none - don't set audio track author\n\nTimeout: 60 sec",
+    "METADATA_AUDIO_COMMENT": "Set metadata text to be used specifically for audio track comments.\n\nExample: 320kbps Stereo - add audio track comment\nExample: none - don't set audio track comment\n\nTimeout: 60 sec",
+    "METADATA_SUBTITLE_TITLE": "Set metadata text to be used specifically for subtitle track titles.\n\nExample: English Subtitles - set subtitle track title\nExample: none - don't set subtitle track title\n\nTimeout: 60 sec",
+    "METADATA_SUBTITLE_AUTHOR": "Set metadata text to be used specifically for subtitle track authors.\n\nExample: Translator Name - set subtitle track author\nExample: none - don't set subtitle track author\n\nTimeout: 60 sec",
+    "METADATA_SUBTITLE_COMMENT": "Set metadata text to be used specifically for subtitle track comments.\n\nExample: Full Translation - add subtitle track comment\nExample: none - don't set subtitle track comment\n\nTimeout: 60 sec",
     "USER_SESSION": "Send your pyrogram user session string for download from private telegram chat. Timeout: 60 sec",
     "USER_DUMP": "Send your channel or group id where you want to store your leeched files. Bot must have permission to send message in your chat. Timeout: 60 sec",
     "USER_COOKIES": "Send your cookies.txt file for YouTube and other yt-dlp downloads. This will be used instead of the owner's cookies file. Create it using browser extensions like 'Get cookies.txt' or 'EditThisCookie'. Timeout: 60 sec",
@@ -1219,147 +1138,189 @@ When disabled, only the owner's helper bots will be used.
 Timeout: 60 sec""",
 }
 
-# Media Tools help text
+# Media tools help text dictionary with detailed examples and consistent formatting
+# This is the MAIN dictionary that should be used for all media tools help text
+# All entries follow the same format:
+# - Clear description of the setting
+# - Examples with explanations
+# - Timeout information (where applicable)
 media_tools_text = {
-    # General Media Tools
-    "MEDIA_TOOLS_PRIORITY": "Set priority for media tools processing. Lower number means higher priority. Example: 1 for highest priority. Timeout: 60 sec",
+    "MEDIA_TOOLS_ENABLED": "Enable or disable media tools features. You can enable specific tools by providing a comma-separated list.\n\nExample: true - enable all media tools\nExample: watermark,merge,convert - enable only these tools\nExample: false - disable all media tools\n\nAvailable tools: watermark, merge, convert, compression, trim, extract, add, metadata, ffmpeg, sample\n\nTimeout: 60 sec",
+    "MEDIA_TOOLS_PRIORITY": "Set priority for media tools processing. Lower number means higher priority.\n\nExample: 1 - highest priority\nExample: 10 - lower priority\n\nTimeout: 60 sec",
     # Watermark Settings
-    "WATERMARK_ENABLED": "Enable or disable watermark feature. Send 'true' to enable or 'false' to disable. Timeout: 60 sec\n\nPriority:\n1. Global (enabled) & User (disabled) -> Apply global\n2. User (enabled) & Global (disabled) -> Apply user\n3. Global (enabled) & User (enabled) -> Apply user\n4. Global (disabled) & User (disabled) -> Don't apply\n\nUse the Reset button to reset all watermark settings to default.",
-    "WATERMARK_KEY": "Send your text which will be added as watermark in all mkv videos. Timeout: 60 sec",
-    "WATERMARK_POSITION": "Send watermark position. Valid options: top_left, top_right, bottom_left, bottom_right, center, top_center, bottom_center, left_center, right_center. Timeout: 60 sec",
-    "WATERMARK_SIZE": "Send watermark font size (integer value). Example: 20. Timeout: 60 sec",
-    "WATERMARK_COLOR": "Send watermark text color. Example: white, black, red, green, blue, yellow. Timeout: 60 sec",
-    "WATERMARK_FONT": "Send font name for watermark text. You can use a Google Font name (like 'Roboto', 'Open Sans', etc.) or a font file name if available in the bot's directory. Default: default.otf. Timeout: 60 sec",
-    "WATERMARK_PRIORITY": "Set priority for watermark processing. Lower number means higher priority. Example: 1 for highest priority. Timeout: 60 sec",
-    "WATERMARK_THREADING": "Enable or disable threading for watermark processing. Send 'true' to enable or 'false' to disable. Timeout: 60 sec",
-    # WATERMARK_MAINTAIN_QUALITY has been removed, use WATERMARK_QUALITY instead
-    "WATERMARK_OPACITY": "Set the opacity level for watermark text (0.0-1.0). Lower values make the watermark more transparent. Example: 0.5 for 50% opacity. Timeout: 60 sec",
+    "WATERMARK_ENABLED": "Enable or disable watermark feature. Send 'true' to enable or 'false' to disable.\n\nExample: true - enable watermark\nExample: false - disable watermark\n\nPriority:\n1. Global (enabled) & User (disabled) -> Apply global\n2. User (enabled) & Global (disabled) -> Apply user\n3. Global (enabled) & User (enabled) -> Apply user\n4. Global (disabled) & User (disabled) -> Don't apply\n\nUse the Reset button to reset all watermark settings to default.",
+    "WATERMARK_KEY": "Send your text which will be added as watermark in all mkv videos.\n\nExample: My Watermark Text\n\nTimeout: 60 sec",
+    "WATERMARK_POSITION": "Send watermark position. Valid options: top_left, top_right, bottom_left, bottom_right, center, top_center, bottom_center, left_center, right_center.\n\nExample: bottom_right - place in bottom right corner\nExample: center - place in center of video\n\nTimeout: 60 sec",
+    "WATERMARK_SIZE": "Send watermark font size (integer value).\n\nExample: 20 - medium size\nExample: 36 - larger size\n\nTimeout: 60 sec",
+    "WATERMARK_COLOR": "Send watermark text color.\n\nExample: white - white text\nExample: black - black text\nExample: red - red text\nExample: #FF00FF - custom color (magenta)\n\nTimeout: 60 sec",
+    "WATERMARK_FONT": "Send font name for watermark text. You can use a Google Font name or a font file name if available in the bot's directory.\n\nExample: Roboto - Google font\nExample: Arial - common font\nExample: default.otf - use default font\n\nTimeout: 60 sec",
+    "WATERMARK_OPACITY": "Set the opacity level for watermark text (0.0-1.0). Lower values make the watermark more transparent.\n\nExample: 0.5 - 50% opacity (semi-transparent)\nExample: 1.0 - 100% opacity (fully visible)\nExample: 0.2 - 20% opacity (mostly transparent)\n\nTimeout: 60 sec",
+    "WATERMARK_PRIORITY": "Set priority for watermark processing. Lower number means higher priority.\n\nExample: 1 - highest priority\nExample: 10 - lower priority\n\nTimeout: 60 sec",
+    "WATERMARK_THREADING": "Enable or disable threading for watermark processing.\n\nExample: true - enable threading (faster processing)\nExample: false - disable threading\n\nTimeout: 60 sec",
+    "WATERMARK_THREAD_NUMBER": "Set the number of threads to use for watermark processing.\n\nExample: 2 - use 2 threads\nExample: 4 - use 4 threads\n\nTimeout: 60 sec",
+    "WATERMARK_QUALITY": "Set the quality value for watermark processing.\n\nExample: 23 - good quality (lower is better)\nExample: 18 - high quality\nExample: none - use default quality\n\nTimeout: 60 sec",
+    "WATERMARK_SPEED": "Set the speed value for watermark processing.\n\nExample: ultrafast - fastest processing\nExample: medium - balanced speed and quality\nExample: veryslow - best quality\nExample: none - use default speed\n\nTimeout: 60 sec",
+    "WATERMARK_REMOVE_ORIGINAL": "Enable or disable removing original files after watermarking.\n\nExample: true - delete original files after watermarking\nExample: false - keep original files\n\nYou can also use the -del flag in commands to override this setting.\n\nTimeout: 60 sec",
+    "AUDIO_WATERMARK_INTERVAL": "Set the interval in seconds for audio watermarks.\n\nExample: 30 - add watermark every 30 seconds\nExample: 60 - add watermark every minute\nExample: 0 - disable interval (default)\n\nTimeout: 60 sec",
+    "AUDIO_WATERMARK_VOLUME": "Set the volume of the audio watermark relative to the original audio.\n\nExample: 0.5 - half the volume of the original\nExample: 0.2 - subtle watermark\nExample: 1.0 - same volume as the original\n\nTimeout: 60 sec",
+    "SUBTITLE_WATERMARK_INTERVAL": "Set the interval in seconds for subtitle watermarks.\n\nExample: 30 - add watermark every 30 seconds\nExample: 60 - add watermark every minute\nExample: 0 - disable interval (default)\n\nTimeout: 60 sec",
+    "SUBTITLE_WATERMARK_STYLE": "Set the style of the subtitle watermark.\n\nExample: normal - standard subtitle style\nExample: bold - bold text\nExample: italic - italic text\nExample: bold_italic - bold and italic text\n\nTimeout: 60 sec",
+    "IMAGE_WATERMARK_ENABLED": "Enable or disable image watermark feature.\n\nExample: true - enable image watermark\nExample: false - disable image watermark\n\nTimeout: 60 sec",
+    "IMAGE_WATERMARK_PATH": "Set the path to the watermark image file.\n\nExample: /path/to/watermark.png\n\nThe image should preferably be a PNG with transparency for best results.\n\nTimeout: 60 sec",
+    "IMAGE_WATERMARK_SCALE": "Set the scale of the watermark image as a percentage of the video width.\n\nExample: 10 - watermark will be 10% of the video width\nExample: 20 - watermark will be 20% of the video width\n\nTimeout: 60 sec",
+    "IMAGE_WATERMARK_OPACITY": "Set the opacity of the watermark image.\n\nExample: 0.7 - 70% opacity\nExample: 0.5 - 50% opacity\nExample: 1.0 - 100% opacity (fully visible)\n\nTimeout: 60 sec",
+    "IMAGE_WATERMARK_POSITION": "Set the position of the watermark image on the media.\n\nExample: bottom_right - place in bottom right corner\nExample: center - place in the center of the video\n\nTimeout: 60 sec",
     # Merge Settings
-    "MERGE_ENABLED": "Enable or disable merge feature. Send 'true' to enable or 'false' to disable. Timeout: 60 sec\n\nPriority:\n1. Global (enabled) & User (disabled) -> Apply global\n2. User (enabled) & Global (disabled) -> Apply user\n3. Global (enabled) & User (enabled) -> Apply user\n4. Global (disabled) & User (disabled) -> Don't apply\n\nUse the Reset button to reset all merge settings to default.",
-    "CONCAT_DEMUXER_ENABLED": "Enable or disable concat demuxer for merging. Send 'true' to enable or 'false' to disable. Timeout: 60 sec",
-    "FILTER_COMPLEX_ENABLED": "Enable or disable filter complex for merging. Send 'true' to enable or 'false' to disable. Timeout: 60 sec",
+    "MERGE_ENABLED": "Enable or disable merge feature. Send 'true' to enable or 'false' to disable.\n\nExample: true - enable merge\nExample: false - disable merge\n\nPriority:\n1. Global (enabled) & User (disabled) -> Apply global\n2. User (enabled) & Global (disabled) -> Apply user\n3. Global (enabled) & User (enabled) -> Apply user\n4. Global (disabled) & User (disabled) -> Don't apply\n\nUse the Reset button to reset all merge settings to default.",
+    "CONCAT_DEMUXER_ENABLED": "Enable or disable concat demuxer for merging.\n\nExample: true - enable concat demuxer\nExample: false - disable concat demuxer\n\nTimeout: 60 sec",
+    "FILTER_COMPLEX_ENABLED": "Enable or disable filter complex for merging.\n\nExample: true - enable filter complex\nExample: false - disable filter complex\n\nTimeout: 60 sec",
     # Output formats
-    "MERGE_OUTPUT_FORMAT_VIDEO": "Set output format for merged videos. Common formats: mkv, mp4, avi, webm.\nExample: mkv - container that supports almost all codecs\nExample: mp4 - widely compatible format. Timeout: 60 sec",
-    "MERGE_OUTPUT_FORMAT_AUDIO": "Set output format for merged audios. Common formats: mp3, m4a, flac, wav.\nExample: mp3 - widely compatible format\nExample: flac - lossless audio format. Timeout: 60 sec",
-    "MERGE_OUTPUT_FORMAT_IMAGE": "Set output format for merged images. Common formats: jpg, png, webp, tiff.\nExample: jpg - good compression, smaller files\nExample: png - lossless format with transparency support. Timeout: 60 sec",
-    "MERGE_OUTPUT_FORMAT_DOCUMENT": "Set output format for merged documents. Currently only pdf is supported.\nExample: pdf - standard document format. Timeout: 60 sec",
-    "MERGE_OUTPUT_FORMAT_SUBTITLE": "Set output format for merged subtitles. Common formats: srt, vtt, ass.\nExample: srt - simple subtitle format\nExample: ass - advanced subtitle format with styling. Timeout: 60 sec",
+    "MERGE_OUTPUT_FORMAT_VIDEO": "Set output format for merged videos. Common formats: mkv, mp4, avi, webm.\n\nExample: mkv - container that supports almost all codecs\nExample: mp4 - widely compatible format\n\nTimeout: 60 sec",
+    "MERGE_OUTPUT_FORMAT_AUDIO": "Set output format for merged audios. Common formats: mp3, m4a, flac, wav.\n\nExample: mp3 - widely compatible format\nExample: flac - lossless audio format\n\nTimeout: 60 sec",
+    "MERGE_OUTPUT_FORMAT_IMAGE": "Set output format for merged images. Common formats: jpg, png, webp, tiff.\n\nExample: jpg - good compression, smaller files\nExample: png - lossless format with transparency support\n\nTimeout: 60 sec",
+    "MERGE_OUTPUT_FORMAT_DOCUMENT": "Set output format for merged documents. Currently only pdf is supported.\n\nExample: pdf - standard document format\n\nTimeout: 60 sec",
+    "MERGE_OUTPUT_FORMAT_SUBTITLE": "Set output format for merged subtitles. Common formats: srt, vtt, ass.\n\nExample: srt - simple subtitle format\nExample: ass - advanced subtitle format with styling\n\nTimeout: 60 sec",
     # Video settings
-    "MERGE_VIDEO_CODEC": "Set the video codec for merged videos. Options: copy, h264, h265, vp9, av1.\nExample: copy - preserves original codec (fastest)\nExample: h264 - widely compatible codec. Timeout: 60 sec",
-    "MERGE_VIDEO_QUALITY": "Set the quality preset for video encoding. Options: low, medium, high, veryhigh.\nExample: medium - balanced quality and file size\nExample: high - better quality but larger file size. Timeout: 60 sec",
-    "MERGE_VIDEO_PRESET": "Set the encoding preset for video. Options: ultrafast to veryslow.\nExample: medium - balanced encoding speed and compression\nExample: slow - better compression but slower encoding. Timeout: 60 sec",
-    "MERGE_VIDEO_CRF": "Set the Constant Rate Factor for video quality (0-51, lower is better).\nExample: 23 - default value, good balance\nExample: 18 - visually lossless quality. Timeout: 60 sec",
-    "MERGE_VIDEO_PIXEL_FORMAT": "Set the pixel format for video. Common formats: yuv420p, yuv444p.\nExample: yuv420p - most compatible format\nExample: yuv444p - highest quality but larger file size. Timeout: 60 sec",
-    "MERGE_VIDEO_TUNE": "Set the tuning parameter for video encoding. Options: film, animation, grain, etc.\nExample: film - for live-action content\nExample: animation - for animated content. Timeout: 60 sec",
-    "MERGE_VIDEO_FASTSTART": "Enable or disable faststart flag for MP4 files. Allows videos to start playing before fully downloaded.\nExample: true - enable faststart\nExample: false - disable faststart. Timeout: 60 sec",
+    "MERGE_VIDEO_CODEC": "Set the video codec for merged videos. Options: copy, h264, h265, vp9, av1.\n\nExample: copy - preserves original codec (fastest)\nExample: h264 - widely compatible codec\n\nTimeout: 60 sec",
+    "MERGE_VIDEO_QUALITY": "Set the quality preset for video encoding. Options: low, medium, high, veryhigh.\n\nExample: medium - balanced quality and file size\nExample: high - better quality but larger file size\n\nTimeout: 60 sec",
+    "MERGE_VIDEO_PRESET": "Set the encoding preset for video. Options: ultrafast to veryslow.\n\nExample: medium - balanced encoding speed and compression\nExample: slow - better compression but slower encoding\n\nTimeout: 60 sec",
+    "MERGE_VIDEO_CRF": "Set the Constant Rate Factor for video quality (0-51, lower is better).\n\nExample: 23 - default value, good balance\nExample: 18 - visually lossless quality\n\nTimeout: 60 sec",
+    "MERGE_VIDEO_PIXEL_FORMAT": "Set the pixel format for video. Common formats: yuv420p, yuv444p.\n\nExample: yuv420p - most compatible format\nExample: yuv444p - highest quality but larger file size\n\nTimeout: 60 sec",
+    "MERGE_VIDEO_TUNE": "Set the tuning parameter for video encoding. Options: film, animation, grain, etc.\n\nExample: film - for live-action content\nExample: animation - for animated content\n\nTimeout: 60 sec",
+    "MERGE_VIDEO_FASTSTART": "Enable or disable faststart flag for MP4 files. Allows videos to start playing before fully downloaded.\n\nExample: true - enable faststart\nExample: false - disable faststart\n\nTimeout: 60 sec",
     # Audio settings
-    "MERGE_AUDIO_CODEC": "Set the audio codec for merged audio. Options: copy, aac, mp3, opus, flac.\nExample: copy - preserves original codec (fastest)\nExample: aac - good quality and compatibility. Timeout: 60 sec",
-    "MERGE_AUDIO_BITRATE": "Set the audio bitrate for merged audio. Examples: 128k, 192k, 320k.\nExample: 192k - good quality for most content\nExample: 320k - high quality audio. Timeout: 60 sec",
-    "MERGE_AUDIO_CHANNELS": "Set the number of audio channels. Common values: 1 (mono), 2 (stereo).\nExample: 2 - stereo audio\nExample: 1 - mono audio. Timeout: 60 sec",
-    "MERGE_AUDIO_SAMPLING": "Set the audio sampling rate in Hz. Common values: 44100, 48000.\nExample: 44100 - CD quality\nExample: 48000 - DVD/professional audio quality. Timeout: 60 sec",
-    "MERGE_AUDIO_VOLUME": "Set the volume adjustment factor (0.0-10.0).\nExample: 1.0 - original volume\nExample: 2.0 - double volume. Timeout: 60 sec",
+    "MERGE_AUDIO_CODEC": "Set the audio codec for merged audio. Options: copy, aac, mp3, opus, flac.\n\nExample: copy - preserves original codec (fastest)\nExample: aac - good quality and compatibility\n\nTimeout: 60 sec",
+    "MERGE_AUDIO_BITRATE": "Set the audio bitrate for merged audio. Examples: 128k, 192k, 320k.\n\nExample: 192k - good quality for most content\nExample: 320k - high quality audio\n\nTimeout: 60 sec",
+    "MERGE_AUDIO_CHANNELS": "Set the number of audio channels. Common values: 1 (mono), 2 (stereo).\n\nExample: 2 - stereo audio\nExample: 1 - mono audio\n\nTimeout: 60 sec",
+    "MERGE_AUDIO_SAMPLING": "Set the audio sampling rate in Hz. Common values: 44100, 48000.\n\nExample: 44100 - CD quality\nExample: 48000 - DVD/professional audio quality\n\nTimeout: 60 sec",
+    "MERGE_AUDIO_VOLUME": "Set the volume adjustment factor (0.0-10.0).\n\nExample: 1.0 - original volume\nExample: 2.0 - double volume\n\nTimeout: 60 sec",
     # Image settings
-    "MERGE_IMAGE_MODE": "Set the mode for image merging. Options: auto, horizontal, vertical, collage.\nExample: auto - choose based on number of images\nExample: collage - grid layout. Timeout: 60 sec",
-    "MERGE_IMAGE_COLUMNS": "Set the number of columns for image collage mode.\nExample: 2 - two images per row\nExample: 3 - three images per row. Timeout: 60 sec",
-    "MERGE_IMAGE_QUALITY": "Set the quality for image output (1-100). Higher values mean better quality but larger file size.\nExample: 90 - high quality\nExample: 75 - good balance of quality and size. Timeout: 60 sec",
-    "MERGE_IMAGE_DPI": "Set the DPI (dots per inch) for merged images.\nExample: 300 - good for printing\nExample: 72 - standard screen resolution. Timeout: 60 sec",
-    "MERGE_IMAGE_RESIZE": "Set the size to resize images to. Format: widthxheight or 'none'.\nExample: none - keep original size\nExample: 1920x1080 - resize to Full HD. Timeout: 60 sec",
-    "MERGE_IMAGE_BACKGROUND": "Set the background color for image merging.\nExample: white - white background\nExample: #FF0000 - red background. Timeout: 60 sec",
+    "MERGE_IMAGE_MODE": "Set the mode for image merging. Options: auto, horizontal, vertical, collage.\n\nExample: auto - choose based on number of images\nExample: collage - grid layout\n\nTimeout: 60 sec",
+    "MERGE_IMAGE_COLUMNS": "Set the number of columns for image collage mode.\n\nExample: 2 - two images per row\nExample: 3 - three images per row\n\nTimeout: 60 sec",
+    "MERGE_IMAGE_QUALITY": "Set the quality for image output (1-100). Higher values mean better quality but larger file size.\n\nExample: 90 - high quality\nExample: 75 - good balance of quality and size\n\nTimeout: 60 sec",
+    "MERGE_IMAGE_DPI": "Set the DPI (dots per inch) for merged images.\n\nExample: 300 - good for printing\nExample: 72 - standard screen resolution\n\nTimeout: 60 sec",
+    "MERGE_IMAGE_RESIZE": "Set the size to resize images to. Format: widthxheight or 'none'.\n\nExample: none - keep original size\nExample: 1920x1080 - resize to Full HD\n\nTimeout: 60 sec",
+    "MERGE_IMAGE_BACKGROUND": "Set the background color for image merging.\n\nExample: white - white background\nExample: #FF0000 - red background\n\nTimeout: 60 sec",
     # Subtitle settings
-    "MERGE_SUBTITLE_ENCODING": "Set the character encoding for subtitle files.\nExample: utf-8 - universal encoding\nExample: latin1 - for Western European languages. Timeout: 60 sec",
-    "MERGE_SUBTITLE_FONT": "Set the font for subtitle rendering.\nExample: Arial - widely available font\nExample: DejaVu Sans - good for multiple languages. Timeout: 60 sec",
-    "MERGE_SUBTITLE_FONT_SIZE": "Set the font size for subtitle rendering.\nExample: 24 - medium size\nExample: 32 - larger size for better readability. Timeout: 60 sec",
-    "MERGE_SUBTITLE_FONT_COLOR": "Set the font color for subtitle text.\nExample: white - white text\nExample: #FFFF00 - yellow text. Timeout: 60 sec",
-    "MERGE_SUBTITLE_BACKGROUND": "Set the background color for subtitle text.\nExample: black - black background\nExample: transparent - no background. Timeout: 60 sec",
+    "MERGE_SUBTITLE_ENCODING": "Set the character encoding for subtitle files.\n\nExample: utf-8 - universal encoding\nExample: latin1 - for Western European languages\n\nTimeout: 60 sec",
+    "MERGE_SUBTITLE_FONT": "Set the font for subtitle rendering.\n\nExample: Arial - widely available font\nExample: DejaVu Sans - good for multiple languages\n\nTimeout: 60 sec",
+    "MERGE_SUBTITLE_FONT_SIZE": "Set the font size for subtitle rendering.\n\nExample: 24 - medium size\nExample: 32 - larger size for better readability\n\nTimeout: 60 sec",
+    "MERGE_SUBTITLE_FONT_COLOR": "Set the font color for subtitle text.\n\nExample: white - white text\nExample: #FFFF00 - yellow text\n\nTimeout: 60 sec",
+    "MERGE_SUBTITLE_BACKGROUND": "Set the background color for subtitle text.\n\nExample: black - black background\nExample: transparent - no background\n\nTimeout: 60 sec",
     # Document settings
-    "MERGE_DOCUMENT_PAPER_SIZE": "Set the paper size for document output.\nExample: a4 - standard international paper size\nExample: letter - standard US paper size. Timeout: 60 sec",
-    "MERGE_DOCUMENT_ORIENTATION": "Set the orientation for document output.\nExample: portrait - vertical orientation\nExample: landscape - horizontal orientation. Timeout: 60 sec",
-    "MERGE_DOCUMENT_MARGIN": "Set the margin size in points for document output.\nExample: 50 - standard margin\nExample: 0 - no margin. Timeout: 60 sec",
+    "MERGE_DOCUMENT_PAPER_SIZE": "Set the paper size for document output.\n\nExample: a4 - standard international paper size\nExample: letter - standard US paper size\n\nTimeout: 60 sec",
+    "MERGE_DOCUMENT_ORIENTATION": "Set the orientation for document output.\n\nExample: portrait - vertical orientation\nExample: landscape - horizontal orientation\n\nTimeout: 60 sec",
+    "MERGE_DOCUMENT_MARGIN": "Set the margin size in points for document output.\n\nExample: 50 - standard margin\nExample: 0 - no margin\n\nTimeout: 60 sec",
     # Metadata settings
-    "MERGE_METADATA_TITLE": "Set the title metadata for the merged file.\nExample: My Video - sets the title to 'My Video'\nExample: empty - no title metadata. Timeout: 60 sec",
-    "MERGE_METADATA_AUTHOR": "Set the author metadata for the merged file.\nExample: John Doe - sets the author to 'John Doe'\nExample: empty - no author metadata. Timeout: 60 sec",
-    "MERGE_METADATA_COMMENT": "Set the comment metadata for the merged file.\nExample: Created with Telegram Bot - adds a comment\nExample: empty - no comment metadata. Timeout: 60 sec",
+    "MERGE_METADATA_TITLE": "Set the title metadata for the merged file.\n\nExample: My Video - sets the title to 'My Video'\nExample: empty - no title metadata\n\nTimeout: 60 sec",
+    "MERGE_METADATA_AUTHOR": "Set the author metadata for the merged file.\n\nExample: John Doe - sets the author to 'John Doe'\nExample: empty - no author metadata\n\nTimeout: 60 sec",
+    "MERGE_METADATA_COMMENT": "Set the comment metadata for the merged file.\n\nExample: Created with Telegram Bot - adds a comment\nExample: empty - no comment metadata\n\nTimeout: 60 sec",
     # General settings
-    "MERGE_REMOVE_ORIGINAL": "Enable or disable removing original files after successful merge.\nExample: true - remove original files after merge\nExample: false - keep original files. Timeout: 60 sec",
-    "MERGE_PRIORITY": "Set priority for merge processing. Lower number means higher priority.\nExample: 1 - highest priority\nExample: 10 - lower priority. Timeout: 60 sec",
-    "MERGE_THREADING": "Enable or disable threading for merge processing.\nExample: true - enable parallel processing\nExample: false - disable parallel processing. Timeout: 60 sec",
-    "MERGE_THREAD_NUMBER": "Set the number of threads to use for merge processing.\nExample: 4 - process up to 4 files simultaneously\nExample: 1 - process one file at a time. Timeout: 60 sec",
+    "MERGE_REMOVE_ORIGINAL": "Enable or disable removing original files after successful merge.\n\nExample: true - remove original files after merge\nExample: false - keep original files\n\nTimeout: 60 sec",
+    "MERGE_PRIORITY": "Set priority for merge processing. Lower number means higher priority.\n\nExample: 1 - highest priority\nExample: 10 - lower priority\n\nTimeout: 60 sec",
+    "MERGE_THREADING": "Enable or disable threading for merge processing.\n\nExample: true - enable parallel processing\nExample: false - disable parallel processing\n\nTimeout: 60 sec",
+    "MERGE_THREAD_NUMBER": "Set the number of threads to use for merge processing.\n\nExample: 4 - process up to 4 files simultaneously\nExample: 1 - process one file at a time\n\nTimeout: 60 sec",
     # Convert Settings
-    "CONVERT_ENABLED": "Enable or disable convert feature. Send 'true' to enable or 'false' to disable. Timeout: 60 sec\n\nPriority:\n1. Global (enabled) & User (disabled) -> Apply global\n2. User (enabled) & Global (disabled) -> Apply user\n3. Global (enabled) & User (enabled) -> Apply user\n4. Global (disabled) & User (disabled) -> Don't apply\n\nUse the Reset button to reset all convert settings to default.",
-    "CONVERT_PRIORITY": "Set priority for convert processing. Lower number means higher priority.\nExample: 1 - highest priority\nExample: 10 - lower priority. Timeout: 60 sec",
+    "CONVERT_ENABLED": "Enable or disable convert feature. Send 'true' to enable or 'false' to disable.\n\nExample: true - enable convert feature\nExample: false - disable convert feature\n\nPriority:\n1. Global (enabled) & User (disabled) -> Apply global\n2. User (enabled) & Global (disabled) -> Apply user\n3. Global (enabled) & User (enabled) -> Apply user\n4. Global (disabled) & User (disabled) -> Don't apply\n\nUse the Reset button to reset all convert settings to default.\n\nTimeout: 60 sec",
+    "CONVERT_PRIORITY": "Set priority for convert processing. Lower number means higher priority.\n\nExample: 1 - highest priority\nExample: 10 - lower priority\n\nTimeout: 60 sec",
+    "CONVERT_DELETE_ORIGINAL": "Enable or disable deleting original files after conversion.\n\nExample: true - delete original files after conversion\nExample: false - keep original files\n\nThis can be overridden by using the -del flag in the command.\n\nTimeout: 60 sec",
     # Video Convert Settings
-    "CONVERT_VIDEO_FORMAT": "Set the output format for converted videos. Common formats: mp4, mkv, avi, webm.\nExample: mp4 - widely compatible format\nExample: mkv - container that supports almost all codecs. Timeout: 60 sec",
-    "CONVERT_VIDEO_CODEC": "Set the video codec for converted videos. Common codecs: libx264, libx265, libvpx-vp9.\nExample: libx264 - widely compatible codec\nExample: libx265 - better compression but less compatible. Timeout: 60 sec",
-    "CONVERT_VIDEO_QUALITY": "Set the quality preset for video encoding. Options: ultrafast, superfast, veryfast, faster, fast, medium, slow, slower, veryslow.\nExample: medium - balanced encoding speed and compression\nExample: slow - better compression but slower encoding. Timeout: 60 sec",
-    "CONVERT_VIDEO_CRF": "Set the Constant Rate Factor for video quality (0-51, lower is better).\nExample: 23 - default value, good balance\nExample: 18 - visually lossless quality. Timeout: 60 sec",
-    "CONVERT_VIDEO_PRESET": "Set the encoding preset for video. Options: ultrafast to veryslow.\nExample: medium - balanced encoding speed and compression\nExample: slow - better compression but slower encoding. Timeout: 60 sec",
-    "CONVERT_VIDEO_MAINTAIN_QUALITY": "Enable or disable maintaining high quality for video conversion.\nExample: true - use higher quality settings\nExample: false - use standard quality settings. Timeout: 60 sec",
+    "CONVERT_VIDEO_ENABLED": "Enable or disable video conversion.\n\nExample: true - enable video conversion\nExample: false - disable video conversion\n\nTimeout: 60 sec",
+    "CONVERT_VIDEO_FORMAT": "Set the output format for converted videos. Common formats: mp4, mkv, avi, webm.\n\nExample: mp4 - widely compatible format\nExample: mkv - container that supports almost all codecs\n\nTimeout: 60 sec",
+    "CONVERT_VIDEO_CODEC": "Set the video codec for converted videos. Common codecs: libx264, libx265, libvpx-vp9.\n\nExample: libx264 - widely compatible codec\nExample: libx265 - better compression but less compatible\n\nTimeout: 60 sec",
+    "CONVERT_VIDEO_QUALITY": "Set the quality preset for video encoding. Options: ultrafast, superfast, veryfast, faster, fast, medium, slow, slower, veryslow.\n\nExample: medium - balanced encoding speed and compression\nExample: slow - better compression but slower encoding\n\nTimeout: 60 sec",
+    "CONVERT_VIDEO_CRF": "Set the Constant Rate Factor for video quality (0-51, lower is better).\n\nExample: 23 - default value, good balance\nExample: 18 - visually lossless quality\n\nTimeout: 60 sec",
+    "CONVERT_VIDEO_PRESET": "Set the encoding preset for video. Options: ultrafast to veryslow.\n\nExample: medium - balanced encoding speed and compression\nExample: slow - better compression but slower encoding\n\nTimeout: 60 sec",
+    "CONVERT_VIDEO_MAINTAIN_QUALITY": "Enable or disable maintaining high quality for video conversion.\n\nExample: true - use higher quality settings\nExample: false - use standard quality settings\n\nTimeout: 60 sec",
+    "CONVERT_VIDEO_DELETE_ORIGINAL": "Enable or disable deleting original files after video conversion.\n\nExample: true - delete original files after conversion\nExample: false - keep original files\n\nTimeout: 60 sec",
+    "CONVERT_VIDEO_RESOLUTION": "Set the resolution for video conversion. Format: widthxheight or 'none'.\n\nExample: 1920x1080 - Full HD\nExample: 1280x720 - HD\nExample: none - keep original resolution\n\nTimeout: 60 sec",
+    "CONVERT_VIDEO_FPS": "Set the frame rate for video conversion.\n\nExample: 30 - 30 frames per second\nExample: 60 - 60 frames per second\nExample: none - keep original frame rate\n\nTimeout: 60 sec",
     # Audio Convert Settings
-    "CONVERT_AUDIO_FORMAT": "Set the output format for converted audio. Common formats: mp3, m4a, flac, wav, ogg.\nExample: mp3 - widely compatible format\nExample: flac - lossless audio format. Timeout: 60 sec",
-    "CONVERT_AUDIO_CODEC": "Set the audio codec for converted audio. Common codecs: libmp3lame, aac, libopus, flac.\nExample: libmp3lame - for MP3 encoding\nExample: aac - good quality and compatibility. Timeout: 60 sec",
-    "CONVERT_AUDIO_BITRATE": "Set the audio bitrate for converted audio. Examples: 128k, 192k, 320k.\nExample: 192k - good quality for most content\nExample: 320k - high quality audio. Timeout: 60 sec",
-    "CONVERT_AUDIO_CHANNELS": "Set the number of audio channels. Common values: 1 (mono), 2 (stereo).\nExample: 2 - stereo audio\nExample: 1 - mono audio. Timeout: 60 sec",
-    "CONVERT_AUDIO_SAMPLING": "Set the audio sampling rate in Hz. Common values: 44100, 48000.\nExample: 44100 - CD quality\nExample: 48000 - DVD/professional audio quality. Timeout: 60 sec",
-    "CONVERT_AUDIO_VOLUME": "Set the volume adjustment factor (0.0-10.0).\nExample: 1.0 - original volume\nExample: 2.0 - double volume. Timeout: 60 sec",
+    "CONVERT_AUDIO_ENABLED": "Enable or disable audio conversion.\n\nExample: true - enable audio conversion\nExample: false - disable audio conversion\n\nTimeout: 60 sec",
+    "CONVERT_AUDIO_FORMAT": "Set the output format for converted audio. Common formats: mp3, m4a, flac, wav, ogg.\n\nExample: mp3 - widely compatible format\nExample: flac - lossless audio format\n\nTimeout: 60 sec",
+    "CONVERT_AUDIO_CODEC": "Set the audio codec for converted audio. Common codecs: libmp3lame, aac, libopus, flac.\n\nExample: libmp3lame - for MP3 encoding\nExample: aac - good quality and compatibility\n\nTimeout: 60 sec",
+    "CONVERT_AUDIO_BITRATE": "Set the audio bitrate for converted audio. Examples: 128k, 192k, 320k.\n\nExample: 192k - good quality for most content\nExample: 320k - high quality audio\n\nTimeout: 60 sec",
+    "CONVERT_AUDIO_CHANNELS": "Set the number of audio channels. Common values: 1 (mono), 2 (stereo).\n\nExample: 2 - stereo audio\nExample: 1 - mono audio\n\nTimeout: 60 sec",
+    "CONVERT_AUDIO_SAMPLING": "Set the audio sampling rate in Hz. Common values: 44100, 48000.\n\nExample: 44100 - CD quality\nExample: 48000 - DVD/professional audio quality\n\nTimeout: 60 sec",
+    "CONVERT_AUDIO_VOLUME": "Set the volume adjustment factor (0.0-10.0).\n\nExample: 1.0 - original volume\nExample: 2.0 - double volume\n\nTimeout: 60 sec",
+    "CONVERT_AUDIO_DELETE_ORIGINAL": "Enable or disable deleting original files after audio conversion.\n\nExample: true - delete original files after conversion\nExample: false - keep original files\n\nTimeout: 60 sec",
+    # Document Convert Settings
+    "CONVERT_DOCUMENT_ENABLED": "Enable or disable document conversion.\n\nExample: true - enable document conversion\nExample: false - disable document conversion\n\nTimeout: 60 sec",
+    "CONVERT_DOCUMENT_FORMAT": "Set the output format for converted documents. Common formats: pdf, docx, txt.\n\nExample: pdf - standard document format\nExample: docx - Microsoft Word format\nExample: none - use default format\n\nTimeout: 60 sec",
+    "CONVERT_DOCUMENT_QUALITY": "Set the quality for document conversion (0-100). Higher values mean better quality but larger file size.\n\nExample: 90 - high quality\nExample: 75 - good balance of quality and size\nExample: none - use default quality\n\nTimeout: 60 sec",
+    "CONVERT_DOCUMENT_DPI": "Set the DPI (dots per inch) for document conversion.\n\nExample: 300 - high quality (good for printing)\nExample: 150 - good balance of quality and size\nExample: 72 - screen resolution (smaller file size)\n\nTimeout: 60 sec",
+    "CONVERT_DOCUMENT_DELETE_ORIGINAL": "Enable or disable deleting original files after document conversion.\n\nExample: true - delete original files after conversion\nExample: false - keep original files\n\nTimeout: 60 sec",
+    # Archive Convert Settings
+    "CONVERT_ARCHIVE_ENABLED": "Enable or disable archive conversion.\n\nExample: true - enable archive conversion\nExample: false - disable archive conversion\n\nTimeout: 60 sec",
+    "CONVERT_ARCHIVE_FORMAT": "Set the output format for converted archives. Common formats: zip, 7z, tar.gz.\n\nExample: zip - widely compatible format\nExample: 7z - better compression but less compatible\nExample: none - use default format\n\nTimeout: 60 sec",
+    "CONVERT_ARCHIVE_LEVEL": "Set the compression level for archive conversion (1-9). Higher values mean better compression but slower processing.\n\nExample: 5 - good balance of speed and compression\nExample: 9 - maximum compression\nExample: 1 - fastest compression\n\nTimeout: 60 sec",
+    "CONVERT_ARCHIVE_METHOD": "Set the compression method for archive conversion. Options: deflate, store, bzip2, lzma.\n\nExample: deflate - good balance of speed and compression\nExample: lzma - best compression but slowest\nExample: store - no compression (fastest)\n\nTimeout: 60 sec",
+    "CONVERT_ARCHIVE_DELETE_ORIGINAL": "Enable or disable deleting original files after archive conversion.\n\nExample: true - delete original files after conversion\nExample: false - keep original files\n\nTimeout: 60 sec",
+    # Subtitle Convert Settings
+    "CONVERT_SUBTITLE_ENABLED": "Enable or disable subtitle conversion.\n\nExample: true - enable subtitle conversion\nExample: false - disable subtitle conversion\n\nTimeout: 60 sec",
+    "CONVERT_SUBTITLE_FORMAT": "Set the output format for converted subtitles. Common formats: srt, ass, vtt.\n\nExample: srt - simple subtitle format\nExample: ass - advanced subtitle format with styling\nExample: none - use default format\n\nTimeout: 60 sec",
+    "CONVERT_SUBTITLE_ENCODING": "Set the character encoding for subtitle conversion.\n\nExample: utf-8 - universal encoding\nExample: latin1 - for Western European languages\nExample: none - use default encoding\n\nTimeout: 60 sec",
+    "CONVERT_SUBTITLE_LANGUAGE": "Set the language code for subtitle conversion.\n\nExample: eng - English\nExample: spa - Spanish\nExample: none - don't set language\n\nTimeout: 60 sec",
+    "CONVERT_SUBTITLE_DELETE_ORIGINAL": "Enable or disable deleting original files after subtitle conversion.\n\nExample: true - delete original files after conversion\nExample: false - keep original files\n\nTimeout: 60 sec",
     # Compression Settings
-    "COMPRESSION_ENABLED": "Enable or disable compression feature. Send 'true' to enable or 'false' to disable. Timeout: 60 sec\n\nPriority:\n1. Global (enabled) & User (disabled) -> Apply global\n2. User (enabled) & Global (disabled) -> Apply user\n3. Global (enabled) & User (enabled) -> Apply user\n4. Global (disabled) & User (disabled) -> Don't apply\n\nUse the Reset button to reset all compression settings to default.",
-    "COMPRESSION_PRIORITY": "Set priority for compression processing. Lower number means higher priority.\nExample: 1 - highest priority\nExample: 10 - lower priority. Timeout: 60 sec",
-    "COMPRESSION_DELETE_ORIGINAL": "Enable or disable deleting original files after compression. Send 'true' to enable or 'false' to disable.\nExample: true - delete original files after compression\nExample: false - keep original files after compression. Timeout: 60 sec",
+    "COMPRESSION_ENABLED": "Enable or disable compression feature. Send 'true' to enable or 'false' to disable.\n\nExample: true - enable compression feature\nExample: false - disable compression feature\n\nPriority:\n1. Global (enabled) & User (disabled) -> Apply global\n2. User (enabled) & Global (disabled) -> Apply user\n3. Global (enabled) & User (enabled) -> Apply user\n4. Global (disabled) & User (disabled) -> Don't apply\n\nUse the Reset button to reset all compression settings to default.\n\nTimeout: 60 sec",
+    "COMPRESSION_PRIORITY": "Set priority for compression processing. Lower number means higher priority.\n\nExample: 1 - highest priority\nExample: 10 - lower priority\n\nTimeout: 60 sec",
+    "COMPRESSION_DELETE_ORIGINAL": "Enable or disable deleting original files after compression.\n\nExample: true - delete original files after compression\nExample: false - keep original files after compression\n\nTimeout: 60 sec",
     # Video Compression Settings
-    "COMPRESSION_VIDEO_ENABLED": "Enable or disable video compression. Send 'true' to enable or 'false' to disable. Timeout: 60 sec",
-    "COMPRESSION_VIDEO_PRESET": "Set the compression preset for videos. Options: fast, medium, slow.\nExample: fast - faster compression but lower quality\nExample: slow - better quality but slower compression. Timeout: 60 sec",
-    "COMPRESSION_VIDEO_CRF": "Set the Constant Rate Factor for video quality (0-51, lower is better).\nExample: 23 - default value, good balance\nExample: 28 - more compression, lower quality. Timeout: 60 sec",
-    "COMPRESSION_VIDEO_CODEC": "Set the video codec for compression. Common codecs: libx264, libx265.\nExample: libx264 - widely compatible codec\nExample: libx265 - better compression but less compatible. Timeout: 60 sec",
-    "COMPRESSION_VIDEO_TUNE": "Set the tuning parameter for video compression. Options: film, animation, grain, etc.\nExample: film - for live-action content\nExample: animation - for animated content. Timeout: 60 sec",
-    "COMPRESSION_VIDEO_PIXEL_FORMAT": "Set the pixel format for video compression. Common formats: yuv420p, yuv444p.\nExample: yuv420p - most compatible format\nExample: yuv444p - highest quality but larger file size. Timeout: 60 sec",
-    "COMPRESSION_VIDEO_BITDEPTH": "Set the bit depth for video compression. Common values: 8, 10, 12.\nExample: 8 - standard 8-bit video (most compatible)\nExample: 10 - 10-bit video (better color gradients)\nExample: none - use default bit depth. Timeout: 60 sec",
-    "COMPRESSION_VIDEO_BITRATE": "Set the bitrate for video compression. Examples: 1M, 5M, 10M.\nExample: 5M - 5 Mbps (good for 1080p)\nExample: 2M - 2 Mbps (good for 720p)\nExample: none - use automatic bitrate based on CRF. Timeout: 60 sec",
-    "COMPRESSION_VIDEO_RESOLUTION": "Set the resolution for video compression. Format: widthxheight or 'none'.\nExample: 1920x1080 - Full HD\nExample: 1280x720 - HD\nExample: none - keep original resolution. Timeout: 60 sec",
-    "COMPRESSION_VIDEO_FORMAT": "Set the output format for compressed videos. Common formats: mp4, mkv, avi, webm.\nExample: mp4 - widely compatible format\nExample: mkv - container that supports almost all codecs\nExample: none - keep original format. Timeout: 60 sec",
+    "COMPRESSION_VIDEO_ENABLED": "Enable or disable video compression.\n\nExample: true - enable video compression\nExample: false - disable video compression\n\nTimeout: 60 sec",
+    "COMPRESSION_VIDEO_PRESET": "Set the compression preset for videos. Options: fast, medium, slow.\n\nExample: fast - faster compression but lower quality\nExample: slow - better quality but slower compression\n\nTimeout: 60 sec",
+    "COMPRESSION_VIDEO_CRF": "Set the Constant Rate Factor for video quality (0-51, lower is better).\n\nExample: 23 - default value, good balance\nExample: 28 - more compression, lower quality\n\nTimeout: 60 sec",
+    "COMPRESSION_VIDEO_CODEC": "Set the video codec for compression. Common codecs: libx264, libx265.\n\nExample: libx264 - widely compatible codec\nExample: libx265 - better compression but less compatible\n\nTimeout: 60 sec",
+    "COMPRESSION_VIDEO_TUNE": "Set the tuning parameter for video compression. Options: film, animation, grain, etc.\n\nExample: film - for live-action content\nExample: animation - for animated content\n\nTimeout: 60 sec",
+    "COMPRESSION_VIDEO_PIXEL_FORMAT": "Set the pixel format for video compression. Common formats: yuv420p, yuv444p.\n\nExample: yuv420p - most compatible format\nExample: yuv444p - highest quality but larger file size\n\nTimeout: 60 sec",
+    "COMPRESSION_VIDEO_BITDEPTH": "Set the bit depth for video compression. Common values: 8, 10, 12.\n\nExample: 8 - standard 8-bit video (most compatible)\nExample: 10 - 10-bit video (better color gradients)\nExample: none - use default bit depth\n\nTimeout: 60 sec",
+    "COMPRESSION_VIDEO_BITRATE": "Set the bitrate for video compression. Examples: 1M, 5M, 10M.\n\nExample: 5M - 5 Mbps (good for 1080p)\nExample: 2M - 2 Mbps (good for 720p)\nExample: none - use automatic bitrate based on CRF\n\nTimeout: 60 sec",
+    "COMPRESSION_VIDEO_RESOLUTION": "Set the resolution for video compression. Format: widthxheight or 'none'.\n\nExample: 1920x1080 - Full HD\nExample: 1280x720 - HD\nExample: none - keep original resolution\n\nTimeout: 60 sec",
+    "COMPRESSION_VIDEO_FORMAT": "Set the output format for compressed videos. Common formats: mp4, mkv, avi, webm.\n\nExample: mp4 - widely compatible format\nExample: mkv - container that supports almost all codecs\nExample: none - keep original format\n\nTimeout: 60 sec",
     # Audio Compression Settings
-    "COMPRESSION_AUDIO_ENABLED": "Enable or disable audio compression. Send 'true' to enable or 'false' to disable. Timeout: 60 sec",
-    "COMPRESSION_AUDIO_PRESET": "Set the compression preset for audio. Options: fast, medium, slow.\nExample: fast - faster compression but lower quality\nExample: slow - better quality but slower compression. Timeout: 60 sec",
-    "COMPRESSION_AUDIO_CODEC": "Set the audio codec for compression. Common codecs: aac, mp3, opus.\nExample: aac - good quality and compatibility\nExample: opus - better compression. Timeout: 60 sec",
-    "COMPRESSION_AUDIO_BITRATE": "Set the audio bitrate for compression. Examples: 64k, 128k, 192k.\nExample: 128k - good balance of quality and size\nExample: 64k - smaller files but lower quality. Timeout: 60 sec",
-    "COMPRESSION_AUDIO_CHANNELS": "Set the number of audio channels for compression. Common values: 1 (mono), 2 (stereo).\nExample: 2 - stereo audio\nExample: 1 - mono audio (smaller files). Timeout: 60 sec",
-    "COMPRESSION_AUDIO_BITDEPTH": "Set the bit depth for audio compression. Common values: 16, 24, 32.\nExample: 16 - standard CD quality (most compatible)\nExample: 24 - high-resolution audio\nExample: none - use default bit depth. Timeout: 60 sec",
-    "COMPRESSION_AUDIO_FORMAT": "Set the output format for compressed audio. Common formats: mp3, m4a, ogg, flac.\nExample: mp3 - widely compatible format\nExample: aac - good quality and compatibility\nExample: none - keep original format. Timeout: 60 sec",
+    "COMPRESSION_AUDIO_ENABLED": "Enable or disable audio compression.\n\nExample: true - enable audio compression\nExample: false - disable audio compression\n\nTimeout: 60 sec",
+    "COMPRESSION_AUDIO_PRESET": "Set the compression preset for audio. Options: fast, medium, slow.\n\nExample: fast - faster compression but lower quality\nExample: slow - better quality but slower compression\n\nTimeout: 60 sec",
+    "COMPRESSION_AUDIO_CODEC": "Set the audio codec for compression. Common codecs: aac, mp3, opus.\n\nExample: aac - good quality and compatibility\nExample: opus - better compression\n\nTimeout: 60 sec",
+    "COMPRESSION_AUDIO_BITRATE": "Set the audio bitrate for compression. Examples: 64k, 128k, 192k.\n\nExample: 128k - good balance of quality and size\nExample: 64k - smaller files but lower quality\n\nTimeout: 60 sec",
+    "COMPRESSION_AUDIO_CHANNELS": "Set the number of audio channels for compression. Common values: 1 (mono), 2 (stereo).\n\nExample: 2 - stereo audio\nExample: 1 - mono audio (smaller files)\n\nTimeout: 60 sec",
+    "COMPRESSION_AUDIO_BITDEPTH": "Set the bit depth for audio compression. Common values: 16, 24, 32.\n\nExample: 16 - standard CD quality (most compatible)\nExample: 24 - high-resolution audio\nExample: none - use default bit depth\n\nTimeout: 60 sec",
+    "COMPRESSION_AUDIO_FORMAT": "Set the output format for compressed audio. Common formats: mp3, m4a, ogg, flac.\n\nExample: mp3 - widely compatible format\nExample: aac - good quality and compatibility\nExample: none - keep original format\n\nTimeout: 60 sec",
     # Image Compression Settings
-    "COMPRESSION_IMAGE_ENABLED": "Enable or disable image compression. Send 'true' to enable or 'false' to disable. Timeout: 60 sec",
-    "COMPRESSION_IMAGE_PRESET": "Set the compression preset for images. Options: fast, medium, slow.\nExample: fast - faster compression but lower quality\nExample: slow - better quality but slower compression. Timeout: 60 sec",
-    "COMPRESSION_IMAGE_QUALITY": "Set the quality for image compression (1-100). Higher values mean better quality but larger file size.\nExample: 80 - good balance of quality and size\nExample: 50 - more compression, lower quality. Timeout: 60 sec",
-    "COMPRESSION_IMAGE_RESIZE": "Set the size to resize images to during compression. Format: widthxheight or 'none'.\nExample: none - keep original size\nExample: 1280x720 - resize to HD. Timeout: 60 sec",
-    "COMPRESSION_IMAGE_FORMAT": "Set the output format for compressed images. Common formats: jpg, png, webp.\nExample: jpg - good compression, smaller files\nExample: png - lossless format with transparency support\nExample: none - keep original format. Timeout: 60 sec",
+    "COMPRESSION_IMAGE_ENABLED": "Enable or disable image compression.\n\nExample: true - enable image compression\nExample: false - disable image compression\n\nTimeout: 60 sec",
+    "COMPRESSION_IMAGE_PRESET": "Set the compression preset for images. Options: fast, medium, slow.\n\nExample: fast - faster compression but lower quality\nExample: slow - better quality but slower compression\n\nTimeout: 60 sec",
+    "COMPRESSION_IMAGE_QUALITY": "Set the quality for image compression (1-100). Higher values mean better quality but larger file size.\n\nExample: 80 - good balance of quality and size\nExample: 50 - more compression, lower quality\n\nTimeout: 60 sec",
+    "COMPRESSION_IMAGE_RESIZE": "Set the size to resize images to during compression. Format: widthxheight or 'none'.\n\nExample: none - keep original size\nExample: 1280x720 - resize to HD\n\nTimeout: 60 sec",
+    "COMPRESSION_IMAGE_FORMAT": "Set the output format for compressed images. Common formats: jpg, png, webp.\n\nExample: jpg - good compression, smaller files\nExample: png - lossless format with transparency support\nExample: none - keep original format\n\nTimeout: 60 sec",
     # Document Compression Settings
-    "COMPRESSION_DOCUMENT_ENABLED": "Enable or disable document compression. Send 'true' to enable or 'false' to disable. Timeout: 60 sec",
-    "COMPRESSION_DOCUMENT_PRESET": "Set the compression preset for documents. Options: fast, medium, slow.\nExample: fast - faster compression but lower quality\nExample: slow - better quality but slower compression. Timeout: 60 sec",
-    "COMPRESSION_DOCUMENT_DPI": "Set the DPI (dots per inch) for document compression.\nExample: 150 - good balance of quality and size\nExample: 72 - more compression, lower quality. Timeout: 60 sec",
-    "COMPRESSION_DOCUMENT_FORMAT": "Set the output format for compressed documents. Common formats: pdf, docx, txt.\nExample: pdf - standard document format\nExample: docx - Microsoft Word format\nExample: none - keep original format. Timeout: 60 sec",
+    "COMPRESSION_DOCUMENT_ENABLED": "Enable or disable document compression.\n\nExample: true - enable document compression\nExample: false - disable document compression\n\nTimeout: 60 sec",
+    "COMPRESSION_DOCUMENT_PRESET": "Set the compression preset for documents. Options: fast, medium, slow.\n\nExample: fast - faster compression but lower quality\nExample: slow - better quality but slower compression\n\nTimeout: 60 sec",
+    "COMPRESSION_DOCUMENT_DPI": "Set the DPI (dots per inch) for document compression.\n\nExample: 150 - good balance of quality and size\nExample: 72 - more compression, lower quality\n\nTimeout: 60 sec",
+    "COMPRESSION_DOCUMENT_FORMAT": "Set the output format for compressed documents. Common formats: pdf, docx, txt.\n\nExample: pdf - standard document format\nExample: docx - Microsoft Word format\nExample: none - keep original format\n\nTimeout: 60 sec",
     # Subtitle Compression Settings
-    "COMPRESSION_SUBTITLE_ENABLED": "Enable or disable subtitle compression. Send 'true' to enable or 'false' to disable. Timeout: 60 sec",
-    "COMPRESSION_SUBTITLE_PRESET": "Set the compression preset for subtitles. Options: fast, medium, slow.\nExample: fast - faster compression but lower quality\nExample: slow - better quality but slower compression. Timeout: 60 sec",
-    "COMPRESSION_SUBTITLE_ENCODING": "Set the character encoding for subtitle compression.\nExample: utf-8 - universal encoding\nExample: ascii - more compression but limited character support. Timeout: 60 sec",
-    "COMPRESSION_SUBTITLE_FORMAT": "Set the output format for compressed subtitles. Common formats: srt, ass, vtt.\nExample: srt - simple subtitle format\nExample: ass - advanced subtitle format with styling\nExample: none - keep original format. Timeout: 60 sec",
+    "COMPRESSION_SUBTITLE_ENABLED": "Enable or disable subtitle compression.\n\nExample: true - enable subtitle compression\nExample: false - disable subtitle compression\n\nTimeout: 60 sec",
+    "COMPRESSION_SUBTITLE_PRESET": "Set the compression preset for subtitles. Options: fast, medium, slow.\n\nExample: fast - faster compression but lower quality\nExample: slow - better quality but slower compression\n\nTimeout: 60 sec",
+    "COMPRESSION_SUBTITLE_ENCODING": "Set the character encoding for subtitle compression.\n\nExample: utf-8 - universal encoding\nExample: ascii - more compression but limited character support\n\nTimeout: 60 sec",
+    "COMPRESSION_SUBTITLE_FORMAT": "Set the output format for compressed subtitles. Common formats: srt, ass, vtt.\n\nExample: srt - simple subtitle format\nExample: ass - advanced subtitle format with styling\nExample: none - keep original format\n\nTimeout: 60 sec",
     # Archive Compression Settings
-    "COMPRESSION_ARCHIVE_ENABLED": "Enable or disable archive compression. Send 'true' to enable or 'false' to disable. Timeout: 60 sec",
-    "COMPRESSION_ARCHIVE_PRESET": "Set the compression preset for archives. Options: fast, medium, slow.\nExample: fast - faster compression but lower compression ratio\nExample: slow - better compression ratio but slower. Timeout: 60 sec",
-    "COMPRESSION_ARCHIVE_LEVEL": "Set the compression level for archives (1-9). Higher values mean better compression but slower processing.\nExample: 5 - good balance of speed and compression\nExample: 9 - maximum compression. Timeout: 60 sec",
-    "COMPRESSION_ARCHIVE_METHOD": "Set the compression method for archives. Options: deflate, store, bzip2, lzma.\nExample: deflate - good balance of speed and compression\nExample: lzma - best compression but slowest. Timeout: 60 sec",
-    "COMPRESSION_ARCHIVE_FORMAT": "Set the output format for compressed archives. Common formats: zip, 7z, tar.gz.\nExample: zip - widely compatible format\nExample: 7z - better compression but less compatible\nExample: none - keep original format. Timeout: 60 sec",
+    "COMPRESSION_ARCHIVE_ENABLED": "Enable or disable archive compression.\n\nExample: true - enable archive compression\nExample: false - disable archive compression\n\nTimeout: 60 sec",
+    "COMPRESSION_ARCHIVE_PRESET": "Set the compression preset for archives. Options: fast, medium, slow.\n\nExample: fast - faster compression but lower compression ratio\nExample: slow - better compression ratio but slower\n\nTimeout: 60 sec",
+    "COMPRESSION_ARCHIVE_LEVEL": "Set the compression level for archives (1-9). Higher values mean better compression but slower processing.\n\nExample: 5 - good balance of speed and compression\nExample: 9 - maximum compression\n\nTimeout: 60 sec",
+    "COMPRESSION_ARCHIVE_METHOD": "Set the compression method for archives. Options: deflate, store, bzip2, lzma.\n\nExample: deflate - good balance of speed and compression\nExample: lzma - best compression but slowest\n\nTimeout: 60 sec",
+    "COMPRESSION_ARCHIVE_FORMAT": "Set the output format for compressed archives. Common formats: zip, 7z, tar.gz.\n\nExample: zip - widely compatible format\nExample: 7z - better compression but less compatible\nExample: none - keep original format\n\nTimeout: 60 sec",
     # Trim Settings
-    "TRIM_ENABLED": "Enable or disable trim feature. Send 'true' to enable or 'false' to disable. Timeout: 60 sec\n\nPriority:\n1. Global (enabled) & User (disabled) -> Apply global\n2. User (enabled) & Global (disabled) -> Apply user\n3. Global (enabled) & User (enabled) -> Apply user\n4. Global (disabled) & User (disabled) -> Don't apply\n\nUse the Reset button to reset all trim settings to default.",
-    "TRIM_PRIORITY": "Set priority for trim processing. Lower number means higher priority.\nExample: 1 - highest priority\nExample: 10 - lower priority. Timeout: 60 sec",
-    "TRIM_START_TIME": "Set the start time for trimming media files. Format: HH:MM:SS, MM:SS, or SS.\nExample: 00:01:30 (1 minute 30 seconds)\nExample: 5:45 (5 minutes 45 seconds)\nExample: 90 (90 seconds)\nLeave empty or set to 00:00:00 to start from the beginning. Timeout: 60 sec",
-    "TRIM_END_TIME": "Set the end time for trimming media files. Format: HH:MM:SS, MM:SS, or SS.\nExample: 00:02:30 (2 minutes 30 seconds)\nExample: 10:45 (10 minutes 45 seconds)\nExample: 180 (180 seconds)\nLeave empty to trim until the end of the file. Timeout: 60 sec",
-    "TRIM_DELETE_ORIGINAL": "Enable or disable deleting the original file after trimming. Send 'true' to enable or 'false' to disable. When enabled, the original file will be deleted after successful trimming. When disabled, both the original and trimmed files will be kept. Timeout: 60 sec",
-    "TRIM_VIDEO_FORMAT": "Set the output format for video trimming. This determines the container format of the trimmed video file.\nExample: mp4, mkv, avi, webm\nSet to 'none' to use the same format as the original file. Timeout: 60 sec",
-    "TRIM_AUDIO_FORMAT": "Set the output format for audio trimming. This determines the container format of the trimmed audio file.\nExample: mp3, m4a, flac, opus, wav\nSet to 'none' to use the same format as the original file. Timeout: 60 sec",
-    "TRIM_IMAGE_FORMAT": "Set the output format for image trimming. This determines the format of the trimmed image file.\nExample: jpg, png, webp, gif\nSet to 'none' to use the same format as the original file. Timeout: 60 sec",
-    "TRIM_IMAGE_QUALITY": "Set the quality for image processing during trim operations (0-100). Higher values mean better quality but larger file size.\nExample: 90 - high quality (default)\nExample: 75 - good balance of quality and size\nExample: 0 or 'none' - use original quality. Timeout: 60 sec",
-    "TRIM_DOCUMENT_FORMAT": "Set the output format for document trimming. This determines the format of the trimmed document file.\nExample: pdf, docx, txt\nSet to 'none' to use the same format as the original file. Timeout: 60 sec",
-    "TRIM_DOCUMENT_QUALITY": "Set the quality for document processing during trim operations (0-100). Higher values mean better quality but larger file size.\nExample: 90 - high quality (default)\nExample: 75 - good balance of quality and size\nExample: 0 or 'none' - use original quality. Timeout: 60 sec",
-    "TRIM_SUBTITLE_FORMAT": "Set the output format for subtitle trimming. This determines the format of the trimmed subtitle file.\nExample: srt, ass, vtt\nSet to 'none' to use the same format as the original file. Timeout: 60 sec",
-    "TRIM_ARCHIVE_FORMAT": "Set the output format for archive trimming. This determines the format of the trimmed archive file.\nExample: zip, 7z, tar\nSet to 'none' to use the same format as the original file. Timeout: 60 sec",
+    "TRIM_ENABLED": "Enable or disable trim feature. Send 'true' to enable or 'false' to disable.\n\nExample: true - enable trim feature\nExample: false - disable trim feature\n\nPriority:\n1. Global (enabled) & User (disabled) -> Apply global\n2. User (enabled) & Global (disabled) -> Apply user\n3. Global (enabled) & User (enabled) -> Apply user\n4. Global (disabled) & User (disabled) -> Don't apply\n\nUse the Reset button to reset all trim settings to default.\n\nTimeout: 60 sec",
+    "TRIM_PRIORITY": "Set priority for trim processing. Lower number means higher priority.\n\nExample: 1 - highest priority\nExample: 10 - lower priority\n\nTimeout: 60 sec",
+    "TRIM_START_TIME": "Set the start time for trimming media files. Format: HH:MM:SS, MM:SS, or SS.\n\nExample: 00:01:30 (1 minute 30 seconds)\nExample: 5:45 (5 minutes 45 seconds)\nExample: 90 (90 seconds)\n\nLeave empty or set to 00:00:00 to start from the beginning.\n\nTimeout: 60 sec",
+    "TRIM_END_TIME": "Set the end time for trimming media files. Format: HH:MM:SS, MM:SS, or SS.\n\nExample: 00:02:30 (2 minutes 30 seconds)\nExample: 10:45 (10 minutes 45 seconds)\nExample: 180 (180 seconds)\n\nLeave empty to trim until the end of the file.\n\nTimeout: 60 sec",
+    "TRIM_DELETE_ORIGINAL": "Enable or disable deleting the original file after trimming.\n\nExample: true - delete original file after trimming\nExample: false - keep both original and trimmed files\n\nTimeout: 60 sec",
+    "TRIM_VIDEO_FORMAT": "Set the output format for video trimming. This determines the container format of the trimmed video file.\n\nExample: mp4 - widely compatible format\nExample: mkv - container that supports almost all codecs\nExample: none - use the same format as the original file\n\nTimeout: 60 sec",
+    "TRIM_AUDIO_FORMAT": "Set the output format for audio trimming. This determines the container format of the trimmed audio file.\n\nExample: mp3 - widely compatible format\nExample: flac - lossless audio format\nExample: none - use the same format as the original file\n\nTimeout: 60 sec",
+    "TRIM_IMAGE_FORMAT": "Set the output format for image trimming. This determines the format of the trimmed image file.\n\nExample: jpg - good compression, smaller files\nExample: png - lossless format with transparency support\nExample: none - use the same format as the original file\n\nTimeout: 60 sec",
+    "TRIM_IMAGE_QUALITY": "Set the quality for image processing during trim operations (0-100). Higher values mean better quality but larger file size.\n\nExample: 90 - high quality (default)\nExample: 75 - good balance of quality and size\nExample: none - use original quality\n\nTimeout: 60 sec",
+    "TRIM_DOCUMENT_FORMAT": "Set the output format for document trimming. This determines the format of the trimmed document file.\n\nExample: pdf - standard document format\nExample: docx - Microsoft Word format\nExample: none - use the same format as the original file\n\nTimeout: 60 sec",
+    "TRIM_DOCUMENT_QUALITY": "Set the quality for document processing during trim operations (0-100). Higher values mean better quality but larger file size.\n\nExample: 90 - high quality (default)\nExample: 75 - good balance of quality and size\nExample: none - use original quality\n\nTimeout: 60 sec",
+    "TRIM_SUBTITLE_FORMAT": "Set the output format for subtitle trimming. This determines the format of the trimmed subtitle file.\n\nExample: srt - simple subtitle format\nExample: ass - advanced subtitle format with styling\nExample: none - use the same format as the original file\n\nTimeout: 60 sec",
+    "TRIM_ARCHIVE_FORMAT": "Set the output format for archive trimming. This determines the format of the trimmed archive file.\n\nExample: zip - widely compatible format\nExample: 7z - better compression but less compatible\nExample: none - use the same format as the original file\n\nTimeout: 60 sec",
     # Extract Settings
     "EXTRACT_ENABLED": "Enable or disable the extract feature. Send 'true' to enable or 'false' to disable. When enabled, media tracks can be extracted from container files.\n\nExample: true - enable extract feature\nExample: false - disable extract feature\n\nPriority:\n1. Global (enabled) & User (disabled) -> Apply global\n2. User (enabled) & Global (disabled) -> Apply user\n3. Global (enabled) & User (enabled) -> Apply user\n4. Global (disabled) & User (disabled) -> Don't apply\n\nTimeout: 60 sec",
     "EXTRACT_PRIORITY": "Set the priority for extract processing in the media tools pipeline. Lower number means higher priority.\n\nExample: 1 - highest priority (runs before other tools)\nExample: 5 - medium priority\nExample: 10 - lowest priority (runs after other tools)\n\nDefault: 6\nTimeout: 60 sec",
@@ -1398,6 +1359,49 @@ media_tools_text = {
     "EXTRACT_ATTACHMENT_FORMAT": "Set the format for extracted attachments. Usually not needed as attachments keep their original format.\n\nExample: none - keep original format (recommended)\n\nTimeout: 60 sec",
     "EXTRACT_ATTACHMENT_INDEX": "Specify which attachment(s) to extract by index (0-based). Leave empty or set to 'none' to extract all attachments.\n\nExample: 0 - extract first attachment only\nExample: 1 - extract second attachment only\nExample: 0,1,2 - extract first, second, and third attachments\nExample: all - extract all attachments\n\nTimeout: 60 sec",
     "EXTRACT_ATTACHMENT_FILTER": "Set a filter pattern for extracting attachments. Only attachments matching the pattern will be extracted.\n\nExample: *.ttf - extract only font files\nExample: *.png - extract only PNG images\nExample: none - extract all attachments\n\nTimeout: 60 sec",
+    # Add Settings
+    "ADD_ENABLED": "Enable or disable the add feature globally.\n\nExample: true - enable add feature\nExample: false - disable add feature\n\nWhen enabled, you can add media tracks to files using the -add flag or through the configured settings.\n\nTimeout: 60 sec",
+    "ADD_PRIORITY": "Set the priority of the add process in the media processing pipeline.\n\nExample: 3 - run add before convert\nExample: 8 - run add after extract\n\nLower numbers run earlier. Default order:\n1. Merge\n2. Watermark\n3. Convert\n4. Trim\n5. Compression\n6. Extract\n7. Add (default: 7)\n\nTimeout: 60 sec",
+    "ADD_DELETE_ORIGINAL": "Enable or disable deleting the original file after adding media.\n\nExample: true - delete original file after successful add operation\nExample: false - keep both original and modified files\n\nThis can be overridden by using the -del flag in the command.\n\nTimeout: 60 sec",
+    "ADD_PRESERVE_TRACKS": "Enable or disable preserving existing tracks when adding new ones.\n\nExample: true - preserve existing tracks when adding new ones\nExample: false - allow existing tracks to be pushed to other indices\n\nThis can be overridden by using the -preserve flag in the command.\n\nTimeout: 60 sec",
+    "ADD_REPLACE_TRACKS": "Enable or disable replacing existing tracks when adding new ones.\n\nExample: true - replace existing tracks with new ones\nExample: false - keep existing tracks and add new ones\n\nThis can be overridden by using the -replace flag in the command.\n\nTimeout: 60 sec",
+    # Video Add Settings
+    "ADD_VIDEO_ENABLED": "Enable or disable adding video tracks to media files.\n\nExample: true - enable video track addition\nExample: false - disable video track addition\n\nWhen enabled, video tracks will be added according to the specified settings.\n\nTimeout: 60 sec",
+    "ADD_VIDEO_PATH": "Set the path to the video file to add as a track.\n\nExample: /path/to/video.mp4\nExample: none - no video file specified\n\nThe path should be accessible to the bot.\n\nTimeout: 60 sec",
+    "ADD_VIDEO_INDEX": "Set the video track index to add. Leave empty to add all video tracks.\n\nExample: 0 - add first video track\nExample: 1 - add second video track\nExample: none - add all video tracks\n\nTimeout: 60 sec",
+    "ADD_VIDEO_CODEC": "Set the codec to use for video track addition.\n\nExample: copy - preserve original codec (fastest, no quality loss)\nExample: libx264 - H.264 codec (good compatibility)\nExample: libx265 - H.265/HEVC codec (better compression)\nExample: none - use default codec\n\nTimeout: 60 sec",
+    "ADD_VIDEO_QUALITY": "Set the quality (CRF value) for video track addition. Lower values mean better quality but larger file size.\n\nExample: 18 - high quality\nExample: 23 - good quality\nExample: 28 - lower quality\nExample: none - don't set quality\n\nTimeout: 60 sec",
+    "ADD_VIDEO_PRESET": "Set the encoding preset for video track addition. Faster presets result in larger files, slower presets in smaller files.\n\nExample: ultrafast - fastest encoding, largest files\nExample: medium - balanced speed and compression\nExample: veryslow - slowest encoding, smallest files\nExample: none - don't set preset\n\nTimeout: 60 sec",
+    "ADD_VIDEO_BITRATE": "Set the bitrate for video track addition.\n\nExample: 5M - 5 megabits per second\nExample: 500k - 500 kilobits per second\nExample: none - don't set bitrate\n\nTimeout: 60 sec",
+    "ADD_VIDEO_RESOLUTION": "Set the resolution for video track addition.\n\nExample: 1920x1080 - Full HD\nExample: 1280x720 - HD\nExample: none - don't set resolution\n\nTimeout: 60 sec",
+    "ADD_VIDEO_FPS": "Set the frame rate for video track addition.\n\nExample: 30 - 30 frames per second\nExample: 60 - 60 frames per second\nExample: none - don't set FPS\n\nTimeout: 60 sec",
+    # Audio Add Settings
+    "ADD_AUDIO_ENABLED": "Enable or disable adding audio tracks to media files.\n\nExample: true - enable audio track addition\nExample: false - disable audio track addition\n\nWhen enabled, audio tracks will be added according to the specified settings.\n\nTimeout: 60 sec",
+    "ADD_AUDIO_PATH": "Set the path to the audio file to add as a track.\n\nExample: /path/to/audio.mp3\nExample: none - no audio file specified\n\nThe path should be accessible to the bot.\n\nTimeout: 60 sec",
+    "ADD_AUDIO_INDEX": "Set the audio track index to add. Leave empty to add all audio tracks.\n\nExample: 0 - add first audio track\nExample: 1 - add second audio track\nExample: none - add all audio tracks\n\nTimeout: 60 sec",
+    "ADD_AUDIO_CODEC": "Set the codec to use for audio track addition.\n\nExample: copy - preserve original codec (fastest, no quality loss)\nExample: aac - AAC codec (good quality, compatibility)\nExample: libmp3lame - MP3 codec (widely compatible)\nExample: flac - FLAC codec (lossless)\nExample: none - use default codec\n\nTimeout: 60 sec",
+    "ADD_AUDIO_BITRATE": "Set the bitrate for audio track addition.\n\nExample: 320k - high quality\nExample: 192k - good quality\nExample: 128k - acceptable quality\nExample: none - don't set bitrate\n\nTimeout: 60 sec",
+    "ADD_AUDIO_CHANNELS": "Set the number of audio channels for track addition.\n\nExample: 2 - stereo\nExample: 1 - mono\nExample: none - don't set channels\n\nTimeout: 60 sec",
+    "ADD_AUDIO_SAMPLING": "Set the sampling rate for audio track addition.\n\nExample: 48000 - high quality\nExample: 44100 - CD quality\nExample: none - don't set sampling rate\n\nTimeout: 60 sec",
+    "ADD_AUDIO_VOLUME": "Set the volume adjustment for audio track addition.\n\nExample: 1.0 - original volume\nExample: 2.0 - double volume\nExample: 0.5 - half volume\nExample: none - don't adjust volume\n\nTimeout: 60 sec",
+    # Subtitle Add Settings
+    "ADD_SUBTITLE_ENABLED": "Enable or disable adding subtitle tracks to media files.\n\nExample: true - enable subtitle track addition\nExample: false - disable subtitle track addition\n\nWhen enabled, subtitle tracks will be added according to the specified settings.\n\nTimeout: 60 sec",
+    "ADD_SUBTITLE_PATH": "Set the path to the subtitle file to add as a track.\n\nExample: /path/to/subtitle.srt\nExample: none - no subtitle file specified\n\nThe path should be accessible to the bot.\n\nTimeout: 60 sec",
+    "ADD_SUBTITLE_INDEX": "Set the subtitle track index to add. Leave empty to add all subtitle tracks.\n\nExample: 0 - add first subtitle track\nExample: 1 - add second subtitle track\nExample: none - add all subtitle tracks\n\nTimeout: 60 sec",
+    "ADD_SUBTITLE_CODEC": "Set the codec to use for subtitle track addition.\n\nExample: copy - preserve original format\nExample: srt - convert to SRT format\nExample: ass - convert to ASS format\nExample: none - use default codec\n\nTimeout: 60 sec",
+    "ADD_SUBTITLE_LANGUAGE": "Set the language code for subtitle track addition.\n\nExample: eng - English\nExample: spa - Spanish\nExample: none - don't set language\n\nTimeout: 60 sec",
+    "ADD_SUBTITLE_ENCODING": "Set the character encoding for subtitle track addition.\n\nExample: utf-8 - UTF-8 encoding\nExample: latin1 - Latin-1 encoding\nExample: none - don't set encoding\n\nTimeout: 60 sec",
+    "ADD_SUBTITLE_FONT": "Set the font for subtitle track addition (for ASS/SSA subtitles).\n\nExample: Arial - use Arial font\nExample: DejaVu Sans - use DejaVu Sans font\nExample: none - don't set font\n\nTimeout: 60 sec",
+    "ADD_SUBTITLE_FONT_SIZE": "Set the font size for subtitle track addition (for ASS/SSA subtitles).\n\nExample: 24 - medium size\nExample: 32 - larger size\nExample: none - don't set font size\n\nTimeout: 60 sec",
+    # Attachment Add Settings
+    "ADD_ATTACHMENT_ENABLED": "Enable or disable adding attachments to media files.\n\nExample: true - enable attachment addition\nExample: false - disable attachment addition\n\nWhen enabled, attachments will be added according to the specified settings.\n\nTimeout: 60 sec",
+    "ADD_ATTACHMENT_PATH": "Set the path to the attachment file to add.\n\nExample: /path/to/font.ttf\nExample: none - no attachment file specified\n\nThe path should be accessible to the bot.\n\nTimeout: 60 sec",
+    "ADD_ATTACHMENT_INDEX": "Set the attachment index to add. Leave empty to add all attachments.\n\nExample: 0 - add first attachment\nExample: 1 - add second attachment\nExample: none - add all attachments\n\nTimeout: 60 sec",
+    "ADD_ATTACHMENT_MIMETYPE": "Set the MIME type for attachment addition.\n\nExample: font/ttf - TrueType font\nExample: image/png - PNG image\nExample: none - don't set MIME type\n\nTimeout: 60 sec",
+    # MediaInfo Settings
+    "MEDIAINFO_ENABLED": "Enable or disable the MediaInfo command for detailed media information.\n\nExample: true - enable MediaInfo command\nExample: false - disable MediaInfo command\n\nWhen enabled, you can use the /mediainfo command to get detailed information about media files.\n\nTimeout: 60 sec",
+    # Sample Video Settings
+    "SAMPLE_VIDEO_ENABLED": "Enable or disable the sample video feature. This allows creating short sample clips from videos.\n\nExample: true - enable sample video feature\nExample: false - disable sample video feature\n\nTimeout: 60 sec",
 }
 
 help_string = f"""

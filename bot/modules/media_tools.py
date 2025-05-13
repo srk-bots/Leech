@@ -30,7 +30,9 @@ from bot.helper.ext_utils.bot_utils import (
     update_user_ldata,
 )
 from bot.helper.ext_utils.db_handler import database
-from bot.helper.ext_utils.help_messages import media_tools_text
+from bot.helper.ext_utils.help_messages import (
+    media_tools_text,  # This imports the combined dictionary
+)
 from bot.helper.ext_utils.status_utils import get_readable_file_size
 from bot.helper.telegram_helper.button_build import ButtonMaker
 from bot.helper.telegram_helper.message_utils import (
@@ -408,7 +410,7 @@ async def get_media_tools_settings(from_user, stype="main", page_no=0):
         image_watermark_enabled = user_dict.get("IMAGE_WATERMARK_ENABLED", False)
         buttons.data_button(
             f"Image Watermark: {'✅ ON' if image_watermark_enabled else '❌ OFF'}",
-            f"mediatools {user_id} tog IMAGE_WATERMARK_ENABLED {'f' if image_watermark_enabled else 't'} watermark",
+            f"mediatools {user_id} tog IMAGE_WATERMARK_ENABLED {'f' if image_watermark_enabled else 't'}",
         )
 
         # Add Upload Image Watermark button (styled like thumbnail upload in leech settings)
@@ -3406,7 +3408,7 @@ async def get_media_tools_settings(from_user, stype="main", page_no=0):
         video_enabled = user_dict.get("ADD_VIDEO_ENABLED", False)
         buttons.data_button(
             f"Video: {'✅ ON' if video_enabled else '❌ OFF'}",
-            f"mediatools {user_id} tog ADD_VIDEO_ENABLED {'f' if video_enabled else 't'} add_config",
+            f"mediatools {user_id} tog ADD_VIDEO_ENABLED {'f' if video_enabled else 't'}",
         )
         buttons.data_button(
             "Video Settings", f"mediatools {user_id} add_video_config"
@@ -3416,7 +3418,7 @@ async def get_media_tools_settings(from_user, stype="main", page_no=0):
         audio_enabled = user_dict.get("ADD_AUDIO_ENABLED", False)
         buttons.data_button(
             f"Audio: {'✅ ON' if audio_enabled else '❌ OFF'}",
-            f"mediatools {user_id} tog ADD_AUDIO_ENABLED {'f' if audio_enabled else 't'} add_config",
+            f"mediatools {user_id} tog ADD_AUDIO_ENABLED {'f' if audio_enabled else 't'}",
         )
         buttons.data_button(
             "Audio Settings", f"mediatools {user_id} add_audio_config"
@@ -3426,7 +3428,7 @@ async def get_media_tools_settings(from_user, stype="main", page_no=0):
         subtitle_enabled = user_dict.get("ADD_SUBTITLE_ENABLED", False)
         buttons.data_button(
             f"Subtitle: {'✅ ON' if subtitle_enabled else '❌ OFF'}",
-            f"mediatools {user_id} tog ADD_SUBTITLE_ENABLED {'f' if subtitle_enabled else 't'} add_config",
+            f"mediatools {user_id} tog ADD_SUBTITLE_ENABLED {'f' if subtitle_enabled else 't'}",
         )
         buttons.data_button(
             "Subtitle Settings", f"mediatools {user_id} add_subtitle_config"
@@ -3436,7 +3438,7 @@ async def get_media_tools_settings(from_user, stype="main", page_no=0):
         attachment_enabled = user_dict.get("ADD_ATTACHMENT_ENABLED", False)
         buttons.data_button(
             f"Attachment: {'✅ ON' if attachment_enabled else '❌ OFF'}",
-            f"mediatools {user_id} tog ADD_ATTACHMENT_ENABLED {'f' if attachment_enabled else 't'} add_config",
+            f"mediatools {user_id} tog ADD_ATTACHMENT_ENABLED {'f' if attachment_enabled else 't'}",
         )
         buttons.data_button(
             "Attachment Settings", f"mediatools {user_id} add_attachment_config"
@@ -3446,21 +3448,21 @@ async def get_media_tools_settings(from_user, stype="main", page_no=0):
         delete_original = user_dict.get("ADD_DELETE_ORIGINAL", True)
         buttons.data_button(
             f"RO: {'✅ ON' if delete_original else '❌ OFF'}",
-            f"mediatools {user_id} tog ADD_DELETE_ORIGINAL {'f' if delete_original else 't'} add_config",
+            f"mediatools {user_id} tog ADD_DELETE_ORIGINAL {'f' if delete_original else 't'}",
         )
 
         # Preserve tracks toggle
         preserve_tracks = user_dict.get("ADD_PRESERVE_TRACKS", False)
         buttons.data_button(
             f"Preserve: {'✅ ON' if preserve_tracks else '❌ OFF'}",
-            f"mediatools {user_id} tog ADD_PRESERVE_TRACKS {'f' if preserve_tracks else 't'} add_config",
+            f"mediatools {user_id} tog ADD_PRESERVE_TRACKS {'f' if preserve_tracks else 't'}",
         )
 
         # Replace tracks toggle
         replace_tracks = user_dict.get("ADD_REPLACE_TRACKS", False)
         buttons.data_button(
             f"Replace: {'✅ ON' if replace_tracks else '❌ OFF'}",
-            f"mediatools {user_id} tog ADD_REPLACE_TRACKS {'f' if replace_tracks else 't'} add_config",
+            f"mediatools {user_id} tog ADD_REPLACE_TRACKS {'f' if replace_tracks else 't'}",
         )
 
         buttons.data_button("Back", f"mediatools {user_id} add", "footer")
@@ -5430,7 +5432,7 @@ Use 'copy' codec to preserve original format or 'srt' to convert ASS/SSA to SRT.
         video_enabled = user_dict.get("ADD_VIDEO_ENABLED", False)
         buttons.data_button(
             f"Video: {'✅ ON' if video_enabled else '❌ OFF'}",
-            f"mediatools {user_id} tog ADD_VIDEO_ENABLED {'f' if video_enabled else 't'} add_config",
+            f"mediatools {user_id} tog ADD_VIDEO_ENABLED {'f' if video_enabled else 't'}",
         )
         buttons.data_button(
             "Video Settings", f"mediatools {user_id} add_video_config"
@@ -5440,7 +5442,7 @@ Use 'copy' codec to preserve original format or 'srt' to convert ASS/SSA to SRT.
         audio_enabled = user_dict.get("ADD_AUDIO_ENABLED", False)
         buttons.data_button(
             f"Audio: {'✅ ON' if audio_enabled else '❌ OFF'}",
-            f"mediatools {user_id} tog ADD_AUDIO_ENABLED {'f' if audio_enabled else 't'} add_config",
+            f"mediatools {user_id} tog ADD_AUDIO_ENABLED {'f' if audio_enabled else 't'}",
         )
         buttons.data_button(
             "Audio Settings", f"mediatools {user_id} add_audio_config"
@@ -5450,7 +5452,7 @@ Use 'copy' codec to preserve original format or 'srt' to convert ASS/SSA to SRT.
         subtitle_enabled = user_dict.get("ADD_SUBTITLE_ENABLED", False)
         buttons.data_button(
             f"Subtitle: {'✅ ON' if subtitle_enabled else '❌ OFF'}",
-            f"mediatools {user_id} tog ADD_SUBTITLE_ENABLED {'f' if subtitle_enabled else 't'} add_config",
+            f"mediatools {user_id} tog ADD_SUBTITLE_ENABLED {'f' if subtitle_enabled else 't'}",
         )
         buttons.data_button(
             "Subtitle Settings", f"mediatools {user_id} add_subtitle_config"
@@ -5460,7 +5462,7 @@ Use 'copy' codec to preserve original format or 'srt' to convert ASS/SSA to SRT.
         attachment_enabled = user_dict.get("ADD_ATTACHMENT_ENABLED", False)
         buttons.data_button(
             f"Attachment: {'✅ ON' if attachment_enabled else '❌ OFF'}",
-            f"mediatools {user_id} tog ADD_ATTACHMENT_ENABLED {'f' if attachment_enabled else 't'} add_config",
+            f"mediatools {user_id} tog ADD_ATTACHMENT_ENABLED {'f' if attachment_enabled else 't'}",
         )
         buttons.data_button(
             "Attachment Settings", f"mediatools {user_id} add_attachment_config"
@@ -5470,7 +5472,7 @@ Use 'copy' codec to preserve original format or 'srt' to convert ASS/SSA to SRT.
         delete_original = user_dict.get("ADD_DELETE_ORIGINAL", True)
         buttons.data_button(
             f"RO: {'✅ ON' if delete_original else '❌ OFF'}",
-            f"mediatools {user_id} tog ADD_DELETE_ORIGINAL {'f' if delete_original else 't'} add_config",
+            f"mediatools {user_id} tog ADD_DELETE_ORIGINAL {'f' if delete_original else 't'}",
         )
 
         buttons.data_button("Back", f"mediatools {user_id} add", "footer")
@@ -7499,8 +7501,21 @@ async def set_option(_, message, option, rfunc):
     update_user_ldata(user_id, option, value)
     await delete_message(message)
 
+    # Special handling for WATERMARK_PRIORITY to return to watermark menu
+    if option == "WATERMARK_PRIORITY":
+        # Create a fake CallbackQuery object to pass to update_media_tools_settings
+        fake_query = CallbackQuery(
+            id="fake_id",
+            from_user=message.from_user,
+            chat_instance="fake_chat",
+            message=message,
+            data=f"mediatools {user_id} watermark",
+        )
+        await update_media_tools_settings(fake_query, "watermark")
     # Check if we're in a watermark menu with pagination
-    if option.startswith(("WATERMARK_", "AUDIO_WATERMARK_", "SUBTITLE_WATERMARK_")):
+    elif option.startswith(
+        ("WATERMARK_", "AUDIO_WATERMARK_", "SUBTITLE_WATERMARK_")
+    ):
         # Go back to the watermark config page instead of the main watermark menu
         # We use the global watermark_config_page variable but don't modify it here
         # Go to the correct pagination page
@@ -8074,13 +8089,23 @@ async def edit_media_tools_settings(client, query):
         elif data[3] in [
             "AUDIO_WATERMARK_ENABLED",
             "SUBTITLE_WATERMARK_ENABLED",
-        ]:
-            # Determine which menu to return to based on the toggled option
-            # Check if we're in the watermark configuration menu
+            "WATERMARK_THREADING",
+            "WATERMARK_REMOVE_ORIGINAL",
+            "IMAGE_WATERMARK_SCALE",
+            "IMAGE_WATERMARK_POSITION",
+            "IMAGE_WATERMARK_OPACITY",
+        ] or (data[3].startswith("WATERMARK_") and data[3] != "WATERMARK_ENABLED"):
             # These are the toggles in the watermark_config menu
-            await update_media_tools_settings(query, "watermark_config")
-        elif data[3].startswith("WATERMARK_"):
-            # Removed redundant IMAGE_WATERMARK_ENABLED case since it's handled by the return_menu parameter
+            # Check if we have a stored page for this user
+            stored_page = handler_dict.get(f"{user_id}_watermark_page")
+            if stored_page is not None:
+                await update_media_tools_settings(
+                    query, f"watermark_config {stored_page}"
+                )
+            else:
+                await update_media_tools_settings(query, "watermark_config")
+        elif data[3] in ["WATERMARK_ENABLED", "IMAGE_WATERMARK_ENABLED"]:
+            # Main watermark toggles should return to watermark menu
             await update_media_tools_settings(query, "watermark")
         elif data[3].startswith("MERGE_") or data[3] in [
             "CONCAT_DEMUXER_ENABLED",
@@ -8145,26 +8170,25 @@ async def edit_media_tools_settings(client, query):
         elif data[3].startswith("ADD_"):
             if data[3] == "ADD_ENABLED":
                 await update_media_tools_settings(query, "add")
+            elif data[3] in [
+                "ADD_VIDEO_ENABLED",
+                "ADD_AUDIO_ENABLED",
+                "ADD_SUBTITLE_ENABLED",
+                "ADD_ATTACHMENT_ENABLED",
+                "ADD_DELETE_ORIGINAL",
+                "ADD_PRESERVE_TRACKS",
+                "ADD_REPLACE_TRACKS",
+            ]:
+                # These are the toggles in the add_config menu, so return to add_config
+                await update_media_tools_settings(query, "add_config")
             elif data[3].startswith("ADD_VIDEO_"):
-                if data[3] == "ADD_VIDEO_ENABLED":
-                    await update_media_tools_settings(query, "add_config")
-                else:
-                    await update_media_tools_settings(query, "add_video_config")
+                await update_media_tools_settings(query, "add_video_config")
             elif data[3].startswith("ADD_AUDIO_"):
-                if data[3] == "ADD_AUDIO_ENABLED":
-                    await update_media_tools_settings(query, "add_config")
-                else:
-                    await update_media_tools_settings(query, "add_audio_config")
+                await update_media_tools_settings(query, "add_audio_config")
             elif data[3].startswith("ADD_SUBTITLE_"):
-                if data[3] == "ADD_SUBTITLE_ENABLED":
-                    await update_media_tools_settings(query, "add_config")
-                else:
-                    await update_media_tools_settings(query, "add_subtitle_config")
+                await update_media_tools_settings(query, "add_subtitle_config")
             elif data[3].startswith("ADD_ATTACHMENT_"):
-                if data[3] == "ADD_ATTACHMENT_ENABLED":
-                    await update_media_tools_settings(query, "add_config")
-                else:
-                    await update_media_tools_settings(query, "add_attachment_config")
+                await update_media_tools_settings(query, "add_attachment_config")
             else:
                 await update_media_tools_settings(query, "add")
         else:

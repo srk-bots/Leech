@@ -14,6 +14,7 @@ from psutil import (
 )
 
 from bot import bot_start_time
+from bot.core.config_manager import Config
 from bot.helper.ext_utils.bot_utils import cmd_exec, new_task
 from bot.helper.ext_utils.status_utils import (
     get_readable_file_size,
@@ -42,7 +43,17 @@ async def bot_stats(_, message):
     total, used, free, disk = disk_usage("/")
     swap = swap_memory()
     memory = virtual_memory()
-    stats = f"""
+
+    # Function to format limit values
+    def format_limit(limit_value, unit="GB"):
+        if limit_value == 0:
+            return "∞ (Unlimited)"
+        if unit == "GB":
+            return f"{limit_value} GB"
+        return str(limit_value)
+
+    # System stats section
+    system_stats = f"""
 <b>Commit Date:</b> {commands["commit"]}
 
 <b>Bot Uptime:</b> {get_readable_time(time() - bot_start_time)}
@@ -65,7 +76,34 @@ async def bot_stats(_, message):
 <b>Memory Total:</b> {get_readable_file_size(memory.total)}
 <b>Memory Free:</b> {get_readable_file_size(memory.available)}
 <b>Memory Used:</b> {get_readable_file_size(memory.used)}
+"""
 
+    # Limits stats section
+    limits_stats = f"""
+<b>📊 LIMITS STATS 📊</b>
+
+<b>Storage Threshold:</b> {format_limit(Config.STORAGE_THRESHOLD)}
+<b>Torrent Limit:</b> {format_limit(Config.TORRENT_LIMIT)}
+<b>Direct Link Limit:</b> {format_limit(Config.DIRECT_LIMIT)}
+<b>YouTube Limit:</b> {format_limit(Config.YTDLP_LIMIT)}
+<b>Google Drive Limit:</b> {format_limit(Config.GDRIVE_LIMIT)}
+<b>Clone Limit:</b> {format_limit(Config.CLONE_LIMIT)}
+<b>Mega Limit:</b> {format_limit(Config.MEGA_LIMIT)}
+<b>Leech Limit:</b> {format_limit(Config.LEECH_LIMIT)}
+<b>JDownloader Limit:</b> {format_limit(Config.JD_LIMIT)}
+<b>NZB Limit:</b> {format_limit(Config.NZB_LIMIT)}
+<b>Playlist Limit:</b> {format_limit(Config.PLAYLIST_LIMIT, unit="videos")}
+
+<b>Daily Task Limit:</b> {format_limit(Config.DAILY_TASK_LIMIT, unit="tasks")}
+<b>Daily Mirror Limit:</b> {format_limit(Config.DAILY_MIRROR_LIMIT)}
+<b>Daily Leech Limit:</b> {format_limit(Config.DAILY_LEECH_LIMIT)}
+<b>User Max Tasks:</b> {format_limit(Config.USER_MAX_TASKS, unit="tasks")}
+<b>Bot Max Tasks:</b> {format_limit(Config.BOT_MAX_TASKS, unit="tasks")}
+<b>User Time Interval:</b> {format_limit(Config.USER_TIME_INTERVAL, unit="seconds")}
+"""
+
+    # Versions section
+    versions_stats = f"""
 <b>python:</b> {commands["python"]}
 <b>aria2:</b> {commands["aria2"]}
 <b>qBittorrent:</b> {commands["qBittorrent"]}
@@ -75,6 +113,10 @@ async def bot_stats(_, message):
 <b>ffmpeg:</b> {commands["ffmpeg"]}
 <b>7z:</b> {commands["7z"]}
 """
+
+    # Combine all sections
+    stats = system_stats + limits_stats + versions_stats
+
     # Delete the /stats command message immediately
     await delete_links(message)
 

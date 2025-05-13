@@ -4,6 +4,7 @@ import os
 import shlex
 from asyncio import gather, sleep
 from collections import Counter
+from copy import deepcopy
 from os import path as ospath
 from os import walk
 from re import IGNORECASE, findall, sub
@@ -3399,9 +3400,9 @@ class TaskConfig:
 
         if self.ffmpeg_cmds and not isinstance(self.ffmpeg_cmds, list):
             if self.user_dict.get("FFMPEG_CMDS", None):
-                ffmpeg_dict = self.user_dict["FFMPEG_CMDS"]
+                ffmpeg_dict = deepcopy(self.user_dict["FFMPEG_CMDS"])
             elif "FFMPEG_CMDS" not in self.user_dict and Config.FFMPEG_CMDS:
-                ffmpeg_dict = Config.FFMPEG_CMDS
+                ffmpeg_dict = deepcopy(Config.FFMPEG_CMDS)
             else:
                 ffmpeg_dict = None
             if ffmpeg_dict is None:
@@ -3505,7 +3506,12 @@ class TaskConfig:
                 ) != self.get_config_path(self.up_dest):
                     raise ValueError("You must use the same config to clone!")
         else:
-            self.up_dest = self.up_dest or Config.LEECH_DUMP_CHAT[0]
+            self.up_dest = self.up_dest or (
+                Config.LEECH_DUMP_CHAT[0]
+                if isinstance(Config.LEECH_DUMP_CHAT, list)
+                and Config.LEECH_DUMP_CHAT
+                else ""
+            )
             self.hybrid_leech = TgClient.IS_PREMIUM_USER and (
                 self.user_dict.get("HYBRID_LEECH")
                 or (Config.HYBRID_LEECH and "HYBRID_LEECH" not in self.user_dict)
@@ -3641,9 +3647,7 @@ class TaskConfig:
 
             safe_telegram_limit = telegram_limit - safety_margin
 
-            if self.split_size > safe_telegram_limit:
-
-                self.split_size = safe_telegram_limit
+            self.split_size = min(self.split_size, safe_telegram_limit)
 
             # Ensure split size doesn't exceed maximum allowed
             self.split_size = min(self.split_size, self.max_split_size)
@@ -3910,8 +3914,12 @@ class TaskConfig:
     async def proceed_extract(self, dl_path, gid):
         # This is the archive extraction method
         LOGGER.info(f"proceed_extract called with dl_path: {dl_path}")
-        LOGGER.info(f"extract flag: {self.extract}, extract_enabled: {self.extract_enabled}")
-        LOGGER.info(f"is_file: {self.is_file}, is_archive check: {is_archive(dl_path) if self.is_file else False}")
+        LOGGER.info(
+            f"extract flag: {self.extract}, extract_enabled: {self.extract_enabled}"
+        )
+        LOGGER.info(
+            f"is_file: {self.is_file}, is_archive check: {is_archive(dl_path) if self.is_file else False}"
+        )
 
         pswd = self.extract if isinstance(self.extract, str) else ""
         self.files_to_proceed = []
@@ -3930,7 +3938,9 @@ class TaskConfig:
                     is_arch = is_archive(file_)
                     is_rar = file_.strip().lower().endswith(".rar")
 
-                    LOGGER.info(f"Checking file: {file_}, is_first_split: {is_first_split}, is_archive: {is_arch}, is_rar: {is_rar}")
+                    LOGGER.info(
+                        f"Checking file: {file_}, is_first_split: {is_first_split}, is_archive: {is_arch}, is_rar: {is_rar}"
+                    )
 
                     if is_first_split or (is_arch and not is_rar):
                         f_path = ospath.join(dirpath, file_)

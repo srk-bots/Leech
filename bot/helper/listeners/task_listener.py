@@ -489,7 +489,11 @@ class TaskListener(TaskConfig):
 
             # Delete the original command message if it's not in the dump chats list
             # This prevents duplicate command messages
-            if self.message and self.message.chat and self.message.chat.type != "private":
+            if (
+                self.message
+                and self.message.chat
+                and self.message.chat.type != "private"
+            ):
                 # Check if the original chat is in the dump chats list
                 original_chat_id = str(self.message.chat.id)
                 original_chat_in_dump = False
@@ -502,26 +506,40 @@ class TaskListener(TaskConfig):
                         if isinstance(processed_chat_id, str):
                             # Remove any prefixes like "b:", "u:", "h:" if present
                             if ":" in processed_chat_id:
-                                processed_chat_id = processed_chat_id.split(":", 1)[1]
+                                processed_chat_id = processed_chat_id.split(":", 1)[
+                                    1
+                                ]
 
                             # Remove any suffixes after | if present (for hybrid format)
                             if "|" in processed_chat_id:
-                                processed_chat_id = processed_chat_id.split("|", 1)[0]
+                                processed_chat_id = processed_chat_id.split("|", 1)[
+                                    0
+                                ]
 
                         # Check if the processed chat ID matches the original chat ID (handle different formats)
-                        if (str(processed_chat_id) == original_chat_id or
-                            (original_chat_id.startswith('-100') and str(processed_chat_id) == original_chat_id[4:]) or
-                            (not original_chat_id.startswith('-100') and f"-100{original_chat_id}" == str(processed_chat_id))):
+                        if (
+                            str(processed_chat_id) == original_chat_id
+                            or (
+                                original_chat_id.startswith("-100")
+                                and str(processed_chat_id) == original_chat_id[4:]
+                            )
+                            or (
+                                not original_chat_id.startswith("-100")
+                                and f"-100{original_chat_id}"
+                                == str(processed_chat_id)
+                            )
+                        ):
                             original_chat_in_dump = True
                             break
 
                 # If the original chat is not in the dump chats list, delete the command message
                 if not original_chat_in_dump:
                     try:
-
                         await delete_message(self.message)
                     except Exception as e:
-                        LOGGER.error(f"Failed to delete command message in original chat: {e}")
+                        LOGGER.error(
+                            f"Failed to delete command message in original chat: {e}"
+                        )
             # Don't delete the tg reference as we need it for cancellation
             # We'll keep the reference in self.telegram_uploader
         elif is_gdrive_id(self.up_dest):
@@ -684,14 +702,21 @@ class TaskListener(TaskConfig):
                                     try:
                                         user_dump_int = int(user_dump)
                                         # Skip if this is the up_dest or user's PM (already sent there)
-                                        if user_dump_int != int(self.up_dest) and user_dump_int != self.user_id:
-                                            LOGGER.info(f"Sending task details message to user's dump: {user_dump}")
+                                        if (
+                                            user_dump_int != int(self.up_dest)
+                                            and user_dump_int != self.user_id
+                                        ):
+                                            LOGGER.info(
+                                                f"Sending task details message to user's dump: {user_dump}"
+                                            )
                                             await send_message(
                                                 user_dump_int,
                                                 f"{msg}<blockquote expandable>{fmsg}</blockquote>",
                                             )
                                     except Exception as e:
-                                        LOGGER.error(f"Failed to send task details message to user's dump {user_dump}: {e}")
+                                        LOGGER.error(
+                                            f"Failed to send task details message to user's dump {user_dump}: {e}"
+                                        )
 
                                 # Now send to all dump chats except the one specified with -up flag
                                 if Config.LEECH_DUMP_CHAT:
@@ -703,20 +728,39 @@ class TaskListener(TaskConfig):
                                             if isinstance(processed_chat_id, str):
                                                 # Remove any prefixes like "b:", "u:", "h:" if present
                                                 if ":" in processed_chat_id:
-                                                    processed_chat_id = processed_chat_id.split(":", 1)[1]
+                                                    processed_chat_id = (
+                                                        processed_chat_id.split(
+                                                            ":", 1
+                                                        )[1]
+                                                    )
 
                                                 # Remove any suffixes after | if present (for hybrid format)
                                                 if "|" in processed_chat_id:
-                                                    processed_chat_id = processed_chat_id.split("|", 1)[0]
+                                                    processed_chat_id = (
+                                                        processed_chat_id.split(
+                                                            "|", 1
+                                                        )[0]
+                                                    )
 
                                             # Skip if this is the up_dest (already sent there) or the user's PM
                                             try:
-                                                processed_chat_id_int = int(processed_chat_id)
-                                                if processed_chat_id_int == int(self.up_dest) or processed_chat_id_int == self.user_id:
+                                                processed_chat_id_int = int(
+                                                    processed_chat_id
+                                                )
+                                                if (
+                                                    processed_chat_id_int
+                                                    == int(self.up_dest)
+                                                    or processed_chat_id_int
+                                                    == self.user_id
+                                                ):
                                                     continue
 
                                                 # Skip if this is the user's dump (already sent there)
-                                                if user_dump and processed_chat_id_int == int(user_dump):
+                                                if (
+                                                    user_dump
+                                                    and processed_chat_id_int
+                                                    == int(user_dump)
+                                                ):
                                                     continue
 
                                                 # Send to this dump chat
@@ -725,21 +769,35 @@ class TaskListener(TaskConfig):
                                                     f"{msg}<blockquote expandable>{fmsg}</blockquote>",
                                                 )
                                             except Exception as e:
-                                                LOGGER.error(f"Failed to send task details message to dump chat {processed_chat_id}: {e}")
+                                                LOGGER.error(
+                                                    f"Failed to send task details message to dump chat {processed_chat_id}: {e}"
+                                                )
                                     else:
                                         # For backward compatibility with single chat ID
                                         try:
                                             # Skip if this is the up_dest, user's PM, or user's dump
-                                            if (int(Config.LEECH_DUMP_CHAT) != int(self.up_dest) and
-                                                int(Config.LEECH_DUMP_CHAT) != self.user_id and
-                                                (not user_dump or int(Config.LEECH_DUMP_CHAT) != int(user_dump))):
-                                                LOGGER.info(f"Sending task details message to single dump chat: {Config.LEECH_DUMP_CHAT}")
+                                            if (
+                                                int(Config.LEECH_DUMP_CHAT)
+                                                != int(self.up_dest)
+                                                and int(Config.LEECH_DUMP_CHAT)
+                                                != self.user_id
+                                                and (
+                                                    not user_dump
+                                                    or int(Config.LEECH_DUMP_CHAT)
+                                                    != int(user_dump)
+                                                )
+                                            ):
+                                                LOGGER.info(
+                                                    f"Sending task details message to single dump chat: {Config.LEECH_DUMP_CHAT}"
+                                                )
                                                 await send_message(
                                                     int(Config.LEECH_DUMP_CHAT),
                                                     f"{msg}<blockquote expandable>{fmsg}</blockquote>",
                                                 )
                                         except Exception as e:
-                                            LOGGER.error(f"Failed to send task details message to single dump chat {Config.LEECH_DUMP_CHAT}: {e}")
+                                            LOGGER.error(
+                                                f"Failed to send task details message to single dump chat {Config.LEECH_DUMP_CHAT}: {e}"
+                                            )
 
                             except Exception as e:
                                 LOGGER.error(
@@ -774,21 +832,29 @@ class TaskListener(TaskConfig):
                                             if isinstance(chat_id, str):
                                                 # Remove any prefixes like "b:", "u:", "h:" if present
                                                 if ":" in chat_id:
-                                                    chat_id = chat_id.split(":", 1)[1]
+                                                    chat_id = chat_id.split(":", 1)[
+                                                        1
+                                                    ]
 
                                                 # Remove any suffixes after | if present (for hybrid format)
                                                 if "|" in chat_id:
-                                                    chat_id = chat_id.split("|", 1)[0]
+                                                    chat_id = chat_id.split("|", 1)[
+                                                        0
+                                                    ]
 
                                             # Add to destinations
                                             try:
-                                                leech_destinations.append(int(chat_id))
+                                                leech_destinations.append(
+                                                    int(chat_id)
+                                                )
                                             except ValueError:
                                                 # If it's not an integer (e.g., @username), add as is
                                                 leech_destinations.append(chat_id)
                                     else:
                                         # For backward compatibility with single chat ID
-                                        leech_destinations.append(int(Config.LEECH_DUMP_CHAT))
+                                        leech_destinations.append(
+                                            int(Config.LEECH_DUMP_CHAT)
+                                        )
 
                             # Case 2: If user set their own dump and owner has no premium string
                             elif user_dump and not owner_has_premium:
@@ -802,21 +868,29 @@ class TaskListener(TaskConfig):
                                             if isinstance(chat_id, str):
                                                 # Remove any prefixes like "b:", "u:", "h:" if present
                                                 if ":" in chat_id:
-                                                    chat_id = chat_id.split(":", 1)[1]
+                                                    chat_id = chat_id.split(":", 1)[
+                                                        1
+                                                    ]
 
                                                 # Remove any suffixes after | if present (for hybrid format)
                                                 if "|" in chat_id:
-                                                    chat_id = chat_id.split("|", 1)[0]
+                                                    chat_id = chat_id.split("|", 1)[
+                                                        0
+                                                    ]
 
                                             # Add to destinations
                                             try:
-                                                leech_destinations.append(int(chat_id))
+                                                leech_destinations.append(
+                                                    int(chat_id)
+                                                )
                                             except ValueError:
                                                 # If it's not an integer (e.g., @username), add as is
                                                 leech_destinations.append(chat_id)
                                     else:
                                         # For backward compatibility with single chat ID
-                                        leech_destinations.append(int(Config.LEECH_DUMP_CHAT))
+                                        leech_destinations.append(
+                                            int(Config.LEECH_DUMP_CHAT)
+                                        )
 
                             # Case 3: If user set their own dump and owner has premium string
                             elif user_dump and owner_has_premium:
@@ -829,29 +903,41 @@ class TaskListener(TaskConfig):
                                             if isinstance(chat_id, str):
                                                 # Remove any prefixes like "b:", "u:", "h:" if present
                                                 if ":" in chat_id:
-                                                    chat_id = chat_id.split(":", 1)[1]
+                                                    chat_id = chat_id.split(":", 1)[
+                                                        1
+                                                    ]
 
                                                 # Remove any suffixes after | if present (for hybrid format)
                                                 if "|" in chat_id:
-                                                    chat_id = chat_id.split("|", 1)[0]
+                                                    chat_id = chat_id.split("|", 1)[
+                                                        0
+                                                    ]
 
                                             # Add to destinations
                                             try:
-                                                leech_destinations.append(int(chat_id))
+                                                leech_destinations.append(
+                                                    int(chat_id)
+                                                )
                                             except ValueError:
                                                 # If it's not an integer (e.g., @username), add as is
                                                 leech_destinations.append(chat_id)
                                     else:
                                         # For backward compatibility with single chat ID
-                                        leech_destinations.append(int(Config.LEECH_DUMP_CHAT))
+                                        leech_destinations.append(
+                                            int(Config.LEECH_DUMP_CHAT)
+                                        )
 
                                 # Add user's dump to destinations regardless of premium status
                                 # This ensures task details are always sent to the user's dump
                                 try:
                                     leech_destinations.append(int(user_dump))
-                                    LOGGER.info(f"Adding user's dump {user_dump} to task details destinations")
+                                    LOGGER.info(
+                                        f"Adding user's dump {user_dump} to task details destinations"
+                                    )
                                 except Exception as e:
-                                    LOGGER.error(f"Error adding user's dump to destinations: {e}")
+                                    LOGGER.error(
+                                        f"Error adding user's dump to destinations: {e}"
+                                    )
 
                             # Remove duplicates while preserving order
                             seen = set()
@@ -891,7 +977,6 @@ class TaskListener(TaskConfig):
                                 f"{msg}<blockquote expandable>{fmsg}</blockquote>",
                             )
 
-
                             # Also send to user's PM if it's not the same as the specified destination
                             if int(self.up_dest) != self.user_id:
                                 await send_message(
@@ -905,14 +990,18 @@ class TaskListener(TaskConfig):
                                 try:
                                     user_dump_int = int(user_dump)
                                     # Skip if this is the up_dest or user's PM (already sent there)
-                                    if user_dump_int != int(self.up_dest) and user_dump_int != self.user_id:
-
+                                    if (
+                                        user_dump_int != int(self.up_dest)
+                                        and user_dump_int != self.user_id
+                                    ):
                                         await send_message(
                                             user_dump_int,
                                             f"{msg}<blockquote expandable>{fmsg}</blockquote>",
                                         )
                                 except Exception as e:
-                                    LOGGER.error(f"Failed to send task details message to user's dump {user_dump}: {e}")
+                                    LOGGER.error(
+                                        f"Failed to send task details message to user's dump {user_dump}: {e}"
+                                    )
 
                             # Now send to all dump chats except the one specified with -up flag
                             if Config.LEECH_DUMP_CHAT:
@@ -924,21 +1013,39 @@ class TaskListener(TaskConfig):
                                         if isinstance(processed_chat_id, str):
                                             # Remove any prefixes like "b:", "u:", "h:" if present
                                             if ":" in processed_chat_id:
-                                                processed_chat_id = processed_chat_id.split(":", 1)[1]
+                                                processed_chat_id = (
+                                                    processed_chat_id.split(":", 1)[
+                                                        1
+                                                    ]
+                                                )
 
                                             # Remove any suffixes after | if present (for hybrid format)
                                             if "|" in processed_chat_id:
-                                                processed_chat_id = processed_chat_id.split("|", 1)[0]
+                                                processed_chat_id = (
+                                                    processed_chat_id.split("|", 1)[
+                                                        0
+                                                    ]
+                                                )
 
                                         # Skip if this is the up_dest (already sent there) or the user's PM
                                         try:
-                                            processed_chat_id_int = int(processed_chat_id)
-                                            if processed_chat_id_int == int(self.up_dest) or processed_chat_id_int == self.user_id:
+                                            processed_chat_id_int = int(
+                                                processed_chat_id
+                                            )
+                                            if (
+                                                processed_chat_id_int
+                                                == int(self.up_dest)
+                                                or processed_chat_id_int
+                                                == self.user_id
+                                            ):
                                                 continue
 
                                             # Skip if this is the user's dump (already sent there)
-                                            if user_dump and processed_chat_id_int == int(user_dump):
-
+                                            if (
+                                                user_dump
+                                                and processed_chat_id_int
+                                                == int(user_dump)
+                                            ):
                                                 continue
 
                                             # Send to this dump chat
@@ -948,21 +1055,32 @@ class TaskListener(TaskConfig):
                                                 f"{msg}<blockquote expandable>{fmsg}</blockquote>",
                                             )
                                         except Exception as e:
-                                            LOGGER.error(f"Failed to send task details message to dump chat {processed_chat_id}: {e}")
+                                            LOGGER.error(
+                                                f"Failed to send task details message to dump chat {processed_chat_id}: {e}"
+                                            )
                                 else:
                                     # For backward compatibility with single chat ID
                                     try:
                                         # Skip if this is the up_dest, user's PM, or user's dump
-                                        if (int(Config.LEECH_DUMP_CHAT) != int(self.up_dest) and
-                                            int(Config.LEECH_DUMP_CHAT) != self.user_id and
-                                            (not user_dump or int(Config.LEECH_DUMP_CHAT) != int(user_dump))):
-
+                                        if (
+                                            int(Config.LEECH_DUMP_CHAT)
+                                            != int(self.up_dest)
+                                            and int(Config.LEECH_DUMP_CHAT)
+                                            != self.user_id
+                                            and (
+                                                not user_dump
+                                                or int(Config.LEECH_DUMP_CHAT)
+                                                != int(user_dump)
+                                            )
+                                        ):
                                             await send_message(
                                                 int(Config.LEECH_DUMP_CHAT),
                                                 f"{msg}<blockquote expandable>{fmsg}</blockquote>",
                                             )
                                     except Exception as e:
-                                        LOGGER.error(f"Failed to send task details message to single dump chat {Config.LEECH_DUMP_CHAT}: {e}")
+                                        LOGGER.error(
+                                            f"Failed to send task details message to single dump chat {Config.LEECH_DUMP_CHAT}: {e}"
+                                        )
 
                         except Exception as e:
                             LOGGER.error(
@@ -1011,7 +1129,9 @@ class TaskListener(TaskConfig):
                                             leech_destinations.append(chat_id)
                                 else:
                                     # For backward compatibility with single chat ID
-                                    leech_destinations.append(int(Config.LEECH_DUMP_CHAT))
+                                    leech_destinations.append(
+                                        int(Config.LEECH_DUMP_CHAT)
+                                    )
 
                         # Case 2: If user set their own dump and owner has no premium string
                         elif user_dump and not owner_has_premium:
@@ -1039,7 +1159,9 @@ class TaskListener(TaskConfig):
                                             leech_destinations.append(chat_id)
                                 else:
                                     # For backward compatibility with single chat ID
-                                    leech_destinations.append(int(Config.LEECH_DUMP_CHAT))
+                                    leech_destinations.append(
+                                        int(Config.LEECH_DUMP_CHAT)
+                                    )
 
                         # Case 3: If user set their own dump and owner has premium string
                         elif user_dump and owner_has_premium:
@@ -1066,15 +1188,21 @@ class TaskListener(TaskConfig):
                                             leech_destinations.append(chat_id)
                                 else:
                                     # For backward compatibility with single chat ID
-                                    leech_destinations.append(int(Config.LEECH_DUMP_CHAT))
+                                    leech_destinations.append(
+                                        int(Config.LEECH_DUMP_CHAT)
+                                    )
 
                             # Add user's dump to destinations regardless of premium status
                             # This ensures task details are always sent to the user's dump
                             try:
                                 leech_destinations.append(int(user_dump))
-                                LOGGER.info(f"Adding user's dump {user_dump} to task details destinations")
+                                LOGGER.info(
+                                    f"Adding user's dump {user_dump} to task details destinations"
+                                )
                             except Exception as e:
-                                LOGGER.error(f"Error adding user's dump to destinations: {e}")
+                                LOGGER.error(
+                                    f"Error adding user's dump to destinations: {e}"
+                                )
 
                         # Remove duplicates while preserving order
                         seen = set()
@@ -1084,14 +1212,18 @@ class TaskListener(TaskConfig):
                             if not (x in seen or seen.add(x))
                         ]
 
-                        # Send to all destinations except user's PM
+                        # Send to all destinations including user's PM
                         for dest in leech_destinations:
                             try:
                                 # Skip sending to user's PM
                                 if dest == self.user_id:
-                                    LOGGER.info(f"Skipping sending task completion message to user's PM: {dest}")
+                                    LOGGER.info(
+                                        f"Skipping sending task completion message to user's PM: {dest}"
+                                    )
                                     continue
-                                LOGGER.info(f"Sending task completion message to destination: {dest}")
+                                LOGGER.info(
+                                    f"Sending task completion message to destination: {dest}"
+                                )
                                 await send_message(
                                     dest,
                                     f"{msg}<blockquote expandable>{fmsg}</blockquote>",
@@ -1104,7 +1236,10 @@ class TaskListener(TaskConfig):
                 # Send completion message only to the original chat if it's a group or supergroup
                 # Add "Checkout Inbox" button for group/supergroup chats
                 button = None
-                if self.message.chat.type != "private" and self.message.chat.id != self.user_id:
+                if (
+                    self.message.chat.type != "private"
+                    and self.message.chat.id != self.user_id
+                ):
                     # Only send completion message to the original chat if it's a group or supergroup
                     # and not the user's PM
                     buttons = ButtonMaker()
@@ -1113,7 +1248,9 @@ class TaskListener(TaskConfig):
                     )
                     button = buttons.build_menu(1)
 
-                    LOGGER.info(f"Sending completion message to original chat {self.message.chat.id}")
+                    LOGGER.info(
+                        f"Sending completion message to original chat {self.message.chat.id}"
+                    )
                     await send_message(self.message, done_msg, button)
         else:
             msg += f"\n\n<b>Type: </b>{mime_type}"
@@ -1226,14 +1363,18 @@ class TaskListener(TaskConfig):
                     x for x in mirror_destinations if not (x in seen or seen.add(x))
                 ]
 
-                # Send to all destinations except user's PM
+                # Send to all destinations including user's PM
                 for dest in mirror_destinations:
                     try:
                         # Skip sending to user's PM
                         if dest == self.user_id:
-                            LOGGER.info(f"Skipping sending task completion message to user's PM: {dest}")
+                            LOGGER.info(
+                                f"Skipping sending task completion message to user's PM: {dest}"
+                            )
                             continue
-                        LOGGER.info(f"Sending task completion message to destination: {dest}")
+                        LOGGER.info(
+                            f"Sending task completion message to destination: {dest}"
+                        )
                         await send_message(dest, msg, button)
                     except Exception as e:
                         LOGGER.error(
@@ -1243,14 +1384,19 @@ class TaskListener(TaskConfig):
             # Send completion message only to the original chat if it's a group or supergroup
             # Add "Checkout Inbox" button for group/supergroup chats
             button = None
-            if self.message.chat.type != "private" and self.message.chat.id != self.user_id:
+            if (
+                self.message.chat.type != "private"
+                and self.message.chat.id != self.user_id
+            ):
                 # Only send completion message to the original chat if it's a group or supergroup
                 # and not the user's PM
                 buttons = ButtonMaker()
                 buttons.url_button("Checkout Inbox", f"https://t.me/{TgClient.NAME}")
                 button = buttons.build_menu(1)
 
-                LOGGER.info(f"Sending completion message to original chat {self.message.chat.id}")
+                LOGGER.info(
+                    f"Sending completion message to original chat {self.message.chat.id}"
+                )
                 await send_message(self.message, done_msg, button)
         # We don't need to delete command messages here
         # They are already being deleted in the on_download_complete method
@@ -1291,18 +1437,23 @@ class TaskListener(TaskConfig):
         await self.remove_from_same_dir()
 
         # Check if this is a leech task with dump chat messages
-        if self.is_leech and hasattr(self, 'telegram_uploader') and hasattr(self.telegram_uploader, 'dump_chat_msgs'):
+        if (
+            self.is_leech
+            and hasattr(self, "telegram_uploader")
+            and hasattr(self.telegram_uploader, "dump_chat_msgs")
+        ):
             # Keep track of command messages in dump chats
             dump_chat_msgs = self.telegram_uploader.dump_chat_msgs
 
             # Delete command messages in dump chats if task is cancelled by user
             if "cancelled by user" in str(error).lower():
-
                 for chat_id, msg in dump_chat_msgs.items():
                     try:
                         await delete_message(msg)
                     except Exception as e:
-                        LOGGER.error(f"Failed to delete command message in dump chat {chat_id}: {e}")
+                        LOGGER.error(
+                            f"Failed to delete command message in dump chat {chat_id}: {e}"
+                        )
             else:
                 pass
         else:
@@ -1373,7 +1524,11 @@ class TaskListener(TaskConfig):
             count = len(task_dict)
 
         # Check if this is a leech task with dump chat messages
-        if self.is_leech and hasattr(self, 'telegram_uploader') and hasattr(self.telegram_uploader, 'dump_chat_msgs'):
+        if (
+            self.is_leech
+            and hasattr(self, "telegram_uploader")
+            and hasattr(self.telegram_uploader, "dump_chat_msgs")
+        ):
             # Keep track of command messages in dump chats
             dump_chat_msgs = self.telegram_uploader.dump_chat_msgs
 
@@ -1383,7 +1538,9 @@ class TaskListener(TaskConfig):
                     try:
                         await delete_message(msg)
                     except Exception as e:
-                        LOGGER.error(f"Failed to delete command message in dump chat {chat_id}: {e}")
+                        LOGGER.error(
+                            f"Failed to delete command message in dump chat {chat_id}: {e}"
+                        )
             else:
                 pass
         else:

@@ -138,7 +138,9 @@ class HyperTGDownload:
         last_error = None
 
         # Handle case where dump_chat is a list - use the first item
-        chat_id = self.dump_chat[0] if isinstance(self.dump_chat, list) else self.dump_chat
+        chat_id = (
+            self.dump_chat[0] if isinstance(self.dump_chat, list) else self.dump_chat
+        )
 
         while retries < max_retries:
             try:
@@ -592,7 +594,11 @@ class HyperTGDownload:
                     # as copy_message might not preserve all media attributes
                     try:
                         # Handle case where dump_chat is a list - use the first item
-                        chat_id = dump_chat[0] if isinstance(dump_chat, list) else dump_chat
+                        chat_id = (
+                            dump_chat[0]
+                            if isinstance(dump_chat, list)
+                            else dump_chat
+                        )
 
                         forwarded_msg = await TgClient.bot.forward_messages(
                             chat_id=chat_id,
@@ -615,7 +621,11 @@ class HyperTGDownload:
                         )
                         # If forwarding fails, try copying
                         # Handle case where dump_chat is a list - use the first item
-                        chat_id = dump_chat[0] if isinstance(dump_chat, list) else dump_chat
+                        chat_id = (
+                            dump_chat[0]
+                            if isinstance(dump_chat, list)
+                            else dump_chat
+                        )
 
                         self.message = await TgClient.bot.copy_message(
                             chat_id=chat_id,

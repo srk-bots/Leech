@@ -1,3 +1,4 @@
+import contextlib
 import re
 from asyncio import sleep
 from logging import getLogger
@@ -140,7 +141,10 @@ class TelegramUploader:
                 original_dump_ids = []
 
                 # Handle LEECH_DUMP_CHAT as a list of chat IDs
-                if isinstance(Config.LEECH_DUMP_CHAT, list) and Config.LEECH_DUMP_CHAT:
+                if (
+                    isinstance(Config.LEECH_DUMP_CHAT, list)
+                    and Config.LEECH_DUMP_CHAT
+                ):
                     # First pass: Process all chat IDs and check if original chat is in the list
                     for chat_id in Config.LEECH_DUMP_CHAT:
                         original_dump_id = str(chat_id)
@@ -150,11 +154,15 @@ class TelegramUploader:
                         if isinstance(processed_chat_id, str):
                             # Remove any prefixes like "b:", "u:", "h:" if present
                             if ":" in processed_chat_id:
-                                processed_chat_id = processed_chat_id.split(":", 1)[1]
+                                processed_chat_id = processed_chat_id.split(":", 1)[
+                                    1
+                                ]
 
                             # Remove any suffixes after | if present (for hybrid format)
                             if "|" in processed_chat_id:
-                                processed_chat_id = processed_chat_id.split("|", 1)[0]
+                                processed_chat_id = processed_chat_id.split("|", 1)[
+                                    0
+                                ]
 
                         processed_dump_chats.append(str(processed_chat_id))
                         original_dump_ids.append(original_dump_id)
@@ -166,41 +174,52 @@ class TelegramUploader:
                     # Check if the original chat is in the processed dump chats list
                     # Try different formats of the original chat ID
                     for i, processed_id in enumerate(processed_dump_chats):
-                        if original_chat_id == processed_id:
+                        if original_chat_id == processed_id or (
+                            original_chat_id.startswith("-100")
+                            and original_chat_id[4:] == processed_id
+                        ):
                             original_chat_in_dump = True
                             original_chat_index = i
                             break
-                        elif original_chat_id.startswith('-100') and original_chat_id[4:] == processed_id:
+                        if (
+                            not original_chat_id.startswith("-100")
+                            and f"-100{original_chat_id}" == processed_id
+                        ):
                             original_chat_in_dump = True
                             original_chat_index = i
                             break
-                        elif not original_chat_id.startswith('-100') and f"-100{original_chat_id}" == processed_id:
-                            original_chat_in_dump = True
-                            original_chat_index = i
-                            break
-
 
                     # Second pass: Send command messages to all chats except the original chat
 
-
-                    for index, (processed_chat_id, original_dump_id) in enumerate(zip(processed_dump_chats, original_dump_ids)):
+                    for index, (processed_chat_id, original_dump_id) in enumerate(
+                        zip(processed_dump_chats, original_dump_ids, strict=False)
+                    ):
                         # Check if this is the original chat using the index we found earlier
-                        is_original_chat = (index == original_chat_index)
-
+                        is_original_chat = index == original_chat_index
 
                         # Check if this chat is the same as the up_dest (if specified)
                         is_up_dest = False
                         if self._listener.up_dest:
                             up_dest_str = str(self._listener.up_dest)
-                            is_up_dest = (str(processed_chat_id) == up_dest_str or
-                                         (str(processed_chat_id).startswith('-100') and str(processed_chat_id)[4:] == up_dest_str) or
-                                         (up_dest_str.startswith('-100') and up_dest_str[4:] == str(processed_chat_id)))
+                            is_up_dest = (
+                                str(processed_chat_id) == up_dest_str
+                                or (
+                                    str(processed_chat_id).startswith("-100")
+                                    and str(processed_chat_id)[4:] == up_dest_str
+                                )
+                                or (
+                                    up_dest_str.startswith("-100")
+                                    and up_dest_str[4:] == str(processed_chat_id)
+                                )
+                            )
                             if is_up_dest:
                                 pass
 
                         # If this is the original chat, use the original message
                         if is_original_chat:
-                            self.dump_chat_msgs[original_dump_id] = self._listener.message
+                            self.dump_chat_msgs[original_dump_id] = (
+                                self._listener.message
+                            )
 
                             if index == 0:
                                 self.log_msg = self._listener.message
@@ -214,7 +233,6 @@ class TelegramUploader:
                         # Check if we already have a command message for this chat
                         # This prevents duplicate command messages
                         if original_dump_id in self.dump_chat_msgs:
-
                             continue
 
                         try:
@@ -235,11 +253,14 @@ class TelegramUploader:
                             # Check for PEER_ID_INVALID error which means the bot is not in the chat
                             error_str = str(e).lower()
                             if "peer_id_invalid" in error_str:
-                                LOGGER.error(f"Cannot send command message to {processed_chat_id}: Bot is not a member of this chat or doesn't have permission to post")
+                                LOGGER.error(
+                                    f"Cannot send command message to {processed_chat_id}: Bot is not a member of this chat or doesn't have permission to post"
+                                )
                             else:
-                                LOGGER.error(f"Error sending command message to {processed_chat_id}: {e}")
+                                LOGGER.error(
+                                    f"Error sending command message to {processed_chat_id}: {e}"
+                                )
                             # Continue with other chat IDs even if one fails
-
 
                 else:
                     # For backward compatibility, handle the case where LEECH_DUMP_CHAT is a single value
@@ -256,40 +277,61 @@ class TelegramUploader:
                             processed_chat_id = processed_chat_id.split("|", 1)[0]
 
                     # Check if this is the original chat (try different formats)
-                    is_original_chat = (str(processed_chat_id) == original_chat_id or
-                                       (str(processed_chat_id).startswith('-100') and str(processed_chat_id)[4:] == original_chat_id) or
-                                       (original_chat_id.startswith('-100') and original_chat_id[4:] == str(processed_chat_id)))
+                    is_original_chat = (
+                        str(processed_chat_id) == original_chat_id
+                        or (
+                            str(processed_chat_id).startswith("-100")
+                            and str(processed_chat_id)[4:] == original_chat_id
+                        )
+                        or (
+                            original_chat_id.startswith("-100")
+                            and original_chat_id[4:] == str(processed_chat_id)
+                        )
+                    )
 
                     # If this is the original chat, use the original message
                     if is_original_chat:
                         # Don't send a separate command message to the original chat
                         # We'll use the original message instead
-                        self.dump_chat_msgs[original_dump_id] = self._listener.message
+                        self.dump_chat_msgs[original_dump_id] = (
+                            self._listener.message
+                        )
                         self.log_msg = self._listener.message
-                        LOGGER.info(f"Using original message for chat {processed_chat_id}")
+                        LOGGER.info(
+                            f"Using original message for chat {processed_chat_id}"
+                        )
+                    # Check if we already have a command message for this chat
+                    # This prevents duplicate command messages
+                    elif original_dump_id in self.dump_chat_msgs:
+                        LOGGER.info(
+                            f"Already have a command message for chat {processed_chat_id}, skipping"
+                        )
                     else:
-                        # Check if we already have a command message for this chat
-                        # This prevents duplicate command messages
-                        if original_dump_id in self.dump_chat_msgs:
-                            LOGGER.info(f"Already have a command message for chat {processed_chat_id}, skipping")
-                        else:
-                            # Send command message to this chat
-                            LOGGER.info(f"Sending command message to chat {processed_chat_id}")
-                            try:
-                                owner_dump_msg = await self._listener.client.send_message(
+                        # Send command message to this chat
+                        LOGGER.info(
+                            f"Sending command message to chat {processed_chat_id}"
+                        )
+                        try:
+                            owner_dump_msg = (
+                                await self._listener.client.send_message(
                                     chat_id=processed_chat_id,
                                     text=msg,
                                     disable_web_page_preview=True,
                                     disable_notification=True,
                                 )
-                                self.log_msg = owner_dump_msg
-                                self.dump_chat_msgs[original_dump_id] = owner_dump_msg
-                            except Exception as e:
-                                error_str = str(e).lower()
-                                if "peer_id_invalid" in error_str:
-                                    LOGGER.error(f"Cannot send command message to {processed_chat_id}: Bot is not a member of this chat or doesn't have permission to post")
+                            )
+                            self.log_msg = owner_dump_msg
+                            self.dump_chat_msgs[original_dump_id] = owner_dump_msg
+                        except Exception as e:
+                            error_str = str(e).lower()
+                            if "peer_id_invalid" in error_str:
+                                LOGGER.error(
+                                    f"Cannot send command message to {processed_chat_id}: Bot is not a member of this chat or doesn't have permission to post"
+                                )
             except Exception as e:
-                LOGGER.error(f"Error in _msg_to_reply when processing LEECH_DUMP_CHAT: {e}")
+                LOGGER.error(
+                    f"Error in _msg_to_reply when processing LEECH_DUMP_CHAT: {e}"
+                )
                 # Continue with the rest of the function even if there was an error
 
         # Now handle the normal message reply logic
@@ -320,7 +362,6 @@ class TelegramUploader:
                     up_dest_str = str(self._listener.up_dest)
                     self.dump_chat_msgs[up_dest_str] = self._sent_msg
 
-
                 # Don't overwrite the log_msg if we already set it to the owner's dump message
                 if not hasattr(self, "log_msg") or self.log_msg is None:
                     self.log_msg = self._sent_msg
@@ -346,7 +387,7 @@ class TelegramUploader:
             original_chat_in_dump = False
 
             # Look for the original chat ID in the dump_chat_msgs dictionary
-            if hasattr(self, 'dump_chat_msgs') and self.dump_chat_msgs:
+            if hasattr(self, "dump_chat_msgs") and self.dump_chat_msgs:
                 for original_dump_id, msg in self.dump_chat_msgs.items():
                     processed_chat_id = original_dump_id
 
@@ -362,14 +403,18 @@ class TelegramUploader:
 
                     # Check if the processed chat ID matches the original chat ID
                     if str(processed_chat_id) == original_chat_id:
-                        LOGGER.info(f"Found original chat {original_chat_id} in dump_chat_msgs with key {original_dump_id}")
+                        LOGGER.info(
+                            f"Found original chat {original_chat_id} in dump_chat_msgs with key {original_dump_id}"
+                        )
                         original_chat_in_dump = True
                         self._sent_msg = msg
                         break
 
             # If the original chat is not in the dump chats list, use the original message
             if not original_chat_in_dump:
-                LOGGER.info(f"Original chat {original_chat_id} not found in dump_chat_msgs, using original message")
+                LOGGER.info(
+                    f"Original chat {original_chat_id} not found in dump_chat_msgs, using original message"
+                )
                 self._sent_msg = self._listener.message
         return True
 
@@ -1487,10 +1532,9 @@ class TelegramUploader:
                             # Add to destinations if not the source chat
                             if source_chat_id != chat_id:
                                 destinations.append(chat_id)
-                    else:
-                        # For backward compatibility with single chat ID
-                        if source_chat_id != Config.LEECH_DUMP_CHAT:
-                            destinations.append(Config.LEECH_DUMP_CHAT)
+                    # For backward compatibility with single chat ID
+                    elif source_chat_id != Config.LEECH_DUMP_CHAT:
+                        destinations.append(Config.LEECH_DUMP_CHAT)
 
                 # Add user's PM if not already there
                 if source_chat_id != self._user_id:
@@ -1519,10 +1563,9 @@ class TelegramUploader:
                             # Add to destinations if not the source chat
                             if source_chat_id != chat_id:
                                 destinations.append(chat_id)
-                    else:
-                        # For backward compatibility with single chat ID
-                        if source_chat_id != Config.LEECH_DUMP_CHAT:
-                            destinations.append(Config.LEECH_DUMP_CHAT)
+                    # For backward compatibility with single chat ID
+                    elif source_chat_id != Config.LEECH_DUMP_CHAT:
+                        destinations.append(Config.LEECH_DUMP_CHAT)
 
                 # Add user's PM if not already there
                 if source_chat_id != self._user_id:
@@ -1548,10 +1591,9 @@ class TelegramUploader:
                             # Add to destinations if not the source chat
                             if source_chat_id != chat_id:
                                 destinations.append(chat_id)
-                    else:
-                        # For backward compatibility with single chat ID
-                        if source_chat_id != Config.LEECH_DUMP_CHAT:
-                            destinations.append(Config.LEECH_DUMP_CHAT)
+                    # For backward compatibility with single chat ID
+                    elif source_chat_id != Config.LEECH_DUMP_CHAT:
+                        destinations.append(Config.LEECH_DUMP_CHAT)
 
                 # Add user's PM if not already there
                 if source_chat_id != self._user_id:
@@ -1569,7 +1611,9 @@ class TelegramUploader:
         async def _send_media_group_to_dest(dest):
             # Check if task is cancelled before sending media group
             if self._listener.is_cancelled:
-                LOGGER.info(f"Task is cancelled, skipping media group copy to {dest}")
+                LOGGER.info(
+                    f"Task is cancelled, skipping media group copy to {dest}"
+                )
                 return
 
             try:
@@ -1577,17 +1621,13 @@ class TelegramUploader:
                 media_ids = []
                 for msg in msgs_list:
                     if hasattr(msg, "video") and msg.video:
-                        media_ids.append(
-                            InputMediaVideo(media=msg.video.file_id)
-                        )
+                        media_ids.append(InputMediaVideo(media=msg.video.file_id))
                     elif hasattr(msg, "document") and msg.document:
                         media_ids.append(
                             InputMediaDocument(media=msg.document.file_id)
                         )
                     elif hasattr(msg, "photo") and msg.photo:
-                        media_ids.append(
-                            InputMediaPhoto(media=msg.photo.file_id)
-                        )
+                        media_ids.append(InputMediaPhoto(media=msg.photo.file_id))
 
                 # Add caption to the first media item only
                 if media_ids and msgs_list[0].caption:
@@ -1600,7 +1640,7 @@ class TelegramUploader:
                 # and find the corresponding command message
                 found_cmd_msg = None
 
-                if hasattr(self, 'dump_chat_msgs') and self.dump_chat_msgs:
+                if hasattr(self, "dump_chat_msgs") and self.dump_chat_msgs:
                     # First, try direct lookup
                     if dest_str in self.dump_chat_msgs:
                         found_cmd_msg = self.dump_chat_msgs[dest_str]
@@ -1613,11 +1653,15 @@ class TelegramUploader:
                             if isinstance(processed_chat_id, str):
                                 # Remove any prefixes like "b:", "u:", "h:" if present
                                 if ":" in processed_chat_id:
-                                    processed_chat_id = processed_chat_id.split(":", 1)[1]
+                                    processed_chat_id = processed_chat_id.split(
+                                        ":", 1
+                                    )[1]
 
                                 # Remove any suffixes after | if present (for hybrid format)
                                 if "|" in processed_chat_id:
-                                    processed_chat_id = processed_chat_id.split("|", 1)[0]
+                                    processed_chat_id = processed_chat_id.split(
+                                        "|", 1
+                                    )[0]
 
                             # Check if the processed chat ID matches the destination
                             if str(processed_chat_id) == dest_str:
@@ -1641,25 +1685,26 @@ class TelegramUploader:
                             disable_notification=True,
                             reply_to_message_id=found_cmd_msg.id,
                         )
+                # Send the media group to the destination without replying to a command message
+                elif self._user_session:
+                    await TgClient.user.send_media_group(
+                        chat_id=dest,
+                        media=media_ids,
+                        disable_notification=True,
+                    )
                 else:
-                    # Send the media group to the destination without replying to a command message
-                    if self._user_session:
-                        await TgClient.user.send_media_group(
-                            chat_id=dest,
-                            media=media_ids,
-                            disable_notification=True,
-                        )
-                    else:
-                        await self._listener.client.send_media_group(
-                            chat_id=dest,
-                            media=media_ids,
-                            disable_notification=True,
-                        )
+                    await self._listener.client.send_media_group(
+                        chat_id=dest,
+                        media=media_ids,
+                        disable_notification=True,
+                    )
             except Exception as e:
                 error_str = str(e).lower()
                 # Check for PEER_ID_INVALID error which means the bot is not in the chat
                 if "peer_id_invalid" in error_str:
-                    LOGGER.error(f"Cannot send media group to {dest}: Bot is not a member of this chat or doesn't have permission to post")
+                    LOGGER.error(
+                        f"Cannot send media group to {dest}: Bot is not a member of this chat or doesn't have permission to post"
+                    )
                 else:
                     LOGGER.error(
                         f"Failed to copy media group to destination {dest}: {e}"
@@ -1672,7 +1717,9 @@ class TelegramUploader:
             for dest in destinations:
                 # Check if task is cancelled before copying to each destination
                 if self._listener.is_cancelled:
-                    LOGGER.info("Task is cancelled, stopping media group copy to destinations")
+                    LOGGER.info(
+                        "Task is cancelled, stopping media group copy to destinations"
+                    )
                     break
 
                 await _send_media_group_to_dest(dest)
@@ -1708,7 +1755,7 @@ class TelegramUploader:
                     # and find the corresponding command message
                     found_cmd_msg = None
 
-                    if hasattr(self, 'dump_chat_msgs') and self.dump_chat_msgs:
+                    if hasattr(self, "dump_chat_msgs") and self.dump_chat_msgs:
                         # First, try direct lookup
                         if target_str in self.dump_chat_msgs:
                             found_cmd_msg = self.dump_chat_msgs[target_str]
@@ -1716,46 +1763,66 @@ class TelegramUploader:
                             # If not found, try to match with processed chat IDs
                             # Try to convert target to integer for comparison
                             target_as_int = None
-                            try:
+                            with contextlib.suppress(ValueError):
                                 target_as_int = int(target_str)
-                            except ValueError:
-                                pass
 
                             # Try to convert target without -100 prefix
-                            target_without_prefix = None
-                            if target_str.startswith('-100'):
-                                target_without_prefix = target_str[4:]
+                            if target_str.startswith("-100"):
+                                target_str[4:]
 
-                            for original_chat_id, cmd_msg in self.dump_chat_msgs.items():
+                            for (
+                                original_chat_id,
+                                cmd_msg,
+                            ) in self.dump_chat_msgs.items():
                                 processed_chat_id = original_chat_id
 
                                 # Process the chat ID format (handle prefixes like b:, u:, h:)
                                 if isinstance(processed_chat_id, str):
                                     # Remove any prefixes like "b:", "u:", "h:" if present
                                     if ":" in processed_chat_id:
-                                        processed_chat_id = processed_chat_id.split(":", 1)[1]
+                                        processed_chat_id = processed_chat_id.split(
+                                            ":", 1
+                                        )[1]
 
                                     # Remove any suffixes after | if present (for hybrid format)
                                     if "|" in processed_chat_id:
-                                        processed_chat_id = processed_chat_id.split("|", 1)[0]
+                                        processed_chat_id = processed_chat_id.split(
+                                            "|", 1
+                                        )[0]
 
                                 # Try different formats for comparison
                                 comparisons = [
-                                    (str(processed_chat_id) == target_str, "direct string match"),
-                                    (target_str.startswith('-100') and str(processed_chat_id) == target_str[4:], "target has -100 prefix"),
-                                    (str(processed_chat_id).startswith('-100') and str(processed_chat_id)[4:] == target_str, "processed has -100 prefix"),
+                                    (
+                                        str(processed_chat_id) == target_str,
+                                        "direct string match",
+                                    ),
+                                    (
+                                        target_str.startswith("-100")
+                                        and str(processed_chat_id) == target_str[4:],
+                                        "target has -100 prefix",
+                                    ),
+                                    (
+                                        str(processed_chat_id).startswith("-100")
+                                        and str(processed_chat_id)[4:] == target_str,
+                                        "processed has -100 prefix",
+                                    ),
                                 ]
 
                                 # Try integer comparison if possible
                                 try:
                                     int_processed = int(processed_chat_id)
                                     if target_as_int is not None:
-                                        comparisons.append((int_processed == target_as_int, "integer comparison"))
+                                        comparisons.append(
+                                            (
+                                                int_processed == target_as_int,
+                                                "integer comparison",
+                                            )
+                                        )
                                 except ValueError:
                                     pass
 
                                 # Check all comparison results
-                                for result, desc in comparisons:
+                                for result, _desc in comparisons:
                                     if result:
                                         found_cmd_msg = cmd_msg
                                         break
@@ -1770,92 +1837,131 @@ class TelegramUploader:
                         # For user's PM or dump chats without a command message, just copy the message directly
                         if target_str == str(self._user_id):
                             pass
-                        else:
-                            # Check if this is a dump chat that should have a command message
-                            if Config.LEECH_DUMP_CHAT:
-                                if isinstance(Config.LEECH_DUMP_CHAT, list):
-                                    dump_chat_ids = []
-                                    for chat in Config.LEECH_DUMP_CHAT:
-                                        if isinstance(chat, str):
-                                            # Process the chat ID format
-                                            processed = chat
-                                            if ":" in processed:
-                                                processed = processed.split(":", 1)[1]
-                                            if "|" in processed:
-                                                processed = processed.split("|", 1)[0]
-                                            dump_chat_ids.append(processed)
-                                        else:
-                                            dump_chat_ids.append(str(chat))
+                        # Check if this is a dump chat that should have a command message
+                        elif Config.LEECH_DUMP_CHAT:
+                            if isinstance(Config.LEECH_DUMP_CHAT, list):
+                                dump_chat_ids = []
+                                for chat in Config.LEECH_DUMP_CHAT:
+                                    if isinstance(chat, str):
+                                        # Process the chat ID format
+                                        processed = chat
+                                        if ":" in processed:
+                                            processed = processed.split(":", 1)[1]
+                                        if "|" in processed:
+                                            processed = processed.split("|", 1)[0]
+                                        dump_chat_ids.append(processed)
+                                    else:
+                                        dump_chat_ids.append(str(chat))
 
-                                if isinstance(Config.LEECH_DUMP_CHAT, list):
-                                    # Check if target is in the dump chat list
-                                    for dump_chat in Config.LEECH_DUMP_CHAT:
-                                        original_dump_chat = dump_chat
-                                        processed_dump_chat = dump_chat
+                            if isinstance(Config.LEECH_DUMP_CHAT, list):
+                                # Check if target is in the dump chat list
+                                for dump_chat in Config.LEECH_DUMP_CHAT:
+                                    processed_dump_chat = dump_chat
 
-                                        if isinstance(processed_dump_chat, str):
-                                            # Remove any prefixes like "b:", "u:", "h:" if present
-                                            if ":" in processed_dump_chat:
-                                                processed_dump_chat = processed_dump_chat.split(":", 1)[1]
-                                            # Remove any suffixes after | if present (for hybrid format)
-                                            if "|" in processed_dump_chat:
-                                                processed_dump_chat = processed_dump_chat.split("|", 1)[0]
+                                    if isinstance(processed_dump_chat, str):
+                                        # Remove any prefixes like "b:", "u:", "h:" if present
+                                        if ":" in processed_dump_chat:
+                                            processed_dump_chat = (
+                                                processed_dump_chat.split(":", 1)[1]
+                                            )
+                                        # Remove any suffixes after | if present (for hybrid format)
+                                        if "|" in processed_dump_chat:
+                                            processed_dump_chat = (
+                                                processed_dump_chat.split("|", 1)[0]
+                                            )
 
-                                        # Check if this target matches a dump chat
-                                        match_found = False
+                                    # Check if this target matches a dump chat
+                                    match_found = False
 
-                                        # Try different formats for comparison
-                                        comparisons = [
-                                            (str(processed_dump_chat) == target_str, "direct match"),
-                                            (target_str.startswith('-100') and str(processed_dump_chat) == target_str[4:], "without -100 prefix"),
-                                            (str(processed_dump_chat).startswith('-100') and str(processed_dump_chat)[4:] == target_str, "with -100 prefix"),
-                                        ]
+                                    # Try different formats for comparison
+                                    comparisons = [
+                                        (
+                                            str(processed_dump_chat) == target_str,
+                                            "direct match",
+                                        ),
+                                        (
+                                            target_str.startswith("-100")
+                                            and str(processed_dump_chat)
+                                            == target_str[4:],
+                                            "without -100 prefix",
+                                        ),
+                                        (
+                                            str(processed_dump_chat).startswith(
+                                                "-100"
+                                            )
+                                            and str(processed_dump_chat)[4:]
+                                            == target_str,
+                                            "with -100 prefix",
+                                        ),
+                                    ]
 
-                                        # Try integer comparison if possible
-                                        try:
-                                            int_target = int(target_str)
-                                            int_dump = int(processed_dump_chat)
-                                            comparisons.append((int_target == int_dump, "integer comparison"))
-                                        except ValueError:
-                                            pass
-
-                                        # Check all comparison results
-                                        for result, desc in comparisons:
-                                            if result:
-                                                match_found = True
-                                                break
-
-                                        if match_found:
-                                            try:
-                                                # Send a command message to this chat first
-                                                original_text = self._listener.message.text.lstrip("/")
-                                                cmd_msg = await self._listener.client.send_message(
-                                                    chat_id=target,
-                                                    text=original_text,
-                                                    disable_web_page_preview=True,
-                                                    disable_notification=True,
-                                                )
-                                                # Store the command message
-                                                self.dump_chat_msgs[str(target)] = cmd_msg
-                                                found_cmd_msg = cmd_msg
-                                                break
-                                            except Exception as e:
-                                                LOGGER.error(f"Failed to create command message for dump chat {target_str}: {e}")
-                                elif str(Config.LEECH_DUMP_CHAT) == target_str or (target_str.startswith('-100') and str(Config.LEECH_DUMP_CHAT) == target_str[4:]):
+                                    # Try integer comparison if possible
                                     try:
-                                        # Send a command message to this chat first
-                                        original_text = self._listener.message.text.lstrip("/")
-                                        cmd_msg = await self._listener.client.send_message(
+                                        int_target = int(target_str)
+                                        int_dump = int(processed_dump_chat)
+                                        comparisons.append(
+                                            (
+                                                int_target == int_dump,
+                                                "integer comparison",
+                                            )
+                                        )
+                                    except ValueError:
+                                        pass
+
+                                    # Check all comparison results
+                                    for result, _desc in comparisons:
+                                        if result:
+                                            match_found = True
+                                            break
+
+                                    if match_found:
+                                        try:
+                                            # Send a command message to this chat first
+                                            original_text = (
+                                                self._listener.message.text.lstrip(
+                                                    "/"
+                                                )
+                                            )
+                                            cmd_msg = await self._listener.client.send_message(
+                                                chat_id=target,
+                                                text=original_text,
+                                                disable_web_page_preview=True,
+                                                disable_notification=True,
+                                            )
+                                            # Store the command message
+                                            self.dump_chat_msgs[str(target)] = (
+                                                cmd_msg
+                                            )
+                                            found_cmd_msg = cmd_msg
+                                            break
+                                        except Exception as e:
+                                            LOGGER.error(
+                                                f"Failed to create command message for dump chat {target_str}: {e}"
+                                            )
+                            elif str(Config.LEECH_DUMP_CHAT) == target_str or (
+                                target_str.startswith("-100")
+                                and str(Config.LEECH_DUMP_CHAT) == target_str[4:]
+                            ):
+                                try:
+                                    # Send a command message to this chat first
+                                    original_text = (
+                                        self._listener.message.text.lstrip("/")
+                                    )
+                                    cmd_msg = (
+                                        await self._listener.client.send_message(
                                             chat_id=target,
                                             text=original_text,
                                             disable_web_page_preview=True,
                                             disable_notification=True,
                                         )
-                                        # Store the command message
-                                        self.dump_chat_msgs[str(target)] = cmd_msg
-                                        found_cmd_msg = cmd_msg
-                                    except Exception as e:
-                                        LOGGER.error(f"Failed to create command message for dump chat {target_str}: {e}")
+                                    )
+                                    # Store the command message
+                                    self.dump_chat_msgs[str(target)] = cmd_msg
+                                    found_cmd_msg = cmd_msg
+                                except Exception as e:
+                                    LOGGER.error(
+                                        f"Failed to create command message for dump chat {target_str}: {e}"
+                                    )
 
                         # If we still don't have a command message, just copy directly
                         if not found_cmd_msg:
@@ -1876,21 +1982,28 @@ class TelegramUploader:
                                 quote=True,
                                 disable_notification=True,
                             )
-                        elif hasattr(self._sent_msg, "document") and self._sent_msg.document:
+                        elif (
+                            hasattr(self._sent_msg, "document")
+                            and self._sent_msg.document
+                        ):
                             await found_cmd_msg.reply_document(
                                 document=self._sent_msg.document.file_id,
                                 caption=self._sent_msg.caption,
                                 quote=True,
                                 disable_notification=True,
                             )
-                        elif hasattr(self._sent_msg, "photo") and self._sent_msg.photo:
+                        elif (
+                            hasattr(self._sent_msg, "photo") and self._sent_msg.photo
+                        ):
                             await found_cmd_msg.reply_photo(
                                 photo=self._sent_msg.photo.file_id,
                                 caption=self._sent_msg.caption,
                                 quote=True,
                                 disable_notification=True,
                             )
-                        elif hasattr(self._sent_msg, "audio") and self._sent_msg.audio:
+                        elif (
+                            hasattr(self._sent_msg, "audio") and self._sent_msg.audio
+                        ):
                             await found_cmd_msg.reply_audio(
                                 audio=self._sent_msg.audio.file_id,
                                 caption=self._sent_msg.caption,
@@ -1916,7 +2029,9 @@ class TelegramUploader:
                     error_str = str(e).lower()
                     # Check for PEER_ID_INVALID error which means the bot is not in the chat
                     if "peer_id_invalid" in error_str:
-                        LOGGER.error(f"Cannot send to {target}: Bot is not a member of this chat or doesn't have permission to post")
+                        LOGGER.error(
+                            f"Cannot send to {target}: Bot is not a member of this chat or doesn't have permission to post"
+                        )
                         # No need to retry for this specific error
                         return
 
@@ -1935,7 +2050,9 @@ class TelegramUploader:
             and not self._user_dump
             and not Config.LEECH_DUMP_CHAT
         ):
-            LOGGER.info("Already in user's PM with no other destinations needed, skipping copy")
+            LOGGER.info(
+                "Already in user's PM with no other destinations needed, skipping copy"
+            )
             return
 
         # Determine the destinations based on user settings
@@ -1954,10 +2071,14 @@ class TelegramUploader:
             # Add user's dump if it's set and not the same as the source chat or up_dest
             if self._user_dump:
                 user_dump_int = int(self._user_dump)
-                up_dest_int = int(self._listener.up_dest) if str(self._listener.up_dest).isdigit() else 0
+                up_dest_int = (
+                    int(self._listener.up_dest)
+                    if str(self._listener.up_dest).isdigit()
+                    else 0
+                )
 
                 # Check if user's dump is different from up_dest and source chat
-                if user_dump_int != up_dest_int and self._sent_msg.chat.id != user_dump_int:
+                if user_dump_int not in (up_dest_int, self._sent_msg.chat.id):
                     destinations.append(user_dump_int)
 
             # Then add all dump chats except the one specified with -up flag
@@ -1970,17 +2091,29 @@ class TelegramUploader:
                         if isinstance(processed_chat_id, str):
                             # Remove any prefixes like "b:", "u:", "h:" if present
                             if ":" in processed_chat_id:
-                                processed_chat_id = processed_chat_id.split(":", 1)[1]
+                                processed_chat_id = processed_chat_id.split(":", 1)[
+                                    1
+                                ]
 
                             # Remove any suffixes after | if present (for hybrid format)
                             if "|" in processed_chat_id:
-                                processed_chat_id = processed_chat_id.split("|", 1)[0]
+                                processed_chat_id = processed_chat_id.split("|", 1)[
+                                    0
+                                ]
 
                         # Check if this chat is the same as the up_dest or the source chat
                         up_dest_str = str(self._listener.up_dest)
-                        is_up_dest = (str(processed_chat_id) == up_dest_str or
-                                     (str(processed_chat_id).startswith('-100') and str(processed_chat_id)[4:] == up_dest_str) or
-                                     (up_dest_str.startswith('-100') and up_dest_str[4:] == str(processed_chat_id)))
+                        is_up_dest = (
+                            str(processed_chat_id) == up_dest_str
+                            or (
+                                str(processed_chat_id).startswith("-100")
+                                and str(processed_chat_id)[4:] == up_dest_str
+                            )
+                            or (
+                                up_dest_str.startswith("-100")
+                                and up_dest_str[4:] == str(processed_chat_id)
+                            )
+                        )
 
                         # Skip if this is the up_dest (already sent there) or the source chat
                         if is_up_dest:
@@ -1995,11 +2128,22 @@ class TelegramUploader:
                     # For backward compatibility with single chat ID
                     processed_chat_id = Config.LEECH_DUMP_CHAT
                     up_dest_str = str(self._listener.up_dest)
-                    is_up_dest = (str(processed_chat_id) == up_dest_str or
-                                 (str(processed_chat_id).startswith('-100') and str(processed_chat_id)[4:] == up_dest_str) or
-                                 (up_dest_str.startswith('-100') and up_dest_str[4:] == str(processed_chat_id)))
+                    is_up_dest = (
+                        str(processed_chat_id) == up_dest_str
+                        or (
+                            str(processed_chat_id).startswith("-100")
+                            and str(processed_chat_id)[4:] == up_dest_str
+                        )
+                        or (
+                            up_dest_str.startswith("-100")
+                            and up_dest_str[4:] == str(processed_chat_id)
+                        )
+                    )
 
-                    if not is_up_dest and self._sent_msg.chat.id != processed_chat_id:
+                    if (
+                        not is_up_dest
+                        and self._sent_msg.chat.id != processed_chat_id
+                    ):
                         destinations.append(processed_chat_id)
 
         else:
@@ -2009,7 +2153,6 @@ class TelegramUploader:
             # Check if owner has premium status
             owner_has_premium = TgClient.IS_PREMIUM_USER
 
-
             # Case 1: If user didn't set any dump and owner has premium or non-premium string
             if not self._user_dump:
                 # Send to leech dump chat and bot PM
@@ -2017,7 +2160,6 @@ class TelegramUploader:
                     # Handle LEECH_DUMP_CHAT as a list
                     if isinstance(Config.LEECH_DUMP_CHAT, list):
                         for chat_id in Config.LEECH_DUMP_CHAT:
-
                             # Process the chat ID format (handle prefixes like b:, u:, h:)
                             if isinstance(chat_id, str):
                                 # Remove any prefixes like "b:", "u:", "h:" if present
@@ -2031,10 +2173,9 @@ class TelegramUploader:
                             # Add to destinations if not the source chat
                             if self._sent_msg.chat.id != chat_id:
                                 destinations.append(chat_id)
-                    else:
-                        # For backward compatibility with single chat ID
-                        if self._sent_msg.chat.id != Config.LEECH_DUMP_CHAT:
-                            destinations.append(Config.LEECH_DUMP_CHAT)
+                    # For backward compatibility with single chat ID
+                    elif self._sent_msg.chat.id != Config.LEECH_DUMP_CHAT:
+                        destinations.append(Config.LEECH_DUMP_CHAT)
 
                 # Add user's PM if not already there
                 if self._sent_msg.chat.id != self._user_id:
@@ -2063,10 +2204,9 @@ class TelegramUploader:
                             # Add to destinations if not the source chat
                             if self._sent_msg.chat.id != chat_id:
                                 destinations.append(chat_id)
-                    else:
-                        # For backward compatibility with single chat ID
-                        if self._sent_msg.chat.id != Config.LEECH_DUMP_CHAT:
-                            destinations.append(Config.LEECH_DUMP_CHAT)
+                    # For backward compatibility with single chat ID
+                    elif self._sent_msg.chat.id != Config.LEECH_DUMP_CHAT:
+                        destinations.append(Config.LEECH_DUMP_CHAT)
 
                 # Add user's PM if not already there
                 if self._sent_msg.chat.id != self._user_id:
@@ -2092,10 +2232,9 @@ class TelegramUploader:
                             # Add to destinations if not the source chat
                             if self._sent_msg.chat.id != chat_id:
                                 destinations.append(chat_id)
-                    else:
-                        # For backward compatibility with single chat ID
-                        if self._sent_msg.chat.id != Config.LEECH_DUMP_CHAT:
-                            destinations.append(Config.LEECH_DUMP_CHAT)
+                    # For backward compatibility with single chat ID
+                    elif self._sent_msg.chat.id != Config.LEECH_DUMP_CHAT:
+                        destinations.append(Config.LEECH_DUMP_CHAT)
 
                 # Add user's PM if not already there
                 if self._sent_msg.chat.id != self._user_id:
@@ -2103,8 +2242,9 @@ class TelegramUploader:
 
                 # Add user's dump chat to destinations if it's not already the source chat
                 # This ensures files are always sent to the user's dump regardless of premium status
-                if self._user_dump and self._sent_msg.chat.id != int(self._user_dump):
-
+                if self._user_dump and self._sent_msg.chat.id != int(
+                    self._user_dump
+                ):
                     destinations.append(int(self._user_dump))
 
         # Remove duplicates while preserving order
@@ -2140,14 +2280,15 @@ class TelegramUploader:
                     for seen_id in seen:
                         try:
                             # Try direct comparison
-                            if str(processed_chat_id) == str(seen_id):
+                            if str(processed_chat_id) == str(seen_id) or (
+                                str(processed_chat_id).startswith("-100")
+                                and str(processed_chat_id)[4:] == str(seen_id)
+                            ):
                                 already_in_seen = True
                                 break
-                            # Try with/without -100 prefix
-                            elif str(processed_chat_id).startswith('-100') and str(processed_chat_id)[4:] == str(seen_id):
-                                already_in_seen = True
-                                break
-                            elif str(seen_id).startswith('-100') and str(seen_id)[4:] == str(processed_chat_id):
+                            if str(seen_id).startswith("-100") and str(seen_id)[
+                                4:
+                            ] == str(processed_chat_id):
                                 already_in_seen = True
                                 break
                             # Try integer comparison
@@ -2165,11 +2306,10 @@ class TelegramUploader:
                         destinations.append(processed_chat_id)
                         seen.add(processed_chat_id)
 
-            else:
-                # For backward compatibility with single chat ID
-                if Config.LEECH_DUMP_CHAT not in seen:
-                    destinations.append(Config.LEECH_DUMP_CHAT)
-                    seen.add(Config.LEECH_DUMP_CHAT)
+            # For backward compatibility with single chat ID
+            elif Config.LEECH_DUMP_CHAT not in seen:
+                destinations.append(Config.LEECH_DUMP_CHAT)
+                seen.add(Config.LEECH_DUMP_CHAT)
 
         # Process destinations
         if destinations:
@@ -2177,7 +2317,9 @@ class TelegramUploader:
             for dest in destinations:
                 # Check if task is cancelled before copying to each destination
                 if self._listener.is_cancelled:
-                    LOGGER.info("Task is cancelled, stopping file copy to destinations")
+                    LOGGER.info(
+                        "Task is cancelled, stopping file copy to destinations"
+                    )
                     break
 
                 # Copy to destination
@@ -2206,8 +2348,7 @@ class TelegramUploader:
 
         # Set self._sent_msg to None to prevent any further attempts to copy it
         # This will prevent the "Cannot copy message: self._sent_msg is None" error
-        if hasattr(self, '_sent_msg'):
-
+        if hasattr(self, "_sent_msg"):
             self._sent_msg = None
 
         await self._listener.on_upload_error("your upload has been stopped!")
