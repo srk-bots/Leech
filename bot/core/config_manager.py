@@ -88,17 +88,20 @@ class Config:
 
         if key == "LEECH_DUMP_CHAT":
             if isinstance(value, list):
-                return [str(v).strip() for v in value]
-
+                return [str(v).strip() for v in value if str(v).strip()]
+        
             if isinstance(value, str):
+                value = value.strip()
+                if not value:
+                    return []
                 try:
                     evaluated = ast.literal_eval(value)
                     if isinstance(evaluated, list):
-                        return [str(v).strip() for v in evaluated]
+                        return [str(v).strip() for v in evaluated if str(v).strip()]
                 except (ValueError, SyntaxError):
                     pass
-                return [value.strip()]
-
+                return [value] if value else []
+        
             raise TypeError(f"{key} should be list[str], got {type(value).__name__}")
 
         if isinstance(value, expected_type):

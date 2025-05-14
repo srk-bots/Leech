@@ -347,7 +347,7 @@ class TaskConfig:
                     raise ValueError("You must use the same config to clone!")
         else:
             chat = Config.LEECH_DUMP_CHAT
-            main_chat = chat[0] if isinstance(chat, list) else chat
+            main_chat = chat[0] if isinstance(chat, list) and chat else chat or ""
             self.up_dest = self.up_dest or main_chat
             self.hybrid_leech = TgClient.IS_PREMIUM_USER and (
                 self.user_dict.get("HYBRID_LEECH")
