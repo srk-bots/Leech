@@ -104,7 +104,9 @@ class Config:
 
             return expected_type(value)
         except Exception as e:
-            raise TypeError(f"Invalid type for {key}: expected {expected_type}, got {type(value)}") from e
+            raise TypeError(
+                f"Invalid type for {key}: expected {expected_type}, got {type(value)}"
+            ) from e
 
     @classmethod
     def _normalize_value(cls, key: str, value: Any) -> Any:
@@ -118,7 +120,12 @@ class Config:
             return value.strip("/")
 
         if key == "USENET_SERVERS":
-            if not isinstance(value, list) or not value or not isinstance(value[0], dict) or not value[0].get("host"):
+            if (
+                not isinstance(value, list)
+                or not value
+                or not isinstance(value[0], dict)
+                or not value[0].get("host")
+            ):
                 return []
 
         return value
@@ -137,10 +144,7 @@ class Config:
 
     @classmethod
     def get_all(cls) -> dict:
-        return {
-            key: getattr(cls, key)
-            for key in sorted(cls.__annotations__)
-        }
+        return {key: getattr(cls, key) for key in sorted(cls.__annotations__)}
 
     @classmethod
     def load(cls):
