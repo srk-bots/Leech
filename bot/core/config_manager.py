@@ -1,5 +1,4 @@
 import ast
-import json
 import logging
 import os
 from importlib import import_module
@@ -86,11 +85,11 @@ class Config:
         expected_type = type(getattr(cls, key))
         if value is None:
             return None
-    
+
         if key == "LEECH_DUMP_CHAT":
             if isinstance(value, list):
                 return [str(v).strip() for v in value]
-        
+
             if isinstance(value, str):
                 try:
                     evaluated = ast.literal_eval(value)
@@ -99,21 +98,21 @@ class Config:
                 except (ValueError, SyntaxError):
                     pass
                 return [value.strip()]
-        
+
             raise TypeError(f"{key} should be list[str], got {type(value).__name__}")
-    
+
         if isinstance(value, expected_type):
             return value
-    
+
         if expected_type is bool:
             return str(value).strip().lower() in {"true", "1", "yes"}
-    
+
         if expected_type in [list, dict]:
             if not isinstance(value, str):
                 raise TypeError(
                     f"{key} should be {expected_type.__name__}, got {type(value).__name__}"
                 )
-    
+
             try:
                 evaluated = ast.literal_eval(value)
                 if isinstance(evaluated, expected_type):
@@ -123,7 +122,7 @@ class Config:
                 raise TypeError(
                     f"{key} should be {expected_type.__name__}, got invalid string: {value}"
                 ) from e
-    
+
         try:
             return expected_type(value)
         except (ValueError, TypeError) as exc:
@@ -143,7 +142,10 @@ class Config:
             return value.strip("/")
 
         if key == "USENET_SERVERS" and (
-            not isinstance(value, list) or not value or not isinstance(value[0], dict) or not value[0].get("host")
+            not isinstance(value, list)
+            or not value
+            or not isinstance(value[0], dict)
+            or not value[0].get("host")
         ):
             return []
 
