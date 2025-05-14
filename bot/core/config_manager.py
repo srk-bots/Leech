@@ -73,6 +73,8 @@ class Config:
     HYDRA_IP: str = ""
     HYDRA_API_KEY: str = ""
     INSTADL_API: str = ""
+    HEROKU_APP_NAME: str = ""
+    HEROKU_API_KEY: str = ""
 
     @classmethod
     def _convert(cls, key, value):
@@ -82,7 +84,7 @@ class Config:
         if isinstance(value, expected_type):
             return value
 
-        if expected_type == bool:
+        if isinstance(expected_type, bool):
             return str(value).strip().lower() in {"true", "1", "yes"}
 
         if expected_type in [list, dict]:
@@ -92,7 +94,7 @@ class Config:
                 )
 
             try:
-                evaluated = literal_eval(value)
+                evaluated = ast.literal_eval(value)
                 if isinstance(evaluated, expected_type):
                     return evaluated
                 raise TypeError

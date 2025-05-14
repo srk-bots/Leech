@@ -109,3 +109,7 @@ QUEUE_UPLOAD = 0
 RSS_DELAY = 600
 RSS_CHAT = ""
 RSS_SIZE_LIMIT = 0
+
+# Heroku config for get BASE_URL automatically
+HEROKU_APP_NAME = ""
+HEROKU_API_KEY = ""
