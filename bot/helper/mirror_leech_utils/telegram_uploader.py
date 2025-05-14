@@ -554,7 +554,10 @@ class TelegramUploader:
         if self._user_dump:
             with contextlib.suppress(Exception):
                 await _copy(int(self._user_dump))
-        if isinstance(Config.LEECH_DUMP_CHAT, list) and len(Config.LEECH_DUMP_CHAT) > 1:
+        if (
+            isinstance(Config.LEECH_DUMP_CHAT, list)
+            and len(Config.LEECH_DUMP_CHAT) > 1
+        ):
             for i in Config.LEECH_DUMP_CHAT[1:]:
                 with contextlib.suppress(Exception):
                     await _copy(i)
