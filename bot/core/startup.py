@@ -1,7 +1,7 @@
 from asyncio import create_subprocess_exec, create_subprocess_shell
 from os import environ
 
-import requests
+import aiohttp
 from aiofiles import open as aiopen
 from aiofiles.os import makedirs, remove
 from aiofiles.os import path as aiopath
@@ -274,16 +274,18 @@ async def update_variables():
             f"https://api.heroku.com/apps/{Config.HEROKU_APP_NAME}",
         ]
 
-        for url in urls:
-            try:
-                response = requests.get(url, headers=headers)
-                response.raise_for_status()
-                app_data = response.json()
-                if web_url := app_data.get("web_url"):
-                    Config.set("BASE_URL", web_url.rstrip("/"))
-                    return
-            except Exception:
-                continue
+        async with aiohttp.ClientSession(headers=headers) as session:
+            for url in urls:
+                try:
+                    async with session.get(url) as response:
+                        response.raise_for_status()
+                        app_data = await response.json()
+                        if web_url := app_data.get("web_url"):
+                            Config.set("BASE_URL", web_url.rstrip("/"))
+                            return
+                except Exception as e:
+                    LOGGER.error(f"BASE_URL error: {e}")
+                    continue
 
 
 async def load_configurations():

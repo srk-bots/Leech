@@ -22,7 +22,7 @@ class Config:
     JD_EMAIL: str = ""
     JD_PASS: str = ""
     IS_TEAM_DRIVE: bool = False
-    LEECH_DUMP_CHAT: ClassVar[list[str]] = []
+    LEECH_DUMP_CHAT: ClassVar[list[str]] | str = []
     LEECH_FILENAME_PREFIX: str = ""
     LEECH_SPLIT_SIZE: int = 2097152000
     MEDIA_GROUP: bool = False
@@ -84,7 +84,7 @@ class Config:
         if isinstance(value, expected_type):
             return value
 
-        if isinstance(expected_type, bool):
+        if expected_type is bool:
             return str(value).strip().lower() in {"true", "1", "yes"}
 
         if expected_type in [list, dict]:
