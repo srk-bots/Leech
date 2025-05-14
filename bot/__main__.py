@@ -7,7 +7,6 @@ from pyrogram.types import BotCommand
 from . import LOGGER, bot_loop
 from .core.config_manager import Config, SystemEnv
 
-# Initialize Configurations
 LOGGER.info("Loading config...")
 Config.load()
 SystemEnv.load()
@@ -19,7 +18,6 @@ bot_loop.run_until_complete(load_settings())
 from .core.aeon_client import TgClient
 from .helper.telegram_helper.bot_commands import BotCommands
 
-# Commands and Descriptions
 COMMANDS = {
     "MirrorCommand": "- Start mirroring",
     "LeechCommand": "- Start leeching",
@@ -51,7 +49,6 @@ COMMANDS = {
     "BotSetCommand": "- [ADMIN] Open Bot settings",
     "LogCommand": "- [ADMIN] View log",
     "RestartCommand": "- [ADMIN] Restart the bot",
-    # "RestartSessionsCommand": "- [ADMIN] Restart the session instead of the bot",
 }
 
 
@@ -168,6 +165,37 @@ create_help_buttons()
 add_handlers()
 
 
+# Setup cleanup handler
+import atexit
+
+from .helper.ext_utils.db_handler import database
+
+
+async def cleanup():
+    """Clean up resources before shutdown"""
+    LOGGER.info("Performing cleanup before shutdown...")
+
+    # Stop database heartbeat task
+    await database.stop_heartbeat()
+
+    # Disconnect from database
+    await database.disconnect()
+
+    LOGGER.info("Cleanup completed")
+
+
+# Register cleanup function to run at exit
+def run_cleanup():
+    bot_loop.run_until_complete(cleanup())
+
+
+atexit.register(run_cleanup)
+
 # Run Bot
 LOGGER.info("Bot Started!")
-bot_loop.run_forever()
+try:
+    bot_loop.run_forever()
+except (KeyboardInterrupt, SystemExit):
+    LOGGER.info("Bot stopping...")
+    run_cleanup()
+    LOGGER.info("Bot stopped gracefully")

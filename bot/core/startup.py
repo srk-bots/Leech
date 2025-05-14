@@ -7,6 +7,7 @@ from asyncio import (
 from os import environ
 from time import time
 
+import requests
 from aiofiles import open as aiopen
 from aiofiles.os import makedirs, remove
 from aiofiles.os import path as aiopath
@@ -115,6 +116,10 @@ async def load_settings():
         if await aiopath.exists(p):
             await rmtree(p, ignore_errors=True)
     await database.connect()
+
+    # Start the database heartbeat task to keep the connection alive
+    await database.start_heartbeat()
+
     if database.db is not None:
         # Process any pending message deletions
         await process_pending_deletions()
@@ -376,6 +381,28 @@ async def update_variables():
                     index_urls.append(temp[2])
                 else:
                     index_urls.append("")
+
+    if Config.HEROKU_APP_NAME and Config.HEROKU_API_KEY:
+        headers = {
+            "Accept": "application/vnd.heroku+json; version=3",
+            "Authorization": f"Bearer {Config.HEROKU_API_KEY}",
+        }
+
+        urls = [
+            f"https://api.heroku.com/teams/apps/{Config.HEROKU_APP_NAME}",
+            f"https://api.heroku.com/apps/{Config.HEROKU_APP_NAME}",
+        ]
+
+        for url in urls:
+            try:
+                response = requests.get(url, headers=headers)
+                response.raise_for_status()
+                app_data = response.json()
+                if web_url := app_data.get("web_url"):
+                    Config.set("BASE_URL", web_url.rstrip("/"))
+                    return
+            except Exception:
+                continue
 
 
 async def load_configurations():

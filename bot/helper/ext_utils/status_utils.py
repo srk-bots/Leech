@@ -204,7 +204,7 @@ def source(self):
 
 async def get_readable_message(sid, is_user, page_no=1, status="All", page_step=1):
     msg = ""
-    msg += "<blockquote><b>Powered by @ProjectAeon</b></blockquote>\n\n"
+    msg += "<blockquote><b>Powered by @aimmirror</b></blockquote>\n\n"
     button = None
 
     tasks = await get_specific_tasks(status, sid if is_user else None)

@@ -84,7 +84,7 @@ async def _stop_duplicate(tor):
         )[0]
         msg, button = await stop_duplicate_check(task.listener)
         if msg:
-            _on_download_error(msg, tor, button)
+            await _on_download_error(msg, tor, button)
 
 
 @new_task

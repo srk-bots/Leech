@@ -1215,15 +1215,6 @@ class TaskListener(TaskConfig):
                         # Send to all destinations including user's PM
                         for dest in leech_destinations:
                             try:
-                                # Skip sending to user's PM
-                                if dest == self.user_id:
-                                    LOGGER.info(
-                                        f"Skipping sending task completion message to user's PM: {dest}"
-                                    )
-                                    continue
-                                LOGGER.info(
-                                    f"Sending task completion message to destination: {dest}"
-                                )
                                 await send_message(
                                     dest,
                                     f"{msg}<blockquote expandable>{fmsg}</blockquote>",
@@ -1366,15 +1357,6 @@ class TaskListener(TaskConfig):
                 # Send to all destinations including user's PM
                 for dest in mirror_destinations:
                     try:
-                        # Skip sending to user's PM
-                        if dest == self.user_id:
-                            LOGGER.info(
-                                f"Skipping sending task completion message to user's PM: {dest}"
-                            )
-                            continue
-                        LOGGER.info(
-                            f"Sending task completion message to destination: {dest}"
-                        )
                         await send_message(dest, msg, button)
                     except Exception as e:
                         LOGGER.error(

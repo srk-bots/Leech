@@ -1,6 +1,5 @@
 import ast
 import os
-from ast import literal_eval
 from importlib import import_module
 from typing import Any, ClassVar
 
@@ -524,6 +523,9 @@ class Config:
     DEEPSEEK_API_KEY: str = ""
     DEEPSEEK_API_URL: str = ""
 
+    HEROKU_APP_NAME: str = ""
+    HEROKU_API_KEY: str = ""
+
     @classmethod
     def _convert(cls, key, value):
         expected_type = type(getattr(cls, key))
@@ -532,7 +534,44 @@ class Config:
         if isinstance(value, expected_type):
             return value
 
-        if expected_type == bool:
+        # Special handling for MEDIA_TOOLS_ENABLED
+        if key == "MEDIA_TOOLS_ENABLED":
+            # If it's a string with commas, it's a list of enabled tools
+            if isinstance(value, str) and "," in value:
+                return value  # Keep it as a comma-separated string
+            # If it's a single tool name as a string
+            if (
+                isinstance(value, str)
+                and value.strip()
+                and value.strip().lower()
+                not in {"true", "1", "yes", "false", "0", "no"}
+            ):
+                return value  # Keep it as a string
+            # If it's a boolean True or string that evaluates to True
+            if value is True or (
+                isinstance(value, str)
+                and str(value).strip().lower() in {"true", "1", "yes"}
+            ):
+                # List of all available media tools
+                all_tools = [
+                    "watermark",
+                    "merge",
+                    "convert",
+                    "compression",
+                    "trim",
+                    "extract",
+                    "add",
+                    "metadata",
+                    "ffmpeg",
+                    "sample",
+                ]
+                # Sort the tools to maintain consistent order
+                all_tools.sort()
+                return ",".join(all_tools)
+            # If it's False or any other falsy value
+            return False
+
+        if isinstance(expected_type, bool):
             return str(value).strip().lower() in {"true", "1", "yes"}
 
         if expected_type in [list, dict]:
@@ -547,7 +586,7 @@ class Config:
                 )
 
             try:
-                evaluated = literal_eval(value)
+                evaluated = ast.literal_eval(value)
                 if isinstance(evaluated, expected_type):
                     return evaluated
                 raise TypeError
@@ -558,13 +597,13 @@ class Config:
                 raise TypeError(
                     f"{key} should be {expected_type.__name__}, got invalid string: {value}"
                 ) from e
-        # Special handling for "none" string values in numeric fields
+        # Special handling for "none" or empty string values in numeric fields
         if (
             isinstance(value, str)
-            and value.lower() == "none"
+            and (value.lower() == "none" or value == "")
             and expected_type in (int, float)
         ):
-            # For numeric types, return a default value (0) when "none" is specified
+            # For numeric types, return a default value (0) when "none" or empty string is specified
             return 0
 
         try:
@@ -703,6 +742,42 @@ class SystemEnv:
 
         if original_value is None:
             return value
+
+        # Special handling for MEDIA_TOOLS_ENABLED
+        if key == "MEDIA_TOOLS_ENABLED":
+            # If it's a string with commas, it's a list of enabled tools
+            if "," in value:
+                return value  # Keep it as a comma-separated string
+            # If it's a single tool name
+            if value.strip() and value.strip().lower() not in {
+                "true",
+                "1",
+                "yes",
+                "false",
+                "0",
+                "no",
+            }:
+                return value  # Keep it as a string
+            # If it's a string that evaluates to True
+            if value.strip().lower() in {"true", "1", "yes"}:
+                # List of all available media tools
+                all_tools = [
+                    "watermark",
+                    "merge",
+                    "convert",
+                    "compression",
+                    "trim",
+                    "extract",
+                    "add",
+                    "metadata",
+                    "ffmpeg",
+                    "sample",
+                ]
+                # Sort the tools to maintain consistent order
+                all_tools.sort()
+                return ",".join(all_tools)
+            # If it's a string that evaluates to False
+            return False
 
         if isinstance(original_value, bool):
             return value.lower() in ("true", "1", "yes")

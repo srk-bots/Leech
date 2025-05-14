@@ -34,7 +34,7 @@ from bot.helper.telegram_helper.message_utils import (
 )
 
 handler_dict = {}
-no_thumb = "https://graph.org/file/73ae908d18c6b38038071.jpg"
+no_thumb = "https://graph.org/file/80b7fb095063a18f9e232.jpg"
 
 leech_options = [
     "THUMBNAIL",
@@ -83,6 +83,8 @@ yt_dlp_options = ["YT_DLP_OPTIONS", "USER_COOKIES"]
 
 
 async def get_user_settings(from_user, stype="main"):
+    from bot.helper.ext_utils.bot_utils import is_media_tool_enabled
+
     user_id = from_user.id
     name = from_user.mention
     buttons = ButtonMaker()
@@ -564,7 +566,24 @@ Please use /mediatools command to configure convert settings.
         cookies_status = "Added" if await aiopath.exists(cookies_path) else "None"
 
         # Only show Metadata button if metadata tool is enabled
-        from bot.helper.ext_utils.bot_utils import is_media_tool_enabled
+
+        # Force refresh Config.MEDIA_TOOLS_ENABLED from database to ensure accurate status
+        try:
+            # Check if database is connected and db attribute exists
+            if (
+                database.db is not None
+                and hasattr(database, "db")
+                and hasattr(database.db, "settings")
+            ):
+                db_config = await database.db.settings.config.find_one(
+                    {"_id": TgClient.ID},
+                    {"MEDIA_TOOLS_ENABLED": 1, "_id": 0},
+                )
+                if db_config and "MEDIA_TOOLS_ENABLED" in db_config:
+                    # Update Config with the latest value from database
+                    Config.MEDIA_TOOLS_ENABLED = db_config["MEDIA_TOOLS_ENABLED"]
+        except Exception:
+            pass
 
         if is_media_tool_enabled("metadata"):
             buttons.data_button("Metadata", f"userset {user_id} metadata")

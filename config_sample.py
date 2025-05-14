@@ -132,6 +132,10 @@ QUEUE_ALL = 0  # Maximum number of concurrent tasks (0 = unlimited)
 QUEUE_DOWNLOAD = 0  # Maximum number of concurrent downloads (0 = unlimited)
 QUEUE_UPLOAD = 0  # Maximum number of concurrent uploads (0 = unlimited)
 
+# Heroku config for get BASE_URL automatically
+HEROKU_APP_NAME = ""
+HEROKU_API_KEY = ""
+
 # RSS
 RSS_DELAY = 600  # Delay between RSS feed checks in seconds
 RSS_CHAT = ""  # Chat ID where RSS feed updates will be sent

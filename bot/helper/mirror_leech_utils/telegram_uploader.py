@@ -1451,11 +1451,18 @@ class TelegramUploader:
             err_type = "RPCError: " if isinstance(err, RPCError) else ""
             LOGGER.error(f"{err_type}{err}. Path: {self._up_path}")
             # Check if key is defined before using it
-            if isinstance(err, BadRequest):
+            if isinstance(err, BadRequest | RPCError):
+                err_str = str(err)
                 # Handle PHOTO_EXT_INVALID error specifically
-                if "PHOTO_EXT_INVALID" in str(err):
+                if "PHOTO_EXT_INVALID" in err_str:
                     LOGGER.error(
                         f"Invalid photo extension. Retrying as document. Path: {self._up_path}"
+                    )
+                    return await self._upload_file(cap_mono, file, o_path, True)
+                # Handle PHOTO_SAVE_FILE_INVALID error specifically
+                if "PHOTO_SAVE_FILE_INVALID" in err_str:
+                    LOGGER.error(
+                        f"Telegram couldn't save the photo. Retrying As Document. Path: {self._up_path}"
                     )
                     return await self._upload_file(cap_mono, file, o_path, True)
                 # Handle other BadRequest errors for non-document uploads

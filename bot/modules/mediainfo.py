@@ -869,13 +869,22 @@ async def gen_mediainfo(
             if not is_url(link):
                 raise ValueError(f"Invalid URL: {link}")
 
-            # Extract filename from URL
-            filename_match = re_search(".+/([^/?]+)", link)
-            filename = (
-                filename_match.group(1)
-                if filename_match
-                else f"mediainfo_{int(time())}"
-            )
+            # Extract filename from URL, handling special cases like 'findpath'
+            # First check if the URL contains 'findpath' with an id parameter
+            findpath_match = re_search(r"findpath\?id=([^&]+)", link)
+            if findpath_match:
+                # This is a Google Drive index link with findpath parameter
+                # Use the id as part of the filename
+                drive_id = findpath_match.group(1)
+                filename = f"gdrive_{drive_id}_{int(time())}"
+            else:
+                # Regular URL filename extraction
+                filename_match = re_search(".+/([^/?]+)", link)
+                filename = (
+                    filename_match.group(1)
+                    if filename_match
+                    else f"mediainfo_{int(time())}"
+                )
 
             # Clean filename of any problematic characters
             filename = filename.replace(" ", "_").replace("'", "").replace('"', "")
@@ -949,6 +958,14 @@ async def gen_mediainfo(
                             if downloaded_size > 0:
                                 LOGGER.info(
                                     f"Successfully downloaded {downloaded_size / (1024 * 1024):.1f} MB sample of {filename}"
+                                )
+                            # Check if this might be a Google Drive index link with findpath
+                            elif "findpath" in link:
+                                LOGGER.error(
+                                    f"Failed to download data from Google Drive index link: {link}. This might require authentication or the file might not be directly accessible."
+                                )
+                                raise Exception(
+                                    "Failed to download from Google Drive index link. Try downloading the file first and then generating MediaInfo."
                                 )
                             else:
                                 LOGGER.error(
@@ -2163,6 +2180,16 @@ async def gen_mediainfo(
         if return_code != 0:
             LOGGER.error(f"ffprobe error: {stderr}")
 
+            # Check if the file exists and is accessible
+            if not await aiopath.exists(des_path):
+                LOGGER.error(f"File does not exist at path: {des_path}")
+                raise Exception(f"File not found: {des_path}")
+
+            # Check if the file has zero size
+            if await aiopath.getsize(des_path) == 0:
+                LOGGER.error(f"File exists but has zero size: {des_path}")
+                raise Exception(f"File has zero size: {des_path}")
+
             # If it's a subtitle file and ffprobe failed, try a more basic approach
             if file_ext in subtitle_exts:
                 # Create basic info for subtitle files
@@ -2218,9 +2245,20 @@ async def gen_mediainfo(
             except Exception as e:
                 LOGGER.error(f"Fallback file analysis failed: {e}")
 
-            # If all fallbacks fail, raise the original exception
+                # Check if this is a "No such file or directory" error
+                if "No such file or directory" in str(e):
+                    # This is likely a file path issue
+                    raise Exception(
+                        f"File not found or inaccessible: {des_path}. If this is a Google Drive index link, try downloading the file first."
+                    )
+                # For other errors, provide more context
+                raise Exception(
+                    f"Media analysis failed: {e}. Try downloading the file first and then generating MediaInfo."
+                )
+
+            # If all fallbacks fail, raise the original exception with more context
             raise Exception(
-                f"ffprobe failed with return code {return_code}: {stderr}"
+                f"ffprobe failed with return code {return_code}: {stderr}. The file may be corrupted or in an unsupported format."
             )
 
         if stdout:
@@ -2234,9 +2272,21 @@ async def gen_mediainfo(
             raise Exception("ffprobe returned empty output")
 
     except Exception as e:
-        LOGGER.error(f"MediaInfo error: {e}")
+        error_message = str(e)
+        LOGGER.error(f"MediaInfo error: {error_message}")
+
+        # Provide more helpful error messages for common issues
+        if "findpath" in error_message or "Google Drive index link" in error_message:
+            user_message = "MediaInfo failed: Cannot directly process Google Drive index links. Please download the file first and then use the /mediainfo command on the downloaded file."
+        elif "No such file or directory" in error_message:
+            user_message = "MediaInfo failed: File not found or inaccessible. If using a link, try downloading the file first."
+        elif "Failed to download" in error_message:
+            user_message = f"MediaInfo failed: {error_message}. The link may be private or require authentication."
+        else:
+            user_message = f"MediaInfo failed: {error_message}"
+
         if not silent and temp_send:
-            await edit_message(temp_send, f"MediaInfo failed: {e!s}")
+            await edit_message(temp_send, user_message)
         return None
     finally:
         # Clean up temporary file ONLY if it's not the original file path

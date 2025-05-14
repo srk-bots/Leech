@@ -6534,7 +6534,7 @@ async def get_menu(option, message, user_id):
 
     # Determine the back button target based on the option
     if option == "WATERMARK_PRIORITY":
-        back_target = "watermark"
+        back_target = "watermark"  # This will take us back to the watermark menu when clicking Back
     elif option == "MERGE_PRIORITY":
         back_target = "merge"
     elif option == "CONVERT_PRIORITY":
@@ -7501,17 +7501,10 @@ async def set_option(_, message, option, rfunc):
     update_user_ldata(user_id, option, value)
     await delete_message(message)
 
-    # Special handling for WATERMARK_PRIORITY to return to watermark menu
+    # For WATERMARK_PRIORITY, return to the menu WATERMARK_PRIORITY
     if option == "WATERMARK_PRIORITY":
-        # Create a fake CallbackQuery object to pass to update_media_tools_settings
-        fake_query = CallbackQuery(
-            id="fake_id",
-            from_user=message.from_user,
-            chat_instance="fake_chat",
-            message=message,
-            data=f"mediatools {user_id} watermark",
-        )
-        await update_media_tools_settings(fake_query, "watermark")
+        # Create a fake CallbackQuery object to pass to get_menu
+        await get_menu("WATERMARK_PRIORITY", message, user_id)
     # Check if we're in a watermark menu with pagination
     elif option.startswith(
         ("WATERMARK_", "AUDIO_WATERMARK_", "SUBTITLE_WATERMARK_")
@@ -8081,6 +8074,15 @@ async def edit_media_tools_settings(client, query):
             # For all other toggles, just set the value directly
             update_user_ldata(user_id, data[3], data[4] == "t")
 
+        # If this is a toggle for MEDIA_TOOLS_ENABLED, update the database
+        if data[3] == "MEDIA_TOOLS_ENABLED":
+            # Update the Config object
+            Config.MEDIA_TOOLS_ENABLED = data[4] == "t"
+            # Update the database
+            await database.update_config(
+                {"MEDIA_TOOLS_ENABLED": Config.MEDIA_TOOLS_ENABLED}
+            )
+
         # Check if a specific return menu is specified in the callback data
         if len(data) > 5:
             # Use the specified return menu
@@ -8263,8 +8265,19 @@ async def edit_media_tools_settings(client, query):
         # Format the help text with blockquote
         formatted_help_text = f"<blockquote>{help_text}</blockquote>\n\nSend a value for {data[3]}. Timeout: 60 sec"
 
+        # For WATERMARK_PRIORITY, add a note about returning to previous menu
+        if data[3] == "WATERMARK_PRIORITY":
+            formatted_help_text += "\n\nAfter setting the value, you will be returned to the Set Priority menu."
+
         # Add back button that returns to the correct menu
-        if data[3].startswith(
+        if data[3] == "WATERMARK_PRIORITY":
+            # For WATERMARK_PRIORITY, go back to the watermark menu
+            buttons.data_button(
+                "Back",
+                f"mediatools {user_id} menu WATERMARK_PRIORITY",
+                "footer",
+            )
+        elif data[3].startswith(
             (
                 "WATERMARK_",
                 "AUDIO_WATERMARK_",
@@ -8272,7 +8285,7 @@ async def edit_media_tools_settings(client, query):
                 "IMAGE_WATERMARK_",
             )
         ):
-            # For all watermark settings, check if we have a stored page number
+            # For all other watermark settings, check if we have a stored page number
             stored_page = handler_dict.get(f"{user_id}_watermark_page")
 
             if stored_page is not None:

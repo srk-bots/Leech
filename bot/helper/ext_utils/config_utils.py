@@ -11,7 +11,12 @@ async def reset_tool_configs(tool_name, database):
     """
     # Define prefixes for each tool
     tool_prefixes = {
-        "watermark": ["WATERMARK_", "AUDIO_WATERMARK_", "SUBTITLE_WATERMARK_"],
+        "watermark": [
+            "WATERMARK_",
+            "AUDIO_WATERMARK_",
+            "SUBTITLE_WATERMARK_",
+            "IMAGE_WATERMARK_",
+        ],
         "merge": ["MERGE_", "CONCAT_DEMUXER_", "FILTER_COMPLEX_"],
         "convert": ["CONVERT_"],
         "compression": ["COMPRESSION_"],
@@ -19,7 +24,7 @@ async def reset_tool_configs(tool_name, database):
         "extract": ["EXTRACT_"],
         "add": ["ADD_"],
         "metadata": ["METADATA_"],
-        "ffmpeg": [],  # No specific configs for ffmpeg
+        "ffmpeg": ["FFMPEG_CMDS"],  # Reset FFMPEG_CMDS for users
         "sample": [],  # No specific configs for sample
     }
 
@@ -40,11 +45,18 @@ async def reset_tool_configs(tool_name, database):
         "WATERMARK_OPACITY": 0.0,
         "WATERMARK_REMOVE_ORIGINAL": True,
         # Audio watermark settings
+        "AUDIO_WATERMARK_ENABLED": False,
         "AUDIO_WATERMARK_VOLUME": 0.0,
         "AUDIO_WATERMARK_INTERVAL": 0,
         # Subtitle watermark settings
+        "SUBTITLE_WATERMARK_ENABLED": False,
         "SUBTITLE_WATERMARK_STYLE": "none",
         "SUBTITLE_WATERMARK_INTERVAL": 0,
+        # Image watermark settings
+        "IMAGE_WATERMARK_ENABLED": False,
+        "IMAGE_WATERMARK_OPACITY": 0.0,
+        "IMAGE_WATERMARK_SCALE": "10",
+        "IMAGE_WATERMARK_POSITION": "bottom_right",
         # Merge Settings
         "MERGE_ENABLED": False,
         "MERGE_PRIORITY": 1,
@@ -53,6 +65,7 @@ async def reset_tool_configs(tool_name, database):
         "CONCAT_DEMUXER_ENABLED": True,
         "FILTER_COMPLEX_ENABLED": False,
         "MERGE_REMOVE_ORIGINAL": True,
+        "MERGE_DELETE_ORIGINAL": True,
         # Output formats
         "MERGE_OUTPUT_FORMAT_VIDEO": "none",
         "MERGE_OUTPUT_FORMAT_AUDIO": "none",
@@ -140,6 +153,7 @@ async def reset_tool_configs(tool_name, database):
         "COMPRESSION_ENABLED": False,
         "COMPRESSION_PRIORITY": 4,
         "COMPRESSION_DELETE_ORIGINAL": True,
+        "COMPRESSION_REMOVE_ORIGINAL": True,
         # Video Compression Settings
         "COMPRESSION_VIDEO_ENABLED": False,
         "COMPRESSION_VIDEO_PRESET": "none",
@@ -150,6 +164,7 @@ async def reset_tool_configs(tool_name, database):
         "COMPRESSION_VIDEO_BITDEPTH": "none",
         "COMPRESSION_VIDEO_BITRATE": "none",
         "COMPRESSION_VIDEO_RESOLUTION": "none",
+        "COMPRESSION_VIDEO_FORMAT": "none",
         # Audio Compression Settings
         "COMPRESSION_AUDIO_ENABLED": False,
         "COMPRESSION_AUDIO_PRESET": "none",
@@ -157,6 +172,7 @@ async def reset_tool_configs(tool_name, database):
         "COMPRESSION_AUDIO_BITRATE": "none",
         "COMPRESSION_AUDIO_CHANNELS": "none",
         "COMPRESSION_AUDIO_BITDEPTH": "none",
+        "COMPRESSION_AUDIO_FORMAT": "none",
         # Image Compression Settings
         "COMPRESSION_IMAGE_ENABLED": False,
         "COMPRESSION_IMAGE_PRESET": "none",
@@ -181,6 +197,7 @@ async def reset_tool_configs(tool_name, database):
         "TRIM_START_TIME": "00:00:00",
         "TRIM_END_TIME": "",
         "TRIM_DELETE_ORIGINAL": False,
+        "TRIM_REMOVE_ORIGINAL": False,
         # Video Trim Settings
         "TRIM_VIDEO_ENABLED": False,
         "TRIM_VIDEO_CODEC": "none",
@@ -210,6 +227,7 @@ async def reset_tool_configs(tool_name, database):
         "EXTRACT_ENABLED": False,
         "EXTRACT_PRIORITY": 6,
         "EXTRACT_DELETE_ORIGINAL": True,
+        "EXTRACT_REMOVE_ORIGINAL": True,
         # Video Extract Settings
         "EXTRACT_VIDEO_ENABLED": False,
         "EXTRACT_VIDEO_CODEC": "none",
@@ -245,6 +263,8 @@ async def reset_tool_configs(tool_name, database):
         "EXTRACT_ATTACHMENT_FILTER": "none",
         "EXTRACT_MAINTAIN_QUALITY": True,
         # Metadata Settings
+        "METADATA_ENABLED": False,
+        "METADATA_PRIORITY": 8,
         "METADATA_KEY": "",
         "METADATA_ALL": "",
         "METADATA_TITLE": "",
@@ -259,10 +279,16 @@ async def reset_tool_configs(tool_name, database):
         "METADATA_SUBTITLE_TITLE": "",
         "METADATA_SUBTITLE_AUTHOR": "",
         "METADATA_SUBTITLE_COMMENT": "",
+        # FFmpeg Settings
+        "FFMPEG_CMDS": {},  # Dictionary of FFmpeg commands
         # Add Settings
         "ADD_ENABLED": False,
         "ADD_PRIORITY": 7,
         "ADD_DELETE_ORIGINAL": True,
+        "ADD_PRESERVE_TRACKS": False,
+        "ADD_REPLACE_TRACKS": False,
+        # Add Settings - General
+        "ADD_REMOVE_ORIGINAL": True,
         # Video Add Settings
         "ADD_VIDEO_ENABLED": False,
         "ADD_VIDEO_PATH": "none",
@@ -306,23 +332,28 @@ async def reset_tool_configs(tool_name, database):
     # Step 1: Reset global (owner) configurations
     configs_to_reset = {}
 
-    # Get all current configurations
-    all_configs = Config.get_all()
+    # Special handling for ffmpeg tool - don't reset owner's FFMPEG_CMDS
+    if tool_name.lower() == "ffmpeg":
+        # Skip resetting owner configurations for ffmpeg
+        pass
+    else:
+        # Get all current configurations
+        all_configs = Config.get_all()
 
-    # Find configurations that match the tool's prefixes
-    for key in all_configs:
-        for prefix in prefixes:
-            if key.startswith(prefix):
-                # Get the default value if it exists, otherwise skip
-                default_value = default_values.get(key)
-                if default_value is not None:
-                    configs_to_reset[key] = default_value
-                    # Also update the Config class
-                    Config.set(key, default_value)
+        # Find configurations that match the tool's prefixes
+        for key in all_configs:
+            for prefix in prefixes:
+                if key.startswith(prefix):
+                    # Get the default value if it exists, otherwise skip
+                    default_value = default_values.get(key)
+                    if default_value is not None:
+                        configs_to_reset[key] = default_value
+                        # Also update the Config class
+                        Config.set(key, default_value)
 
-    # Update the database if there are configurations to reset
-    if configs_to_reset:
-        await database.update_config(configs_to_reset)
+        # Update the database if there are configurations to reset
+        if configs_to_reset:
+            await database.update_config(configs_to_reset)
 
     # Step 2: Reset user-specific configurations
     # Iterate through all users
@@ -332,7 +363,7 @@ async def reset_tool_configs(tool_name, database):
         # Find user configurations that match the tool's prefixes
         for key in list(user_dict):
             for prefix in prefixes:
-                if key.startswith(prefix):
+                if key.startswith(prefix) or key == prefix:
                     # Remove the configuration from the user's data
                     user_dict.pop(key, None)
                     user_configs_to_reset = True

@@ -411,24 +411,27 @@ async def get_buttons(key=None, edit_type=None, page=0, user_id=None):
     buttons = ButtonMaker()
     msg = ""  # Initialize msg with a default value
     if key is None:
-        from bot.helper.ext_utils.bot_utils import is_media_tool_enabled
-
-        buttons.data_button("⚙️ Config", "botset var")
+        # Group buttons by category for better organization
+        # Core Settings
+        buttons.data_button("⚙️ Config Variables", "botset var")
         buttons.data_button("🔒 Private Files", "botset private")
 
-        # Only show Media Tools button if media tools are enabled
-        if is_media_tool_enabled("mediatools"):
-            buttons.data_button("🎬 Media Tools", "botset mediatools")
+        # Download Clients
+        buttons.data_button("🔄 qBittorrent", "botset qbit")
+        buttons.data_button("📥 Aria2c", "botset aria")
+        buttons.data_button("📦 Sabnzbd", "botset nzb")
+        buttons.data_button("🔄 JD Sync", "botset syncjd")
+
+        # Monitoring & Tools
+        buttons.data_button("📊 Task Monitor", "botset taskmonitor")
+
+        # Always show Media Tools button, regardless of whether tools are enabled
+        buttons.data_button("🎬 Media Tools", "botset mediatools")
 
         # Only show AI Settings button if Extra Modules are enabled
         if Config.ENABLE_EXTRA_MODULES:
             buttons.data_button("🤖 AI Settings", "botset ai")
 
-        buttons.data_button("📊 Task Monitor", "botset taskmonitor")
-        buttons.data_button("🔄 qBittorrent", "botset qbit")
-        buttons.data_button("📥 Aria2c", "botset aria")
-        buttons.data_button("📦 Sabnzbd", "botset nzb")
-        buttons.data_button("🔄 JD Sync", "botset syncjd")
         buttons.data_button("❌ Close", "botset close")
         msg = "<b>Bot Settings</b>\nSelect a category to configure:"
     elif edit_type is not None:
@@ -506,7 +509,7 @@ async def get_buttons(key=None, edit_type=None, page=0, user_id=None):
             elif key.startswith("ADD_"):
                 buttons.data_button("Back", "botset mediatools_add")
             elif key.startswith("TASK_MONITOR_"):
-                buttons.data_button("Back", "botset taskmonitor")
+                buttons.data_button("⬅️ Back", "botset taskmonitor")
             elif key == "DEFAULT_AI_PROVIDER" or key.startswith(
                 ("MISTRAL_", "DEEPSEEK_")
             ):
@@ -1079,29 +1082,7 @@ Send one of the following position options:
                 msg += "Set the API URL for Truecaller phone number lookup.\n\n"
                 msg += "<b>Example:</b> <code>https://api.example.com/truecaller</code>\n\n"
                 msg += "<b>Note:</b> No default URL is provided. You must set your own API endpoint. The Truecaller module will not work until this is configured.\n\n"
-            elif key == "MEDIA_TOOLS_ENABLED":
-                msg += "<b>Media Tools Configuration</b>\n\n"
-                msg += "Control which media processing tools are enabled in the bot.\n\n"
-                msg += "<b>Options:</b>\n"
-                msg += "• <code>true</code> - Enable all media tools\n"
-                msg += "• <code>false</code> - Disable all media tools\n"
-                msg += "• Comma-separated list - Enable only specific tools\n\n"
-                msg += "<b>Available tools:</b>\n"
-                msg += "• <code>watermark</code> - Add text or image watermarks to media\n"
-                msg += "• <code>merge</code> - Combine multiple files into one\n"
-                msg += "• <code>convert</code> - Change file formats\n"
-                msg += "• <code>compression</code> - Reduce file sizes\n"
-                msg += "• <code>trim</code> - Cut sections from media files\n"
-                msg += "• <code>extract</code> - Extract components from media\n"
-                msg += "• <code>add</code> - Add elements to media files\n"
-                msg += "• <code>metadata</code> - Modify file metadata\n"
-                msg += "• <code>ffmpeg</code> - Use custom FFmpeg commands\n"
-                msg += "• <code>sample</code> - Create sample clips\n\n"
-                msg += "<b>Examples:</b>\n"
-                msg += "• <code>true</code> - Enable all tools\n"
-                msg += "• <code>watermark,merge,convert</code> - Enable only these three tools\n"
-                msg += "• <code>false</code> - Disable all media tools\n\n"
-                msg += "<b>Note:</b> After enabling tools here, users can access them through the Media Tools menu.\n\n"
+            # No special handling for MEDIA_TOOLS_ENABLED - it's now managed through the Media Tools menu
 
             msg += f"Send a valid value for <code>{key}</code>.\n\n<b>Current value:</b> <code>{Config.get(key)}</code>\n\n<i>Timeout: 60 seconds</i>"
         elif edit_type == "ariavar":
@@ -1167,6 +1148,7 @@ Send one of the following position options:
                     "CONCAT_DEMUXER_ENABLED",
                     "FILTER_COMPLEX_ENABLED",
                     "DEFAULT_AI_PROVIDER",
+                    "MEDIA_TOOLS_ENABLED",  # Added MEDIA_TOOLS_ENABLED to exclude it from Config menu
                 ]
             )
         ]
@@ -1186,13 +1168,13 @@ Send one of the following position options:
         # Add module control settings to the config menu
         module_keys = [
             "ENABLE_EXTRA_MODULES",
-            "MEDIA_TOOLS_ENABLED",
+            # Removed MEDIA_TOOLS_ENABLED from config menu
         ]
 
         # Add descriptions for module settings
         module_descriptions = {
             "ENABLE_EXTRA_MODULES": "Enable Extra Modules (AI, Truecaller, IMDB)",
-            "MEDIA_TOOLS_ENABLED": "Enable Media Tools - Set to 'true' to enable all tools, 'false' to disable all, or use a comma-separated list (e.g., 'watermark,merge,convert') to enable specific tools. Available tools: watermark, merge, convert, compression, trim, extract, add, metadata, ffmpeg, sample.",
+            # Removed MEDIA_TOOLS_ENABLED description
         }
 
         # Ensure resource keys are in the filtered keys list
@@ -1232,36 +1214,8 @@ Send one of the following position options:
                 description = module_descriptions.get(k, k)
                 value = Config.get(k)
 
-                # For MEDIA_TOOLS_ENABLED, handle special case for comma-separated values
-                if k == "MEDIA_TOOLS_ENABLED":
-                    if isinstance(value, str) and "," in value:
-                        # Show the number of enabled tools
-                        enabled_tools = [
-                            t.strip() for t in value.split(",") if t.strip()
-                        ]
-                        # Get the list of all available tools
-                        all_tools = [
-                            "watermark",
-                            "merge",
-                            "convert",
-                            "compression",
-                            "trim",
-                            "extract",
-                            "add",
-                            "metadata",
-                            "ffmpeg",
-                            "sample",
-                        ]
-                        status = (
-                            f"✅ ({len(enabled_tools)}/{len(all_tools)})"
-                            if enabled_tools
-                            else "❌"
-                        )
-                    else:
-                        status = "✅" if value else "❌"
-                    buttons.data_button(f"🧩 {description}: {status}", callback)
                 # For ENABLE_EXTRA_MODULES, show status
-                elif k == "ENABLE_EXTRA_MODULES":
+                if k == "ENABLE_EXTRA_MODULES":
                     if isinstance(value, str) and "," in value:
                         # Show the number of disabled modules
                         disabled_modules = [
@@ -1441,37 +1395,11 @@ Send only the file name as text message.
         # Import after refreshing the config to ensure we use the latest value
         from bot.helper.ext_utils.bot_utils import is_media_tool_enabled
 
-        # Only show enabled tools
-        if is_media_tool_enabled("watermark"):
-            buttons.data_button("💧 Watermark", "botset mediatools_watermark")
+        # Create a new ButtonMaker instance to avoid duplicate buttons
+        buttons = ButtonMaker()
 
-        if is_media_tool_enabled("merge"):
-            buttons.data_button("🔄 Merge", "botset mediatools_merge")
-
-        if is_media_tool_enabled("convert"):
-            buttons.data_button("🔄 Convert", "botset mediatools_convert")
-
-        if is_media_tool_enabled("compression"):
-            buttons.data_button("🗜️ Compression", "botset mediatools_compression")
-
-        if is_media_tool_enabled("trim"):
-            buttons.data_button("✂️ Trim", "botset mediatools_trim")
-
-        if is_media_tool_enabled("extract"):
-            buttons.data_button("📤 Extract", "botset mediatools_extract")
-
-        # Only show add settings if add tool is enabled
-        if is_media_tool_enabled("add"):
-            buttons.data_button("➕ Add", "botset mediatools_add")
-
-        # Only show metadata settings if metadata tool is enabled
-        if is_media_tool_enabled("metadata"):
-            buttons.data_button("📝 Metadata", "botset mediatools_metadata")
-
-        # Configure Tools button removed as requested
-
-        buttons.data_button("⬅️ Back", "botset back", "footer")
-        buttons.data_button("❌ Close", "botset close", "footer")
+        # Always show the Configure Tools button, regardless of whether tools are enabled
+        buttons.data_button("⚙️ Configure Tools", "botset configure_tools")
 
         # Get list of enabled tools
         enabled_tools = []
@@ -1498,6 +1426,46 @@ Send only the file name as text message.
                 "sample",
             ]
 
+        # Count enabled tools for display
+        total_tools = 10  # Total number of possible tools
+        enabled_count = len(enabled_tools)
+
+        # Add navigation buttons at the bottom
+        buttons.data_button("⬅️ Back", "botset back", "footer")
+        buttons.data_button("❌ Close", "botset close", "footer")
+
+        # If no tools are enabled, show a simplified menu
+        if not enabled_tools:
+            msg = f"<b>Media Tools Settings</b> (0/{total_tools} Enabled)\n\nMedia Tools are currently disabled. Click the Configure Tools button above to enable specific tools."
+            return msg, buttons.build_menu(1)
+
+        # Group tools by category for better organization
+        # Media Editing Tools
+        if is_media_tool_enabled("watermark"):
+            buttons.data_button("💧 Watermark", "botset mediatools_watermark")
+        if is_media_tool_enabled("merge"):
+            buttons.data_button("🔄 Merge", "botset mediatools_merge")
+        if is_media_tool_enabled("convert"):
+            buttons.data_button("🔄 Convert", "botset mediatools_convert")
+
+        # Media Processing Tools
+        if is_media_tool_enabled("compression"):
+            buttons.data_button("🗜️ Compression", "botset mediatools_compression")
+        if is_media_tool_enabled("trim"):
+            buttons.data_button("✂️ Trim", "botset mediatools_trim")
+        if is_media_tool_enabled("extract"):
+            buttons.data_button("📤 Extract", "botset mediatools_extract")
+
+        # Media Enhancement Tools
+        if is_media_tool_enabled("add"):
+            buttons.data_button("➕ Add", "botset mediatools_add")
+        if is_media_tool_enabled("metadata"):
+            buttons.data_button("📝 Metadata", "botset mediatools_metadata")
+
+        # Count enabled tools for display
+        total_tools = 10  # Total number of possible tools
+        enabled_count = len(enabled_tools)
+
         # Count enabled tools
         all_tools = [
             "watermark",
@@ -1521,11 +1489,9 @@ Configure global settings for media processing tools.
 <b>Enabled Tools:</b> {enabled_count}/{total_count}
 
 <b>How to Enable/Disable Tools:</b>
-• Go to <b>⚙️ Config</b> menu
-• Select <b>🧩 Enable Media Tools</b>
-• Set to <code>true</code> to enable all tools
-• Set to <code>false</code> to disable all tools
-• Or use a comma-separated list (e.g., <code>watermark,merge,convert</code>) to enable specific tools
+• Click the <b>⚙️ Configure Tools</b> button above
+• Use the toggle buttons to enable or disable specific tools
+• You can also use the Enable All or Disable All buttons
 
 <b>Available Categories:</b>
 • <b>Watermark</b> - Add text or image watermarks to media files
@@ -1604,8 +1570,8 @@ Select a tool category to configure its settings."""
     elif key == "taskmonitor":
         # Group task monitoring settings by category
 
-        # Determine the callback based on state
-        callback_prefix = "botset editvar" if state == "edit" else "botset botvar"
+        # Always use editvar for Task Monitor settings regardless of state
+        callback_prefix = "botset editvar"
 
         # Main settings
         buttons.data_button(
@@ -1650,10 +1616,7 @@ Select a tool category to configure its settings."""
             "📊 Memory Low", f"{callback_prefix} TASK_MONITOR_MEMORY_LOW"
         )
 
-        if state == "view":
-            buttons.data_button("✏️ Edit", "botset edit taskmonitor")
-        else:
-            buttons.data_button("👁️ View", "botset view taskmonitor")
+        # No edit/view state for Task Monitor
 
         buttons.data_button("🔄 Reset to Default", "botset default_taskmonitor")
         buttons.data_button("⬅️ Back", "botset back", "footer")
@@ -5834,9 +5797,55 @@ async def edit_bot_settings(client, query):
 
         globals()["start"] = 0
 
+        # Determine which menu to return to based on the current message content
+        return_menu = None
+
+        # Check if we're in a main menu (Config Variables, Task Monitor, Private Files, qBittorrent, Aria2c, Sabnzbd, Media Tools, AI Settings)
+        if message.text:
+            if any(
+                x in message.text
+                for x in [
+                    "Config Variables",
+                    "Task Monitoring Settings",
+                    "Private Files Management",
+                    "qBittorrent Options",
+                    "Aria2c Options",
+                    "Sabnzbd Options",
+                    "Media Tools Settings",
+                    "AI Settings",
+                    "Bot Settings",
+                ]
+            ):
+                # If we're in a main menu, return to the main settings menu
+                return_menu = None
+            # Check if we're editing a Task Monitor setting
+            elif (
+                "Send a valid value for" in message.text
+                and "TASK_MONITOR_" in message.text
+            ):
+                return_menu = "taskmonitor"
+            # Otherwise check the message title for submenu detection
+            elif "Watermark" in message.text:
+                return_menu = "mediatools_watermark"
+            elif "Merge" in message.text:
+                return_menu = "mediatools_merge"
+            elif "Convert" in message.text:
+                return_menu = "mediatools_convert"
+            elif "Compression" in message.text:
+                return_menu = "mediatools_compression"
+            elif "Trim" in message.text:
+                return_menu = "mediatools_trim"
+            elif "Extract" in message.text:
+                return_menu = "mediatools_extract"
+            elif "Add" in message.text:
+                return_menu = "mediatools_add"
+
+            elif "Usenet Servers" in message.text:
+                return_menu = "nzbserver"
+
         # Set the state back to what it was
         globals()["state"] = current_state
-        await update_buttons(message, None)
+        await update_buttons(message, return_menu)
     elif data[1] == "syncjd":
         if not Config.JD_EMAIL or not Config.JD_PASS:
             await query.answer(
@@ -5876,21 +5885,10 @@ async def edit_bot_settings(client, query):
         # Return to the main settings menu
         await update_buttons(message, None)
     elif data[1] == "mediatools":
-        from bot.helper.ext_utils.bot_utils import is_media_tool_enabled
-
         await query.answer()
-        # Get the current state before making changes
-        current_state = globals()["state"]
+        # No need to track state for media tools
 
-        # Check if media tools are enabled
-        if not is_media_tool_enabled("mediatools"):
-            await query.answer(
-                "Media Tools are disabled by the bot owner.", show_alert=True
-            )
-            return
-
-        # Set the state back to what it was
-        globals()["state"] = current_state
+        # Always show the media tools menu, regardless of whether tools are enabled
         await update_buttons(message, "mediatools")
 
     elif data[1] == "configure_media_tools":
@@ -5902,19 +5900,34 @@ async def edit_bot_settings(client, query):
         key = "MEDIA_TOOLS_ENABLED"
         current_value = Config.get(key)
 
-        # List of all available tools
-        all_tools = [
-            "watermark",
-            "merge",
-            "convert",
-            "compression",
-            "trim",
-            "extract",
-            "add",
-            "metadata",
-            "ffmpeg",
-            "sample",
+        # List of all available tools with descriptions
+        all_tools_info = [
+            {
+                "name": "watermark",
+                "icon": "💧",
+                "desc": "Add text or image watermarks to media",
+            },
+            {
+                "name": "merge",
+                "icon": "🔄",
+                "desc": "Combine multiple files into one",
+            },
+            {"name": "convert", "icon": "🔄", "desc": "Change file formats"},
+            {"name": "compression", "icon": "🗜️", "desc": "Reduce file sizes"},
+            {"name": "trim", "icon": "✂️", "desc": "Cut sections from media files"},
+            {
+                "name": "extract",
+                "icon": "📤",
+                "desc": "Extract components from media",
+            },
+            {"name": "add", "icon": "➕", "desc": "Add elements to media files"},
+            {"name": "metadata", "icon": "📝", "desc": "Modify file metadata"},
+            {"name": "ffmpeg", "icon": "🎬", "desc": "Use custom FFmpeg commands"},
+            {"name": "sample", "icon": "🎞️", "desc": "Create sample clips"},
         ]
+
+        # Get list of tool names only
+        all_tools = [tool["name"] for tool in all_tools_info]
 
         # Parse current enabled tools
         enabled_tools = []
@@ -5931,11 +5944,13 @@ async def edit_bot_settings(client, query):
 
         # Create buttons for each tool
         buttons = ButtonMaker()
-        for tool in all_tools:
+        for tool_info in all_tools_info:
+            tool = tool_info["name"]
+            icon = tool_info["icon"]
             status = "✅" if tool in enabled_tools else "❌"
             tool_name = tool.capitalize()
             buttons.data_button(
-                f"{tool_name}: {status}",
+                f"{icon} {tool_name}: {status}",
                 f"botset toggle_tool {key} {tool}",
             )
 
@@ -5949,10 +5964,24 @@ async def edit_bot_settings(client, query):
         # Set the state back to what it was
         globals()["state"] = current_state
 
-        # Show the number of enabled tools in the message
+        # Create a more informative message
+        tool_status_msg = f"<b>Configure Media Tools</b> ({len(enabled_tools)}/{len(all_tools)} Enabled)\n\n"
+        tool_status_msg += "Select which media tools to enable:\n\n"
+
+        # Add a brief description of each tool
+        for tool_info in all_tools_info:
+            tool = tool_info["name"]
+            icon = tool_info["icon"]
+            desc = tool_info["desc"]
+            status = "✅ Enabled" if tool in enabled_tools else "❌ Disabled"
+            tool_status_msg += (
+                f"{icon} <b>{tool.capitalize()}</b>: {status}\n<i>{desc}</i>\n\n"
+            )
+
+        # Show the message with tool descriptions and buttons
         await edit_message(
             message,
-            f"<b>Configure Media Tools</b>\n\nSelect which media tools to enable ({len(enabled_tools)}/{len(all_tools)} enabled):",
+            tool_status_msg,
             buttons.build_menu(2),
         )
     elif data[1] == "mediatools_watermark":
@@ -7361,7 +7390,6 @@ async def edit_bot_settings(client, query):
         "mediatools_extract",
         "mediatools_add",
         "ai",
-        "taskmonitor",
     ]:
         await query.answer()
         # Set the global state to edit mode
@@ -7402,7 +7430,6 @@ async def edit_bot_settings(client, query):
         "mediatools_extract",
         "mediatools_add",
         "ai",
-        "taskmonitor",
     ]:
         await query.answer()
         # Set the global state to view mode
@@ -7427,14 +7454,26 @@ async def edit_bot_settings(client, query):
             await update_buttons(message, "mediatools_add")
         elif data[2] == "ai":
             await update_buttons(message, "ai")
-        elif data[2] == "taskmonitor":
-            await update_buttons(message, "taskmonitor")
         else:
             await update_buttons(message, data[2])
+
         # This section is now handled above
     elif data[1] == "editvar":
-        # Handle view mode for all settings
-        if state == "view":
+        # Handle view mode for all other settings
+        if state == "view" and data[2] not in [
+            "TASK_MONITOR_ENABLED",
+            "TASK_MONITOR_INTERVAL",
+            "TASK_MONITOR_CONSECUTIVE_CHECKS",
+            "TASK_MONITOR_SPEED_THRESHOLD",
+            "TASK_MONITOR_ELAPSED_THRESHOLD",
+            "TASK_MONITOR_ETA_THRESHOLD",
+            "TASK_MONITOR_COMPLETION_THRESHOLD",
+            "TASK_MONITOR_WAIT_TIME",
+            "TASK_MONITOR_CPU_HIGH",
+            "TASK_MONITOR_CPU_LOW",
+            "TASK_MONITOR_MEMORY_HIGH",
+            "TASK_MONITOR_MEMORY_LOW",
+        ]:
             # In view mode, show the current value in a popup
             value = f"{Config.get(data[2])}"
             if len(value) > 200:
@@ -7640,6 +7679,7 @@ async def edit_bot_settings(client, query):
                 "DEFAULT_AI_",
             )
         ) or data[2] in ["CONCAT_DEMUXER_ENABLED", "FILTER_COMPLEX_ENABLED"]:
+            # For all settings
             await update_buttons(message, data[2], "editvar")
         else:
             await update_buttons(message, data[2], data[1])
@@ -8052,10 +8092,98 @@ async def edit_bot_settings(client, query):
 
         # Set the state back to what it was
         globals()["state"] = current_state
-        # Make sure we preserve the edit state when returning to the var menu
-        await update_buttons(
-            message, "var", "edit" if current_state == "edit" else None
-        )
+
+        # Return to the previous menu instead of always going to "var"
+        # This makes the Default button behavior consistent with setting a value
+
+        # First, try to determine the menu based on the key prefix
+        previous_menu = "var"  # Default to var menu
+
+        # Determine which menu to return to based on the key prefix
+        if data[2].startswith(
+            (
+                "WATERMARK_",
+                "AUDIO_WATERMARK_",
+                "SUBTITLE_WATERMARK_",
+                "IMAGE_WATERMARK_",
+            )
+        ):
+            previous_menu = "mediatools_watermark"
+        elif data[2].startswith("METADATA_"):
+            previous_menu = "mediatools_metadata"
+        elif data[2].startswith("CONVERT_"):
+            previous_menu = "mediatools_convert"
+        elif data[2].startswith("COMPRESSION_"):
+            previous_menu = "mediatools_compression"
+        elif data[2].startswith("TRIM_"):
+            previous_menu = "mediatools_trim"
+        elif data[2].startswith("EXTRACT_"):
+            previous_menu = "mediatools_extract"
+        elif data[2].startswith("ADD_"):
+            previous_menu = "mediatools_add"
+        elif data[2].startswith("TASK_MONITOR_"):
+            previous_menu = "taskmonitor"
+        elif data[2] == "DEFAULT_AI_PROVIDER" or data[2].startswith(
+            ("MISTRAL_", "DEEPSEEK_", "DEFAULT_AI_")
+        ):
+            previous_menu = "ai"
+        elif data[2].startswith("MERGE_") or data[2] in [
+            "CONCAT_DEMUXER_ENABLED",
+            "FILTER_COMPLEX_ENABLED",
+        ]:
+            # Check if the key is from the merge_config menu
+            if data[2].startswith("MERGE_") and any(
+                x in data[2]
+                for x in [
+                    "OUTPUT_FORMAT",
+                    "VIDEO_",
+                    "AUDIO_",
+                    "IMAGE_",
+                    "SUBTITLE_",
+                    "DOCUMENT_",
+                    "METADATA_",
+                ]
+            ):
+                previous_menu = "mediatools_merge_config"
+            else:
+                previous_menu = "mediatools_merge"
+
+        # If we couldn't determine the menu from the key, try to determine it from the message text
+        elif message.text:
+            if "Media Tools" in message.text:
+                previous_menu = "mediatools"
+            elif "Watermark" in message.text:
+                previous_menu = "mediatools_watermark"
+            elif "Merge" in message.text:
+                previous_menu = "mediatools_merge"
+            elif "Convert" in message.text:
+                previous_menu = "mediatools_convert"
+            elif "Compression" in message.text:
+                previous_menu = "mediatools_compression"
+            elif "Trim" in message.text:
+                previous_menu = "mediatools_trim"
+            elif "Extract" in message.text:
+                previous_menu = "mediatools_extract"
+            elif "Add" in message.text:
+                previous_menu = "mediatools_add"
+            elif "Task Monitor" in message.text:
+                previous_menu = "taskmonitor"
+            elif "qBittorrent" in message.text:
+                previous_menu = "qbit"
+            elif "Aria2c" in message.text:
+                previous_menu = "aria"
+            elif "Sabnzbd" in message.text:
+                previous_menu = "nzb"
+            elif "AI Settings" in message.text:
+                previous_menu = "ai"
+            elif "JD Sync" in message.text:
+                previous_menu = "syncjd"
+            elif "Private Files" in message.text:
+                previous_menu = "private"
+
+        # Return to the previous menu without preserving edit state
+        # This makes the Default button behavior exactly like when setting a value
+        await update_buttons(message, previous_menu)
 
         if data[2] == "DATABASE_URL":
             await database.disconnect()
@@ -8220,135 +8348,167 @@ async def edit_bot_settings(client, query):
         pfunc = partial(update_private_file, pre_message=message)
         rfunc = partial(update_buttons, message)
         await event_handler(client, query, pfunc, rfunc, True)
-    elif data[1] == "botvar" and state == "edit":
-        await query.answer()  # Special handling for MEDIA_TOOLS_ENABLED
-        if data[2] == "MEDIA_TOOLS_ENABLED":
-            # Create a special menu for selecting media tools
-            buttons = ButtonMaker()
+    elif data[1] == "configure_tools":
+        await query.answer()
+        # This handler is for the "Configure Tools" button in the Media Tools menu
+        # It should always show the configuration menu, regardless of view/edit state
 
-            # Force refresh Config.MEDIA_TOOLS_ENABLED from database to ensure accurate status
-            try:
-                # Check if database is connected and db attribute exists
-                if (
-                    database.db is not None
-                    and hasattr(database, "db")
-                    and hasattr(database.db, "settings")
-                ):
-                    db_config = await database.db.settings.config.find_one(
-                        {"_id": TgClient.ID},
-                        {"MEDIA_TOOLS_ENABLED": 1, "_id": 0},
-                    )
-                    if db_config and "MEDIA_TOOLS_ENABLED" in db_config:
-                        # Update the Config object with the current value from database
-                        db_value = db_config["MEDIA_TOOLS_ENABLED"]
-                        if db_value != Config.MEDIA_TOOLS_ENABLED:
-                            Config.MEDIA_TOOLS_ENABLED = db_value
-                else:
-                    # Database not connected or settings collection not available, skip refresh
-                    pass
+        # Create a special menu for selecting media tools
+        buttons = ButtonMaker()
 
-            except Exception:
+        # Force refresh Config.MEDIA_TOOLS_ENABLED from database to ensure accurate status
+        try:
+            # Check if database is connected and db attribute exists
+            if (
+                database.db is not None
+                and hasattr(database, "db")
+                and hasattr(database.db, "settings")
+            ):
+                db_config = await database.db.settings.config.find_one(
+                    {"_id": TgClient.ID},
+                    {"MEDIA_TOOLS_ENABLED": 1, "_id": 0},
+                )
+                if db_config and "MEDIA_TOOLS_ENABLED" in db_config:
+                    # Update the Config object with the current value from database
+                    db_value = db_config["MEDIA_TOOLS_ENABLED"]
+                    if db_value != Config.MEDIA_TOOLS_ENABLED:
+                        Config.MEDIA_TOOLS_ENABLED = db_value
+            else:
+                # Database not connected or settings collection not available, skip refresh
                 pass
+        except Exception:
+            pass
 
-            # Get current value after refresh
-            current_value = Config.get(data[2])
+        # Get current value after refresh
+        current_value = Config.get("MEDIA_TOOLS_ENABLED")
 
-            # List of all available media tools
-            all_tools = [
-                "watermark",
-                "merge",
-                "convert",
-                "compression",
-                "trim",
-                "extract",
-                "add",
-                "metadata",
-                "ffmpeg",
-                "sample",
-            ]
+        # List of all available tools with descriptions and icons
+        all_tools_info = [
+            {
+                "name": "watermark",
+                "icon": "💧",
+                "desc": "Add text or image watermarks to media",
+            },
+            {
+                "name": "merge",
+                "icon": "🔄",
+                "desc": "Combine multiple files into one",
+            },
+            {"name": "convert", "icon": "🔄", "desc": "Change file formats"},
+            {"name": "compression", "icon": "🗜️", "desc": "Reduce file sizes"},
+            {"name": "trim", "icon": "✂️", "desc": "Cut sections from media files"},
+            {
+                "name": "extract",
+                "icon": "📤",
+                "desc": "Extract components from media",
+            },
+            {"name": "add", "icon": "➕", "desc": "Add elements to media files"},
+            {"name": "metadata", "icon": "📝", "desc": "Modify file metadata"},
+            {"name": "ffmpeg", "icon": "🎬", "desc": "Use custom FFmpeg commands"},
+            {"name": "sample", "icon": "🎞️", "desc": "Create sample clips"},
+        ]
 
-            # Parse enabled tools from the configuration
-            enabled_tools = []
-            if isinstance(current_value, str):
-                # Handle both comma-separated and single values
-                if "," in current_value:
-                    enabled_tools = [
-                        t.strip().lower()
-                        for t in current_value.split(",")
-                        if t.strip()
-                    ]
-                elif current_value.strip():  # Single non-empty value
-                    # Make sure to properly handle a single tool name
-                    single_tool = current_value.strip().lower()
-                    if single_tool in all_tools:
-                        enabled_tools = [single_tool]
-                    # If the single tool is not in all_tools, it might be a comma-separated string without spaces
-                    elif any(t in single_tool for t in all_tools):
-                        # Try to split by comma without spaces
-                        potential_tools = single_tool.split(",")
-                        enabled_tools = [
-                            t for t in potential_tools if t in all_tools
-                        ]
+        # Get list of tool names only
+        all_tools = [tool_info["name"] for tool_info in all_tools_info]
 
-                        # If we couldn't find any valid tools, try the original value again
-                        if not enabled_tools and single_tool:
-                            # Check if it's a valid tool name (might be misspelled or have extra characters)
+        # Parse enabled tools from the configuration
+        enabled_tools = []
+        if isinstance(current_value, str):
+            # Handle both comma-separated and single values
+            if "," in current_value:
+                enabled_tools = [
+                    t.strip().lower() for t in current_value.split(",") if t.strip()
+                ]
+            elif current_value.strip():  # Single non-empty value
+                # Make sure to properly handle a single tool name
+                single_tool = current_value.strip().lower()
+                if single_tool in all_tools:
+                    enabled_tools = [single_tool]
+                # If the single tool is not in all_tools, it might be a comma-separated string without spaces
+                elif any(t in single_tool for t in all_tools):
+                    # Try to split by comma without spaces
+                    potential_tools = single_tool.split(",")
+                    enabled_tools = [t for t in potential_tools if t in all_tools]
+
+                    # If we couldn't find any valid tools, try the original value again
+                    if not enabled_tools and single_tool:
+                        # Check if it's a valid tool name (might be misspelled or have extra characters)
+                        for t in all_tools:
+                            if t in single_tool:
+                                enabled_tools = [t]
+                                break
+        elif current_value is True:  # If it's True (boolean), all tools are enabled
+            enabled_tools = all_tools.copy()
+        elif current_value:  # Any other truthy value
+            if isinstance(current_value, list | tuple | set):
+                enabled_tools = [str(t).strip().lower() for t in current_value if t]
+            else:
+                # Try to convert to string and use as a single value
+                try:
+                    val = str(current_value).strip().lower()
+                    if val:
+                        if val in all_tools:
+                            enabled_tools = [val]
+                        else:
+                            # Check if it contains a valid tool name
                             for t in all_tools:
-                                if t in single_tool:
+                                if t in val:
                                     enabled_tools = [t]
                                     break
-            elif (
-                current_value is True
-            ):  # If it's True (boolean), all tools are enabled
-                enabled_tools = all_tools.copy()
-            elif current_value:  # Any other truthy value
-                if isinstance(current_value, list | tuple | set):
-                    enabled_tools = [
-                        str(t).strip().lower() for t in current_value if t
-                    ]
-                else:
-                    # Try to convert to string and use as a single value
-                    try:
-                        val = str(current_value).strip().lower()
-                        if val:
-                            if val in all_tools:
-                                enabled_tools = [val]
-                            else:
-                                # Check if it contains a valid tool name
-                                for t in all_tools:
-                                    if t in val:
-                                        enabled_tools = [t]
-                                        break
-                    except Exception:
-                        pass
+                except Exception:
+                    pass
 
-            # Add toggle buttons for each tool
-            for tool in all_tools:
-                status = "✅" if tool in enabled_tools else "❌"
-                buttons.data_button(
-                    f"{tool.title()}: {status}",
-                    f"botset toggle_tool {data[2]} {tool}",
-                )
-
-            # Add buttons to enable/disable all tools
-            buttons.data_button("Enable All", f"botset enable_all_tools {data[2]}")
-            buttons.data_button("Disable All", f"botset disable_all_tools {data[2]}")
-
-            # Add cancel button
-            buttons.data_button("Done", "botset var")
-
-            # Show the number of enabled tools in the message
-            await edit_message(
-                message,
-                f"<b>Configure Media Tools</b>\n\nSelect which media tools to enable ({len(enabled_tools)}/{len(all_tools)} enabled):",
-                buttons.build_menu(2),
+        # Add toggle buttons for each tool with icons
+        for tool_info in all_tools_info:
+            tool_name = tool_info["name"]
+            icon = tool_info["icon"]
+            status = "✅" if tool_name in enabled_tools else "❌"
+            display_name = tool_name.capitalize()
+            buttons.data_button(
+                f"{icon} {display_name}: {status}",
+                f"botset toggle_tool MEDIA_TOOLS_ENABLED {tool_name}",
             )
-            return
 
+        # Add buttons to enable/disable all tools
+        buttons.data_button(
+            "✅ Enable All", "botset enable_all_tools MEDIA_TOOLS_ENABLED"
+        )
+        buttons.data_button(
+            "❌ Disable All", "botset disable_all_tools MEDIA_TOOLS_ENABLED"
+        )
+
+        # Add done button - always return to mediatools menu
+        buttons.data_button("✅ Done", "botset mediatools")
+
+        # Create a more informative message
+        tool_status_msg = f"<b>Configure Media Tools</b> ({len(enabled_tools)}/{len(all_tools)} Enabled)\n\n"
+        tool_status_msg += "Select which media tools to enable:\n\n"
+
+        # Add a brief description of each tool
+        for tool_info in all_tools_info:
+            tool_name = tool_info["name"]
+            icon = tool_info["icon"]
+            desc = tool_info["desc"]
+            status = "✅ Enabled" if tool_name in enabled_tools else "❌ Disabled"
+            tool_status_msg += f"{icon} <b>{tool_name.capitalize()}</b>: {status}\n<i>{desc}</i>\n\n"
+
+        # Show the message with tool descriptions and buttons
+        await edit_message(
+            message,
+            tool_status_msg,
+            buttons.build_menu(2),
+        )
+        return
+
+    elif data[1] == "botvar":
+        await query.answer()
+
+        # No need to track state for media tools configuration
+
+        # For other settings, proceed with normal botvar handling
         # Get the current state before making changes
         current_state = globals()["state"]
 
-        # For other settings, proceed with normal botvar handling
         # Set the state back to what it was
         globals()["state"] = current_state
         await update_buttons(message, data[2], data[1])
@@ -8402,6 +8562,7 @@ async def edit_bot_settings(client, query):
         await event_handler(client, query, pfunc, rfunc)
     elif data[1] == "botvar" and state == "view":
         # In view mode, show the value
+        # Note: MEDIA_TOOLS_ENABLED is now handled in the botvar handler above
         value = f"{Config.get(data[2])}"
 
         # Show the value
@@ -8593,25 +8754,39 @@ async def edit_bot_settings(client, query):
         key = data[2]  # MEDIA_TOOLS_ENABLED
         tool = data[3]  # The tool to toggle
 
-        # Get the current state before making changes
-        current_state = globals()["state"]
+        # No need to track state for media tools configuration
 
         # Get current value
         current_value = Config.get(key)
 
-        # List of all available tools
-        all_tools = [
-            "watermark",
-            "merge",
-            "convert",
-            "compression",
-            "trim",
-            "extract",
-            "add",
-            "metadata",
-            "ffmpeg",
-            "sample",
+        # List of all available tools with descriptions and icons
+        all_tools_info = [
+            {
+                "name": "watermark",
+                "icon": "💧",
+                "desc": "Add text or image watermarks to media",
+            },
+            {
+                "name": "merge",
+                "icon": "🔄",
+                "desc": "Combine multiple files into one",
+            },
+            {"name": "convert", "icon": "🔄", "desc": "Change file formats"},
+            {"name": "compression", "icon": "🗜️", "desc": "Reduce file sizes"},
+            {"name": "trim", "icon": "✂️", "desc": "Cut sections from media files"},
+            {
+                "name": "extract",
+                "icon": "📤",
+                "desc": "Extract components from media",
+            },
+            {"name": "add", "icon": "➕", "desc": "Add elements to media files"},
+            {"name": "metadata", "icon": "📝", "desc": "Modify file metadata"},
+            {"name": "ffmpeg", "icon": "🎬", "desc": "Use custom FFmpeg commands"},
+            {"name": "sample", "icon": "🎞️", "desc": "Create sample clips"},
         ]
+
+        # Get list of tool names only
+        all_tools = [tool_info["name"] for tool_info in all_tools_info]
 
         # Parse current enabled tools
         enabled_tools = []
@@ -8670,8 +8845,12 @@ async def edit_bot_settings(client, query):
 
             # Reset tool-specific configurations when disabling a tool
             await reset_tool_configs(tool, database)
+            # Show a message to the user
+            await query.answer(f"Disabled {tool.capitalize()} tool")
         else:
             enabled_tools.append(tool)
+            # Show a message to the user
+            await query.answer(f"Enabled {tool.capitalize()} tool")
 
         # Update the config
         if enabled_tools:
@@ -8682,7 +8861,7 @@ async def edit_bot_settings(client, query):
         else:
             Config.set(key, False)
 
-        # Update the database
+        # Update the database with the new setting
         await database.update_config({key: Config.get(key)})
 
         # Force reload the current value after database update to ensure consistency
@@ -8759,28 +8938,42 @@ async def edit_bot_settings(client, query):
         # Refresh the menu
         buttons = ButtonMaker()
 
-        # Add toggle buttons for each tool
-        for t in all_tools:
-            status = "✅" if t in enabled_tools else "❌"
+        # Add toggle buttons for each tool with icons
+        for tool_info in all_tools_info:
+            tool_name = tool_info["name"]
+            icon = tool_info["icon"]
+            status = "✅" if tool_name in enabled_tools else "❌"
+            display_name = tool_name.capitalize()
             buttons.data_button(
-                f"{t.title()}: {status}",
-                f"botset toggle_tool {key} {t}",
+                f"{icon} {display_name}: {status}",
+                f"botset toggle_tool {key} {tool_name}",
             )
 
         # Add buttons to enable/disable all tools
-        buttons.data_button("Enable All", f"botset enable_all_tools {key}")
-        buttons.data_button("Disable All", f"botset disable_all_tools {key}")
+        buttons.data_button("✅ Enable All", f"botset enable_all_tools {key}")
+        buttons.data_button("❌ Disable All", f"botset disable_all_tools {key}")
 
-        # Add done button
-        buttons.data_button("Done", "botset var")
+        # Add done button - always return to the mediatools menu
+        buttons.data_button("✅ Done", "botset mediatools")
 
-        # Set the state back to what it was
-        globals()["state"] = current_state
+        # No need to restore state for media tools configuration
 
-        # Show the number of enabled tools in the message
+        # Create a more informative message
+        tool_status_msg = f"<b>Configure Media Tools</b> ({len(enabled_tools)}/{len(all_tools)} Enabled)\n\n"
+        tool_status_msg += "Select which media tools to enable:\n\n"
+
+        # Add a brief description of each tool
+        for tool_info in all_tools_info:
+            tool_name = tool_info["name"]
+            icon = tool_info["icon"]
+            desc = tool_info["desc"]
+            status = "✅ Enabled" if tool_name in enabled_tools else "❌ Disabled"
+            tool_status_msg += f"{icon} <b>{tool_name.capitalize()}</b>: {status}\n<i>{desc}</i>\n\n"
+
+        # Show the message with tool descriptions and buttons
         await edit_message(
             message,
-            f"<b>Configure Media Tools</b>\n\nSelect which media tools to enable ({len(enabled_tools)}/{len(all_tools)} enabled):",
+            tool_status_msg,
             buttons.build_menu(2),
         )
 
@@ -8788,30 +8981,44 @@ async def edit_bot_settings(client, query):
         await query.answer("Enabling all media tools")
         key = data[2]  # MEDIA_TOOLS_ENABLED
 
-        # Get the current state before making changes
-        current_state = globals()["state"]
+        # No need to track state for media tools configuration
 
-        # List of all available tools
-        all_tools = [
-            "watermark",
-            "merge",
-            "convert",
-            "compression",
-            "trim",
-            "extract",
-            "add",
-            "metadata",
-            "ffmpeg",
-            "sample",
+        # List of all available tools with descriptions and icons
+        all_tools_info = [
+            {
+                "name": "watermark",
+                "icon": "💧",
+                "desc": "Add text or image watermarks to media",
+            },
+            {
+                "name": "merge",
+                "icon": "🔄",
+                "desc": "Combine multiple files into one",
+            },
+            {"name": "convert", "icon": "🔄", "desc": "Change file formats"},
+            {"name": "compression", "icon": "🗜️", "desc": "Reduce file sizes"},
+            {"name": "trim", "icon": "✂️", "desc": "Cut sections from media files"},
+            {
+                "name": "extract",
+                "icon": "📤",
+                "desc": "Extract components from media",
+            },
+            {"name": "add", "icon": "➕", "desc": "Add elements to media files"},
+            {"name": "metadata", "icon": "📝", "desc": "Modify file metadata"},
+            {"name": "ffmpeg", "icon": "🎬", "desc": "Use custom FFmpeg commands"},
+            {"name": "sample", "icon": "🎞️", "desc": "Create sample clips"},
         ]
+
+        # Get list of tool names only
+        all_tools = [tool_info["name"] for tool_info in all_tools_info]
 
         # Update the config - sort the tools to maintain consistent order
         all_tools.sort()
         new_value = ",".join(all_tools)
         Config.set(key, new_value)
 
-        # Update the database
-        await database.update_config({key: Config.get(key)})
+        # Update the database with the new setting
+        await database.update_config({key: new_value})
 
         # Force reload the current value after database update to ensure consistency
         try:
@@ -8839,26 +9046,42 @@ async def edit_bot_settings(client, query):
         # Refresh the menu
         buttons = ButtonMaker()
 
-        # Add toggle buttons for each tool
-        for tool in all_tools:
+        # Add toggle buttons for each tool with icons
+        for tool_info in all_tools_info:
+            tool_name = tool_info["name"]
+            icon = tool_info["icon"]
+            display_name = tool_name.capitalize()
             buttons.data_button(
-                f"{tool.title()}: ✅",
-                f"botset toggle_tool {key} {tool}",
+                f"{icon} {display_name}: ✅",
+                f"botset toggle_tool {key} {tool_name}",
             )
 
         # Add buttons to enable/disable all tools
-        buttons.data_button("Enable All", f"botset enable_all_tools {key}")
-        buttons.data_button("Disable All", f"botset disable_all_tools {key}")
+        buttons.data_button("✅ Enable All", f"botset enable_all_tools {key}")
+        buttons.data_button("❌ Disable All", f"botset disable_all_tools {key}")
 
-        # Add done button
-        buttons.data_button("Done", "botset var")
+        # Add done button - always return to the mediatools menu when all tools are enabled
+        buttons.data_button("✅ Done", "botset mediatools")
 
-        # Set the state back to what it was
-        globals()["state"] = current_state
+        # No need to restore state for media tools configuration
 
+        # Create a more informative message
+        tool_status_msg = f"<b>Configure Media Tools</b> ({len(all_tools)}/{len(all_tools)} Enabled)\n\n"
+        tool_status_msg += (
+            "All tools have been enabled. Click on a tool to disable it:\n\n"
+        )
+
+        # Add a brief description of each tool
+        for tool_info in all_tools_info:
+            tool_name = tool_info["name"]
+            icon = tool_info["icon"]
+            desc = tool_info["desc"]
+            tool_status_msg += f"{icon} <b>{tool_name.capitalize()}</b>: ✅ Enabled\n<i>{desc}</i>\n\n"
+
+        # Show the message with tool descriptions and buttons
         await edit_message(
             message,
-            f"<b>Configure Media Tools</b>\n\nSelect which media tools to enable ({len(all_tools)}/{len(all_tools)} enabled):",
+            tool_status_msg,
             buttons.build_menu(2),
         )
 
@@ -8866,22 +9089,36 @@ async def edit_bot_settings(client, query):
         await query.answer("Disabling all media tools")
         key = data[2]  # MEDIA_TOOLS_ENABLED
 
-        # Get the current state before making changes
-        current_state = globals()["state"]
+        # No need to track state for media tools configuration
 
-        # List of all available tools
-        all_tools = [
-            "watermark",
-            "merge",
-            "convert",
-            "compression",
-            "trim",
-            "extract",
-            "add",
-            "metadata",
-            "ffmpeg",
-            "sample",
+        # List of all available tools with descriptions and icons
+        all_tools_info = [
+            {
+                "name": "watermark",
+                "icon": "💧",
+                "desc": "Add text or image watermarks to media",
+            },
+            {
+                "name": "merge",
+                "icon": "🔄",
+                "desc": "Combine multiple files into one",
+            },
+            {"name": "convert", "icon": "🔄", "desc": "Change file formats"},
+            {"name": "compression", "icon": "🗜️", "desc": "Reduce file sizes"},
+            {"name": "trim", "icon": "✂️", "desc": "Cut sections from media files"},
+            {
+                "name": "extract",
+                "icon": "📤",
+                "desc": "Extract components from media",
+            },
+            {"name": "add", "icon": "➕", "desc": "Add elements to media files"},
+            {"name": "metadata", "icon": "📝", "desc": "Modify file metadata"},
+            {"name": "ffmpeg", "icon": "🎬", "desc": "Use custom FFmpeg commands"},
+            {"name": "sample", "icon": "🎞️", "desc": "Create sample clips"},
         ]
+
+        # Get list of tool names only
+        all_tools = [tool_info["name"] for tool_info in all_tools_info]
 
         # Reset configurations for all tools
         from bot.helper.ext_utils.config_utils import reset_tool_configs
@@ -8892,8 +9129,8 @@ async def edit_bot_settings(client, query):
         # Update the config
         Config.set(key, False)
 
-        # Update the database
-        await database.update_config({key: Config.get(key)})
+        # Update the database with the new setting
+        await database.update_config({key: False})
 
         # Force reload the current value after database update to ensure consistency
         try:
@@ -8918,31 +9155,9 @@ async def edit_bot_settings(client, query):
         except Exception:
             pass
 
-        # Refresh the menu
-        buttons = ButtonMaker()
-
-        # Add toggle buttons for each tool
-        for tool in all_tools:
-            buttons.data_button(
-                f"{tool.title()}: ❌",
-                f"botset toggle_tool {key} {tool}",
-            )
-
-        # Add buttons to enable/disable all tools
-        buttons.data_button("Enable All", f"botset enable_all_tools {key}")
-        buttons.data_button("Disable All", f"botset disable_all_tools {key}")
-
-        # Add done button
-        buttons.data_button("Done", "botset var")
-
-        # Set the state back to what it was
-        globals()["state"] = current_state
-
-        await edit_message(
-            message,
-            f"<b>Configure Media Tools</b>\n\nSelect which media tools to enable (0/{len(all_tools)} enabled):",
-            buttons.build_menu(2),
-        )
+        # After disabling all tools, directly return to the Media Tools menu
+        # This will show the Media Tools Settings menu with only the Configure Tools button
+        await update_buttons(message, "mediatools")
 
     elif data[1] == "setprovider":
         await query.answer(f"Setting default AI provider to {data[2].capitalize()}")
@@ -9466,6 +9681,9 @@ async def load_config():
 
     if Config.DATABASE_URL:
         await database.connect()
+        # Start the database heartbeat task to keep the connection alive
+        await database.start_heartbeat()
+
         config_dict = Config.get_all()
 
         # Add ADD_ settings from DEFAULT_VALUES to the database
@@ -9478,6 +9696,8 @@ async def load_config():
 
         await database.update_config(config_dict)
     else:
+        # Stop the heartbeat task if it's running
+        await database.stop_heartbeat()
         await database.disconnect()
     await gather(start_from_queued(), rclone_serve_booter())
     add_job()

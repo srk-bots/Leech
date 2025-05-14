@@ -173,6 +173,16 @@ class TelegramDownloadHelper:
             await sleep(f.value)
             await self._download(message, path)
             return
+        except OSError as e:
+            # Check specifically for "No space left on device" error
+            if e.errno == 28:  # errno 28 is "No space left on device"
+                error_msg = "No space left on device. Please free up some disk space and try again."
+                LOGGER.error(f"{error_msg} Path: {path}")
+                await self._on_download_error(error_msg)
+            else:
+                LOGGER.error(f"OSError: {e}")
+                await self._on_download_error(str(e))
+            return
         except Exception as e:
             LOGGER.error(str(e))
             await self._on_download_error(str(e))
