@@ -27,7 +27,7 @@ class Config:
     JD_EMAIL: str = ""
     JD_PASS: str = ""
     IS_TEAM_DRIVE: bool = False
-    LEECH_DUMP_CHAT: ClassVar[list[str]] | str = []
+    LEECH_DUMP_CHAT: ClassVar[list[str]] = []
     LEECH_FILENAME_PREFIX: str = ""
     LEECH_SPLIT_SIZE: int = 2097152000
     MEDIA_GROUP: bool = False
@@ -82,31 +82,54 @@ class Config:
     HEROKU_API_KEY: str = ""
 
     @classmethod
-    def _convert(cls, key: str, value: Any) -> Any:
-        expected_type = cls.__annotations__.get(key)
-        if expected_type is None or value is None:
-            return value
-
+    def _convert(cls, key, value):
+        expected_type = type(getattr(cls, key))
+        if value is None:
+            return None
+    
+        if key == "LEECH_DUMP_CHAT":
+            if isinstance(value, list):
+                return [str(v).strip() for v in value]
+        
+            if isinstance(value, str):
+                try:
+                    evaluated = ast.literal_eval(value)
+                    if isinstance(evaluated, list):
+                        return [str(v).strip() for v in evaluated]
+                except (ValueError, SyntaxError):
+                    pass
+                return [value.strip()]
+        
+            raise TypeError(f"{key} should be list[str], got {type(value).__name__}")
+    
         if isinstance(value, expected_type):
             return value
-
+    
+        if expected_type is bool:
+            return str(value).strip().lower() in {"true", "1", "yes"}
+    
+        if expected_type in [list, dict]:
+            if not isinstance(value, str):
+                raise TypeError(
+                    f"{key} should be {expected_type.__name__}, got {type(value).__name__}"
+                )
+    
+            try:
+                evaluated = ast.literal_eval(value)
+                if isinstance(evaluated, expected_type):
+                    return evaluated
+                raise TypeError
+            except (ValueError, SyntaxError, TypeError) as e:
+                raise TypeError(
+                    f"{key} should be {expected_type.__name__}, got invalid string: {value}"
+                ) from e
+    
         try:
-            if expected_type == bool:
-                return str(value).strip().lower() in {"true", "1", "yes"}
-
-            if expected_type in [list, dict]:
-                if isinstance(value, str):
-                    try:
-                        return json.loads(value)
-                    except json.JSONDecodeError:
-                        return ast.literal_eval(value)
-                raise TypeError(f"{key} should be str-encoded list/dict")
-
             return expected_type(value)
-        except Exception as e:
+        except (ValueError, TypeError) as exc:
             raise TypeError(
                 f"Invalid type for {key}: expected {expected_type}, got {type(value)}"
-            ) from e
+            ) from exc
 
     @classmethod
     def _normalize_value(cls, key: str, value: Any) -> Any:
@@ -119,14 +142,10 @@ class Config:
         if key in {"BASE_URL", "RCLONE_SERVE_URL", "INDEX_URL"}:
             return value.strip("/")
 
-        if key == "USENET_SERVERS":
-            if (
-                not isinstance(value, list)
-                or not value
-                or not isinstance(value[0], dict)
-                or not value[0].get("host")
-            ):
-                return []
+        if key == "USENET_SERVERS" and (
+            not isinstance(value, list) or not value or not isinstance(value[0], dict) or not value[0].get("host")
+        ):
+            return []
 
         return value
 
