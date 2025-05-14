@@ -1,8 +1,7 @@
-import requests
-
 from asyncio import create_subprocess_exec, create_subprocess_shell
 from os import environ
 
+import requests
 from aiofiles import open as aiopen
 from aiofiles.os import makedirs, remove
 from aiofiles.os import path as aiopath
@@ -263,18 +262,18 @@ async def update_variables():
                     index_urls.append(temp[2])
                 else:
                     index_urls.append("")
-    
+
     if Config.HEROKU_APP_NAME and Config.HEROKU_API_KEY:
         headers = {
             "Accept": "application/vnd.heroku+json; version=3",
             "Authorization": f"Bearer {Config.HEROKU_API_KEY}",
         }
-    
+
         urls = [
             f"https://api.heroku.com/teams/apps/{Config.HEROKU_APP_NAME}",
             f"https://api.heroku.com/apps/{Config.HEROKU_APP_NAME}",
         ]
-    
+
         for url in urls:
             try:
                 response = requests.get(url, headers=headers)
@@ -284,7 +283,7 @@ async def update_variables():
                 if web_url:
                     Config.set("BASE_URL", web_url.rstrip("/"))
                     return
-            except Exception as e:
+            except Exception:
                 continue
 
 
