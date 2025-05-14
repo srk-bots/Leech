@@ -279,8 +279,7 @@ async def update_variables():
                 response = requests.get(url, headers=headers)
                 response.raise_for_status()
                 app_data = response.json()
-                web_url = app_data.get("web_url")
-                if web_url:
+                if web_url := app_data.get("web_url"):
                     Config.set("BASE_URL", web_url.rstrip("/"))
                     return
             except Exception:
