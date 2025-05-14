@@ -89,7 +89,7 @@ class Config:
         if key == "LEECH_DUMP_CHAT":
             if isinstance(value, list):
                 return [str(v).strip() for v in value if str(v).strip()]
-        
+
             if isinstance(value, str):
                 value = value.strip()
                 if not value:
@@ -101,7 +101,7 @@ class Config:
                 except (ValueError, SyntaxError):
                     pass
                 return [value] if value else []
-        
+
             raise TypeError(f"{key} should be list[str], got {type(value).__name__}")
 
         if isinstance(value, expected_type):
