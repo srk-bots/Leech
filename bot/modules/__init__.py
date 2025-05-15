@@ -32,6 +32,12 @@ from .gen_session import (
 )
 from .help import arg_usage, bot_help
 from .imdb import imdb_callback, imdb_search
+from .media_search import (
+    inline_media_search,
+    media_cancel_callback,
+    media_get_callback,
+    media_search,
+)
 from .media_tools import edit_media_tools_settings, media_tools_settings
 from .media_tools_help import media_tools_help_cmd
 from .mediainfo import mediainfo
@@ -43,7 +49,6 @@ from .mirror_leech import (
     nzb_leech,
     nzb_mirror,
 )
-from .music_search import music_cancel_callback, music_get_callback, music_search
 from .nzb_search import hydra_search
 from .restart import (
     confirm_restart,
@@ -112,18 +117,19 @@ __all__ = [
     "imdb_callback",
     "imdb_search",
     "initiate_search_tools",
+    "inline_media_search",
     "jd_leech",
     "jd_mirror",
     "leech",
     "log",
     "login",
+    "media_cancel_callback",
+    "media_get_callback",
+    "media_search",
     "media_tools_help_cmd",
     "media_tools_settings",
     "mediainfo",
     "mirror",
-    "music_cancel_callback",
-    "music_get_callback",
-    "music_search",
     "nzb_leech",
     "nzb_mirror",
     "ping",

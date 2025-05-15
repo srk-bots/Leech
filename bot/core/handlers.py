@@ -57,13 +57,13 @@ from bot.modules import (
     leech,
     log,
     login,
+    media_cancel_callback,
+    media_get_callback,
+    media_search,
     media_tools_help_cmd,
     media_tools_settings,
     mediainfo,
     mirror,
-    music_cancel_callback,
-    music_get_callback,
-    music_search,
     nzb_leech,
     nzb_mirror,
     ping,
@@ -325,9 +325,9 @@ def add_handlers():
             BotCommands.LoginCommand,
             None,
         ),
-        "music_search": (
-            music_search,
-            BotCommands.MusicSearchCommand,
+        "media_search": (
+            media_search,
+            BotCommands.MediaSearchCommand,
             CustomFilters.authorized,
         ),
         "media_tools_settings": (
@@ -388,8 +388,8 @@ def add_handlers():
         "^botrestart": confirm_restart,
         "^aeon": aeon_callback,
         "^imdb": imdb_callback,
-        "^musget": music_get_callback,
-        "^muscancel": music_cancel_callback,
+        "^medget": media_get_callback,
+        "^medcancel": media_cancel_callback,
         "^fontstyles": font_styles_callback,
         "^mthelp": media_tools_help_callback,
         "^gensession": gen_session,
@@ -589,3 +589,9 @@ def add_handlers():
         ),
         group=1,  # Higher priority group
     )
+
+    # Import and initialize the media search module
+    from bot.modules.media_search import init_media_search
+
+    # Initialize media search module (this will register the inline query handler)
+    init_media_search(TgClient.bot)

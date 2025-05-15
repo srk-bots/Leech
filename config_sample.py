@@ -35,7 +35,7 @@ NAME_SUBSTITUTE = r""  # Regex pattern to substitute in filenames
 FFMPEG_CMDS = {}  # Custom FFmpeg commands for different file types
 UPLOAD_PATHS = {}  # Custom upload paths for different file types
 MEDIA_STORE = False  # Enable media store for faster thumbnail generation
-MUSIC_SEARCH_CHATS = []  # List of chat IDs where music search is enabled
+MEDIA_SEARCH_CHATS = []  # List of chat IDs where media search is enabled
 DELETE_LINKS = False  # Delete links after download
 FSUB_IDS = ""  # Force subscribe channel IDs, separated by space
 TOKEN_TIMEOUT = 0  # Token timeout in seconds (0 = no timeout)

@@ -343,6 +343,14 @@ async def update_variables():
         Config.USER_TRANSMISSION and TgClient.IS_PREMIUM_USER,
     )
 
+    # Migrate from old config if needed
+    if (
+        hasattr(Config, "MUSIC_SEARCH_CHATS")
+        and Config.MUSIC_SEARCH_CHATS
+        and not Config.MEDIA_SEARCH_CHATS
+    ):
+        Config.MEDIA_SEARCH_CHATS = Config.MUSIC_SEARCH_CHATS
+
     if Config.AUTHORIZED_CHATS:
         aid = Config.AUTHORIZED_CHATS.split()
         for id_ in aid:

@@ -1432,7 +1432,7 @@ NOTE: Try each command without any argument to see more detalis.
 /{BotCommands.StatusCommand[0]} or /{BotCommands.StatusCommand[1]} or /{BotCommands.StatusCommand[2]} or /{BotCommands.StatusCommand[3]}: Shows a status of all the downloads.
 /{BotCommands.StatsCommand}: Show stats of the machine where the bot is hosted in.
 /{BotCommands.IMDBCommand}: Search for movies or TV series info on IMDB.
-/{BotCommands.MusicSearchCommand[0]} or /{BotCommands.MusicSearchCommand[1]}: Search for music files in configured channels.
+/{BotCommands.MediaSearchCommand[0]} or /{BotCommands.MediaSearchCommand[1]}: Search for media files in configured channels.
 /{BotCommands.CheckDeletionsCommand[0]} or /{BotCommands.CheckDeletionsCommand[1]}: Check and manage scheduled message deletions.
 /{BotCommands.AskCommand}: Chat with AI using the bot (Mistral or DeepSeek).
 /{BotCommands.LoginCommand}: Login to the bot using password for permanent access.

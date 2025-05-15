@@ -35,7 +35,7 @@ class Config:
     LOGIN_PASS: str = ""
     MEDIA_GROUP: bool = False
     HYBRID_LEECH: bool = False
-    MUSIC_SEARCH_CHATS: ClassVar[list] = []
+    MEDIA_SEARCH_CHATS: ClassVar[list] = []
     NAME_SUBSTITUTE: str = r""
     OWNER_ID: int = 0
     QUEUE_ALL: int = 0
@@ -571,6 +571,44 @@ class Config:
             # If it's False or any other falsy value
             return False
 
+        # Special handling for MEDIA_SEARCH_CHATS
+        if key == "MEDIA_SEARCH_CHATS":
+            # If value is None, return an empty list
+            if value is None:
+                return []
+
+            # If it's already a list, check if all elements are integers
+            if isinstance(value, list):
+                # Convert all elements to integers if possible
+                try:
+                    return [
+                        int(chat_id)
+                        for chat_id in value
+                        if str(chat_id).lstrip("-").isdigit()
+                    ]
+                except (ValueError, TypeError):
+                    # If conversion fails, return the original list
+                    return value
+
+            # If it's a string, split by comma and convert to integers
+            if isinstance(value, str):
+                if not value.strip():
+                    return []
+                try:
+                    # Split by comma and convert each value to integer
+                    chat_ids = value.split(",")
+                    return [
+                        int(chat_id.strip())
+                        for chat_id in chat_ids
+                        if chat_id.strip().lstrip("-").isdigit()
+                    ]
+                except (ValueError, TypeError):
+                    # If conversion fails, return an empty list
+                    return []
+
+            # For any other type, return an empty list
+            return []
+
         if isinstance(expected_type, bool):
             return str(value).strip().lower() in {"true", "1", "yes"}
 
@@ -778,6 +816,24 @@ class SystemEnv:
                 return ",".join(all_tools)
             # If it's a string that evaluates to False
             return False
+
+        # Special handling for MEDIA_SEARCH_CHATS
+        if key == "MEDIA_SEARCH_CHATS":
+            if not value:
+                return []
+            # Split by comma and convert each value to integer
+            try:
+                # First split by comma
+                chat_ids = value.split(",")
+                # Convert each value to integer, filtering out invalid values
+                return [
+                    int(chat_id.strip())
+                    for chat_id in chat_ids
+                    if chat_id.strip().lstrip("-").isdigit()
+                ]
+            except Exception:
+                # If there's any error, return the original value
+                return original_value
 
         if isinstance(original_value, bool):
             return value.lower() in ("true", "1", "yes")
