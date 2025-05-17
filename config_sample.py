@@ -1,115 +1,103 @@
-# REQUIRED CONFIG
-BOT_TOKEN = ""
-OWNER_ID = "1416841137"
-TELEGRAM_API = "27975779"
-TELEGRAM_HASH = "378062eb0a32d8d6b1bbbe97cb63a75a"
+from pyrogram import Client, filters from pyrogram.types import Message import os import asyncio import yt_dlp import subprocess
 
-# SEMI-REQUIRED, WE SUGGEST TO FILL IT FROM MONGODB
-DATABASE_URL = "mongodb+srv://Anime:tamilan@cluster0.swaztvx.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0"
+API_ID = int(os.environ.get("API_ID", 12345)) API_HASH = os.environ.get("API_HASH", "your_api_hash") BOT_TOKEN = os.environ.get("BOT_TOKEN", "your_bot_token") ADMINS = [123456789]  # Replace with your Telegram user ID
 
-# OPTIONAL CONFIG
-TG_PROXY = {}
-USER_SESSION_STRING = ""
-DOWNLOAD_DIR = "/usr/src/app/downloads/"
-CMD_SUFFIX = ""
-AUTHORIZED_CHATS = "" - 1002248132609
-SUDO_USERS = "1416841137"
-DEFAULT_UPLOAD = "rc"
-FILELION_API = ""
-STREAMWISH_API = ""
-EXCLUDED_EXTENSIONS = ""
-INCOMPLETE_TASK_NOTIFIER = False
-YT_DLP_OPTIONS = ""
-USE_SERVICE_ACCOUNTS = False
-NAME_SUBSTITUTE = ""
-FFMPEG_CMDS = {}
-UPLOAD_PATHS = {}
+app = Client("leech-bot", api_id=API_ID, api_hash=API_HASH, bot_token=BOT_TOKEN)
 
-# INKYPINKY
-DELETE_LINKS = False
-FSUB_IDS = ""
-TOKEN_TIMEOUT = 0
-PAID_CHANNEL_ID = 0
-PAID_CHANNEL_LINK = ""
-SET_COMMANDS = True
-METADATA_KEY = ""
-WATERMARK_KEY = ""
-LOG_CHAT_ID = -1002558820684
-LEECH_FILENAME_CAPTION = ""
-HYDRA_IP = ""
-HYDRA_API_KEY = ""
-INSTADL_API = ""
+DOWNLOADS_DIR = "downloads" os.makedirs(DOWNLOADS_DIR, exist_ok=True) MERGE_STATE = {} user_context = {}
 
-# GDrive Tools
-GDRIVE_ID = ""
-IS_TEAM_DRIVE = False
-STOP_DUPLICATE = False
-INDEX_URL = ""
+@app.on_message(filters.private & filters.command("start")) async def start_handler(client: Client, message: Message): if message.from_user.id not in ADMINS: return await message.reply_text("Access Denied.") await message.reply_text("Welcome to the Leech Bot. Send a file, URL, or magnet link to begin.")
 
-# Rclone
-RCLONE_PATH = ""
-RCLONE_FLAGS = ""
-RCLONE_SERVE_URL = ""
-RCLONE_SERVE_PORT = 0
-RCLONE_SERVE_USER = ""
-RCLONE_SERVE_PASS = ""
+@app.on_message(filters.private & (filters.document | filters.video)) async def file_handler(client: Client, message: Message): if message.from_user.id not in ADMINS: return user_id = message.from_user.id
 
-# Mega credentials
-MEGA_EMAIL = ""
-MEGA_PASSWORD = ""
+if user_id in MERGE_STATE:
+    await message.reply_text("Downloading for merge...")
+    file_path = await message.download(file_name=os.path.join(DOWNLOADS_DIR, f"merge_{user_id}_{len(MERGE_STATE[user_id]) + 1}.mp4"))
+    MERGE_STATE[user_id].append(file_path)
 
-# Sabnzbd
-USENET_SERVERS = [
-    {
-        "name": "main",
-        "host": "",
-        "port": 563,
-        "timeout": 60,
-        "username": "",
-        "password": "",
-        "connections": 8,
-        "ssl": 1,
-        "ssl_verify": 2,
-        "ssl_ciphers": "",
-        "enable": 1,
-        "required": 0,
-        "optional": 0,
-        "retention": 0,
-        "send_group": 0,
-        "priority": 0,
-    },
-]
+    if len(MERGE_STATE[user_id]) == 2:
+        await message.reply_text("Merging videos...")
+        list_file = os.path.join(DOWNLOADS_DIR, f"list_{user_id}.txt")
+        output_file = os.path.join(DOWNLOADS_DIR, f"merged_{user_id}.mp4")
 
-# Update
-UPSTREAM_REPO = "https://github.com/AeonOrg/Aeon-MLTB"
-UPSTREAM_BRANCH = "main"
+        with open(list_file, "w") as f:
+            for vid in MERGE_STATE[user_id]:
+                f.write(f"file '{vid}'\n")
 
-# Leech
-LEECH_SPLIT_SIZE = 0
-AS_DOCUMENT = False
-MEDIA_GROUP = False
-USER_TRANSMISSION = False
-HYBRID_LEECH = False
-LEECH_FILENAME_PREFIX = ""
-LEECH_DUMP_CHAT = [-1002558820684]
-THUMBNAIL_LAYOUT = ""
+        subprocess.run(["ffmpeg", "-f", "concat", "-safe", "0", "-i", list_file, "-c", "copy", output_file], check=True)
 
-# qBittorrent/Aria2c
-TORRENT_TIMEOUT = 0
-BASE_URL = ""
-BASE_URL_PORT = 80
-WEB_PINCODE = False
+        await client.send_document(chat_id=message.chat.id, document=output_file, caption="Merged Video")
 
-# Queueing system
-QUEUE_ALL = 0
-QUEUE_DOWNLOAD = 0
-QUEUE_UPLOAD = 0
+        for f in MERGE_STATE[user_id]:
+            os.remove(f)
+        os.remove(list_file)
+        os.remove(output_file)
+        del MERGE_STATE[user_id]
+    else:
+        await message.reply_text("1st video received. Send second video to merge.")
+    return
 
-# RSS
-RSS_DELAY = 600
-RSS_CHAT = ""
-RSS_SIZE_LIMIT = 0
+context = user_context.get(user_id)
+if context:
+    command, args = context
+    del user_context[user_id]
 
-# Heroku config for get BASE_URL automatically
-HEROKU_APP_NAME = ""
-HEROKU_API_KEY = ""
+    file_path = await message.download(file_name=os.path.join(DOWNLOADS_DIR, message.document.file_name if message.document else "video.mp4"))
+    if command == "extract":
+        audio_path = os.path.join(DOWNLOADS_DIR, "audio.mp3")
+        subprocess.run(["ffmpeg", "-i", file_path, "-q:a", "0", "-map", "a", audio_path], check=True)
+        await client.send_document(message.chat.id, audio_path, caption="Extracted Audio")
+        os.remove(file_path)
+        os.remove(audio_path)
+    elif command == "compress":
+        output_file = os.path.join(DOWNLOADS_DIR, "compressed.mp4")
+        subprocess.run(["ffmpeg", "-i", file_path, "-vcodec", "libx265", "-crf", "28", output_file], check=True)
+        await client.send_document(message.chat.id, output_file, caption="Compressed Video")
+        os.remove(file_path)
+        os.remove(output_file)
+    elif command == "watermark":
+        if not args:
+            return await message.reply_text("Please send watermark image first using /watermark")
+        watermark_path = args[0]
+        output_file = os.path.join(DOWNLOADS_DIR, "watermarked.mp4")
+        subprocess.run(["ffmpeg", "-i", file_path, "-i", watermark_path, "-filter_complex", "overlay=10:10", output_file], check=True)
+        await client.send_document(message.chat.id, output_file, caption="Video with Watermark")
+        os.remove(file_path)
+        os.remove(output_file)
+    elif command == "rename":
+        new_name = args[0]
+        new_path = os.path.join(DOWNLOADS_DIR, new_name)
+        os.rename(file_path, new_path)
+        await client.send_document(message.chat.id, new_path, caption="Renamed File")
+        os.remove(new_path)
+    elif command == "metadata":
+        title, desc = args
+        output_file = os.path.join(DOWNLOADS_DIR, "metadata_updated.mp4")
+        subprocess.run(["ffmpeg", "-i", file_path, "-metadata", f"title={title}", "-metadata", f"comment={desc}", "-codec", "copy", output_file], check=True)
+        await client.send_document(message.chat.id, output_file, caption="Updated Metadata")
+        os.remove(file_path)
+        os.remove(output_file)
+    return
+
+await message.reply_text("File received. Use /rename, /metadata or other tools.")
+
+@app.on_message(filters.private & filters.text & filters.regex(r"https?://")) async def url_handler(client: Client, message: Message): if message.from_user.id not in ADMINS: return url = message.text.strip() await message.reply_text(f"Downloading from URL: {url}") try: ydl_opts = { 'outtmpl': f'{DOWNLOADS_DIR}/%(title)s.%(ext)s', 'format': 'best' } with yt_dlp.YoutubeDL(ydl_opts) as ydl: info = ydl.extract_info(url, download=True) file_path = ydl.prepare_filename(info) await message.reply_document(file_path) os.remove(file_path) except Exception as e: await message.reply_text(f"Error: {e}")
+
+@app.on_message(filters.private & filters.text & filters.regex(r"magnet:?xt=urn")) async def torrent_handler(client: Client, message: Message): if message.from_user.id not in ADMINS: return magnet = message.text.strip() await message.reply_text("Adding torrent...") try: subprocess.run(["qbittorrent-nox", "--save-path=downloads", magnet], check=True) await message.reply_text("Torrent started. You must fetch result manually from Render volume.") except Exception as e: await message.reply_text(f"Torrent error: {e}")
+
+@app.on_message(filters.command("merge") & filters.private) async def merge_handler(client, message): if message.from_user.id not in ADMINS: return MERGE_STATE[message.from_user.id] = [] await message.reply_text("Send 2 video files one by one to merge.")
+
+@app.on_message(filters.command("extract") & filters.private) async def extract_audio(client, message): if message.from_user.id not in ADMINS: return user_context[message.from_user.id] = ("extract", []) await message.reply_text("Send a video to extract audio")
+
+@app.on_message(filters.command("compress") & filters.private) async def compress_video(client, message): if message.from_user.id not in ADMINS: return user_context[message.from_user.id] = ("compress", []) await message.reply_text("Send a video to compress")
+
+@app.on_message(filters.command("watermark") & filters.private) async def watermark_image(client, message): if message.from_user.id not in ADMINS: return await message.reply_text("Send the watermark image now.") user_context[message.from_user.id] = ("watermark_wait", [])
+
+@app.on_message(filters.private & filters.photo & (filters.create(lambda _, _, msg: user_context.get(msg.from_user.id, [None])[0] == "watermark_wait"))) async def receive_watermark_image(client, message): file_path = await message.download(file_name=os.path.join(DOWNLOADS_DIR, f"watermark{message.from_user.id}.png")) user_context[message.from_user.id] = ("watermark", [file_path]) await message.reply_text("Watermark image received. Now send a video to apply it.")
+
+@app.on_message(filters.command("rename") & filters.private) async def rename_command(client, message): if message.from_user.id not in ADMINS: return if len(message.command) < 2: return await message.reply_text("Usage: /rename newfilename.ext") filename = message.text.split(maxsplit=1)[1] user_context[message.from_user.id] = ("rename", [filename]) await message.reply_text("Now send the file to rename.")
+
+@app.on_message(filters.command("metadata") & filters.private) async def metadata_command(client, message): if message.from_user.id not in ADMINS: return try: args = message.text.split(maxsplit=2) title = args[1] desc = args[2] user_context[message.from_user.id] = ("metadata", [title, desc]) await message.reply_text("Now send the video to apply metadata.") except: await message.reply_text("Usage: /metadata <title> <description>")
+
+if name == "main": print("Bot starting...") app.run()
+
