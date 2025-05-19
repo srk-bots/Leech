@@ -20,10 +20,8 @@ langcodes
 lxml
 motor
 natsort
-pillow
 psutil
 pyshorteners
-python-magic
 pytz
 requests
 speedtest-cli
