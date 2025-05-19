@@ -10,8 +10,8 @@ ADMINS = [1416841137]  # Replace with your Telegram user ID
 
 app = Client("leech-bot", api_id=API_ID, api_hash=API_HASH, bot_token=BOT_TOKEN)
 
-from handlers.manual_handler import handle_manual
-from handlers.vt_handler import handle_vt
+from manual_handler import handle_manual
+from vt_handler import handle_vt
 
 
 @app.on_message(filters.command("start") & filters.private)
