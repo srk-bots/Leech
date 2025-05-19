@@ -15,6 +15,7 @@ google-auth-httplib2
 google-auth-oauthlib
 gunicorn
 Python-magic
+Pillow
 httpx
 jinja2
 langcodes
