@@ -3,10 +3,10 @@ import os
 from pyrogram import Client, filters
 from pyrogram.types import Message
 
-API_ID = int(os.environ.get("API_ID", 12345))
-API_HASH = os.environ.get("API_HASH", "your_api_hash")
+API_ID = int(os.environ.get("API_ID", "27975779"))
+API_HASH = os.environ.get("API_HASH", "378062eb0a32d8d6b1bbbe97cb63a75a")
 BOT_TOKEN = os.environ.get("BOT_TOKEN", "your_bot_token")
-ADMINS = [123456789]  # Replace with your Telegram user ID
+ADMINS = [1416841137]  # Replace with your Telegram user ID
 
 app = Client("leech-bot", api_id=API_ID, api_hash=API_HASH, bot_token=BOT_TOKEN)
 
